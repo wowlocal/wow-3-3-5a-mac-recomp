@@ -1,0 +1,62 @@
+{
+  "scene": "offscreen synthetic triangle batches",
+  "viewport": [
+    1365,
+    768
+  ],
+  "draws_per_frame": 826,
+  "write_only_maps_per_frame": 340,
+  "ordinary_uploads_per_frame": 23,
+  "fresh_buffer_store_each_frame": true,
+  "nonoverlapping_writes_within_each_store": true,
+  "runs": [
+    {
+      "serialized": true,
+      "representative_rgba_checksum": "9472e673471af488",
+      "ms_per_frame": {
+        "12": 57.105,
+        "60": 59.936
+      }
+    },
+    {
+      "serialized": false,
+      "representative_rgba_checksum": "9472e673471af488",
+      "ms_per_frame": {
+        "12": 1.393,
+        "60": 1.341
+      }
+    },
+    {
+      "serialized": false,
+      "representative_rgba_checksum": "9472e673471af488",
+      "ms_per_frame": {
+        "12": 1.31,
+        "60": 1.271
+      }
+    },
+    {
+      "serialized": true,
+      "representative_rgba_checksum": "9472e673471af488",
+      "ms_per_frame": {
+        "12": 52.466,
+        "60": 60.02
+      }
+    },
+    {
+      "serialized": true,
+      "representative_rgba_checksum": "9472e673471af488",
+      "ms_per_frame": {
+        "12": 54.35,
+        "60": 59.651
+      }
+    },
+    {
+      "serialized": false,
+      "representative_rgba_checksum": "9472e673471af488",
+      "ms_per_frame": {
+        "12": 1.326,
+        "60": 1.275
+      }
+    }
+  ]
+}
