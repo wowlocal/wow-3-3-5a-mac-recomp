@@ -180,6 +180,55 @@ def compare_swaps(writes, markers, frame_log):
     }
 
 
+def mailbox_frames(rows, pid, width, height):
+    events = defaultdict(dict)
+    names = ("arg0", "arg1", "arg2", "arg3")
+    for row in rows:
+        if (
+            not row["process"].get("fmt", "").endswith(f" ({pid})")
+            or row["subsystem"].text != "org.local.wrath-trial"
+            or row["signpost-name"].get("fmt") != "WMGL Rendered Output"
+        ):
+            continue
+        name = row["name"].text
+        if name not in names:
+            continue
+        event = events[int(row["time"].text)]
+        if name in event:
+            raise ValueError("Repeated WineMetalGL completion marker argument")
+        event[name] = int(row["value"].text)
+
+    frames = []
+    for event in events.values():
+        if len(event) != len(names):
+            raise ValueError("Incomplete WineMetalGL completion marker")
+        sequence, gpu_end, draws, dimensions = (event[name] for name in names)
+        if dimensions == ((width << 32) | height) and gpu_end > 0 and draws > 0:
+            frames.append((sequence, gpu_end, draws))
+    if len(frames) < 2:
+        raise ValueError("Fewer than two completed WineMetalGL renders at the requested size")
+    frames.sort()
+    sequences = [frame[0] for frame in frames]
+    times = [frame[1] for frame in frames]
+    if len(set(sequences)) != len(frames) or any(a >= b for a, b in zip(times, times[1:])):
+        raise ValueError("WineMetalGL markers do not identify one ordered stream of GPU completions")
+    gaps = sorted(b - a for a, b in zip(times, times[1:]))
+    duration = times[-1] - times[0]
+    return {
+        "pid": pid,
+        "window_size": [width, height],
+        "verified_completed_renders": len(frames),
+        "first_sequence": sequences[0],
+        "last_sequence": sequences[-1],
+        "missing_sequences": sequences[-1] - sequences[0] + 1 - len(frames),
+        "gpu_completion_interval_ns": duration,
+        "average_completed_fps": len(gaps) * 1e9 / duration,
+        "p99_gpu_completion_gap_ns": gaps[math.ceil(0.99 * len(gaps)) - 1],
+        "min_draws": min(frame[2] for frame in frames),
+        "max_draws": max(frame[2] for frame in frames),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trace", type=Path)
@@ -188,10 +237,18 @@ def main():
     parser.add_argument("height", type=int)
     parser.add_argument("--run", type=int, default=1)
     parser.add_argument("--frame-log", type=Path, help="align the frame log using AGL Swap signposts")
+    parser.add_argument("--wmgl", action="store_true", help="read WineMetalGL's completed mailbox renders")
     options = parser.parse_args()
     if min(options.pid, options.width, options.height, options.run) <= 0:
         parser.error("PID, viewport dimensions, and run number must be positive")
+    if options.wmgl and options.frame_log:
+        parser.error("--frame-log applies to the AGL window-write analysis")
     try:
+        if options.wmgl:
+            events = trace_rows(options.trace, options.run, "os-signpost-arg", "PointsOfInterest")
+            report = mailbox_frames(events, options.pid, options.width, options.height)
+            print(json.dumps(report, indent=2))
+            return
         report, output_buffers = window_writes(
             trace_rows(options.trace, options.run, "metal-io-surface-access"),
             trace_rows(options.trace, options.run, "metal-command-buffer-completed"),

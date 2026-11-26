@@ -1,0 +1,52 @@
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+index b650495..3bb782d 100644
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -3,6 +3,7 @@
+ #import <MetalFX/MetalFX.h>
+ #include <dlfcn.h>
+ #include <mach/mach_time.h>
++#include <os/signpost.h>
+ 
+ #include <algorithm>
+ #include <climits>
+@@ -613,6 +614,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     }
+     Mailbox* box = mailbox_.get();
+     int slot = -1;
++    uint64_t sequence;
+     {
+         // A free slot, else the finished frame the presenter has not taken
+         // yet (it is dropped). Only a GPU two frames behind makes this wait.
+@@ -628,14 +630,29 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+         for (int i = 0; i < Mailbox::kSlots && slot < 0; ++i)
+             if (box->state[i] == Mailbox::Ready) slot = i;
+         box->state[slot] = Mailbox::Pending;
+-        box->sequence[slot] = box->nextSequence++;
++        sequence = box->nextSequence++;
++        box->sequence[slot] = sequence;
+     }
++    static os_log_t completionTrace = []() -> os_log_t {
++        const char* enabled = std::getenv("OCERZ_WMGL_TRACE_COMPLETIONS");
++        return enabled && enabled[0] == '1' && !enabled[1] ?
++            os_log_create("org.local.wrath-trial", OS_LOG_CATEGORY_POINTS_OF_INTEREST) : nullptr;
++    }();
++    const uint64_t draws = completionTrace ? stats::frame().draws : 0;
++    const uint64_t dimensions = (uint64_t(source.width) << 32) | uint64_t(source.height);
+     id<MTLBlitCommandEncoder> blit = stream.blit();
+     [blit copyFromTexture:source sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
+                sourceSize:MTLSizeMake(source.width, source.height, 1) toTexture:box->slots[slot] destinationSlice:0
+          destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+     stream.endEncoder();
+-    [stream.commandBuffer() addCompletedHandler:^(id<MTLCommandBuffer>) {
++    [stream.commandBuffer() addCompletedHandler:^(id<MTLCommandBuffer> finished) {
++        if (completionTrace && draws && finished.status == MTLCommandBufferStatusCompleted && finished.GPUEndTime > 0.0) {
++            const uint64_t end = uint64_t(finished.GPUEndTime * 1e9);
++            os_signpost_event_emit(completionTrace, OS_SIGNPOST_ID_EXCLUSIVE, "WMGL Rendered Output",
++                "sequence=%{public}llu gpu_end_ns=%{public}llu draws=%{public}llu dimensions=%{public}llu",
++                (unsigned long long)sequence, (unsigned long long)end,
++                (unsigned long long)draws, (unsigned long long)dimensions);
++        }
+         // Notify under the lock (see the present handler).
+         std::lock_guard<std::mutex> lock(box->mutex);
+         box->state[slot] = Mailbox::Ready;

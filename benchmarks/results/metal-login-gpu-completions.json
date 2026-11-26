@@ -1,0 +1,18 @@
+{
+  "window_size": [
+    1365,
+    768
+  ],
+  "verified_completed_renders": 192,
+  "first_sequence": 374,
+  "last_sequence": 565,
+  "missing_sequences": 0,
+  "gpu_completion_interval_ns": 6569941791,
+  "average_completed_fps": 29.07179486150793,
+  "p99_gpu_completion_gap_ns": 39834500,
+  "min_draws": 82,
+  "max_draws": 91,
+  "scene": "background original login screen",
+  "backend": "WineMetalGL native Metal mailbox",
+  "stats_enabled": true
+}
