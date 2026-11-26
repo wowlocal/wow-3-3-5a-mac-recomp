@@ -1,0 +1,55 @@
+{
+  "casters": 24,
+  "camera": "fixed",
+  "default_reference": "raid-buffer-mirrors-ab.json#mirrors_on",
+  "single_threaded": {
+    "resolution": [
+      1365,
+      768
+    ],
+    "timing": {
+      "swaps": 3240,
+      "duration_ns": 60001764000,
+      "average_swap_fps": 53.998,
+      "median_fps": 57.24,
+      "p50_frame_ms": 17.47,
+      "p95_frame_ms": 26.314,
+      "p99_frame_ms": 30.869,
+      "stalls_over_250_ms": 0,
+      "longest_gap_ms": 36.52,
+      "median_inside_swap_ms": 0.31,
+      "p95_inside_swap_ms": 5.92,
+      "median_between_swaps_ms": 16.61,
+      "p95_between_swaps_ms": 22.88,
+      "time_inside_swap_percent": 7.53,
+      "slowest_5pct_time_inside_swap_percent": 16.75,
+      "duration_seconds": 60.002,
+      "average_client_cpu_percent": 81.22,
+      "peak_sampled_client_footprint_mib": 749.0,
+      "footprint_sample_interval_seconds": 0.5
+    },
+    "trace": {
+      "overlap_seconds": 5.990207916,
+      "agl_swaps": 208,
+      "verified_completions": 209,
+      "completion_p99_ms": 46.147708,
+      "gpu_active_percent": 39.486433729323,
+      "gpu_active_ms_per_output": {
+        "total": 11.317318081339712,
+        "Compute": 2.425860014354067,
+        "Vertex": 4.923701253588517,
+        "Fragment": 4.266961947368421
+      }
+    },
+    "main_thread_samples": 1516,
+    "main_thread_buckets_percent": {
+      "other_opengl": 52.110817941952504,
+      "other_runtime_or_host": 5.211081794195251,
+      "unsymbolicated_guest": 42.678100263852244
+    },
+    "buffer_subdata_samples": {
+      "buffer_subdata": 401,
+      "share_group_query": 1
+    }
+  }
+}
