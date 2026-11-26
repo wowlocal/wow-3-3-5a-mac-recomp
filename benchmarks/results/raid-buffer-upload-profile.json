@@ -1,0 +1,121 @@
+{
+  "duration_seconds": 25.047667,
+  "sample_period_in_mirrored_target_uploads_per_thread": 127,
+  "sampled_uploads": 246,
+  "sampled_buffers": 1,
+  "top_buffer_sample_counts": [
+    246
+  ],
+  "eligible_mirror_shadow_samples": 246,
+  "known_allocation_size_samples": 246,
+  "exact_full_replacement_samples": 0,
+  "allocations": {
+    "34962": 862
+  },
+  "upload_size_bytes": {
+    "min": 1056.0,
+    "p50": 1296.0,
+    "p95": 1584.0,
+    "max": 1584.0
+  },
+  "native_submit_us": {
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 1.0,
+    "max": 1.0
+  },
+  "bridge_state_queries_us": {
+    "min": 57.0,
+    "p50": 171.0,
+    "p95": 970.5,
+    "max": 2906.0
+  },
+  "top_sizes_by_target": [
+    {
+      "target": "34962",
+      "size": 1584,
+      "samples": 82
+    },
+    {
+      "target": "34962",
+      "size": 1296,
+      "samples": 82
+    },
+    {
+      "target": "34962",
+      "size": 1056,
+      "samples": 82
+    }
+  ],
+  "top_offsets_by_target": [
+    {
+      "target": "34962",
+      "offset": 2002880,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 2063040,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 1867904,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 486976,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 744768,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 2078272,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 1149568,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 1247552,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 448256,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 1847232,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 175872,
+      "samples": 1
+    },
+    {
+      "target": "34962",
+      "offset": 1548736,
+      "samples": 1
+    }
+  ],
+  "casters": 24,
+  "camera": "fixed",
+  "resolution": [
+    1365,
+    768
+  ],
+  "buffer_allocation_bytes": 2097152,
+  "null_data_gl_dynamic_draw_allocations_for_sampled_buffer": 858,
+  "sampled_guest_callsites": 1
+}
