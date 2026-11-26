@@ -1,0 +1,76 @@
+{
+  "scope": "offscreen AArchX GL map and explicit flush microbenchmark",
+  "rolling_buffer_bytes": 2097152,
+  "warmup_writes_per_run": 2000,
+  "flush_payload_bytes": {
+    "typical": 320,
+    "one_in_twenty": 24064
+  },
+  "measurements": {
+    "uncached_direct_lookup": {
+      "timed_writes": 40000,
+      "total_ns": {
+        "copied_shadow": [
+          12134583,
+          12525667,
+          12321834
+        ],
+        "guest_backed": [
+          24828000,
+          24689792,
+          24545458
+        ]
+      },
+      "median_ns_per_write": {
+        "copied_shadow": 308.04585,
+        "guest_backed": 617.2448
+      }
+    },
+    "tracked_direct_mapping": {
+      "timed_writes": 40000,
+      "total_ns": {
+        "copied_shadow": [
+          12368375,
+          12270500,
+          13361583
+        ],
+        "guest_backed": [
+          11369667,
+          11623625,
+          11286125
+        ]
+      },
+      "median_ns_per_write": {
+        "copied_shadow": 309.209375,
+        "guest_backed": 284.241675
+      }
+    }
+  },
+  "headless_checks": {
+    "copied_shadow": 91,
+    "guest_backed": 104
+  },
+  "default_aarchx_checks": {
+    "general": 806,
+    "carbon": 4296
+  },
+  "winemetalgl_gpu_checks": 336,
+  "background_login_smoke": {
+    "stream": 1,
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 146,
+    "first_sequence": 250,
+    "last_sequence": 395,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 4965902250,
+    "measurement_duration_ns": 5000000000,
+    "average_completed_fps": 29.0,
+    "p99_gpu_completion_gap_ns": 43968500,
+    "min_draws": 82,
+    "max_draws": 89
+  },
+  "login_scene_used_the_2mib_path": false
+}

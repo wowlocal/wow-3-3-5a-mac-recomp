@@ -1,0 +1,524 @@
+diff --git a/include/ocerz/m32_wmgl.h b/include/ocerz/m32_wmgl.h
+index dae0ebd..e79f1e8 100644
+--- a/include/ocerz/m32_wmgl.h
++++ b/include/ocerz/m32_wmgl.h
+@@ -1,6 +1,9 @@
+ #ifndef OCERZ_M32_WMGL_H
+ #define OCERZ_M32_WMGL_H
+ 
++#include <stddef.h>
++#include <stdint.h>
++
+ /* Trial-only WineMetalGL sidecar. The guest still owns an ordinary AGL
+  * context and Carbon window. OpenGL calls use the selected renderer. */
+ #ifdef OCERZ_WMGL_TRIAL
+@@ -11,6 +14,8 @@ void m32_wmgl_destroy(void *agl);
+ int m32_wmgl_set_current(void *agl);
+ int m32_wmgl_drawable(void *agl, void *window);
+ int m32_wmgl_swap(void *agl);
++uint32_t m32_wmgl_guest_buffer(const void *host, size_t size);
++int m32_wmgl_guest_storage_enabled(void);
+ #else
+ static inline int m32_wmgl_symbol(const char *name, void **address) { return 0; }
+ static inline int m32_wmgl_create(void *agl, void *share) { return 1; }
+@@ -18,6 +23,8 @@ static inline void m32_wmgl_destroy(void *agl) {}
+ static inline int m32_wmgl_set_current(void *agl) { return 1; }
+ static inline int m32_wmgl_drawable(void *agl, void *window) { return 1; }
+ static inline int m32_wmgl_swap(void *agl) { return 0; }
++static inline uint32_t m32_wmgl_guest_buffer(const void *host, size_t size) { return 0; }
++static inline int m32_wmgl_guest_storage_enabled(void) { return 0; }
+ #endif
+ 
+ #endif
+diff --git a/src/m32_agl.c b/src/m32_agl.c
+index 89d9563..7034719 100644
+--- a/src/m32_agl.c
++++ b/src/m32_agl.c
+@@ -203,7 +203,7 @@ static int agl_CreateContext(struct OcerzVM *vm, OcerzCPU *cpu)
+         agl.destroy_context(context);
+         RET(0);
+     }
+-    if (context && m32_gl_unpack_alias_enabled()) {
++    if (context && (m32_gl_unpack_alias_enabled() || m32_wmgl_guest_storage_enabled())) {
+         void *native = NULL;
+         if (!agl.get_cgl_context(context, &native))
+             native = NULL;
+@@ -218,7 +218,7 @@ static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
+         RET(0);
+     Obj context = H(0);
+     void *native = NULL;
+-    if (m32_gl_unpack_alias_enabled() && !agl.get_cgl_context(context, &native))
++    if ((m32_gl_unpack_alias_enabled() || m32_wmgl_guest_storage_enabled()) && !agl.get_cgl_context(context, &native))
+         native = NULL;
+     remember(context, 0);
+     unsigned char result = agl.destroy_context(context);
+diff --git a/src/m32_gl.c b/src/m32_gl.c
+index 4272eda..fba3099 100644
+--- a/src/m32_gl.c
++++ b/src/m32_gl.c
+@@ -33,6 +33,7 @@
+ #include "ocerz/interp.h"
+ #include "ocerz/jit.h"
+ #include "ocerz/m32.h"
++#include "ocerz/m32_wmgl.h"
+ #include "ocerz/mem.h"
+ 
+ #define GL_LIB "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL"
+@@ -44,6 +45,7 @@ typedef struct Shadow {
+     uint32_t size, flushed;        /* the mapped range's size; whether the guest flushed any part of it */
+     uint32_t bufsize, mirror;      /* the buffer's size (0: not known); whether the copy is the buffer's mirror */
+     uint32_t alias;                /* an isolated guest range while a native PBO map is live */
++    int direct;                    /* the last mapping used renderer-owned guest pages */
+ } Shadow;
+ static Shadow g_shadows[256];
+ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
+@@ -287,9 +289,17 @@ void m32_gl_alias_context_destroyed(struct OcerzVM *vm, void *context)
+         if (g_alias_contexts[i].group == group)
+             group = NULL;
+     if (group && !g_alias_contexts_incomplete) {
+-        for (size_t i = 0; i < sizeof g_shadows / sizeof g_shadows[0]; i++)
+-            if (g_shadows[i].group == group && g_shadows[i].alias)
+-                release_alias(vm, &g_shadows[i]);
++        for (size_t i = 0; i < sizeof g_shadows / sizeof g_shadows[0]; i++) {
++            Shadow *s = &g_shadows[i];
++            if (s->group != group)
++                continue;
++            if (s->alias)
++                release_alias(vm, s);
++            if (s->direct) {
++                m32_free(s->guest);
++                *s = (Shadow){ 0 };
++            }
++        }
+         uint64_t acquired = __atomic_load_n(&g_unpack_aliased, __ATOMIC_RELAXED);
+         if (acquired)
+             fprintf(stderr, "ocerz: GL unpack alias lifetime acquired=%" PRIu64
+@@ -377,7 +387,7 @@ static int is(const Shadow *s, void *group, uint32_t buffer) { return s->group =
+ /* whether s is the shadow of (group, buffer) with a guest copy (live) or a mapping (!live) */
+ static int has(const Shadow *s, void *group, uint32_t buffer, int live)
+ {
+-    return is(s, group, buffer) && (live ? s->guest || s->alias : s->host != NULL);
++    return is(s, group, buffer) && (live ? s->guest || s->alias || s->direct : s->host != NULL);
+ }
+ 
+ static Shadow *lookup(void *group, uint32_t buffer, int live)
+@@ -455,6 +465,23 @@ static int map_common(struct OcerzVM *vm, OcerzCPU *cpu, unsigned target, uint32
+ {
+     if (!host)
+         RET(0);
++    uint32_t direct = m32_wmgl_guest_buffer(host, size);
++    if (direct) {
++        // Keep the existing mapping-table fast path, with no guest copy.
++        Shadow *entry = shadow_for(group, buffer, 0);
++        if (entry) {
++            if (entry->alias)
++                release_alias(vm, entry);
++            entry->host = host;
++            entry->size = size;
++            entry->flushed = 0;
++            entry->mirror = 0;
++            entry->direct = 1;
++            if (whole)
++                entry->bufsize = size;
++            RET(direct);
++        }
++    }
+     uint32_t alias = 0;
+     if (g_alias_unpack && whole && write_only && target == 0x88EC)
+         alias = try_unpack_alias(vm, group, host, size);
+@@ -467,6 +494,7 @@ static int map_common(struct OcerzVM *vm, OcerzCPU *cpu, unsigned target, uint32
+         RET(0);
+     }
+     /* A successful new driver map proves that any previous mapping ended. */
++    s->direct = 0;
+     if (s->alias)
+         release_alias(vm, s);
+     if (alias) {
+@@ -626,14 +654,18 @@ static int sp_glBufferData(struct OcerzVM *vm, OcerzCPU *cpu)
+     unsigned target = m32_arg(cpu, 0);
+     int32_t size = (int32_t)m32_arg(cpu, 1);
+     uint32_t data = m32_arg(cpu, 2);
+-    Shadow *lease = __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED) ? mapped(target) : NULL;
++    int track = __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED) || m32_wmgl_guest_storage_enabled();
++    Shadow *lease = track ? mapped(target) : NULL;
+     gl.buffer_data(target, size, data ? m32_host(data) : NULL, m32_arg(cpu, 3));
+-    if (lease && lease->alias) {
+-        int still_mapped = 1; /* leave the alias live if a rejected call leaves the query unanswered */
++    if (lease && (lease->alias || lease->direct)) {
++        int still_mapped = 1; /* keep tracking if the native call was rejected */
+         gl.buffer_iv(target, 0x88BC /* GL_BUFFER_MAPPED */, &still_mapped);
+         if (still_mapped)
+             RET(0);
+-        release_alias(vm, lease);
++        if (lease->alias)
++            release_alias(vm, lease);
++        else
++            lease->host = NULL;
+     }
+     if (mirrored(target)) {
+         void *group = share_group();
+@@ -684,7 +716,7 @@ static int sp_glDeleteBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
+     int32_t n = (int32_t)m32_arg(cpu, 0);
+     uint32_t names = m32_arg(cpu, 1);
+     void *group = share_group();
+-    int live = __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED) > 0;
++    int live = __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED) || m32_wmgl_guest_storage_enabled();
+     int valid_query = -1;
+     if (live && n > 0 && names) {
+         /* A rejected deletion inside Begin/End leaves the sentinel unchanged.
+@@ -696,11 +728,11 @@ static int sp_glDeleteBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
+     for (int32_t i = 0; names && i < n; i++) {
+         Shadow *s = find(group, m32_rd(names + 4 * (uint32_t)i));
+         if (s) {
+-            if (s->alias) {
+-                if (valid_query < 0 || !gl.is_buffer || gl.is_buffer(s->buffer))
+-                    continue;
++            if ((s->alias || s->direct) &&
++                (valid_query < 0 || !gl.is_buffer || gl.is_buffer(s->buffer)))
++                continue;
++            if (s->alias)
+                 release_alias(vm, s);
+-            }
+             m32_free(s->guest);
+             *s = (Shadow){ 0 };
+         }
+@@ -720,7 +752,7 @@ static int flush_common(OcerzCPU *cpu, void (*flush)(unsigned, intptr_t, intptr_
+     uint32_t off = m32_arg(cpu, 1), len = m32_arg(cpu, 2);
+     Shadow *s = mapped(target);
+     if (s && off <= s->size && len <= s->size - off) {
+-        if (s->alias)
++        if (s->alias || s->direct)
+             __atomic_thread_fence(__ATOMIC_SEQ_CST);
+         else
+             memcpy(s->host + off, m32_h(s->guest + off), len);
+@@ -744,14 +776,18 @@ static int sp_glUnmapBuffer(struct OcerzVM *vm, OcerzCPU *cpu)
+     gl_init();
+     unsigned target = m32_arg(cpu, 0);
+     Shadow *s = mapped(target);
+-    if (s && s->alias) {
++    if (s && (s->alias || s->direct)) {
+         __atomic_thread_fence(__ATOMIC_SEQ_CST);
+         unsigned char result = gl.unmap(target);
+         int still_mapped = 1;
+         if (!result)
+             gl.buffer_iv(target, 0x88BC /* GL_BUFFER_MAPPED */, &still_mapped);
+-        if (result || !still_mapped)
+-            release_alias(vm, s);
++        if (result || !still_mapped) {
++            if (s->alias)
++                release_alias(vm, s);
++            else
++                s->host = NULL;
++        }
+         RET(result);
+     }
+     if (s) {
+@@ -777,7 +813,9 @@ static int sp_glGetBufferPointerv(struct OcerzVM *vm, OcerzCPU *cpu)
+         gl.get_pointer(target, m32_arg(cpu, 1), out ? &pointer : NULL);
+     if (out && pointer != (void *)UINTPTR_MAX) {
+         Shadow *s = pointer ? mapped(target) : NULL;
+-        uint32_t guest = s && s->host == pointer ? (s->alias ? s->alias : s->guest) : m32_handle(pointer);
++        uint32_t guest = m32_wmgl_guest_buffer(pointer, 1);
++        if (!guest)
++            guest = s && s->host == pointer ? (s->alias ? s->alias : s->guest) : m32_handle(pointer);
+         m32_wr(out, guest);
+     }
+     RET(0);
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+index 9377b79..ba6f1bf 100644
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -7,8 +7,11 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <math.h>
++#include <sys/mman.h>
+ 
+ #include "ocerz/m32_wmgl.h"
++#include "ocerz/m32.h"
++#include "ocerz/mem.h"
+ #include "winemetalgl/driver.h"
+ 
+ static pthread_once_t initialization = PTHREAD_ONCE_INIT;
+@@ -26,6 +29,86 @@
+     void *(*proc)(const char *);
+ } driver;
+ static int format;
++static int guestBufferStorage;
++
++typedef struct GuestBuffer {
++    uint32_t start;
++    size_t size;
++    struct GuestBuffer *next;
++} GuestBuffer;
++static GuestBuffer *guestBuffers;
++static pthread_mutex_t guestBuffersLock = PTHREAD_MUTEX_INITIALIZER;
++
++static void *allocate_guest_buffer(size_t size)
++{
++    // The live raid trace identified a single 2 MiB rolling vertex buffer.
++    // Metal supplies ordinary allocations for the other sizes in this trial.
++    if (size != 2 * 1024 * 1024 || !ocerz_guest_base)
++        return NULL;
++    uint64_t start = ocerz_map_anywhere_aligned(size, PROT_READ | PROT_WRITE, 65536);
++    if (!start)
++        return NULL;
++    if (start >= M32_HANDLE_LO || size > M32_HANDLE_LO - start ||
++        ((ocerz_guest_base + start) & 65535) != 0) {
++        ocerz_unmap(start, size);
++        return NULL;
++    }
++    GuestBuffer *buffer = malloc(sizeof(*buffer));
++    if (!buffer) {
++        ocerz_unmap(start, size);
++        return NULL;
++    }
++    pthread_mutex_lock(&guestBuffersLock);
++    *buffer = (GuestBuffer){ .start = (uint32_t)start, .size = size, .next = guestBuffers };
++    guestBuffers = buffer;
++    pthread_mutex_unlock(&guestBuffersLock);
++    static unsigned allocations;
++    if (__atomic_add_fetch(&allocations, 1, __ATOMIC_RELAXED) == 1)
++        fprintf(stderr, "ocerz: WineMetalGL allocated its first guest-backed 2 MiB buffer\n");
++    return m32_h((uint32_t)start);
++}
++
++static void release_guest_buffer(void *host, size_t size)
++{
++    pthread_mutex_lock(&guestBuffersLock);
++    GuestBuffer **link = &guestBuffers;
++    while (*link && (host != m32_h((*link)->start) || size != (*link)->size))
++        link = &(*link)->next;
++    GuestBuffer *buffer = *link;
++    if (buffer)
++        *link = buffer->next;
++    pthread_mutex_unlock(&guestBuffersLock);
++
++    if (buffer) {
++        if (ocerz_unmap(buffer->start, buffer->size) != OCERZ_OK)
++            fprintf(stderr, "ocerz: could not release WineMetalGL guest buffer storage\n");
++        free(buffer);
++    }
++}
++
++int m32_wmgl_guest_storage_enabled(void) { return guestBufferStorage; }
++
++uint32_t m32_wmgl_guest_buffer(const void *host, size_t size)
++{
++    if (!guestBufferStorage || !host || !size)
++        return 0;
++    const uint64_t address = (uintptr_t)host;
++    if (address <= ocerz_guest_base || address - ocerz_guest_base >= M32_HANDLE_LO)
++        return 0;
++
++    const uint64_t guest = address - ocerz_guest_base;
++    uint32_t found = 0;
++    pthread_mutex_lock(&guestBuffersLock);
++    for (GuestBuffer *buffer = guestBuffers; buffer; buffer = buffer->next) {
++        if (guest >= buffer->start && size <= buffer->size &&
++            guest - buffer->start <= buffer->size - size) {
++            found = (uint32_t)guest;
++            break;
++        }
++    }
++    pthread_mutex_unlock(&guestBuffersLock);
++    return found;
++}
+ 
+ typedef struct {
+     void *agl;
+@@ -85,6 +168,18 @@ static void initialize(void)
+         fprintf(stderr, "ocerz: WineMetalGL has no matching accelerated window format\n");
+         exit(2);
+     }
++    const char *storage = getenv("OCERZ_WMGL_GUEST_STORAGE");
++    if (storage && !strcmp(storage, "1")) {
++        void (*set_memory)(void *(*)(size_t), void (*)(void *, size_t)) =
++            (__typeof__(set_memory))dlsym(handle, "wmgl_set_optional_buffer_memory");
++        if (!set_memory) {
++            fprintf(stderr, "ocerz: WineMetalGL needs the optional guest-buffer patch\n");
++            exit(2);
++        }
++        set_memory(allocate_guest_buffer, release_guest_buffer);
++        guestBufferStorage = 1;
++        fprintf(stderr, "ocerz: trial WineMetalGL guest buffer storage enabled\n");
++    }
+     fprintf(stderr, "ocerz: trial WineMetalGL core enabled (format %d)\n", format);
+ }
+ 
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+index 0b0ba2c..0033e65 100644
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -39,6 +39,7 @@
+ #include "ocerz/flags.h"
+ #include "ocerz/interp.h"
+ #include "ocerz/m32.h"
++#include "ocerz/m32_wmgl.h"
+ #include "ocerz/m32_image.h"
+ #include "ocerz/m32_objc.h"
+ #include "ocerz/m32_sig.h"
+@@ -783,6 +784,142 @@ static uint32_t test_live_agl_unpack_alias(void)
+     return alias;
+ }
+ 
++static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
++{
++    enum { WARMUP = 2000, TIMED = 40000, STRIDE = 65536, RANGES = 32 };
++    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ target, 0x8A13, 0 });
++    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ target, 0x8A12, 0 });
++    check("configure explicit Apple range flushes", cross(gl, "_glGetError", 0, NULL) == 0);
++
++    uint64_t start = 0;
++    for (unsigned i = 0; i < WARMUP + TIMED; i++) {
++        if (i == WARMUP)
++            start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++        uint32_t offset = (i % RANGES) * STRIDE;
++        uint32_t size = i % 20 == 0 ? 24064 : 320;
++        uint32_t guest = call("_glMapBuffer", 2, (uint32_t[]){ target, 0x88B9 /* GL_WRITE_ONLY */ });
++        if (!guest) {
++            check("map a range for the mapped-write measurement", 0);
++            return;
++        }
++        memset(m32_h(guest + offset), i & 255, size);
++        call("_glFlushMappedBufferRangeAPPLE", 3, (uint32_t[]){ target, offset, size });
++        if (call("_glUnmapBuffer", 1, (uint32_t[]){ target }) != 1) {
++            check("unmap during the mapped-write measurement", 0);
++            return;
++        }
++    }
++    const uint64_t elapsed = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start;
++    const unsigned last = WARMUP + TIMED - 1;
++    cross(gl, "_glGetBufferSubData", 4, (uint32_t[]){ target, (last % RANGES) * STRIDE, 4, DATA + 0xc64 });
++    check("read back the final measured upload", m32_rd(DATA + 0xc64) == 0x01010101u * (last & 255));
++    printf("wmgl-storage: %u mapped writes in %llu ns (%.1f ns per write)\n",
++           TIMED, (unsigned long long)elapsed, (double)elapsed / TIMED);
++}
++
++static void test_wmgl_storage(void)
++{
++    enum { ARRAY = 0x8892, DYNAMIC = 0x88E8, READ_WRITE = 0x88BA, SIZE = 2 * 1024 * 1024 };
++    const char *gl = "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL";
++    const char *option = getenv("OCERZ_WMGL_GUEST_STORAGE");
++    const int wantsDirect = option && !strcmp(option, "1");
++    if (!getenv("OCERZ_WMGL_LIBRARY")) {
++        check("WineMetalGL library was selected", 0);
++        return;
++    }
++    const uint32_t attrs[] = { 4 /* AGL_RGBA */, 5 /* AGL_DOUBLEBUFFER */, 0 };
++    memcpy(m32_h(DATA + 0xc00), attrs, sizeof attrs);
++    uint32_t pf = call("_aglChoosePixelFormat", 3, (uint32_t[]){ 0, 0, DATA + 0xc00 });
++    check("choose the offscreen trial's AGL pixel format", pf != 0);
++    uint32_t ctx = pf ? call("_aglCreateContext", 2, (uint32_t[]){ pf, 0 }) : 0;
++    check("create an AGL context and Metal pbuffer", ctx != 0);
++    if (!ctx) return;
++    check("make the offscreen WineMetalGL context current",
++          call("_aglSetCurrentContext", 1, (uint32_t[]){ ctx }) == 1);
++
++    cross(gl, "_glGenBuffers", 2, (uint32_t[]){ 2, DATA + 0xc30 });
++    uint32_t large = m32_rd(DATA + 0xc30);
++    uint32_t small = m32_rd(DATA + 0xc34);
++    check("create both driver buffers", large && small && large != small);
++    cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, large });
++    call("_glBufferData", 4, (uint32_t[]){ ARRAY, SIZE, 0, DYNAMIC });
++    uint32_t guest = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++    check("map the rolling buffer in the guest address space", guest && guest < M32_HANDLE_LO);
++    if (!guest) return;
++    check("the rolling buffer follows the selected storage mode",
++          (m32_wmgl_guest_buffer(m32_h(guest), SIZE) == guest) == wantsDirect);
++    check("storage lookup rejects a range that exceeds its backing",
++          !m32_wmgl_guest_buffer(m32_h(guest), SIZE + 1));
++    call("_glGetBufferPointerv", 3, (uint32_t[]){ ARRAY, 0x88BD, DATA + 0xc40 });
++    check("the driver's mapped pointer round-trips", m32_rd(DATA + 0xc40) == guest);
++    const float triangle[] = { -1, -1, 1, -1, 0, 1 };
++    memcpy(m32_h(guest), triangle, sizeof triangle);
++    m32_wr(guest + 124, 0x10203040);
++    check("unmap the whole rolling buffer", call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) == 1);
++    call("_glGetBufferPointerv", 3, (uint32_t[]){ ARRAY, 0x88BD, DATA + 0xc40 });
++    check("unmap clears the driver mapping", m32_rd(DATA + 0xc40) == 0);
++
++    uint32_t part = call("_glMapBufferRange", 4,
++                         (uint32_t[]){ ARRAY, 128, 4, 0x12 /* write and explicit flush */ });
++    check("map a subrange of the same buffer", part && (!wantsDirect || part == guest + 128));
++    if (!part) return;
++    m32_wr(part, 0x50607080);
++    call("_glFlushMappedBufferRange", 3, (uint32_t[]){ ARRAY, 0, 4 });
++    check("unmap the written subrange", call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) == 1);
++    cross(gl, "_glGetBufferSubData", 4, (uint32_t[]){ ARRAY, 124, 8, DATA + 0xc48 });
++    check("subrange upload preserves neighboring bytes",
++          m32_rd(DATA + 0xc48) == 0x10203040 && m32_rd(DATA + 0xc4c) == 0x50607080);
++
++    cross(gl, "_glViewport", 4, (uint32_t[]){ 0, 0, 1, 1 });
++    cross(gl, "_glClear", 1, (uint32_t[]){ 0x4000 /* GL_COLOR_BUFFER_BIT */ });
++    cross(gl, "_glEnableClientState", 1, (uint32_t[]){ 0x8074 /* GL_VERTEX_ARRAY */ });
++    cross(gl, "_glVertexPointer", 4, (uint32_t[]){ 2, 0x1406 /* GL_FLOAT */, 0, 0 });
++    cross(gl, "_glColor4ub", 4, (uint32_t[]){ 17, 201, 43, 255 });
++    cross(gl, "_glDrawArrays", 3, (uint32_t[]){ 4 /* GL_TRIANGLES */, 0, 3 });
++    cross(gl, "_glReadPixels", 7, (uint32_t[]){ 0, 0, 1, 1, 0x1908, 0x1401, DATA + 0xc58 });
++    check("Metal draws from the guest-written vertices", m32_rd(DATA + 0xc58) == 0xff2bc911);
++    if (getenv("OCERZ_WMGL_MAP_BENCH"))
++        bench_wmgl_mapped_writes(gl, ARRAY);
++
++    uint32_t old = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++    check("map the original buffer before replacing its storage", old != 0);
++    call("_glBufferData", 4, (uint32_t[]){ ARRAY, 4096, 0, DYNAMIC });
++    call("_glGetBufferPointerv", 3, (uint32_t[]){ ARRAY, 0x88BD, DATA + 0xc40 });
++    check("replacing the storage invalidates the old mapping", m32_rd(DATA + 0xc40) == 0);
++    uint32_t replacement = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++    check("replacing the storage with a small allocation uses a copied map",
++          replacement && !m32_wmgl_guest_buffer(m32_h(replacement), 4096));
++    if (replacement)
++        check("unmap the small replacement", call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) == 1);
++
++    cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, small });
++    if (wantsDirect) {
++        call("_glBufferData", 4, (uint32_t[]){ ARRAY, SIZE, 0, DYNAMIC });
++        uint32_t unused = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++        check("an unused buffer borrows its own guest pages",
++              unused && m32_wmgl_guest_buffer(m32_h(unused), SIZE) == unused);
++        if (unused)
++            check("unmap the unused allocation", call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) == 1);
++        call("_glBufferData", 4, (uint32_t[]){ ARRAY, 8192, 0, DYNAMIC });
++        call("_glBufferData", 4, (uint32_t[]){ ARRAY, 4096, 0, DYNAMIC });
++        check("the next allocation releases unused retired guest pages",
++              unused && !m32_wmgl_guest_buffer(m32_h(unused), SIZE));
++    }
++    call("_glBufferData", 4, (uint32_t[]){ ARRAY, 4096, 0, DYNAMIC });
++    uint32_t ordinary = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++    check("small buffers keep the ordinary shadow", ordinary && !m32_wmgl_guest_buffer(m32_h(ordinary), 4096));
++    if (ordinary) {
++        m32_wr(ordinary, 0x11223344);
++        call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY });
++        cross(gl, "_glGetBufferSubData", 4, (uint32_t[]){ ARRAY, 0, 4, DATA + 0xc60 });
++        check("the fallback path updates the small buffer", m32_rd(DATA + 0xc60) == 0x11223344);
++    }
++    call("_glDeleteBuffers", 2, (uint32_t[]){ 2, DATA + 0xc30 });
++    call("_aglSetCurrentContext", 1, (uint32_t[]){ 0 });
++    check("destroy the offscreen trial context", call("_aglDestroyContext", 1, (uint32_t[]){ ctx }) == 1);
++    call("_aglDestroyPixelFormat", 1, (uint32_t[]){ pf });
++}
++
+ /* AGL on a window's QuickDraw port: the context draws into the window (src/m32_agl.c) */
+ static void test_agl(uint32_t port)
+ {
+@@ -2844,7 +2981,7 @@ int main(int argc, char **argv)
+     ocerz_cpu_reset(cpu());
+     cpu()->mode32 = 1;
+     m32_heap_init();
+-    if (argc > 1 && !strcmp(argv[1], "carbon")) {
++    if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage"))) {
+         char db[PATH_MAX];
+         if (!realpath("runtime/apis32", db)) {
+             fprintf(stderr, "test_m32: no runtime/apis32 here (make apis32, run from the repository)\n");
+@@ -2854,6 +2991,11 @@ int main(int argc, char **argv)
+         char db64[PATH_MAX];
+         if (realpath("runtime/apis", db64))
+             setenv("OCERZ_APIDB", db64, 0);   /* the host side: frameworks the bridge opens by install name */
++        if (!strcmp(argv[1], "wmgl-storage")) {
++            test_wmgl_storage();
++            printf("test_m32 wmgl-storage: %d checks, %d failed\n", g_checks, g_failures);
++            return g_failures != 0;
++        }
+         test_carbon();
+         test_db_shapes();
+         test_objc_pairs();

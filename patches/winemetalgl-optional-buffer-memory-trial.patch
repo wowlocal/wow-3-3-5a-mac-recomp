@@ -1,0 +1,80 @@
+diff --git a/include/winemetalgl/driver.h b/include/winemetalgl/driver.h
+index 0896ffd..1d12c2b 100644
+--- a/include/winemetalgl/driver.h
++++ b/include/winemetalgl/driver.h
+@@ -101,6 +101,9 @@ void wmgl_version(int *major, int *minor, int *patch);
+  * frees it. Call before creating contexts. Optional: cores before 3.0.0 do
+  * not export it. */
+ void wmgl_set_buffer_memory(void *(*allocate)(size_t size), void (*release)(void *memory, size_t size));
++/* Trial host storage. If the callback declines an allocation, Metal owns it. */
++void wmgl_set_optional_buffer_memory(void *(*allocate)(size_t size),
++                                    void (*release)(void *memory, size_t size));
+ 
+ /* A game's own settings: the text of winemetalgl.conf beside its .exe
+  * (WINEMETALGL_*=value lines, as in the settings file), over the settings
+diff --git a/src/core/api/buffer.mm b/src/core/api/buffer.mm
+index b295677..29801e0 100644
+--- a/src/core/api/buffer.mm
++++ b/src/core/api/buffer.mm
+@@ -33,6 +33,7 @@ bool validUsage(GLenum usage) {
+ // The host's memory for buffer storage (wmgl_set_buffer_memory), or none.
+ void* (*g_bufferAllocate)(size_t) = nullptr;
+ void (*g_bufferRelease)(void*, size_t) = nullptr;
++bool g_optionalBufferMemory = false;
+ 
+ namespace {
+ 
+@@ -69,15 +70,20 @@ void returnReleasedMemory() {
+     returnReleasedMemory();
+     const NSUInteger pages = (length + 0x3fff) & ~NSUInteger(0x3fff);
+     void* memory = g_bufferAllocate(pages);
+-    if (!memory) return nil;
+-    std::memset(memory, 0, pages);
+-    return [Device::get().mtl() newBufferWithBytesNoCopy:memory
+-                                                  length:pages
+-                                                 options:MTLResourceStorageModeShared
+-                                             deallocator:^(void* pointer, NSUInteger bytes) {
+-                                                 std::lock_guard<std::mutex> lock(releasedMemory().lock);
+-                                                 releasedMemory().memory.emplace_back(pointer, bytes);
+-                                             }];
++    if (memory) {
++        std::memset(memory, 0, pages);
++        id<MTLBuffer> buffer = [Device::get().mtl() newBufferWithBytesNoCopy:memory
++                                      length:pages options:MTLResourceStorageModeShared
++                                 deallocator:^(void* pointer, NSUInteger bytes) {
++                                     std::lock_guard<std::mutex> lock(releasedMemory().lock);
++                                     releasedMemory().memory.emplace_back(pointer, bytes);
++                                 }];
++        if (buffer) return buffer;
++        g_bufferRelease(memory, pages);
++    }
++    if (g_optionalBufferMemory)
++        return [Device::get().mtl() newBufferWithLength:length options:MTLResourceStorageModeShared];
++    return nil;
+ }
+ 
+ id<MTLBuffer> newStorage(GLsizeiptr size) {
+diff --git a/src/core/driver.mm b/src/core/driver.mm
+index 6b7e658..0e0243c 100644
+--- a/src/core/driver.mm
++++ b/src/core/driver.mm
+@@ -401,11 +401,19 @@ WMGL_EXPORT void wmgl_batch_end(void) {
+ namespace wmgl::api {
+ extern void* (*g_bufferAllocate)(size_t);
+ extern void (*g_bufferRelease)(void*, size_t);
++extern bool g_optionalBufferMemory;
+ }
+ 
+ WMGL_EXPORT void wmgl_set_buffer_memory(void* (*allocate)(size_t), void (*release)(void*, size_t)) {
+     wmgl::api::g_bufferAllocate = allocate;
+     wmgl::api::g_bufferRelease = release;
++    wmgl::api::g_optionalBufferMemory = false;
++}
++
++WMGL_EXPORT void wmgl_set_optional_buffer_memory(void* (*allocate)(size_t),
++                                                void (*release)(void*, size_t)) {
++    wmgl_set_buffer_memory(allocate, release);
++    wmgl::api::g_optionalBufferMemory = true;
+ }
+ 
+ WMGL_EXPORT void wmgl_apply_game_settings(const char* text) {

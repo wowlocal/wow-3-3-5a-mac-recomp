@@ -191,3 +191,18 @@ python3 "$TRIAL_REPO/benchmarks/trace-frames.py" GPU.ns PID 1365 768 \
 Use `--seconds 600` for the ten-minute run. If the log contains multiple mailbox generations at the requested size, select the generation that covers the run with `--stream`.
 
 With GL statistics disabled, **193** calibration records from the direct file matched the Instruments signposts for sequence, dimensions, draw count, and GPU timestamp. A subsequent fixed **60-second login-screen window** contained **1,749** successful GPU completion records including its start marker, with zero missing sequence numbers. This verified the extended recording path at 1365 × 768. The background login screen averaged 29.13 completed FPS and had a 41.34 ms p99, with the raid workload still awaiting in-world testing. [Direct GPU recording results](results/metal-login-direct-60s.json)
+
+## Guest-backed Metal vertex storage
+
+The optional path places the rolling **2 MiB** allocation in the 32-bit guest address space and gives Metal the same pages. The driver supplies its usual storage for other sizes. AArchX tracks the borrowed mapping in its existing lookup table, so an explicit range flush can use the pages the guest already wrote. The driver retains and releases the backing according to the Metal resource lifetime.
+
+The first prototype skipped the table entry and spent more time finding mapped buffers. After reusing the table, the median of three 40,000-write runs fell from **309 ns per write** with shadows to **284 ns** with guest-backed storage. The test used 320-byte flushes and one 24,064-byte flush every twenty writes. This measures the map, fill, flush, and unmap path with no concurrent drawing.
+
+The offscreen AArchX test rendered vertices written through the guest mapping and checked partial updates, pointer round-trips, storage replacement, and release of unused pages. Both modes passed their checks. The original login screen still rendered at 1365 × 768 with the experiment enabled. The headless test exercised the rolling allocation; the login run checked startup. [Guest-backed storage results](results/winemetalgl-guest-storage.json)
+
+Apply the following patches after the earlier Metal backend and completion patches, then rebuild both checkouts. Add `OCERZ_WMGL_GUEST_STORAGE=1` to the trial launch to select this path.
+
+```sh
+git -C "$METAL_TRIAL_AARCHX" apply "$TRIAL_REPO/patches/aarchx-wmgl-guest-storage-trial.patch"
+git -C "$METAL_TRIAL_WMGL" apply "$TRIAL_REPO/patches/winemetalgl-optional-buffer-memory-trial.patch"
+```
