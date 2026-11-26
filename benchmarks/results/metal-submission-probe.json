@@ -1,0 +1,57 @@
+{
+  "fixture": "native offscreen Metal triangle batches",
+  "viewport": [
+    1365,
+    768
+  ],
+  "draws_per_frame": 48,
+  "command_buffers_per_frame": {
+    "combined": 1,
+    "split": 48
+  },
+  "full_frame_pixel_equality_verified": true,
+  "per_frame_marker_readback_verified": true,
+  "colored_pixels": 161622,
+  "runs": [
+    {
+      "mode": "combined",
+      "frames": 30,
+      "wall_ms_per_frame": 0.565
+    },
+    {
+      "mode": "split",
+      "frames": 30,
+      "wall_ms_per_frame": 3.101
+    },
+    {
+      "mode": "split",
+      "frames": 200,
+      "wall_ms_per_frame": 1.103
+    },
+    {
+      "mode": "combined",
+      "frames": 200,
+      "wall_ms_per_frame": 0.021
+    },
+    {
+      "mode": "combined",
+      "frames": 200,
+      "wall_ms_per_frame": 0.049
+    },
+    {
+      "mode": "split",
+      "frames": 200,
+      "wall_ms_per_frame": 0.985
+    },
+    {
+      "mode": "split",
+      "frames": 200,
+      "wall_ms_per_frame": 1.001
+    },
+    {
+      "mode": "combined",
+      "frames": 200,
+      "wall_ms_per_frame": 0.021
+    }
+  ]
+}

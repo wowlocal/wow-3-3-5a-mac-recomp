@@ -1,0 +1,232 @@
+{
+  "full_resolution": {
+    "caster_count": 24,
+    "viewport": [
+      1365,
+      768
+    ],
+    "verified_gpu_outputs": 243,
+    "command_buffers_per_output": {
+      "p50": 59,
+      "p95": 73.0,
+      "min": 31,
+      "max": 73
+    },
+    "metal_encoders_per_output": {
+      "p50": 60,
+      "p95": 75.0,
+      "min": 33,
+      "max": 75
+    },
+    "gpu_active_union_ms_per_output": {
+      "p50": 5.440495,
+      "p95": 17.245449500000003,
+      "min": 0.890705,
+      "max": 26.71133
+    },
+    "gpu_active_channel_ms_per_output": {
+      "Compute": {
+        "p50": 1.113166,
+        "p95": 4.3957311,
+        "min": 0.08329,
+        "max": 8.132251
+      },
+      "Vertex": {
+        "p50": 2.205458,
+        "p95": 8.8878134,
+        "min": 0.322917,
+        "max": 11.081208
+      },
+      "Fragment": {
+        "p50": 1.938127,
+        "p95": 7.340662099999999,
+        "min": 0.509042,
+        "max": 16.097915
+      }
+    }
+  },
+  "reduced_resolution": {
+    "caster_count": 24,
+    "viewport": [
+      1066,
+      600
+    ],
+    "verified_gpu_outputs": 394,
+    "command_buffers_per_output": {
+      "p50": 59.0,
+      "p95": 73.0,
+      "min": 29,
+      "max": 87
+    },
+    "metal_encoders_per_output": {
+      "p50": 60.0,
+      "p95": 75.0,
+      "min": 31,
+      "max": 89
+    },
+    "gpu_active_union_ms_per_output": {
+      "p50": 7.2820225,
+      "p95": 14.770357250000002,
+      "min": 0.970042,
+      "max": 22.042084
+    },
+    "gpu_active_channel_ms_per_output": {
+      "Compute": {
+        "p50": 1.248102,
+        "p95": 4.514657950000001,
+        "min": 0.084914,
+        "max": 6.725959
+      },
+      "Vertex": {
+        "p50": 3.222752,
+        "p95": 7.1554421999999995,
+        "min": 0.352872,
+        "max": 12.909709
+      },
+      "Fragment": {
+        "p50": 2.6665215,
+        "p95": 6.64143055,
+        "min": 0.490251,
+        "max": 12.326041
+      }
+    }
+  },
+  "half_casters": {
+    "caster_count": 12,
+    "viewport": [
+      1365,
+      768
+    ],
+    "verified_gpu_outputs": 653,
+    "command_buffers_per_output": {
+      "p50": 17,
+      "p95": 45.0,
+      "min": 4,
+      "max": 45
+    },
+    "metal_encoders_per_output": {
+      "p50": 19,
+      "p95": 47.0,
+      "min": 5,
+      "max": 47
+    },
+    "gpu_active_union_ms_per_output": {
+      "p50": 3.734541,
+      "p95": 12.858500800000002,
+      "min": 0.529582,
+      "max": 24.289207
+    },
+    "gpu_active_channel_ms_per_output": {
+      "Compute": {
+        "p50": 0.678292,
+        "p95": 4.9561266,
+        "min": 0.045458,
+        "max": 9.529374
+      },
+      "Vertex": {
+        "p50": 1.510502,
+        "p95": 6.3973493999999995,
+        "min": 0.200334,
+        "max": 12.13546
+      },
+      "Fragment": {
+        "p50": 1.257377,
+        "p95": 5.1097918,
+        "min": 0.310625,
+        "max": 12.915874
+      }
+    }
+  },
+  "tracked_state": {
+    "caster_count": 24,
+    "viewport": [
+      1365,
+      768
+    ],
+    "verified_gpu_outputs": 246,
+    "command_buffers_per_output": {
+      "p50": 59.0,
+      "p95": 73.0,
+      "min": 31,
+      "max": 73
+    },
+    "metal_encoders_per_output": {
+      "p50": 61.0,
+      "p95": 75.0,
+      "min": 31,
+      "max": 75
+    },
+    "gpu_active_union_ms_per_output": {
+      "p50": 5.398023500000001,
+      "p95": 17.385633500000004,
+      "min": 0.668962,
+      "max": 25.472964
+    },
+    "gpu_active_channel_ms_per_output": {
+      "Compute": {
+        "p50": 0.8614790000000001,
+        "p95": 4.1480239999999995,
+        "min": 0.067251,
+        "max": 7.344252
+      },
+      "Vertex": {
+        "p50": 2.270168,
+        "p95": 9.679633749999999,
+        "min": 0.236876,
+        "max": 14.510332
+      },
+      "Fragment": {
+        "p50": 1.951416,
+        "p95": 7.181945499999999,
+        "min": 0.383086,
+        "max": 11.158166
+      }
+    }
+  },
+  "single_threaded": {
+    "caster_count": 24,
+    "viewport": [
+      1365,
+      768
+    ],
+    "verified_gpu_outputs": 209,
+    "command_buffers_per_output": {
+      "p50": 59,
+      "p95": 73.0,
+      "min": 31,
+      "max": 73
+    },
+    "metal_encoders_per_output": {
+      "p50": 63,
+      "p95": 77.0,
+      "min": 33,
+      "max": 77
+    },
+    "gpu_active_union_ms_per_output": {
+      "p50": 10.291005,
+      "p95": 20.905568000000002,
+      "min": 1.205167,
+      "max": 32.047379
+    },
+    "gpu_active_channel_ms_per_output": {
+      "Compute": {
+        "p50": 1.776791,
+        "p95": 7.201901,
+        "min": 0.105168,
+        "max": 8.979959
+      },
+      "Vertex": {
+        "p50": 4.523623,
+        "p95": 10.400241800000002,
+        "min": 0.414961,
+        "max": 14.688166
+      },
+      "Fragment": {
+        "p50": 3.876626,
+        "p95": 8.9687158,
+        "min": 0.6915,
+        "max": 17.685462
+      }
+    }
+  }
+}
