@@ -1,8 +1,8 @@
 diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
-index 0033e65..2964561 100644
+index 0033e65..67dea5d 100644
 --- a/tests/unit/test_m32.c
 +++ b/tests/unit/test_m32.c
-@@ -817,6 +817,181 @@ static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
+@@ -817,6 +817,225 @@ static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
             TIMED, (unsigned long long)elapsed, (double)elapsed / TIMED);
  }
  
@@ -34,6 +34,17 @@ index 0033e65..2964561 100644
 +    void (*end)(void) = library ? (void (*)(void))dlsym(library, "wmgl_batch_end") : NULL;
 +    check("load the native GL batch functions", begin && end);
 +    if (!begin || !end) return;
++    void (*statsEnable)(int) = NULL;
++    void (*statsReset)(void) = NULL;
++    int (*statsCounter)(const char *, unsigned long long *) = NULL;
++    if (getenv("OCERZ_WMGL_BENCH_COUNTS")) {
++        statsEnable = (void (*)(int))dlsym(library, "wmgl_stats_enable");
++        statsReset = (void (*)(void))dlsym(library, "wmgl_stats_reset");
++        statsCounter = (int (*)(const char *, unsigned long long *))dlsym(library, "wmgl_stats_counter");
++        check("load render-pass counter functions", statsEnable && statsReset && statsCounter);
++        if (!statsEnable || !statsReset || !statsCounter) return;
++        statsEnable(1);
++    }
 +    const char *mode = getenv("OCERZ_WMGL_BATCH_BENCH");
 +    const int batched = mode && !strcmp(mode, "1");
 +    const char *indexMode = getenv("OCERZ_WMGL_INDEXED_BENCH");
@@ -65,9 +76,33 @@ index 0033e65..2964561 100644
 +        call("_glBufferData", 4, (uint32_t[]){ 0x8893, sizeof indices, DATA + 0xd10, 0x88E4 });
 +    }
 +    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ target, 0x8A13, 0 });
-+    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ target, 0x8A12, 0 });
++    const char *serialized = getenv("OCERZ_WMGL_BENCH_SERIALIZED");
++    cross(gl, "_glBufferParameteriAPPLE", 3,
++          (uint32_t[]){ target, 0x8A12, serialized && !strcmp(serialized, "1") });
 +    check("the synthetic stream uses explicit range writes into fresh storage",
 +          cross(gl, "_glGetError", 0, NULL) == 0);
++
++    // Make the first draw consume one range before submitting a write to a
++    // different range. Both triangles must survive in a single readback.
++    const float triangles[2][6] = {
++        {-0.9f, -0.8f, -0.1f, -0.8f, -0.5f, 0.8f},
++        { 0.1f, -0.8f,  0.9f, -0.8f,  0.5f, 0.8f}
++    };
++    call("_glBufferData", 4, (uint32_t[]){ target, SIZE, 0, 0x88E8 });
++    cross(gl, "_glClear", 1, (uint32_t[]){ 0x4000 });
++    for (unsigned side = 0; side < 2; side++) {
++        unsigned offset = side * STRIDE;
++        memcpy(m32_h(DATA + 0x1000), triangles[side], sizeof triangles[side]);
++        call("_glBufferSubData", 4,
++             (uint32_t[]){ target, offset, sizeof triangles[side], DATA + 0x1000 });
++        cross(gl, "_glVertexPointer", 4, (uint32_t[]){ 2, 0x1406, 0, offset });
++        cross(gl, "_glColor4ub", 4, (uint32_t[]){ side ? 0 : 255, side ? 255 : 0, 0, 255 });
++        cross(gl, "_glDrawArrays", 3, (uint32_t[]){ 4, 0, 3 });
++    }
++    cross(gl, "_glReadPixels", 7, (uint32_t[]){ WIDTH / 4, HEIGHT / 2, 1, 1, 0x1908, 0x1401, DATA + 0xd28 });
++    cross(gl, "_glReadPixels", 7, (uint32_t[]){ WIDTH * 3 / 4, HEIGHT / 2, 1, 1, 0x1908, 0x1401, DATA + 0xd2c });
++    check("the queued draw and disjoint buffer update both preserve their pixels",
++          m32_rd(DATA + 0xd28) == 0xff0000ff && m32_rd(DATA + 0xd2c) == 0xff00ff00);
 +
 +    const unsigned programTargets[] = { 0x8620, 0x8804 };
 +    const char *sources[] = {
@@ -106,6 +141,8 @@ index 0033e65..2964561 100644
 +    for (unsigned frame = 0; frame < WARMUP + timed; frame++) {
 +        if (frame == WARMUP) {
 +            bench_gl_call(traps[FINISH], 0, NULL);
++            if (statsReset)
++                statsReset();
 +            if (sampleFrames)
 +                fprintf(stderr, "wmgl-batch: measuring the draw stream\n");
 +            start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
@@ -151,6 +188,13 @@ index 0033e65..2964561 100644
 +    }
 +    bench_gl_call(traps[FINISH], 0, NULL);
 +    uint64_t elapsed = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start;
++    if (statsCounter) {
++        unsigned long long passes = 0, blits = 0, commits = 0;
++        check("read render-pass counters", statsCounter("passes", &passes) &&
++              statsCounter("passEnds.blit", &blits) && statsCounter("commits", &commits));
++        printf("wmgl-render-counts: %llu passes, %llu blit ends, %llu commits\n", passes, blits, commits);
++        statsEnable(0);
++    }
 +
 +    uint32_t pixels = m32_malloc(WIDTH * HEIGHT * 4);
 +    check("allocate the representative framebuffer readback", pixels != 0);
@@ -184,7 +228,7 @@ index 0033e65..2964561 100644
  static void test_wmgl_storage(void)
  {
      enum { ARRAY = 0x8892, DYNAMIC = 0x88E8, READ_WRITE = 0x88BA, SIZE = 2 * 1024 * 1024 };
-@@ -880,6 +1055,8 @@ static void test_wmgl_storage(void)
+@@ -880,6 +1099,8 @@ static void test_wmgl_storage(void)
      check("Metal draws from the guest-written vertices", m32_rd(DATA + 0xc58) == 0xff2bc911);
      if (getenv("OCERZ_WMGL_MAP_BENCH"))
          bench_wmgl_mapped_writes(gl, ARRAY);

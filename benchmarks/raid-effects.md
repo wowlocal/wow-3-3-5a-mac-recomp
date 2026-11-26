@@ -234,3 +234,11 @@ OCERZ_NO_ARM_EXEC=1 OCERZ_WMGL_LIBRARY="$METAL_TRIAL_BUILD/libwinemetalgl.dylib"
 The linked ARB program lookup also now uses a fixed-size key for the current program serials and stage options. Cache entries retain an owned copy on a miss. The offscreen indexed test ran four 120-frame samples per arm. The one-stage ARB case moved from **1.12 to 1.07 ms/frame** and the two-stage case from **1.08 to 0.97 ms/frame**. Every run produced the same representative framebuffer checksum, and the 336 GPU tests passed. [ARB linked-program key results](results/winemetalgl-arb-program-key-ab.json)
 
 Apply `patches/winemetalgl-arb-program-key-trial.patch` after the fixed-function key patch. The updated AArchX draw benchmark accepts `OCERZ_WMGL_ARB_BENCH=2` to run both programmable stages.
+
+## Application-synchronized vertex uploads
+
+The offscreen draw profile showed that ordinary `glBufferSubData` updates could interrupt a render pass with a staging blit. The opt-in upload patch uses direct writes on the mutable 2 MiB array buffer when the compatibility client disables Apple buffer serialization and the buffer has no GPU writes to reconcile. The application owns synchronization in this mode. [Apple buffer range specification](https://registry.khronos.org/OpenGL/extensions/APPLE/APPLE_flush_buffer_range.txt)
+
+The two-stage ARB workload fell from **1.03 to 0.77 ms/frame** across four interleaved 120-frame runs per arm. A separate counter run recorded **2,640 upload-related pass endings with staging and zero with direct writes**. The framebuffer checksums matched. A focused readback verified both an already queued draw and a later draw from a disjoint updated range. With serialization enabled, the staging path kept the same render-pass and upload-blit counts with the trial flag off or on. All **336 GPU tests** passed with the flag enabled. [Direct upload measurements](results/winemetalgl-apple-subdata-ab.json)
+
+Apply `patches/winemetalgl-apple-subdata-trial.patch` after the ARB program key patch and rebuild the core. The draw benchmark can compare `OCERZ_WMGL_APPLE_SUBDATA=0` and `OCERZ_WMGL_APPLE_SUBDATA=1`. Use `OCERZ_WMGL_BENCH_COUNTS=1` for a separate counter run. The background login capture produced no `glBufferParameteriAPPLE` calls in the targeted trace. The live raid still needs to establish which buffers are eligible.

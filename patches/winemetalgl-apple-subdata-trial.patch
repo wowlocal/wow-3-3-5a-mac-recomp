@@ -1,0 +1,45 @@
+diff --git a/src/core/api/buffer.mm b/src/core/api/buffer.mm
+index 29801e0..3b5d558 100644
+--- a/src/core/api/buffer.mm
++++ b/src/core/api/buffer.mm
+@@ -1,6 +1,7 @@
+ // Buffer objects (GL 3.3 section 2.9).
+ 
+ #include <algorithm>
++#include <cstdlib>
+ #include <cstring>
+ #include <mutex>
+ #include <unistd.h>
+@@ -496,7 +497,18 @@ void BufferSubData(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr size
+     if (buffer->rangeMapped(offset, size)) return ctx.setError(GL_INVALID_OPERATION);
+     if (buffer->immutable && !(buffer->storageFlags & GL_DYNAMIC_STORAGE_BIT)) return ctx.setError(GL_INVALID_OPERATION);
+     if (!size || !data || !buffer->mtl) return;
+-    if (gpuBusy(ctx, *buffer)) {
++    static const bool tryAppleSubData = [] {
++        const char* value = std::getenv("OCERZ_WMGL_APPLE_SUBDATA");
++        return value && value[0] == '1' && !value[1];
++    }();
++    // The compatibility client's APPLE setting makes it responsible for
++    // synchronizing writes. Keep this trial on the measured vertex store
++    // and leave GPU-written, mapped and other storage on the ordinary path.
++    const bool applicationSynchronized = tryAppleSubData && ctx.isCompat() &&
++        target == GL_ARRAY_BUFFER && buffer->size == 2 * 1024 * 1024 &&
++        !buffer->appleSerializedModify && !buffer->immutable && !buffer->pinned &&
++        !buffer->mapped && !buffer->lastWriteSerial;
++    if (!applicationSynchronized && gpuBusy(ctx, *buffer)) {
+         // Immutable storage keeps its memory (it may be persistently mapped),
+         // and so does a mapped buffer.
+         if (!buffer->immutable && !buffer->pinned && !buffer->mapped && (size == buffer->size || buffer->size <= (256 << 10))) {
+@@ -514,7 +526,11 @@ void BufferSubData(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr size
+             return;
+         }
+     }
+-    std::memcpy(static_cast<uint8_t*>(buffer->mtl.contents) + offset, data, static_cast<size_t>(size));
++    auto* destination = static_cast<uint8_t*>(buffer->mtl.contents) + offset;
++    if (applicationSynchronized)
++        std::memmove(destination, data, static_cast<size_t>(size));
++    else
++        std::memcpy(destination, data, static_cast<size_t>(size));
+     buffer->shadowWrite(offset, size, data);
+     ++buffer->version;
+ }
