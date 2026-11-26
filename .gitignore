@@ -1,0 +1,13 @@
+.DS_Store
+.env
+*.dmg
+*.mpq
+*.MPQ
+*.app/
+*.log
+*.frames.ns
+__pycache__/
+/build/
+/runtime/
+/Logs/
+/WTF/

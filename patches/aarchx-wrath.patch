@@ -1,0 +1,652 @@
+diff --git a/include/ocerz/m32.h b/include/ocerz/m32.h
+index ce46352..98667df 100644
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -69,6 +69,8 @@ extern const M32SpecialEntry m32_iokit_specials[];    /* src/m32_iokit.c: regist
+ extern const M32SpecialEntry m32_cl_specials[];       /* src/m32_cl.c: OpenCL on the arm64 OpenCL */
+ void m32_qd_window_gone(void *window);                 /* src/m32_qd.c: DisposeWindow drops the window's port */
+ void *m32_qd_port_window(uint32_t port);               /* a QuickDraw port's host window, or NULL */
++void *m32_agl_current_window(void);
++int m32_carbon_agl_content_click(uint32_t guest_event);
+ int m32_qd_port_pixels(uint32_t port, int *w, int *h, uint32_t *rowbytes, uint32_t *pixels);   /* a GWorld's */
+ extern const M32SpecialEntry m32_agl_specials[];    /* src/m32_agl.c: AGL on the arm64 AGL, ports as drawables */
+ int m32_fastcall(struct OcerzVM *vm, OcerzCPU *cpu, uint32_t trap);   /* a trap made from inside a block */
+@@ -89,7 +91,7 @@ uint32_t m32_trap_slot(uint64_t trap);   /* src/m32_bridge.c: a guest word holdi
+ 
+ /* vertex and element arrays in buffer objects (src/m32_gl.c): with a buffer bound, a gl*Pointer's or a glDraw*Elements'
+  * pointer is an offset into it and crosses as it is */
+-enum { M32_GL_NONE, M32_GL_ARRAY, M32_GL_ELEMENT, M32_GL_BIND, M32_GL_BIND_VAO };
++enum { M32_GL_NONE, M32_GL_ARRAY, M32_GL_ELEMENT, M32_GL_BIND, M32_GL_BIND_VAO, M32_GL_UNPACK };
+ int m32_gl_ptr_kind(const char *name);
+ uint64_t m32_gl_ptr(int kind, uint32_t guest_ptr);
+ void m32_gl_bound(int kind, uint32_t target, uint32_t buffer);   /* after glBindBuffer(target, buffer), glBindVertexArray */
+@@ -161,6 +163,8 @@ int m32_export_sigs(M32Export *e);   /* parses e->gsig and e->hsig once; 0 when
+ extern __thread void *m32_cross_self;
+ int m32_call_native_catching(const void *fn, const uint64_t *x, const uint64_t *v, const uint64_t *stack,
+                              uint64_t stackbytes, void *x8, uint64_t *out_x, uint64_t *out_v, void **exception);
++void m32_describe_exception(void *exception, char *buffer, unsigned long size);
++void m32_release_host_exception(void *exception);
+ void *m32_callback(uint32_t guest_fn, const char *guest_sig, const char *host_sig);   /* src/m32_callback.c */
+ uint32_t m32_call(struct OcerzVM *vm, uint32_t fn, const uint32_t *args, int nargs, uint32_t *edx, double *st0);
+ OcerzCPU *m32_thread_attach(struct OcerzVM *vm);   /* a 32-bit guest cpu for a thread the host started */
+diff --git a/src/m32.c b/src/m32.c
+index a7c09aa..1d8353d 100644
+--- a/src/m32.c
++++ b/src/m32.c
+@@ -12,6 +12,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
++#include <unistd.h>
+ 
+ #include "ocerz/bridge.h"
+ #include "ocerz/m32.h"
+@@ -93,8 +94,16 @@ static void activate_now(void *unused)
+     if (!send || !cls || !sel || !cls("NSApplication"))
+         return;
+     void *app = send(cls("NSApplication"), sel("sharedApplication"));
+-    if (app)
++    if (app) {
++        unsigned char (*set_policy)(void *, void *, long) =
++            (unsigned char (*)(void *, void *, long))dlsym(RTLD_DEFAULT, "objc_msgSend");
++        unsigned char (*get_bool)(void *, void *) =
++            (unsigned char (*)(void *, void *))dlsym(RTLD_DEFAULT, "objc_msgSend");
++        unsigned char regular = set_policy(app, sel("setActivationPolicy:"), 0);
+         send_b(app, sel("activateIgnoringOtherApps:"), 1);
++        fprintf(stderr, "ocerz: m32: foreground activation policy=%u active=%u\n",
++                (unsigned)regular, (unsigned)get_bool(app, sel("isActive")));
++    }
+ }
+ 
+ void m32_activate_soon(void)
+@@ -152,6 +161,11 @@ int m32_start_program(struct OcerzVM *vm, M32Image *img, uint32_t sp, const char
+ 
+ int m32_run(struct OcerzVM *vm, const char *path, int argc, char **argv, char **envp)
+ {
++    const char *probe_workdir = getenv("OCERZ_PROBE_WORKDIR");
++    if (probe_workdir && *probe_workdir && chdir(probe_workdir) != 0) {
++        perror("ocerz: can't enter the game working directory");
++        return 65;
++    }
+     m32_active = 1;
+     if (getenv("OCERZ_M32_ACTIVATE"))
+         dispatch_after_f(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), NULL,
+diff --git a/src/m32_agl.c b/src/m32_agl.c
+index e8f4160..873fdc9 100644
+--- a/src/m32_agl.c
++++ b/src/m32_agl.c
+@@ -16,10 +16,12 @@
+  * GLboolean results are a byte in AL.  ponytail: pbuffers and aglUseFont are not provided.
+  */
+ #include <dlfcn.h>
++#include <inttypes.h>
+ #include <pthread.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <time.h>
+ 
+ #include "ocerz/interp.h"
+ #include "ocerz/m32.h"
+@@ -184,6 +186,12 @@ static uint32_t drawable_of(Obj ctx)
+     return port;
+ }
+ 
++void *m32_agl_current_window(void)
++{
++    Obj ctx = ready() ? agl.get_current() : NULL;
++    return ctx ? m32_qd_port_window(drawable_of(ctx)) : NULL;
++}
++
+ static int agl_CreateContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? m32_handle(agl.create_context(H(0), H(1))) : 0); }
+ static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+@@ -194,7 +202,25 @@ static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
+     RET(agl.destroy_context(H(0)));
+ }
+ static int agl_CopyContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? agl.copy_context(H(0), H(1), A(2)) : 0); }
+-static int agl_UpdateContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? agl.update_context(H(0)) : 0); }
++static int agl_UpdateContext(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    if (!ready() || !A(0))
++        RET(0);
++
++    uint64_t x[8] = { (uintptr_t)H(0) }, v[8] = { 0 };
++    uint64_t out_x[2] = { 0 }, out_v[4] = { 0 };
++    void *exception = NULL;
++    m32_call_native_catching(agl.update_context, x, v, NULL, 0, NULL, out_x, out_v, &exception);
++    if (exception) {
++        char description[256];
++        m32_describe_exception(exception, description, sizeof description);
++        m32_release_host_exception(exception);
++        m32_log_once("AGL context update raised an exception:", description);
++        RET(0);
++    }
++    RET((unsigned char)out_x[0]);
++}
+ static int agl_SetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? agl.set_current(H(0)) : 0); }
+ static int agl_GetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? m32_handle(agl.get_current()) : 0); }
+ 
+@@ -240,7 +266,48 @@ static int agl_SetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(r
+ static int agl_GetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? m32_handle(agl.get_hiview_ref(H(0))) : 0); }
+ static int agl_SetVirtualScreen(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? agl.set_virtual_screen(H(0), (int32_t)A(1)) : 0); }
+ static int agl_GetVirtualScreen(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? (uint32_t)agl.get_virtual_screen(H(0)) : 0); }
+-static int agl_SwapBuffers(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; if (ready() && A(0)) agl.swap_buffers(H(0)); RET(0); }
++void m32_dump_gl_frame(void);
++
++/* Opt-in entry and return timestamps for on-screen AGL buffer swaps. */
++static FILE *g_frame_times;
++static pthread_once_t g_frame_times_once = PTHREAD_ONCE_INIT;
++
++static void open_frame_times(void)
++{
++    const char *path = getenv("OCERZ_M32_FRAME_TIMES");
++    if (!path || !*path)
++        return;
++    g_frame_times = fopen(path, "w");
++    if (!g_frame_times) {
++        perror("ocerz: cannot open frame timing log");
++        return;
++    }
++    setvbuf(g_frame_times, NULL, _IOLBF, 0);
++}
++
++static int agl_SwapBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    if (ready() && A(0)) {
++        static int dump = -1;
++        if (dump < 0) {
++            const char *log = getenv("OCERZ_M32LOG");
++            dump = log && strstr(log, "framedump");
++        }
++        if (dump)
++            m32_dump_gl_frame();
++        Obj ctx = H(0);
++        pthread_once(&g_frame_times_once, open_frame_times);
++        int timed = g_frame_times && m32_qd_port_window(drawable_of(ctx));
++        uint64_t entry = timed ? clock_gettime_nsec_np(CLOCK_MONOTONIC) : 0;
++        agl.swap_buffers(ctx);
++        if (timed) {
++            uint64_t returned = clock_gettime_nsec_np(CLOCK_MONOTONIC);
++            fprintf(g_frame_times, "%" PRIu64 " %" PRIu64 "\n", entry, returned);
++        }
++    }
++    RET(0);
++}
+ 
+ /* ---- options ---- */
+ 
+diff --git a/src/m32_bridge.c b/src/m32_bridge.c
+index 0ae8181..79b12a3 100644
+--- a/src/m32_bridge.c
++++ b/src/m32_bridge.c
+@@ -465,6 +465,27 @@ static int trap_dispatch(struct OcerzVM *vm, OcerzCPU *cpu)
+         ocerz_vm_request_exit(vm, 134);
+         return OCERZ_STEP_EXIT;
+     }
++    if (getenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS") &&
++        (!strcmp(e->name, "_task_set_exception_ports") ||
++         !strcmp(e->name, "_thread_set_exception_ports"))) {
++        fprintf(stderr, "ocerz: diagnostic keeps host exception reporting for %s\n", e->name);
++        m32_ret(cpu, 0, 0, 0);
++        return OCERZ_STEP_OK;
++    }
++    if (getenv("OCERZ_DIAG_QUICKTIME_VERSION") && !strcmp(e->name, "_Gestalt") &&
++        m32_arg(cpu, 0) == 0x7174696d && m32_arg(cpu, 1)) {
++        /* Test startup after advertising QuickTime 6.5.1 to a legacy client. */
++        m32_wr(m32_arg(cpu, 1), 0x06518000u);
++        fprintf(stderr, "ocerz: diagnostic advertises QuickTime 6.5.1 (no playback implementation)\n");
++        m32_ret(cpu, 0, 0, 0);
++        return OCERZ_STEP_OK;
++    }
++    if (getenv("OCERZ_PROBE_AGL_CONTENT_CLICKS") && !strcmp(e->name, "_CallNextEventHandler") &&
++        m32_carbon_agl_content_click(m32_arg(cpu, 1))) {
++        /* Let the guest process clicks on its GL drawable without native control tracking. */
++        m32_ret(cpu, (uint32_t)-9874, 0, 0);  /* eventNotHandledErr */
++        return OCERZ_STEP_OK;
++    }
+     m32_load_errno();
+     /* OCERZ_M32_CALLLOG=<name part>[|<part>...]: the matching imports' first argument words, caller and eax after */
+     static const char *calllog = (const char *)1;
+diff --git a/src/m32_carbon.c b/src/m32_carbon.c
+index d9b48fb..c910462 100644
+--- a/src/m32_carbon.c
++++ b/src/m32_carbon.c
+@@ -87,7 +87,8 @@ static int param_kind(uint32_t type, int *n)
+ {
+     static const uint32_t ptrs[] = {
+         FOUR('r','g','n','h'), FOUR('w','i','n','d'), FOUR('c','t','r','l'), FOUR('m','e','n','u'), FOUR('c','n','t','x'),
+-        FOUR('e','v','n','t'), FOUR('h','i','o','b'), FOUR('c','f','s','t'), FOUR('c','f','t','y'), FOUR('c','f','a','r'),
++        FOUR('e','v','r','f'), FOUR('e','v','n','t'), FOUR('h','i','o','b'), FOUR('c','f','s','t'), FOUR('c','f','t','y'),
++        FOUR('c','f','a','r'),
+         FOUR('c','f','m','a'), FOUR('c','f','d','c'), FOUR('c','f','m','d'), FOUR('e','t','a','r'), FOUR('v','o','i','d'),
+         FOUR('d','r','a','g'), FOUR('g','r','f','p'), FOUR('g','w','l','d'), FOUR('s','h','a','p'), FOUR('w','g','r','p'),
+         FOUR('t','d','o','c'), FOUR('s','c','r','p'), FOUR('p','a','s','b'), FOUR('c','a','u','p'), FOUR('i','c','n','r'),
+@@ -301,6 +302,39 @@ static void *carbon_fn(const char *name)
+     return hi ? dlsym(hi, name) : NULL;
+ }
+ 
++int m32_carbon_agl_content_click(uint32_t guest_event)
++{
++    enum { MOUSE_DOWN = 1, MOUSE_UP = 2, IN_CONTENT = 3 };
++    typedef struct { int16_t v, h; } CarbonPoint;
++    uint32_t (*event_class)(void *) = (uint32_t (*)(void *))carbon_fn("GetEventClass");
++    uint32_t (*event_kind)(void *) = (uint32_t (*)(void *))carbon_fn("GetEventKind");
++    void *event = guest_event ? m32_host(guest_event) : NULL;
++    if (!event || !event_class || !event_kind || event_class(event) != FOUR('m','o','u','s'))
++        return 0;
++    uint32_t kind = event_kind(event);
++    if ((kind != MOUSE_DOWN && kind != MOUSE_UP) || !ev_ready())
++        return 0;
++
++    void *render_window = m32_agl_current_window();
++    void *window = NULL;
++    int16_t part = 0;
++    if (ev.get(event, FOUR('w','i','n','d'), FOUR('w','i','n','d'), NULL, sizeof window, NULL, &window) ||
++        ev.get(event, FOUR('w','p','a','r'), FOUR('w','p','a','r'), NULL, sizeof part, NULL, &part)) {
++        CarbonPoint location;
++        int16_t (*find_window)(CarbonPoint, void **) =
++            (int16_t (*)(CarbonPoint, void **))carbon_fn("FindWindow");
++        window = NULL;
++        if (find_window && !ev.get(event, FOUR('m','l','o','c'), FOUR('Q','D','p','t'), NULL,
++                                   sizeof location, NULL, &location))
++            part = find_window(location, &window);
++    }
++    int content = render_window && window == render_window && part == IN_CONTENT;
++    fprintf(stderr, "ocerz: AGL mouse %s part=%d window=%p drawable=%p %s\n",
++            kind == MOUSE_DOWN ? "down" : "up", part, window, render_window,
++            content ? "game handles click" : "Carbon handles click");
++    return content;
++}
++
+ static int ret_value(OcerzCPU *cpu, uint32_t v)
+ {
+     m32_ret(cpu, v, 0, 0);
+@@ -535,7 +569,26 @@ static int sp_GetScriptManagerVariable(struct OcerzVM *vm, OcerzCPU *cpu)
+     return ret_value(cpu, sel == 38 || !fn ? 0 : (uint32_t)fn(sel));
+ }
+ 
++/* The host retains the Carbon window's CGWindowID; WindowServer can set its opacity. */
++static int sp_SetWindowAlpha(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    uint32_t (*window_id)(void *) = (uint32_t (*)(void *))carbon_fn("HIWindowGetCGWindowID");
++    int (*connection)(void) = (int (*)(void))dlsym(RTLD_DEFAULT, "CGSMainConnectionID");
++    int (*set_alpha)(int, uint32_t, float) =
++        (int (*)(int, uint32_t, float))dlsym(RTLD_DEFAULT, "CGSSetWindowAlpha");
++    void *window = m32_host(m32_arg(cpu, 0));
++    uint32_t id = window && window_id ? window_id(window) : 0;
++    if (!id || !connection || !set_alpha)
++        return ret_value(cpu, (uint32_t)-50);
++    uint32_t bits = m32_arg(cpu, 1);
++    float alpha;
++    memcpy(&alpha, &bits, sizeof alpha);
++    return ret_value(cpu, (uint32_t)set_alpha(connection(), id, alpha));
++}
++
+ const M32SpecialEntry m32_carbon_specials[] = {
++    { "_SetWindowAlpha", sp_SetWindowAlpha },
+     { "__LSCopyDefaultSchemeHandlerURL", sp_LSCopyDefaultSchemeHandlerURL },
+     { "_GetScriptManagerVariable", sp_GetScriptManagerVariable },
+     { "_ConvertFromUnicodeToText", sp_ConvertFromUnicodeToText },
+diff --git a/src/m32_catch.m b/src/m32_catch.m
+index f0e05bf..7d0e865 100644
+--- a/src/m32_catch.m
++++ b/src/m32_catch.m
+@@ -40,3 +40,8 @@ void m32_describe_exception(void *exception, char *buf, unsigned long size)
+         snprintf(buf, size, "%s", object_getClassName(e));
+     }
+ }
++
++void m32_release_host_exception(void *exception)
++{
++    [(id)exception release];
++}
+diff --git a/src/m32_cross.c b/src/m32_cross.c
+index b9498b6..e0f4346 100644
+--- a/src/m32_cross.c
++++ b/src/m32_cross.c
+@@ -15,6 +15,7 @@
+  * pointer to data whose layouts differ (only a handle may pass; guest memory there needs a special).
+  */
+ #include <dlfcn.h>
++#include <errno.h>
+ #include <malloc/malloc.h>
+ #include <pthread.h>
+ #include <stdio.h>
+@@ -396,7 +397,13 @@ static void struct_in(const M32Type *g, const M32Type *h, const uint8_t *gbuf, u
+     for (int i = 0; i < g->n && i < h->n; i++) {
+         uint64_t raw = 0;
+         memcpy(&raw, gbuf + g->moff[i], g->msize[i]);
+-        uint64_t v = m32_scalar_in(g->mcls[i], h->mcls[i], raw, fn, argno);
++        uint64_t v;
++        /* Carbon uses (CFStringRef)-1 for the standard alert button labels. */
++        if (g->mcls[i] == 'p' && raw == UINT32_MAX && argno == 3 && i >= 3 && i <= 5 &&
++            fn && (!strcmp(fn, "_CreateStandardAlert") || !strcmp(fn, "_CreateStandardSheet")))
++            v = UINT64_MAX;
++        else
++            v = m32_scalar_in(g->mcls[i], h->mcls[i], raw, fn, argno);
+         memcpy(hbuf + h->moff[i], &v, h->msize[i]);
+     }
+ }
+@@ -701,10 +708,13 @@ static void log_glnan(const char *name, const uint64_t *x, uint32_t caller)
+  * framebuffer's back buffer (the viewport's extent) into $OCERZ_M32_FRAMEDIR (default /tmp)/ocerz-frame-<n>.tga, so a
+  * frame can be looked at without screen capture.  Called before the flush, on the flushing thread with its context
+  * current. */
+-static void dump_frame(void)
++void m32_dump_gl_frame(void)
+ {
+     static uint64_t next;
+     static int n;
++    const char *limit = getenv("OCERZ_DIAG_MAX_FRAMES");
++    if (limit && n >= atoi(limit))
++        return;
+     uint64_t now = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+     if (now < next)
+         return;
+@@ -907,7 +917,7 @@ static void log_cfdesc(void *p)
+     if (!p || !desc || !(((uintptr_t)p >> 63) || malloc_zone_from_ptr(p)))
+         return;
+     void *d = desc(p);
+-    char buf[200] = "";
++    char buf[8192] = "";
+     if (d && cstr(d, buf, sizeof buf, 0x08000100))
+         fprintf(stderr, "ocerz: m32:   = %s\n", buf);
+     if (d)
+@@ -1074,13 +1084,32 @@ int m32_cross(struct OcerzVM *vm, OcerzCPU *cpu, M32Export *e)
+             put_int(&hc, (uint64_t)(uintptr_t)cell, 8);
+             continue;
+         }
+-        uint64_t v = (e->gl_ptr == M32_GL_ARRAY || e->gl_ptr == M32_GL_ELEMENT) && ga->cls == 'p'
++        int buffer_pointer = e->gl_ptr == M32_GL_ARRAY || e->gl_ptr == M32_GL_ELEMENT ||
++                             e->gl_ptr == M32_GL_UNPACK;
++        uint64_t v = buffer_pointer && ga->cls == 'p'
+                          ? m32_gl_ptr(e->gl_ptr, (uint32_t)raw) : m32_scalar_in(ga->cls, ha->cls, raw, e->name, i);
+         if (ha->cls == 'f' || ha->cls == 'd')
+             put_fp(&hc, v, ha->size);
+         else
+             put_int(&hc, v, ha->size);
+     }
++    if (getenv("OCERZ_DIAG_ALERT") && !strcmp(e->name, "_CreateStandardAlert")) {
++        fprintf(stderr, "ocerz: diagnostic Carbon alert title and explanation\n");
++        if (hc.x[1])
++            log_cfdesc((void *)(uintptr_t)hc.x[1]);
++        if (hc.x[2])
++            log_cfdesc((void *)(uintptr_t)hc.x[2]);
++        uint32_t sp = (uint32_t)cpu->gpr[OCERZ_RSP], fp = (uint32_t)cpu->gpr[OCERZ_RBP];
++        fprintf(stderr, "ocerz: diagnostic alert guest return addresses: %#x", m32_rd(sp));
++        for (int depth = 0; depth < 12 && fp > sp && fp - sp < 65536 && !(fp & 3); depth++) {
++            fprintf(stderr, " %#x", m32_rd(fp + 4));
++            uint32_t next = m32_rd(fp);
++            if (next <= fp)
++                break;
++            fp = next;
++        }
++        fputc('\n', stderr);
++    }
+     static int log_calls = -1, log_files = -1;
+     if (log_calls < 0)
+         log_calls = getenv("OCERZ_M32LOG") && strstr(getenv("OCERZ_M32LOG"), "calls");
+@@ -1118,9 +1147,25 @@ int m32_cross(struct OcerzVM *vm, OcerzCPU *cpu, M32Export *e)
+     if (log_trace < 0)
+         log_trace = getenv("OCERZ_M32LOG") && strstr(getenv("OCERZ_M32LOG"), "drawtrace");
+     if (log_dump && !strcmp(e->name, "_CGLFlushDrawable"))
+-        dump_frame();
++        m32_dump_gl_frame();
+     if (log_trace && !strcmp(e->name, "_CGLFlushDrawable"))
+         trace_flush();
++    static int uploads;
++    if (uploads < 25 && getenv("OCERZ_DIAG_UPLOADS") &&
++        (!strcmp(e->name, "_glTexImage2D") || !strncmp(e->name, "_glCompressedTexImage2D", 23))) {
++        int unpack = 0, size = 0;
++        const char *lib = "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL";
++        void (*getiv)(unsigned, int *) = (void (*)(unsigned, int *))ocerz_bridge_host_symbol(lib, "glGetIntegerv");
++        void (*buffer_iv)(unsigned, unsigned, int *) =
++            (void (*)(unsigned, unsigned, int *))ocerz_bridge_host_symbol(lib, "glGetBufferParameteriv");
++        if (getiv)
++            getiv(0x88ef, &unpack);
++        if (unpack && buffer_iv)
++            buffer_iv(0x88ec, 0x8764, &size);
++        fprintf(stderr, "ocerz: texture upload %s level=%u unpack=%d size=%d guest data=%#x\n",
++                e->name, m32_arg(cpu, 1), unpack, size, m32_arg(cpu, g->nargs - 1));
++        uploads++;
++    }
+     struct OcerzBridgeFrame frame;
+     ocerz_bridge_raise(&frame, e->lib, e->name, e->hnote, e->host_fn);
+     void *exc = NULL;
+@@ -1143,6 +1188,22 @@ int m32_cross(struct OcerzVM *vm, OcerzCPU *cpu, M32Export *e)
+         return m32_objc_guest_throw(cpu, m32_objc_to_guest(exc));
+     }
+     m32_save_errno(cpu);
++    static int log_settings = -1;
++    if (log_settings < 0)
++        log_settings = getenv("OCERZ_M32_SETTINGS_IO") != NULL;
++    if (log_settings && (!strcmp(e->name, "_fopen") || !strcmp(e->name, "_rename"))) {
++        int error = errno;
++        int rename_call = !strcmp(e->name, "_rename");
++        const char *path = (const char *)(uintptr_t)hc.x[0];
++        const char *other = (const char *)(uintptr_t)hc.x[1];
++        if ((path && strcasestr(path, "Config.wtf")) ||
++            (rename_call && other && strcasestr(other, "Config.wtf"))) {
++            int success = rename_call ? (int32_t)out_x[0] == 0 : out_x[0] != 0;
++            fprintf(stderr, "ocerz: settings %s %.300s %.300s -> %s, errno %d\n", e->name,
++                    path ? path : "(null)", other ? other : "(null)", success ? "ok" : "failed",
++                    success ? 0 : error);
++        }
++    }
+     if (e->gl_ptr == M32_GL_BIND || e->gl_ptr == M32_GL_BIND_VAO)
+         m32_gl_bound(e->gl_ptr, m32_rd((uint32_t)cpu->gpr[OCERZ_RSP] + 4), m32_rd((uint32_t)cpu->gpr[OCERZ_RSP] + 8));
+     static int log_gl = -1, log_nan = -1, log_stat = -1;
+diff --git a/src/m32_gl.c b/src/m32_gl.c
+index e329171..0477a6f 100644
+--- a/src/m32_gl.c
++++ b/src/m32_gl.c
+@@ -119,8 +119,14 @@ int m32_gl_ptr_kind(const char *name)
+     static const char *const elements[] = { "_glDrawElements", "_glDrawRangeElements", "_glDrawRangeElementsEXT",
+         "_glDrawElementsInstanced", "_glDrawElementsInstancedARB", "_glDrawElementsInstancedEXT",
+         "_glDrawElementsBaseVertex", "_glDrawRangeElementsBaseVertex", "_glDrawElementsInstancedBaseVertex", NULL };
++    static const char *const unpack[] = { "_glTexImage2D", "_glTexSubImage2D",
++        "_glCompressedTexImage2D", "_glCompressedTexImage2DARB",
++        "_glCompressedTexSubImage2D", "_glCompressedTexSubImage2DARB", NULL };
+     if (strncmp(name, "_gl", 3))
+         return M32_GL_NONE;
++    for (int i = 0; unpack[i]; i++)
++        if (!strcmp(name, unpack[i]))
++            return M32_GL_UNPACK;
+     for (int i = 0; arrays[i]; i++)
+         if (!strcmp(name, arrays[i]))
+             return M32_GL_ARRAY;
+@@ -137,7 +143,11 @@ int m32_gl_ptr_kind(const char *name)
+ uint64_t m32_gl_ptr(int kind, uint32_t g)
+ {
+     Binds *b = binds();
+-    uint32_t buffer = !b ? 0 : kind == M32_GL_ARRAY ? b->array : b->vao ? bound(0x8893) : b->element;
++    uint32_t buffer;
++    if (kind == M32_GL_UNPACK)
++        buffer = bound(0x88EC);   /* GL_PIXEL_UNPACK_BUFFER: texture data arguments are byte offsets */
++    else
++        buffer = !b ? 0 : kind == M32_GL_ARRAY ? b->array : b->vao ? bound(0x8893) : b->element;
+     return buffer ? g : (uint64_t)(uintptr_t)m32_host(g);
+ }
+ 
+diff --git a/src/m32_libsystem.c b/src/m32_libsystem.c
+index 2b14f08..ccc19f5 100644
+--- a/src/m32_libsystem.c
++++ b/src/m32_libsystem.c
+@@ -678,8 +678,12 @@ static int sp_open(struct OcerzVM *vm, OcerzCPU *cpu)
+     static int log = -1;
+     if (log < 0)
+         log = getenv("OCERZ_M32LOG") && strstr(getenv("OCERZ_M32LOG"), "files");
+-    if (log)
+-        fprintf(stderr, "ocerz: m32: file open %.300s -> %d\n", (const char *)m32_h(m32_arg(cpu, 0)), fd);
++    if (log) {
++        int error = errno;
++        fprintf(stderr, "ocerz: m32: file open %.300s flags=%#x -> %d, errno %d\n",
++                (const char *)m32_h(m32_arg(cpu, 0)), m32_arg(cpu, 1), fd, fd < 0 ? error : 0);
++        errno = error;
++    }
+     RETV(fd);
+ }
+ static int sp_openat(struct OcerzVM *vm, OcerzCPU *cpu)
+diff --git a/src/m32_qd.c b/src/m32_qd.c
+index 33bee91..a068b54 100644
+--- a/src/m32_qd.c
++++ b/src/m32_qd.c
+@@ -564,13 +564,32 @@ static int qd_LocalToGlobal(struct OcerzVM *vm, OcerzCPU *cpu)
+     RET(0);
+ }
+ 
++static void global_to_port_point(const QdPort *p, uint32_t point)
++{
++    if (!point)
++        return;
++
++    int dh, dv;
++    to_global(p, &dh, &dv);
++    int16_t h = (int16_t)rd16(point + 2), v = (int16_t)rd16(point);
++    wr_point(point, (int16_t)(h - dh), (int16_t)(v - dv));
++}
++
+ static int qd_GlobalToLocal(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+     (void)vm;
+-    int dh, dv;
+-    to_global(g_cur, &dh, &dv);
+-    if (A(0))
+-        wr_point(A(0), (int16_t)(rd16(A(0) + 2) - dh), (int16_t)(rd16(A(0)) - dv));
++    global_to_port_point(g_cur, A(0));
++    RET(0);
++}
++
++static int qd_QDGlobalToLocalPoint(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    QdPort *p = port_of(A(0));
++    if (!p || !A(1))
++        RET((uint32_t)-50);
++
++    global_to_port_point(p, A(1));
+     RET(0);
+ }
+ 
+@@ -1321,6 +1340,7 @@ const M32SpecialEntry m32_qd_specials[] = {
+     { "_GetPort", qd_GetPort }, { "_SetPort", qd_SetPort }, { "_MacSetPort", qd_SetPort }, { "_QDSwapPort", qd_QDSwapPort },
+     { "_GetQDGlobalsThePort", qd_GetQDGlobalsThePort }, { "_GetPortBounds", qd_GetPortBounds },
+     { "_SetOrigin", qd_SetOrigin }, { "_LocalToGlobal", qd_LocalToGlobal }, { "_GlobalToLocal", qd_GlobalToLocal },
++    { "_QDGlobalToLocalPoint", qd_QDGlobalToLocalPoint },
+     { "_GetClip", qd_GetClip }, { "_SetClip", qd_SetClip }, { "_ClipRect", qd_ClipRect },
+     { "_GetPortClipRegion", qd_GetPortClipRegion }, { "_SetPortClipRegion", qd_SetPortClipRegion },
+     { "_GetPortVisibleRegion", qd_GetPortVisibleRegion },
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+index bc80579..bc8db6e 100644
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -480,6 +480,48 @@ static void test_quickdraw(void)
+     call("_SetGWorld", 2, s);
+ }
+ 
++#define FOUR(a, b, c, d) ((uint32_t)(a) << 24 | (uint32_t)(b) << 16 | (uint32_t)(c) << 8 | (uint32_t)(d))
++
++static void test_agl_click_scope(uint32_t port)
++{
++    void *hi = dlopen(CARBON, RTLD_LAZY);
++    int32_t (*create)(void *, uint32_t, uint32_t, double, uint32_t, void **) =
++        (int32_t (*)(void *, uint32_t, uint32_t, double, uint32_t, void **))dlsym(hi, "CreateEvent");
++    int32_t (*set)(void *, uint32_t, uint32_t, unsigned long, const void *) =
++        (int32_t (*)(void *, uint32_t, uint32_t, unsigned long, const void *))dlsym(hi, "SetEventParameter");
++    void (*release)(void *) = (void (*)(void *))dlsym(hi, "ReleaseEvent");
++    void *window = m32_qd_port_window(port);
++    uint32_t mouse = FOUR('m','o','u','s'), wind = FOUR('w','i','n','d'), wpar = FOUR('w','p','a','r');
++    for (uint32_t kind = 1; kind <= 2; ++kind) {
++        void *event = NULL;
++        check("create a mouse-button event for a window", create(NULL, mouse, kind, 0, 0, &event) == 0);
++        if (!event)
++            continue;
++        int16_t part = 3;  /* inContent */
++        check("set mouse-button window and part", set(event, wind, wind, sizeof window, &window) == 0 &&
++                                                set(event, wpar, wpar, sizeof part, &part) == 0);
++        uint32_t guest_event = m32_handle(event);
++        int scoped = m32_carbon_agl_content_click(guest_event);
++        check("AGL click scope includes mouse down and up in its content", scoped);
++        if (scoped) {
++            setenv("OCERZ_PROBE_AGL_CONTENT_CLICKS", "1", 1);
++            uint32_t args[] = { 0, guest_event };
++            check("CallNextEventHandler returns eventNotHandledErr to the guest",
++                  (int32_t)cross(CARBON, "_CallNextEventHandler", 2, args) == -9874);
++            unsetenv("OCERZ_PROBE_AGL_CONTENT_CLICKS");
++        }
++        part = 4;  /* inDrag (title bar) */
++        check("AGL click scope excludes the title bar", set(event, wpar, wpar, sizeof part, &part) == 0 &&
++                                                       !m32_carbon_agl_content_click(guest_event));
++        void *other_window = NULL;
++        part = 3;
++        check("AGL click scope requires the drawable window", set(event, wind, wind, sizeof other_window, &other_window) == 0 &&
++                                                              set(event, wpar, wpar, sizeof part, &part) == 0 &&
++                                                              !m32_carbon_agl_content_click(guest_event));
++        release(event);
++    }
++}
++
+ /* AGL on a window's QuickDraw port: the context draws into the window (src/m32_agl.c) */
+ static void test_agl(uint32_t port)
+ {
+@@ -493,6 +535,7 @@ static void test_agl(uint32_t port)
+     check("aglGetDrawable answers the port", call("_aglGetDrawable", 1, (uint32_t[]){ ctx }) == port);
+     check("aglSetCurrentContext", (call("_aglSetCurrentContext", 1, (uint32_t[]){ ctx }) & 0xff) == 1 &&
+                                   call("_aglGetCurrentContext", 0, NULL) == ctx);
++    test_agl_click_scope(port);
+     void (*clear_color)(float, float, float, float) = (void (*)(float, float, float, float))dlsym(RTLD_DEFAULT, "glClearColor");
+     void (*clear)(uint32_t) = (void (*)(uint32_t))dlsym(RTLD_DEFAULT, "glClear");
+     void (*read)(int, int, int, int, uint32_t, uint32_t, void *) =
+@@ -524,8 +567,6 @@ static void test_agl(uint32_t port)
+     check("aglGetError", call("_aglGetError", 0, NULL) == 0);
+ }
+ 
+-#define FOUR(a, b, c, d) ((uint32_t)(a) << 24 | (uint32_t)(b) << 16 | (uint32_t)(c) << 8 | (uint32_t)(d))
+-
+ /* Carbon event parameters cross in their i386 layouts; UPPs are their functions; EventRecords are 16 bytes */
+ static void test_event_params(uint32_t w, uint32_t port)
+ {
+@@ -596,6 +637,25 @@ static void test_event_params(uint32_t w, uint32_t port)
+     memcpy(&message, m32_h(DATA + 0xd82), 4);
+     check("... in i386's 16 bytes: keyDown, 'a'", what == 3 /* keyDown */ && message == 'a');
+     void (*release)(const void *) = (void (*)(const void *))dlsym(RTLD_DEFAULT, "CFRelease");
++    void *text = NULL;
++    create(NULL, FOUR('t','e','x','t'), 2 /* kEventTextInputUnicodeForKeyEvent */, 0, 0, &text);
++    const uint32_t event_ref = FOUR('e','v','r','f'), keyboard_event = FOUR('t','s','k','e');
++    check("a Unicode text event carries its raw key event", text &&
++          host_set(text, keyboard_event, event_ref, sizeof down, &down) == 0);
++    if (text) {
++        m32_wr(DATA + 0xd90, 0);
++        uint32_t nested[] = { m32_handle(text), keyboard_event, event_ref, 0, 4, DATA + 0xd24, DATA + 0xd90 };
++        check("GetEventParameter(typeEventRef) returns a 32-bit handle",
++              call("_GetEventParameter", 7, nested) == 0 && m32_rd(DATA + 0xd24) == 4 &&
++              m32_host(m32_rd(DATA + 0xd90)) == down);
++        if (m32_host(m32_rd(DATA + 0xd90)) == down) {
++            uint32_t modifiers[] = { m32_rd(DATA + 0xd90), FOUR('k','m','o','d'), FOUR('m','a','g','n'),
++                                     0, 4, 0, DATA + 0xd94 };
++            check("the guest can read modifiers from the returned key event",
++                  call("_GetEventParameter", 7, modifiers) == 0 && m32_rd(DATA + 0xd94) == zero);
++        }
++        release(text);
++    }
+     release(ev);
+     release(down);
+ 
+@@ -1228,6 +1288,14 @@ static void test_carbon(void)
+         call("_GlobalToLocal", 1, (uint32_t[]){ DATA + 0xa90 });
+         memcpy(p0, m32_h(DATA + 0xa90), 4);
+         check("GlobalToLocal takes it away", p0[0] == 5 && p0[1] == 7);
++
++        const int16_t screen_point[2] = { 105, 127 };  /* v, h */
++        memcpy(m32_h(DATA + 0xa90), screen_point, sizeof screen_point);
++        call("_SetPort", 1, (uint32_t[]){ 0 });
++        call("_QDGlobalToLocalPoint", 2, (uint32_t[]){ port, DATA + 0xa90 });
++        memcpy(p0, m32_h(DATA + 0xa90), sizeof p0);
++        check("QDGlobalToLocalPoint uses the supplied window port", p0[0] == 5 && p0[1] == 7);
++        call("_SetPortWindowPort", 1, v);
+     }
+     uint32_t q[2] = { port, DATA + 0xaa0 };
+     check("QDBeginCGContext on a window's port", call("_QDBeginCGContext", 2, q) == 0 && m32_rd(DATA + 0xaa0) != 0 &&

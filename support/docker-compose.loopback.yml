@@ -1,0 +1,24 @@
+name: wrath-trial
+services:
+  ac-database:
+    container_name: wrath-trial-db
+    ports: !reset []
+    restart: "no"
+  ac-db-import:
+    platform: linux/amd64
+    container_name: wrath-trial-import
+  ac-client-data-init:
+    platform: linux/amd64
+    container_name: wrath-trial-data
+  ac-authserver:
+    platform: linux/amd64
+    container_name: wrath-trial-auth
+    ports: !override
+      - "127.0.0.1:3724:3724"
+    restart: "no"
+  ac-worldserver:
+    platform: linux/amd64
+    container_name: wrath-trial-world
+    ports: !override
+      - "127.0.0.1:8085:8085"
+    restart: "no"

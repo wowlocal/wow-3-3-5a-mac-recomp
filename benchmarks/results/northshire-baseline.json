@@ -1,0 +1,11 @@
+{
+  "swaps": 7633,
+  "median_fps": 57.75,
+  "p95_frame_ms": 26.48,
+  "stalls_over_250_ms": 0,
+  "longest_gap_ms": 52.91,
+  "duration_seconds": 120.005,
+  "average_client_cpu_percent": 63.02,
+  "peak_sampled_client_footprint_mib": 763.69,
+  "footprint_sample_interval_seconds": 0.5
+}
