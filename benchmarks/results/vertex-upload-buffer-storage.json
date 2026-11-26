@@ -1,0 +1,97 @@
+{
+  "fixture": "native offscreen triangle batches",
+  "viewport": [
+    1365,
+    768
+  ],
+  "upload_method": "glBufferSubData",
+  "draws_per_frame": 48,
+  "vertex_buffer_bytes": 2097152,
+  "frames_per_buffer_allocation": 2,
+  "pixel_equality_verified": true,
+  "rotation": [
+    {
+      "mode": "1",
+      "frames": 30,
+      "wall_ms_per_frame": 3.317
+    },
+    {
+      "mode": "4",
+      "frames": 30,
+      "wall_ms_per_frame": 2.983
+    },
+    {
+      "mode": "1",
+      "frames": 200,
+      "wall_ms_per_frame": 3.21
+    },
+    {
+      "mode": "4",
+      "frames": 200,
+      "wall_ms_per_frame": 3.336
+    },
+    {
+      "mode": "4",
+      "frames": 200,
+      "wall_ms_per_frame": 3.003
+    },
+    {
+      "mode": "1",
+      "frames": 200,
+      "wall_ms_per_frame": 2.928
+    },
+    {
+      "mode": "1",
+      "frames": 200,
+      "wall_ms_per_frame": 2.767
+    },
+    {
+      "mode": "4",
+      "frames": 200,
+      "wall_ms_per_frame": 2.943
+    }
+  ],
+  "serialization": [
+    {
+      "mode": "on",
+      "frames": 30,
+      "wall_ms_per_frame": 3.656
+    },
+    {
+      "mode": "off",
+      "frames": 30,
+      "wall_ms_per_frame": 3.106
+    },
+    {
+      "mode": "on",
+      "frames": 200,
+      "wall_ms_per_frame": 2.854
+    },
+    {
+      "mode": "off",
+      "frames": 200,
+      "wall_ms_per_frame": 3.064
+    },
+    {
+      "mode": "off",
+      "frames": 200,
+      "wall_ms_per_frame": 3.453
+    },
+    {
+      "mode": "on",
+      "frames": 200,
+      "wall_ms_per_frame": 3.197
+    },
+    {
+      "mode": "on",
+      "frames": 200,
+      "wall_ms_per_frame": 2.984
+    },
+    {
+      "mode": "off",
+      "frames": 200,
+      "wall_ms_per_frame": 3.139
+    }
+  ],
+  "serialization_finishes_before_reset": true
+}

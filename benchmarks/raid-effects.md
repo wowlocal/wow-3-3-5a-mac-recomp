@@ -100,3 +100,5 @@ xcrun clang -O2 -Wall -Wextra -Wno-deprecated-declarations -framework OpenGL \
     benchmarks/gl-map-upload-probe.c -o /tmp/wrath-map-upload-probe
 /tmp/wrath-map-upload-probe
 ```
+
+The native probe also tested rolling between four buffer objects with `glBufferSubData`, reinitializing the buffer store every two frames in both arms. The warmed median of three 200-frame runs was **2.93 ms/frame** with one buffer and **3.00 ms/frame** with four. A further comparison used a single buffer, assigned nonoverlapping upload ranges within each allocation, and waited for GPU work before reusing offsets. Its warmed medians were **2.98 ms/frame** with driver serialization enabled and **3.14 ms/frame** with it disabled. Each variant matched every framebuffer pixel. Neither produced a repeatable gain. [Native buffer-storage measurements](results/vertex-upload-buffer-storage.json)
