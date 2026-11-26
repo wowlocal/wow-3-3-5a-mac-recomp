@@ -171,7 +171,7 @@ OCERZ_WMGL_LIBRARY="$METAL_TRIAL_BUILD/libwinemetalgl.dylib" \
 
 The background login-screen capture verified **192 consecutive GPU-completed 1365 × 768 renders**, with 82–91 draws associated with each snapshot. This was a rendering and trace check with statistics enabled. It used the login scene while macOS held foreground focus, so the raid, combat effects, input, and acceptance runs are still pending. [Login GPU completions](results/metal-login-gpu-completions.json)
 
-Apply the frame-completion patch to the same WineMetalGL checkout before building to collect this evidence. Set `OCERZ_WMGL_TRACE_COMPLETIONS=1` and `WINEMETALGL_STATS=1` for the capture, include Points of Interest in the Metal System Trace, and use the `--wmgl` analyzer mode. The completion marker comes from the GPU command that copies the rendered texture into the presenter's mailbox. It records the GPU completion time and draw count. Display presentation can run at a different rate.
+Apply the frame-completion patch to the same WineMetalGL checkout before building. For calibration, set `OCERZ_WMGL_TRACE_COMPLETIONS=1`, include Points of Interest in the Metal System Trace, and use the `--wmgl` analyzer mode. The completion marker comes from the GPU command that copies the rendered texture into the presenter's mailbox. It records the GPU completion time and draw count. Display presentation can run at a different rate.
 
 ```sh
 git -C "$METAL_TRIAL_WMGL" apply "$TRIAL_REPO/patches/winemetalgl-frame-completion-trial.patch"
@@ -179,3 +179,15 @@ python3 "$TRIAL_REPO/benchmarks/trace-frames.py" LOGIN.trace PID 1365 768 --wmgl
 ```
 
 The patched WineMetalGL core also ran the same offscreen **826-draw, 340-map** workload with its Apple mapping mode. Each frame obtained fresh storage and wrote disjoint ranges within it. The warmed 60-frame medians were **59.94 ms/frame** with serialized writes and **1.28 ms/frame** with application-managed writes. Both modes produced the same representative framebuffer checksum. This isolates the cost of waiting on a buffer before each map. The live raid still needs a trace of how the client configures and synchronizes those buffers. [Native mapping sweep](results/winemetalgl-apple-mapping-sweep.json)
+
+
+For sustained measurements, set `OCERZ_WMGL_GPU_LOG` to a new absolute file path before launch. Keep `WINEMETALGL_STATS=0` for this mode. The recorder counts issued draws and successful GPU outputs while leaving the full GL statistics off. Pick a starting sequence from the warmed scene. The analyzer requires coverage through the requested endpoint and includes the gap that crosses it in p99.
+
+```sh
+python3 "$TRIAL_REPO/benchmarks/trace-frames.py" GPU.ns PID 1365 768 \
+    --wmgl-log --start-sequence SEQUENCE --seconds 60
+```
+
+Use `--seconds 600` for the ten-minute run. If the log contains multiple mailbox generations at the requested size, select the generation that covers the run with `--stream`.
+
+With GL statistics disabled, **193** calibration records from the direct file matched the Instruments signposts for sequence, dimensions, draw count, and GPU timestamp. A subsequent fixed **60-second login-screen window** contained **1,749** successful GPU completion records including its start marker, with zero missing sequence numbers. This verified the extended recording path at 1365 × 768. The background login screen averaged 29.13 completed FPS and had a 41.34 ms p99, with the raid workload still awaiting in-world testing. [Direct GPU recording results](results/metal-login-direct-60s.json)

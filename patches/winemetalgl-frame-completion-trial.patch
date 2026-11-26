@@ -1,16 +1,124 @@
+diff --git a/src/core/stats.h b/src/core/stats.h
+index da3ac79..044ac5e 100644
+--- a/src/core/stats.h
++++ b/src/core/stats.h
+@@ -21,6 +21,10 @@ namespace wmgl::stats {
+ 
+ // Counting: WINEMETALGL_STATS set, or turned on by wmgl_stats_enable (tests).
+ extern bool g_enabled;
++// The mailbox recorder counts only issued draws, independently of the GL profiler.
++extern const bool g_recordMailboxDraws;
++extern thread_local uint64_t mailboxDraws;
++uint64_t takeMailboxDraws();
+ // Process-wide totals of the background pipeline work (not per frame):
+ // pipelines predicted, and added to the binary archive.
+ extern std::atomic<uint64_t> g_pipelinesPredicted, g_pipelinesArchived;
+@@ -125,6 +129,7 @@ uint64_t nowNanos();
+ 
+ inline void count(uint64_t Frame::*field, uint64_t n = 1) {
+     if (__builtin_expect(g_enabled, 0)) frame().*field += n;
++    if (field == &Frame::draws && __builtin_expect(g_recordMailboxDraws, 0)) mailboxDraws += n;
+ }
+ 
+ // Logs `format` (when enabled) the first time `key` is seen.
+diff --git a/src/core/stats.mm b/src/core/stats.mm
+index 9354ab9..1863be1 100644
+--- a/src/core/stats.mm
++++ b/src/core/stats.mm
+@@ -48,6 +48,18 @@ os_log_t signpostLog() {
+ 
+ const bool g_reporting = enabledFromEnvironment();
+ bool g_enabled = g_reporting;
++const bool g_recordMailboxDraws = [] {
++    const char* signposts = std::getenv("OCERZ_WMGL_TRACE_COMPLETIONS");
++    const char* path = std::getenv("OCERZ_WMGL_GPU_LOG");
++    return (signposts && signposts[0] == '1' && !signposts[1]) || (path && *path);
++}();
++thread_local uint64_t mailboxDraws = 0;
++
++uint64_t takeMailboxDraws() {
++    const uint64_t count = mailboxDraws;
++    mailboxDraws = 0;
++    return count;
++}
+ std::atomic<uint64_t> g_pipelinesPredicted{0}, g_pipelinesArchived{0}, g_predictNanos{0};
+ 
+ Frame& frame() { return thread().frame; }
+diff --git a/src/core/surface.h b/src/core/surface.h
+index ea7d362..a430206 100644
+--- a/src/core/surface.h
++++ b/src/core/surface.h
+@@ -91,7 +91,7 @@ public:
+ private:
+     void allocate();
+     struct Mailbox;
+-    bool swapMailbox(CommandStream& stream);
++    bool swapMailbox(CommandStream& stream, uint64_t draws);
+     void stopMailbox();
+     // WINEMETALGL_MAX_FRAME_RATE: waits until the next frame's time (see surface.mm).
+     void limitFrameRate();
 diff --git a/src/core/surface.mm b/src/core/surface.mm
-index b650495..3bb782d 100644
+index b650495..48bf8b3 100644
 --- a/src/core/surface.mm
 +++ b/src/core/surface.mm
-@@ -3,6 +3,7 @@
+@@ -3,8 +3,11 @@
  #import <MetalFX/MetalFX.h>
  #include <dlfcn.h>
  #include <mach/mach_time.h>
++#include <unistd.h>
 +#include <os/signpost.h>
  
  #include <algorithm>
++#include <atomic>
  #include <climits>
-@@ -613,6 +614,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+ #include <cmath>
+ #include <cstdio>
+@@ -157,6 +160,7 @@ unsigned onscreenPixelFormatCount() {
+     State state[kSlots] = {Free, Free, Free};
+     uint64_t sequence[kSlots] = {};
+     uint64_t nextSequence = 1;
++    uint64_t recordingStream = 0;
+     bool stop = false;
+     id<MTLCommandQueue> queue = nil;
+     std::thread thread;
+@@ -491,6 +495,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+ 
+ bool Surface::swap(CommandStream& stream) {
+     stats::Timer presentTimer(&stats::Frame::presentNanos);
++    const uint64_t draws = stats::g_recordMailboxDraws ? stats::takeMailboxDraws() : 0;
+     resolveForRead(stream);
+     dumpFrame(stream, resolvedColor(), width_, height_);
+     if (!layer_) {
+@@ -501,7 +506,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     stream.endEncoder();
+     ensurePresentPipeline();
+     if (interval_ == 0) {
+-        const bool presented = swapMailbox(stream);
++        const bool presented = swapMailbox(stream, draws);
+         limitFrameRate();
+         return presented;
+     }
+@@ -554,7 +559,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     nextFrameTime_ += interval;
+ }
+ 
+-bool Surface::swapMailbox(CommandStream& stream) {
++bool Surface::swapMailbox(CommandStream& stream, uint64_t draws) {
+     id<MTLTexture> source = resolvedColor();
+     if (mailbox_ && (mailbox_->slots[0].width != source.width || mailbox_->slots[0].height != source.height ||
+                      mailbox_->slots[0].pixelFormat != source.pixelFormat))
+@@ -562,6 +567,10 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     if (!mailbox_) {
+         mailbox_ = std::make_unique<Mailbox>();
+         Mailbox* box = mailbox_.get();
++        if (stats::g_recordMailboxDraws) {
++            static std::atomic<uint64_t> nextStream{1};
++            box->recordingStream = nextStream.fetch_add(1, std::memory_order_relaxed);
++        }
+         MTLTextureDescriptor* desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:source.pixelFormat
+                                                                                          width:source.width
+                                                                                         height:source.height
+@@ -613,6 +622,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
      }
      Mailbox* box = mailbox_.get();
      int slot = -1;
@@ -18,7 +126,7 @@ index b650495..3bb782d 100644
      {
          // A free slot, else the finished frame the presenter has not taken
          // yet (it is dropped). Only a GPU two frames behind makes this wait.
-@@ -628,14 +630,29 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+@@ -628,14 +638,45 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
          for (int i = 0; i < Mailbox::kSlots && slot < 0; ++i)
              if (box->state[i] == Mailbox::Ready) slot = i;
          box->state[slot] = Mailbox::Pending;
@@ -31,8 +139,16 @@ index b650495..3bb782d 100644
 +        return enabled && enabled[0] == '1' && !enabled[1] ?
 +            os_log_create("org.local.wrath-trial", OS_LOG_CATEGORY_POINTS_OF_INTEREST) : nullptr;
 +    }();
-+    const uint64_t draws = completionTrace ? stats::frame().draws : 0;
++    // Keep the log for the lifetime of the process and refuse to overwrite a previous run.
++    static FILE* completionFile = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_GPU_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL completion log");
++        return file;
++    }();
 +    const uint64_t dimensions = (uint64_t(source.width) << 32) | uint64_t(source.height);
++    const uint64_t recordingStream = box->recordingStream;
      id<MTLBlitCommandEncoder> blit = stream.blit();
      [blit copyFromTexture:source sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
                 sourceSize:MTLSizeMake(source.width, source.height, 1) toTexture:box->slots[slot] destinationSlice:0
@@ -40,12 +156,20 @@ index b650495..3bb782d 100644
      stream.endEncoder();
 -    [stream.commandBuffer() addCompletedHandler:^(id<MTLCommandBuffer>) {
 +    [stream.commandBuffer() addCompletedHandler:^(id<MTLCommandBuffer> finished) {
-+        if (completionTrace && draws && finished.status == MTLCommandBufferStatusCompleted && finished.GPUEndTime > 0.0) {
++        if (draws && finished.status == MTLCommandBufferStatusCompleted && finished.GPUEndTime > 0.0) {
 +            const uint64_t end = uint64_t(finished.GPUEndTime * 1e9);
-+            os_signpost_event_emit(completionTrace, OS_SIGNPOST_ID_EXCLUSIVE, "WMGL Rendered Output",
-+                "sequence=%{public}llu gpu_end_ns=%{public}llu draws=%{public}llu dimensions=%{public}llu",
-+                (unsigned long long)sequence, (unsigned long long)end,
-+                (unsigned long long)draws, (unsigned long long)dimensions);
++            if (completionTrace) {
++                os_signpost_event_emit(completionTrace, OS_SIGNPOST_ID_EXCLUSIVE, "WMGL Rendered Output",
++                    "sequence=%{public}llu gpu_end_ns=%{public}llu draws=%{public}llu dimensions=%{public}llu",
++                    (unsigned long long)sequence, (unsigned long long)end,
++                    (unsigned long long)draws, (unsigned long long)dimensions);
++            }
++            if (completionFile) {
++                static const pid_t process = getpid();
++                std::fprintf(completionFile, "%d %llu %llu %llu %llu %llu\n", process,
++                    (unsigned long long)recordingStream, (unsigned long long)sequence,
++                    (unsigned long long)end, (unsigned long long)draws, (unsigned long long)dimensions);
++            }
 +        }
          // Notify under the lock (see the present handler).
          std::lock_guard<std::mutex> lock(box->mutex);

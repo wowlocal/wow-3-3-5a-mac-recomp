@@ -205,6 +205,10 @@ def mailbox_frames(rows, pid, width, height):
         sequence, gpu_end, draws, dimensions = (event[name] for name in names)
         if dimensions == ((width << 32) | height) and gpu_end > 0 and draws > 0:
             frames.append((sequence, gpu_end, draws))
+    return mailbox_report(frames, pid, width, height)
+
+
+def mailbox_report(frames, pid, width, height, seconds=None):
     if len(frames) < 2:
         raise ValueError("Fewer than two completed WineMetalGL renders at the requested size")
     frames.sort()
@@ -212,21 +216,61 @@ def mailbox_frames(rows, pid, width, height):
     times = [frame[1] for frame in frames]
     if len(set(sequences)) != len(frames) or any(a >= b for a, b in zip(times, times[1:])):
         raise ValueError("WineMetalGL markers do not identify one ordered stream of GPU completions")
+    sample_duration = times[-1] - times[0] if seconds is None else seconds * 10**9
+    cutoff = times[0] + sample_duration
+    if times[-1] < cutoff:
+        raise ValueError("The GPU completion log does not yet cover the requested duration")
+    # Include the gap crossing the cutoff in p99, including any stall
+    # that starts before the end and completes just after it.
+    sample_end = next((i for i, time in enumerate(times) if time > cutoff), len(times))
+    verified = sample_end
+    if verified < 2:
+        raise ValueError("Fewer than two GPU completions inside the measurement window")
+    gap_end = sample_end + (sample_end < len(times) and times[sample_end - 1] < cutoff)
+    frames = frames[:verified]
+    hardware_span = times[verified - 1] - times[0]
+    missing = sequences[gap_end - 1] - sequences[0] + 1 - gap_end
+    times = times[:gap_end]
     gaps = sorted(b - a for a, b in zip(times, times[1:]))
-    duration = times[-1] - times[0]
     return {
         "pid": pid,
         "window_size": [width, height],
-        "verified_completed_renders": len(frames),
+        "verified_completed_renders": verified,
         "first_sequence": sequences[0],
-        "last_sequence": sequences[-1],
-        "missing_sequences": sequences[-1] - sequences[0] + 1 - len(frames),
-        "gpu_completion_interval_ns": duration,
-        "average_completed_fps": len(gaps) * 1e9 / duration,
+        "last_sequence": sequences[verified - 1],
+        "missing_sequences": missing,
+        "gpu_completion_interval_ns": hardware_span,
+        **({"measurement_duration_ns": sample_duration} if seconds is not None else {}),
+        "average_completed_fps": (verified - 1) * 1e9 / sample_duration,
         "p99_gpu_completion_gap_ns": gaps[math.ceil(0.99 * len(gaps)) - 1],
         "min_draws": min(frame[2] for frame in frames),
         "max_draws": max(frame[2] for frame in frames),
     }
+
+
+def mailbox_log(path, pid, width, height, stream, start_sequence, seconds):
+    streams = defaultdict(list)
+    dimensions = (width << 32) | height
+    with path.open() as log:
+        for line in log:
+            if not line.endswith("\n"):
+                break  # The writer may still be appending the final line.
+            process, stream_id, seq, gpu_end, draws, size = map(int, line.split())
+            if process == pid and size == dimensions and gpu_end > 0 and draws > 0:
+                streams[stream_id].append((seq, gpu_end, draws))
+    if stream is None:
+        if len(streams) > 1:
+            raise ValueError(f"Several mailbox streams at the requested size. Select one with --stream {sorted(streams)}")
+        if not streams:
+            raise ValueError("No GPU completions at the requested PID and size")
+        stream = next(iter(streams))
+    frames = streams.get(stream, [])
+    if start_sequence is not None:
+        frames = [frame for frame in frames if frame[0] >= start_sequence]
+        if not any(frame[0] == start_sequence for frame in frames):
+            raise ValueError("The requested starting GPU completion is missing")
+    report = mailbox_report(frames, pid, width, height, seconds)
+    return {"stream": stream, **report}
 
 
 def main():
@@ -237,13 +281,29 @@ def main():
     parser.add_argument("height", type=int)
     parser.add_argument("--run", type=int, default=1)
     parser.add_argument("--frame-log", type=Path, help="align the frame log using AGL Swap signposts")
-    parser.add_argument("--wmgl", action="store_true", help="read WineMetalGL's completed mailbox renders")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--wmgl", action="store_true", help="read WineMetalGL's completed mailbox renders")
+    mode.add_argument("--wmgl-log", action="store_true", help="read a WineMetalGL GPU completion log")
+    parser.add_argument("--stream", type=int, help="mailbox generation to select from a GPU completion log")
+    parser.add_argument("--start-sequence", type=int, help="first completed frame in the measurement")
+    parser.add_argument("--seconds", type=int, help="require this many seconds of completed GPU work")
     options = parser.parse_args()
     if min(options.pid, options.width, options.height, options.run) <= 0:
         parser.error("PID, viewport dimensions, and run number must be positive")
-    if options.wmgl and options.frame_log:
+    if (options.wmgl or options.wmgl_log) and options.frame_log:
         parser.error("--frame-log applies to the AGL window-write analysis")
+    if not options.wmgl_log and any(value is not None for value in (options.stream, options.start_sequence, options.seconds)):
+        parser.error("--stream, --start-sequence, and --seconds require --wmgl-log")
+    if any(value is not None and value <= 0 for value in (options.stream, options.start_sequence, options.seconds)):
+        parser.error("Stream, starting sequence, and duration must be positive")
     try:
+        if options.wmgl_log:
+            report = mailbox_log(
+                options.trace, options.pid, options.width, options.height,
+                options.stream, options.start_sequence, options.seconds,
+            )
+            print(json.dumps(report, indent=2))
+            return
         if options.wmgl:
             events = trace_rows(options.trace, options.run, "os-signpost-arg", "PointsOfInterest")
             report = mailbox_frames(events, options.pid, options.width, options.height)

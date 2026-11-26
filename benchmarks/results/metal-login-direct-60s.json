@@ -1,0 +1,27 @@
+{
+  "scene": "original game login, background at observation points",
+  "backend": "WineMetalGL native Metal mailbox",
+  "gl_statistics_profiler_enabled": false,
+  "instruments_calibration": {
+    "matching_gpu_completions": 193,
+    "first_sequence": 233,
+    "last_sequence": 425
+  },
+  "file_only_measurement": {
+    "stream": 1,
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 1749,
+    "first_sequence": 2646,
+    "last_sequence": 4394,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 59981592291,
+    "measurement_duration_ns": 60000000000,
+    "average_completed_fps": 29.133333333333333,
+    "p99_gpu_completion_gap_ns": 41338584,
+    "min_draws": 69,
+    "max_draws": 92
+  }
+}
