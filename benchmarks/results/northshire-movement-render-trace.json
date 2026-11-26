@@ -1,0 +1,21 @@
+{
+  "game_performance": {
+    "overlap_seconds": 0.120969625,
+    "agl_swaps": 14,
+    "window_gpu_completions": 15,
+    "render_verified_completions": 14,
+    "p99_render_completion_gap_ms": 13.6515,
+    "median_gpu_active_ms_per_rendered_output": 3.0864165
+  },
+  "metal_system_trace": {
+    "overlap_seconds": 11.017682,
+    "agl_swaps": 1375,
+    "window_gpu_completions": 1376,
+    "render_verified_completions": 1376,
+    "p99_render_completion_gap_ms": 15.503125,
+    "median_gpu_active_ms_per_rendered_output": 3.1226665,
+    "gpu_active_union_ms": 4284.759223,
+    "gpu_active_union_ms_per_rendered_output": 3.113923854,
+    "display_vsync_median_interval_ms": 6.0675
+  }
+}

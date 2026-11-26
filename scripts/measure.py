@@ -44,22 +44,26 @@ def cpu_nanoseconds_per_tick():
     return timebase[0] / timebase[1]
 
 
-def p95(values):
-    return sorted(values)[math.ceil(0.95 * len(values)) - 1]
+def percentile(sorted_values, quantile):
+    return sorted_values[math.ceil(quantile * len(sorted_values)) - 1]
 
 
 def summarize_frames(frame_times, start, stop):
     selected = [stamp for stamp in frame_times if start <= stamp <= stop]
     if selected != sorted(selected):
         raise RuntimeError("Frame log has out-of-order timestamps")
-    gaps = [right - left for left, right in zip(selected, selected[1:])]
+    gaps = sorted(right - left for left, right in zip(selected, selected[1:]))
     if not gaps:
         raise RuntimeError("The client produced fewer than two measured swaps during the route")
     spans = [selected[0] - start, *gaps, stop - selected[-1]]
     return {
         "swaps": len(selected),
+        "duration_ns": stop - start,
+        "average_swap_fps": round(len(selected) * NANOSECONDS / (stop - start), 3),
         "median_fps": round(NANOSECONDS / median(gaps), 2),
-        "p95_frame_ms": round(p95(gaps) / 1_000_000, 2),
+        "p50_frame_ms": round(median(gaps) / 1_000_000, 6),
+        "p95_frame_ms": round(percentile(gaps, 0.95) / 1_000_000, 6),
+        "p99_frame_ms": round(percentile(gaps, 0.99) / 1_000_000, 6),
         "stalls_over_250_ms": sum(gap > 250_000_000 for gap in spans),
         "longest_gap_ms": round(max(spans) / 1_000_000, 2),
     }
@@ -84,9 +88,9 @@ def summarize_swap_split(rows, start, stop):
     slow = spans[-math.ceil(0.05 * len(spans)):]
     return {
         "median_inside_swap_ms": round(median(paired_swap) / 1_000_000, 2),
-        "p95_inside_swap_ms": round(p95(paired_swap) / 1_000_000, 2),
+        "p95_inside_swap_ms": round(percentile(sorted(paired_swap), 0.95) / 1_000_000, 2),
         "median_between_swaps_ms": round(median(outside) / 1_000_000, 2),
-        "p95_between_swaps_ms": round(p95(outside) / 1_000_000, 2),
+        "p95_between_swaps_ms": round(percentile(sorted(outside), 0.95) / 1_000_000, 2),
         "time_inside_swap_percent": round(100 * sum(paired_swap) / (sum(paired_swap) + sum(outside)), 2),
         "slowest_5pct_time_inside_swap_percent": round(100 * sum(swap for swap, _ in slow) / sum(map(sum, slow)), 2),
     }

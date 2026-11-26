@@ -75,14 +75,16 @@ index a7c09aa..1d8353d 100644
      if (getenv("OCERZ_M32_ACTIVATE"))
          dispatch_after_f(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), NULL,
 diff --git a/src/m32_agl.c b/src/m32_agl.c
-index e8f4160..c6bcc47 100644
+index e8f4160..8f7ec40 100644
 --- a/src/m32_agl.c
 +++ b/src/m32_agl.c
-@@ -16,10 +16,12 @@
+@@ -16,10 +16,14 @@
   * GLboolean results are a byte in AL.  ponytail: pbuffers and aglUseFont are not provided.
   */
  #include <dlfcn.h>
 +#include <inttypes.h>
++#include <os/log.h>
++#include <os/signpost.h>
  #include <pthread.h>
  #include <stdio.h>
  #include <stdlib.h>
@@ -91,7 +93,7 @@ index e8f4160..c6bcc47 100644
  
  #include "ocerz/interp.h"
  #include "ocerz/m32.h"
-@@ -184,17 +186,59 @@ static uint32_t drawable_of(Obj ctx)
+@@ -184,17 +188,59 @@ static uint32_t drawable_of(Obj ctx)
      return port;
  }
  
@@ -156,7 +158,7 @@ index e8f4160..c6bcc47 100644
  static int agl_SetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? agl.set_current(H(0)) : 0); }
  static int agl_GetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? m32_handle(agl.get_current()) : 0); }
  
-@@ -240,7 +284,48 @@ static int agl_SetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(r
+@@ -240,7 +286,55 @@ static int agl_SetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(r
  static int agl_GetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? m32_handle(agl.get_hiview_ref(H(0))) : 0); }
  static int agl_SetVirtualScreen(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? agl.set_virtual_screen(H(0), (int32_t)A(1)) : 0); }
  static int agl_GetVirtualScreen(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? (uint32_t)agl.get_virtual_screen(H(0)) : 0); }
@@ -165,6 +167,7 @@ index e8f4160..c6bcc47 100644
 +
 +/* Opt-in entry and return timestamps for on-screen AGL buffer swaps. */
 +static FILE *g_frame_times;
++static os_log_t g_frame_trace;
 +static pthread_once_t g_frame_times_once = PTHREAD_ONCE_INIT;
 +
 +static void open_frame_times(void)
@@ -178,6 +181,9 @@ index e8f4160..c6bcc47 100644
 +        return;
 +    }
 +    setvbuf(g_frame_times, NULL, _IOLBF, 0);
++    const char *trace = getenv("OCERZ_M32_TRACE_SWAPS");
++    if (trace && strcmp(trace, "1") == 0)
++        g_frame_trace = os_log_create("org.local.wrath-trial", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
 +}
 +
 +static int agl_SwapBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
@@ -198,6 +204,9 @@ index e8f4160..c6bcc47 100644
 +        agl.swap_buffers(ctx);
 +        if (timed) {
 +            uint64_t returned = clock_gettime_nsec_np(CLOCK_MONOTONIC);
++            if (g_frame_trace)
++                os_signpost_event_emit(g_frame_trace, OS_SIGNPOST_ID_EXCLUSIVE, "AGL Swap",
++                                       "monotonic_ns=%{public}llu", (unsigned long long)returned);
 +            fprintf(g_frame_times, "%" PRIu64 " %" PRIu64 "\n", entry, returned);
 +        }
 +    }
@@ -207,21 +216,21 @@ index e8f4160..c6bcc47 100644
  /* ---- options ---- */
  
 diff --git a/src/m32_bridge.c b/src/m32_bridge.c
-index 0ae8181..79b12a3 100644
+index 0ae8181..5d446b0 100644
 --- a/src/m32_bridge.c
 +++ b/src/m32_bridge.c
 @@ -465,6 +465,27 @@ static int trap_dispatch(struct OcerzVM *vm, OcerzCPU *cpu)
          ocerz_vm_request_exit(vm, 134);
          return OCERZ_STEP_EXIT;
      }
-+    if (getenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS") &&
-+        (!strcmp(e->name, "_task_set_exception_ports") ||
-+         !strcmp(e->name, "_thread_set_exception_ports"))) {
++    if ((!strcmp(e->name, "_task_set_exception_ports") ||
++         !strcmp(e->name, "_thread_set_exception_ports")) &&
++        getenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS")) {
 +        fprintf(stderr, "ocerz: diagnostic keeps host exception reporting for %s\n", e->name);
 +        m32_ret(cpu, 0, 0, 0);
 +        return OCERZ_STEP_OK;
 +    }
-+    if (getenv("OCERZ_DIAG_QUICKTIME_VERSION") && !strcmp(e->name, "_Gestalt") &&
++    if (!strcmp(e->name, "_Gestalt") && getenv("OCERZ_DIAG_QUICKTIME_VERSION") &&
 +        m32_arg(cpu, 0) == 0x7174696d && m32_arg(cpu, 1)) {
 +        /* Test startup after advertising QuickTime 6.5.1 to a legacy client. */
 +        m32_wr(m32_arg(cpu, 1), 0x06518000u);
@@ -229,7 +238,7 @@ index 0ae8181..79b12a3 100644
 +        m32_ret(cpu, 0, 0, 0);
 +        return OCERZ_STEP_OK;
 +    }
-+    if (getenv("OCERZ_PROBE_AGL_CONTENT_CLICKS") && !strcmp(e->name, "_CallNextEventHandler") &&
++    if (!strcmp(e->name, "_CallNextEventHandler") && getenv("OCERZ_PROBE_AGL_CONTENT_CLICKS") &&
 +        m32_carbon_agl_content_click(m32_arg(cpu, 1))) {
 +        /* Let the guest process clicks on its GL drawable without native control tracking. */
 +        m32_ret(cpu, (uint32_t)-9874, 0, 0);  /* eventNotHandledErr */
@@ -239,7 +248,7 @@ index 0ae8181..79b12a3 100644
      /* OCERZ_M32_CALLLOG=<name part>[|<part>...]: the matching imports' first argument words, caller and eax after */
      static const char *calllog = (const char *)1;
 diff --git a/src/m32_carbon.c b/src/m32_carbon.c
-index d9b48fb..c910462 100644
+index d9b48fb..97ca679 100644
 --- a/src/m32_carbon.c
 +++ b/src/m32_carbon.c
 @@ -87,7 +87,8 @@ static int param_kind(uint32_t type, int *n)
@@ -292,10 +301,44 @@ index d9b48fb..c910462 100644
  static int ret_value(OcerzCPU *cpu, uint32_t v)
  {
      m32_ret(cpu, v, 0, 0);
-@@ -535,7 +569,26 @@ static int sp_GetScriptManagerVariable(struct OcerzVM *vm, OcerzCPU *cpu)
-     return ret_value(cpu, sel == 38 || !fn ? 0 : (uint32_t)fn(sel));
+@@ -523,21 +557,58 @@ static int sp_LSCopyDefaultSchemeHandlerURL(struct OcerzVM *vm, OcerzCPU *cpu)
+     return ret_value(cpu, app ? 0 : (uint32_t)-10814);
  }
  
+-/* GetScriptManagerVariable(short selector) -> long: smKCHRCache (38) is the address of the keyboard's KCHR, a pointer
+- * the long holds, which the i386 int cut to 32 bits; SDL 1.2 handed it to KeyTranslate, which faulted in HIToolbox
+- * (AssaultCube).  It answers 0, no KCHR, as on a Mac with Unicode layouts alone, and callers use their own key
+- * tables; the other selectors are numbers and pass through. */
++/* smKCHRCache stores a pointer in the returned long. Clients that build their
++ * key table through KeyTranslate can opt in to the host layout via a handle. */
+ static int sp_GetScriptManagerVariable(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+     (void)vm;
+     long (*fn)(short) = (long (*)(short))carbon_fn("GetScriptManagerVariable");
+     short sel = (short)m32_arg(cpu, 0);
+-    return ret_value(cpu, sel == 38 || !fn ? 0 : (uint32_t)fn(sel));
++    if (!fn)
++        return ret_value(cpu, 0);
++    if (sel != 38)
++        return ret_value(cpu, (uint32_t)fn(sel));
++    const char *legacy = getenv("OCERZ_M32_LEGACY_KEY_LAYOUT");
++    if (!legacy || strcmp(legacy, "1") != 0)
++        return ret_value(cpu, 0);
++    long layout = fn(sel);
++    return ret_value(cpu, layout > 0 ? m32_handle((void *)(uintptr_t)layout) : 0);
++}
++
++static int sp_KeyTranslate(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    uint32_t (*fn)(const void *, uint16_t, uint32_t *) =
++        (uint32_t (*)(const void *, uint16_t, uint32_t *))carbon_fn("KeyTranslate");
++    const void *layout = m32_host(m32_arg(cpu, 0));
++    uint32_t *state = m32_host(m32_arg(cpu, 2));
++    return ret_value(cpu, fn && layout && state ?
++        fn(layout, (uint16_t)m32_arg(cpu, 1), state) : 0);
++}
++
 +/* The host retains the Carbon window's CGWindowID; WindowServer can set its opacity. */
 +static int sp_SetWindowAlpha(struct OcerzVM *vm, OcerzCPU *cpu)
 +{
@@ -312,13 +355,16 @@ index d9b48fb..c910462 100644
 +    float alpha;
 +    memcpy(&alpha, &bits, sizeof alpha);
 +    return ret_value(cpu, (uint32_t)set_alpha(connection(), id, alpha));
-+}
-+
+ }
+
  const M32SpecialEntry m32_carbon_specials[] = {
 +    { "_SetWindowAlpha", sp_SetWindowAlpha },
      { "__LSCopyDefaultSchemeHandlerURL", sp_LSCopyDefaultSchemeHandlerURL },
      { "_GetScriptManagerVariable", sp_GetScriptManagerVariable },
++    { "_KeyTranslate", sp_KeyTranslate },
      { "_ConvertFromUnicodeToText", sp_ConvertFromUnicodeToText },
+     { "_ConvertFromTextToUnicode", sp_ConvertFromTextToUnicode },
+     { "_ConvertFromUnicodeToPString", sp_ConvertFromUnicodeToPString },
 diff --git a/src/m32_catch.m b/src/m32_catch.m
 index f0e05bf..7d0e865 100644
 --- a/src/m32_catch.m
@@ -468,7 +514,7 @@ index b9498b6..e0f4346 100644
          m32_gl_bound(e->gl_ptr, m32_rd((uint32_t)cpu->gpr[OCERZ_RSP] + 4), m32_rd((uint32_t)cpu->gpr[OCERZ_RSP] + 8));
      static int log_gl = -1, log_nan = -1, log_stat = -1;
 diff --git a/src/m32_gl.c b/src/m32_gl.c
-index e329171..6c061d1 100644
+index e329171..4272eda 100644
 --- a/src/m32_gl.c
 +++ b/src/m32_gl.c
 @@ -18,14 +18,22 @@
@@ -731,8 +777,20 @@ index e329171..6c061d1 100644
  }
  
  static Shadow *lookup(void *group, uint32_t buffer, int live)
-@@ -236,20 +411,36 @@ static Shadow *shadow_for(void *group, uint32_t buffer, uint32_t size)
-             spare = &g_shadows[i];   /* empty, or an unmapped one to recycle */
+@@ -230,26 +405,44 @@ static Shadow *shadow_for(void *group, uint32_t buffer, uint32_t size)
+     if (is(h, group, buffer))
+         s = h;
+     for (int i = 0; i < 256 && !s; i++) {
+-        if (is(&g_shadows[i], group, buffer))
+-            s = &g_shadows[i];
+-        else if (!spare && !g_shadows[i].host)
+-            spare = &g_shadows[i];   /* empty, or an unmapped one to recycle */
++        Shadow *candidate = &g_shadows[i];
++        if (is(candidate, group, buffer))
++            s = candidate;
++        /* A direct alias can use an unassigned slot without evicting a shadow. */
++        else if ((!spare || (!size && spare->group && !candidate->group)) && !candidate->host)
++            spare = candidate;
      }
      if (!s && spare) {
 -        m32_free(spare->guest);
@@ -771,7 +829,7 @@ index e329171..6c061d1 100644
  }
  
  static Shadow *mapped(unsigned target) { return lookup(share_group(), bound(target), 0); }
-@@ -257,27 +448,141 @@ static Shadow *mapped(unsigned target) { return lookup(share_group(), bound(targ
+@@ -257,27 +450,141 @@ static Shadow *mapped(unsigned target) { return lookup(share_group(), bound(targ
  #define RET(v) do { m32_ret(cpu, (uint32_t)(v), 0, 0); return OCERZ_STEP_OK; } while (0)
  
  /* whole: the mapping is the whole buffer, of size bytes, and the shadow may be (or become) its mirror */
@@ -919,7 +977,7 @@ index e329171..6c061d1 100644
  }
  
  /* glMapBuffer(target, access) */
-@@ -297,28 +602,37 @@ static int sp_glMapBuffer(struct OcerzVM *vm, OcerzCPU *cpu)
+@@ -297,28 +604,37 @@ static int sp_glMapBuffer(struct OcerzVM *vm, OcerzCPU *cpu)
          gl.buffer_iv(target, 0x8764, &q);   /* GL_BUFFER_SIZE */
          size = (uint32_t)q;
      }
@@ -962,7 +1020,7 @@ index e329171..6c061d1 100644
      if (mirrored(target)) {
          void *group = share_group();
          uint32_t buffer = bound(target);
-@@ -364,15 +678,27 @@ static int sp_glBufferSubData(struct OcerzVM *vm, OcerzCPU *cpu)
+@@ -364,15 +680,27 @@ static int sp_glBufferSubData(struct OcerzVM *vm, OcerzCPU *cpu)
  /* glDeleteBuffers(n, buffers): their shadows go, so a name made again starts with none */
  static int sp_glDeleteBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
  {
@@ -991,7 +1049,7 @@ index e329171..6c061d1 100644
              m32_free(s->guest);
              *s = (Shadow){ 0 };
          }
-@@ -380,7 +706,7 @@ static int sp_glDeleteBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
+@@ -380,7 +708,7 @@ static int sp_glDeleteBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
      pthread_mutex_unlock(&g_lock);
      for (int32_t i = 0; names && i < n && i < 65536; i++)
          unbind_deleted(m32_rd(names + 4 * (uint32_t)i));
@@ -1000,7 +1058,7 @@ index e329171..6c061d1 100644
          gl.delete_buffers(n, names ? (const uint32_t *)m32_h(names) : NULL);
      RET(0);
  }
-@@ -392,8 +718,17 @@ static int flush_common(OcerzCPU *cpu, void (*flush)(unsigned, intptr_t, intptr_
+@@ -392,8 +720,17 @@ static int flush_common(OcerzCPU *cpu, void (*flush)(unsigned, intptr_t, intptr_
      uint32_t off = m32_arg(cpu, 1), len = m32_arg(cpu, 2);
      Shadow *s = mapped(target);
      if (s && off <= s->size && len <= s->size - off) {
@@ -1019,7 +1077,7 @@ index e329171..6c061d1 100644
      }
      if (flush)
          flush(target, off, len);
-@@ -407,14 +742,45 @@ static int sp_glUnmapBuffer(struct OcerzVM *vm, OcerzCPU *cpu)
+@@ -407,14 +744,45 @@ static int sp_glUnmapBuffer(struct OcerzVM *vm, OcerzCPU *cpu)
      gl_init();
      unsigned target = m32_arg(cpu, 0);
      Shadow *s = mapped(target);
@@ -1066,7 +1124,7 @@ index e329171..6c061d1 100644
  /* CGLSetParameter(ctx, param, const GLint *values): passed through; the swap interval (kCGLCPSwapInterval, 222) the
   * game asks for is logged once, and OCERZ_M32_SWAPINTERVAL=<n> replaces it (vsync quantizes a frame to 60/n fps) */
  static int sp_CGLSetParameter(struct OcerzVM *vm, OcerzCPU *cpu)
-@@ -527,6 +893,7 @@ const M32SpecialEntry m32_gl_specials[] = {
+@@ -527,6 +895,7 @@ const M32SpecialEntry m32_gl_specials[] = {
      { "_glShaderSource", sp_glShaderSource }, { "_glShaderSourceARB", sp_glShaderSourceARB },
      { "_glMapBuffer", sp_glMapBuffer }, { "_glMapBufferARB", sp_glMapBuffer },
      { "_glMapBufferRange", sp_glMapBufferRange },
@@ -1143,7 +1201,7 @@ index 33bee91..a068b54 100644
      { "_GetPortClipRegion", qd_GetPortClipRegion }, { "_SetPortClipRegion", qd_SetPortClipRegion },
      { "_GetPortVisibleRegion", qd_GetPortVisibleRegion },
 diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
-index bc80579..c6e0a66 100644
+index bc80579..0b0ba2c 100644
 --- a/tests/unit/test_m32.c
 +++ b/tests/unit/test_m32.c
 @@ -21,6 +21,7 @@
@@ -1154,7 +1212,15 @@ index bc80579..c6e0a66 100644
  #include <signal.h>
  #include <pthread.h>
  #include <stdio.h>
-@@ -480,6 +481,264 @@ static void test_quickdraw(void)
+@@ -32,6 +33,7 @@
+ #include <sys/uio.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
++#include <time.h>
+ #include <unistd.h>
+
+ #include "ocerz/flags.h"
+@@ -480,6 +482,307 @@ static void test_quickdraw(void)
      call("_SetGWorld", 2, s);
  }
  
@@ -1340,6 +1406,49 @@ index bc80579..c6e0a66 100644
 +    if (!sentinel)
 +        return 0;
 +    memset(sentinel, 0x47, SIZE);
++    if (getenv("OCERZ_M32_TEST_GL_SHADOW_BATCH")) {
++        const unsigned array_size = SIZE / 4, offset = 128, count = 300;
++        uint32_t buffers[2] = { 0 };
++        gen(2, buffers);
++        bind(ARRAY, buffers[0]);
++        data(ARRAY, array_size, sentinel, STREAM_DRAW);
++        parameter(ARRAY, FLUSHING_UNMAP_APPLE, 0);
++        bind(UNPACK, buffers[1]);
++        data(UNPACK, SIZE, sentinel, STREAM_DRAW);
++        parameter(UNPACK, FLUSHING_UNMAP_APPLE, 0);
++
++        unsigned complete = 0;
++        uint64_t started = clock_gettime_nsec_np(CLOCK_MONOTONIC);
++        for (; complete < count; complete++) {
++            uint32_t guest = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, WRITE_ONLY });
++            if (!guest)
++                break;
++            int intact = m32_rd(guest + offset - 4) == 0x47474747 &&
++                         m32_rd(guest + offset + 4) == 0x47474747;
++            m32_wr(guest + offset, complete);
++            call("_glFlushMappedBufferRangeAPPLE", 3, (uint32_t[]){ ARRAY, offset, 4 });
++            if (!call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) || !intact)
++                break;
++            guest = call("_glMapBuffer", 2, (uint32_t[]){ UNPACK, WRITE_ONLY });
++            if (!guest)
++                break;
++            m32_wr(guest + offset, complete);
++            call("_glFlushMappedBufferRangeAPPLE", 3, (uint32_t[]){ UNPACK, offset, 4 });
++            if (!call("_glUnmapBuffer", 1, (uint32_t[]){ UNPACK }) || ocerz_addr_committed(guest))
++                break;
++        }
++        double elapsed_ms = (clock_gettime_nsec_np(CLOCK_MONOTONIC) - started) / 1e6;
++        fprintf(stderr, "AGL shadow batch: %u pairs in %.3f ms\n", complete, elapsed_ms);
++        check("alternate array shadows and unpack aliases", complete == count);
++        const uint32_t expected[] = { 0x47474747, count - 1, 0x47474747 };
++        uint32_t array[3] = { 0 }, unpack[3] = { 0 };
++        read(ARRAY, offset - 4, sizeof array, array);
++        read(UNPACK, offset - 4, sizeof unpack, unpack);
++        check("alternating maps preserve vertex and upload data",
++              !memcmp(array, expected, sizeof array) && !memcmp(unpack, expected, sizeof unpack) && get_error() == 0);
++        memcpy(m32_h(DATA + 0xc50), buffers, sizeof buffers);
++        call("_glDeleteBuffers", 2, (uint32_t[]){ 2, DATA + 0xc50 });
++    }
 +    uint32_t names[2] = { 0 };
 +    gen(2, names);
 +    uint32_t query[] = { UNPACK, POINTER, DATA + 0xc64 };
@@ -1419,7 +1528,7 @@ index bc80579..c6e0a66 100644
  /* AGL on a window's QuickDraw port: the context draws into the window (src/m32_agl.c) */
  static void test_agl(uint32_t port)
  {
-@@ -493,6 +752,10 @@ static void test_agl(uint32_t port)
+@@ -493,6 +796,10 @@ static void test_agl(uint32_t port)
      check("aglGetDrawable answers the port", call("_aglGetDrawable", 1, (uint32_t[]){ ctx }) == port);
      check("aglSetCurrentContext", (call("_aglSetCurrentContext", 1, (uint32_t[]){ ctx }) & 0xff) == 1 &&
                                    call("_aglGetCurrentContext", 0, NULL) == ctx);
@@ -1430,7 +1539,7 @@ index bc80579..c6e0a66 100644
      void (*clear_color)(float, float, float, float) = (void (*)(float, float, float, float))dlsym(RTLD_DEFAULT, "glClearColor");
      void (*clear)(uint32_t) = (void (*)(uint32_t))dlsym(RTLD_DEFAULT, "glClear");
      void (*read)(int, int, int, int, uint32_t, uint32_t, void *) =
-@@ -516,16 +779,25 @@ static void test_agl(uint32_t port)
+@@ -516,16 +823,25 @@ static void test_agl(uint32_t port)
      check("aglGetCGLContext", (call("_aglGetCGLContext", 2, (uint32_t[]){ ctx, DATA + 0xc40 }) & 0xff) == 1 &&
                                m32_rd(DATA + 0xc40) != 0);
      call("_aglSwapBuffers", 1, (uint32_t[]){ ctx });
@@ -1458,7 +1567,7 @@ index bc80579..c6e0a66 100644
  /* Carbon event parameters cross in their i386 layouts; UPPs are their functions; EventRecords are 16 bytes */
  static void test_event_params(uint32_t w, uint32_t port)
  {
-@@ -596,6 +868,25 @@ static void test_event_params(uint32_t w, uint32_t port)
+@@ -596,6 +912,25 @@ static void test_event_params(uint32_t w, uint32_t port)
      memcpy(&message, m32_h(DATA + 0xd82), 4);
      check("... in i386's 16 bytes: keyDown, 'a'", what == 3 /* keyDown */ && message == 'a');
      void (*release)(const void *) = (void (*)(const void *))dlsym(RTLD_DEFAULT, "CFRelease");
@@ -1484,7 +1593,7 @@ index bc80579..c6e0a66 100644
      release(ev);
      release(down);
  
-@@ -1228,6 +1519,14 @@ static void test_carbon(void)
+@@ -1228,6 +1563,14 @@ static void test_carbon(void)
          call("_GlobalToLocal", 1, (uint32_t[]){ DATA + 0xa90 });
          memcpy(p0, m32_h(DATA + 0xa90), 4);
          check("GlobalToLocal takes it away", p0[0] == 5 && p0[1] == 7);
@@ -1499,3 +1608,54 @@ index bc80579..c6e0a66 100644
      }
      uint32_t q[2] = { port, DATA + 0xaa0 };
      check("QDBeginCGContext on a window's port", call("_QDBeginCGContext", 2, q) == 0 && m32_rd(DATA + 0xaa0) != 0 &&
+@@ -1275,11 +1618,50 @@ static void test_carbon(void)
+     check("DisposeWindow takes the window's port with it", call("_IsValidPort", 1, pt) == 0);
+ }
+
++static void test_legacy_key_layout(void)
++{
++    void *carbon = dlopen(CARBON, RTLD_LAZY);
++    long (*variable)(short) = carbon ? dlsym(carbon, "GetScriptManagerVariable") : NULL;
++    uint32_t (*translate)(const void *, uint16_t, uint32_t *) =
++        carbon ? dlsym(carbon, "KeyTranslate") : NULL;
++    long native = variable && translate ? variable(38) : 0;
++    if (native <= 0)
++        return;
++
++    const void *layout = (const void *)(uintptr_t)native;
++    setenv("OCERZ_M32_LEGACY_KEY_LAYOUT", "1", 1);
++    uint32_t guest = call("_GetScriptManagerVariable", 1, (uint32_t[]){ 38 });
++    unsetenv("OCERZ_M32_LEGACY_KEY_LAYOUT");
++    check("the KCHR handle preserves the full native pointer", guest && m32_host(guest) == layout);
++    if (!guest)
++        return;
++
++    static uint32_t host_state;
++    host_state = 0;
++    uint32_t host_handle = m32_handle(&host_state);
++    uint32_t reference = 0, guest_state = DATA + 0x2250;
++    m32_wr(guest_state, 0);
++    m32_wr(guest_state + 4, 0x1ee7cafe);
++    const uint16_t codes[] = { 1, 13 | 0x0200, 14 | 0x0800, 1, 53 };
++    for (size_t i = 0; i < sizeof codes / sizeof codes[0]; i++) {
++        uint16_t code = codes[i];
++        uint32_t expected = translate(layout, code, &reference);
++        uint32_t result = call("_KeyTranslate", 3, (uint32_t[]){ guest, code, guest_state });
++        check("KeyTranslate preserves modifiers and 32-bit guest state",
++              result == expected && m32_rd(guest_state) == reference &&
++              m32_rd(guest_state + 4) == 0x1ee7cafe);
++        result = call("_KeyTranslate", 3, (uint32_t[]){ guest, code, host_handle });
++        check("KeyTranslate updates host-backed state through its handle",
++              result == expected && host_state == reference);
++    }
++}
++
+ /* what SDL 1.2's Quartz code needs (AssaultCube): no KCHR from the Script Manager, the CPS process calls, and
+  * NSBitmapImageRep planes in guest memory (src/m32_carbon.c, src/m32_libsystem.c, src/m32_objc.c) */
+ static void test_sdl_shims(void)
+ {
+     check("GetScriptManagerVariable(smKCHRCache) is no KCHR", call("_GetScriptManagerVariable", 1, (uint32_t[]){ 38 }) == 0);
++    test_legacy_key_layout();
+     memset(m32_h(DATA + 0x2200), 0, 8);
+     check("CPSGetCurrentProcess", call("_CPSGetCurrentProcess", 1, (uint32_t[]){ DATA + 0x2200 }) == 0 &&
+                                   (m32_rd(DATA + 0x2200) || m32_rd(DATA + 0x2204)));

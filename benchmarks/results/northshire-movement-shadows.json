@@ -1,0 +1,21 @@
+{
+  "swaps": 16512,
+  "duration_ns": 120003255000,
+  "average_swap_fps": 137.596,
+  "median_fps": 139.78,
+  "p50_frame_ms": 7.154,
+  "p95_frame_ms": 10.423,
+  "p99_frame_ms": 12.554,
+  "stalls_over_250_ms": 0,
+  "longest_gap_ms": 22.16,
+  "median_inside_swap_ms": 0.0,
+  "p95_inside_swap_ms": 0.01,
+  "median_between_swaps_ms": 7.15,
+  "p95_between_swaps_ms": 10.42,
+  "time_inside_swap_percent": 0.05,
+  "slowest_5pct_time_inside_swap_percent": 0.03,
+  "duration_seconds": 120.003,
+  "average_client_cpu_percent": 84.39,
+  "peak_sampled_client_footprint_mib": 753.42,
+  "footprint_sample_interval_seconds": 0.5
+}

@@ -2,7 +2,7 @@
 
 Run the original Intel Mac client for World of Warcraft 3.3.5a (build 12340) through AArchX and connect to a local AzerothCore realm. The patch covers Carbon keyboard and mouse events, QuickDraw coordinates, and AGL/OpenGL behavior used by this client. It also adds optional frame-time and settings diagnostics.
 
-The trial was tested on an M4 Pro running macOS 27.2.1. Shared texture uploads increased median FPS from 105.49 to 118.11 on the same 1365 × 768 Northshire route and reduced the 95th-percentile frame time from 13.36 to 12.19 ms. The optimized client also completed a ten-minute play check and preserved settings and license choices through an in-game quit and relaunch. See the [Northshire report](benchmarks/northshire.md) and [raw benchmark summaries](benchmarks/results).
+The trial was tested on an M4 Pro running macOS 27.2.1. On the 1365 × 768 Northshire route, the latest build averaged 137.35 swaps/s over ten minutes with a 12.99 ms p99 frame interval. It restored keyboard movement and preserved settings and license choices through in-game exits and relaunches. See the [Northshire report](benchmarks/northshire.md) and [raw benchmark summaries](benchmarks/results).
 
 ## Build the trial runtime
 

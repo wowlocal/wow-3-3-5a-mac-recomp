@@ -108,6 +108,7 @@ extra+=(--env "OCERZ_M32_UNPACK_ALIAS=$unpack_alias")
     --env "OCERZ_APIDB=$runtime/apis" --env "OCERZ_APIDB32=$runtime/apis32" \
     --env "OCERZ_GUEST32_ROOT=$runtime/guest32" \
     --env OCERZ_M32_ACTIVATE=1 --env OCERZ_PROBE_AGL_CONTENT_CLICKS=1 \
+    --env OCERZ_M32_LEGACY_KEY_LAYOUT=1 \
     --env OCERZ_DIAG_ALERT=1 --env OCERZ_DIAG_QUICKTIME_VERSION=1 \
     --env OCERZ_NO_M32_FAULT_HANDLERS=1 --env OCERZ_DIAG_KEEP_HOST_EXCEPTIONS=1 \
     --env OCERZ_ABORT_REPORT=1 --env OCERZ_NO_XLIVE=1 \
