@@ -206,3 +206,27 @@ Apply the following patches after the earlier Metal backend and completion patch
 git -C "$METAL_TRIAL_AARCHX" apply "$TRIAL_REPO/patches/aarchx-wmgl-guest-storage-trial.patch"
 git -C "$METAL_TRIAL_WMGL" apply "$TRIAL_REPO/patches/winemetalgl-optional-buffer-memory-trial.patch"
 ```
+
+## Fixed-function shader key lookup
+
+In a sampled offscreen indexed run, 870 of 3,349 main-thread samples included fixed-function key serialization. The trial now looks up the shader state in place and copies the key into the cache only on a miss. The mixed ARB path appends the same byte view to its stage key. All 336 GPU regression tests passed.
+
+The AArchX offscreen test uses 826 draws at 1365 × 768 with 340 mapped writes and 23 other uploads per frame. In four interleaved 120-frame runs per arm, the median fell from **1.53 ms to 1.05 ms** with both fixed-function stages and from **1.61 ms to 1.10 ms** with an ARB vertex program and a fixed-function fragment stage. Each comparison produced the same representative framebuffer checksum.
+
+The same fixture measured several smaller effects. One autorelease pool per synthetic frame changed the median from 1.49 ms to 1.46 ms. Reading the vertex-buffer binding directly reduced the isolated mapped-write time from 292 ns to 237 ns, with the mixed draw workload averaging about 1.50 ms per frame in both arms. Indexed drawing with three indices per draw took 1.57 ms per frame versus 1.50 ms for the equivalent array draws. These measurements use synthetic geometry. [Draw and shader key measurements](results/winemetalgl-draw-key-ab.json)
+
+Both cores rendered the original background login screen. The login profiles sampled ARB program selection, and the baseline had one fixed-function key serializer sample. The login check covers startup and rendering. Raid performance, spell effects, and input still need an in-world run.
+
+Apply the shader-key patch after the other WineMetalGL trial patches. The AArchX benchmark patch adds only the offscreen test. Apply it after the guest-storage patch and rebuild the test binary. Use `OCERZ_WMGL_ARB_BENCH=1` for the mixed shader path and leave it unset for the fixed-function case.
+
+```sh
+git -C "$METAL_TRIAL_WMGL" apply "$TRIAL_REPO/patches/winemetalgl-fixed-function-key-trial.patch"
+git -C "$METAL_TRIAL_AARCHX" apply "$TRIAL_REPO/patches/aarchx-wmgl-draw-benchmark.patch"
+cmake --build "$METAL_TRIAL_BUILD" --target winemetalgl_core
+make -C "$METAL_TRIAL_AARCHX" WMGL_INCLUDE="$METAL_TRIAL_WMGL/include" tests/unit/bin/test_m32
+cd "$METAL_TRIAL_AARCHX"
+OCERZ_NO_ARM_EXEC=1 OCERZ_WMGL_LIBRARY="$METAL_TRIAL_BUILD/libwinemetalgl.dylib" \
+    OCERZ_WMGL_GUEST_STORAGE=1 OCERZ_WMGL_INDEXED_BENCH=1 OCERZ_WMGL_BATCH_BENCH=0 \
+    WINEMETALGL_SETTINGS=0 WINEMETALGL_SHADER_CACHE=0 WINEMETALGL_PIPELINE_CACHE=0 \
+    WINEMETALGL_CRASH_HANDLER=0 WINEMETALGL_STATS=0 tests/unit/bin/test_m32 wmgl-storage
+```

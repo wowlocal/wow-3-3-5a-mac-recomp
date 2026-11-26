@@ -1,0 +1,113 @@
+diff --git a/src/core/compat/fixed_function.mm b/src/core/compat/fixed_function.mm
+index 951815d..f95a873 100644
+--- a/src/core/compat/fixed_function.mm
++++ b/src/core/compat/fixed_function.mm
+@@ -4,6 +4,8 @@
+ #include <atomic>
+ #include <cmath>
+ #include <cstring>
++#include <string_view>
++#include <type_traits>
+ 
+ #include "core/compat/arb_programs.h"
+ #include "core/compat/fixed_state.h"
+@@ -242,29 +244,15 @@ float normalScale(const Mat4& mvInv) {
+     uint8_t wideLines = 0, stipple = 0;
+     UnitKey units[FixedState::kTextureUnits];
+ 
+-    std::string bytes() const {
+-        std::string out;
+-        auto put = [&](uint8_t v) { out.push_back(static_cast<char>(v)); };
+-        for (uint8_t v : {lighting, twoSide, localViewer, separateSpecular, normalize, rescale, colorMaterialMode,
+-                          colorMaterialFace, lights, positional, spot, clipPlanes, fog, fogMode, fogFromCoord, pointSize,
+-                          flat, colorSum, wideLines, stipple})
+-            put(v);
+-        for (const UnitKey& u : units) {
+-            for (uint8_t v : {u.target, u.format, u.shadow, u.mode, u.combineRGB, u.combineAlpha, u.scaleRGB, u.scaleAlpha,
+-                              u.texgen, u.coordReplace, u.coordOut})
+-                put(v);
+-            for (int i = 0; i < 3; ++i) {
+-                put(u.srcRGB[i]);
+-                put(u.srcAlpha[i]);
+-                put(u.opRGB[i]);
+-                put(u.opAlpha[i]);
+-            }
+-            for (uint8_t m : u.texgenMode) put(m);
+-        }
+-        return out;
+-    }
++    std::string_view view() const { return { reinterpret_cast<const char*>(this), sizeof(*this) }; }
+ };
+ 
++// Each field in the shader key is an initialized byte. Lookup can view the
++// bytes in place; the share group's map owns a copy only on a cache miss.
++static_assert(sizeof(UnitKey) == 27);
++static_assert(sizeof(Key) == 20 + 27 * FixedState::kTextureUnits);
++static_assert(std::has_unique_object_representations_v<Key>);
++
+ uint8_t formatClass(GLenum baseFormat) {
+     switch (baseFormat) {
+     case GL_ALPHA: return kFmtAlpha;
+@@ -811,7 +799,8 @@ void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStage
+             k.fog = 1;
+             k.fogFromCoord = f.fogCoordSource == GL_FOG_COORD;
+         }
+-        key = "v" + k.bytes();
++        key.assign(1, 'v');
++        key.append(k.view());
+         if (source) *source = vertexSource(k);
+     } else {
+         k.flat = full.flat;
+@@ -825,7 +814,8 @@ void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStage
+             k.units[u].texgen = 0;
+             std::fill(std::begin(k.units[u].texgenMode), std::end(k.units[u].texgenMode), 0);
+         }
+-        key = "f" + k.bytes();
++        key.assign(1, 'f');
++        key.append(k.view());
+         if (source) *source = fragmentSource(k);
+     }
+ }
+@@ -860,7 +850,7 @@ bool fixedFunctionWritesPointSize(Context& ctx) {
+ 
+ Program* fixedFunctionProgram(Context& ctx, GLenum mode) {
+     const Key key = buildKey(ctx, mode);
+-    const std::string bytes = key.bytes();
++    const std::string_view bytes = key.view();
+     auto& cache = ctx.share().fixedFunctionPrograms;
+     auto it = cache.find(bytes);
+     if (it != cache.end()) return it->second.get();
+@@ -875,7 +865,7 @@ bool fixedFunctionWritesPointSize(Context& ctx) {
+         WMGL_TRACE(Shader, "fixed-function program %zu built", cache.size() + 1);
+     }
+     Program* raw = program.get();
+-    cache.emplace(bytes, std::move(program));  // failures are cached too (logged once)
++    cache.emplace(std::string(bytes), std::move(program));  // failures are cached too (logged once)
+     return raw;
+ }
+ 
+diff --git a/src/core/share_group.h b/src/core/share_group.h
+index 0122e51..1e62a99 100644
+--- a/src/core/share_group.h
++++ b/src/core/share_group.h
+@@ -6,6 +6,7 @@
+ #include <map>
+ #include <mutex>
+ #include <string>
++#include <string_view>
+ #include <unordered_map>
+ #include <unordered_set>
+ 
+@@ -55,7 +56,11 @@ public:
+ 
+     // Compatibility profile: generated fixed-function programs by state key
+     // (core/compat/fixed_function.h), and display lists (compat/display_list.h).
+-    std::unordered_map<std::string, RefPtr<Program>> fixedFunctionPrograms;
++    struct FixedFunctionKeyHash {
++        using is_transparent = void;
++        size_t operator()(std::string_view key) const { return std::hash<std::string_view>{}(key); }
++    };
++    std::unordered_map<std::string, RefPtr<Program>, FixedFunctionKeyHash, std::equal_to<>> fixedFunctionPrograms;
+     std::map<GLuint, RefPtr<DisplayList>> displayLists;
+     // ARB assembly program objects (their own name space) and the generated
+     // programs that run them (compat/arb_programs.h).

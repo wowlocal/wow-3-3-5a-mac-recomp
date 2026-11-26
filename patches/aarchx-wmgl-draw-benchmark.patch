@@ -1,0 +1,191 @@
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+index 0033e65..2267e19 100644
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -817,6 +817,177 @@ static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
+            TIMED, (unsigned long long)elapsed, (double)elapsed / TIMED);
+ }
+ 
++static uint32_t bench_gl_call(uint32_t trap, int argc, const uint32_t *args)
++{
++    m32_wr(STACK, RET_ADDR);
++    for (int i = 0; i < argc; i++)
++        m32_wr(STACK + 4 + 4 * (uint32_t)i, args[i]);
++    cpu()->gpr[OCERZ_RSP] = STACK;
++    cpu()->rip = trap;
++    int result = m32_trap(&g_vm, cpu());
++    if (result != OCERZ_STEP_OK || cpu()->rip != RET_ADDR) {
++        fprintf(stderr, "wmgl-batch: guest GL call did not return\n");
++        exit(2);
++    }
++    return (uint32_t)cpu()->gpr[OCERZ_RAX];
++}
++
++static void bench_wmgl_draw_batch(const char *gl, unsigned target)
++{
++    enum { WIDTH = 1365, HEIGHT = 768, SIZE = 2 * 1024 * 1024, STRIDE = 2048,
++           WRITES = 363, DRAWS = 826, WARMUP = 12 };
++    const char *sampleFrames = getenv("OCERZ_WMGL_BENCH_FRAMES");
++    unsigned long timed = sampleFrames ? strtoul(sampleFrames, NULL, 10) : 120;
++    check("the benchmark frame count is valid", timed > 0 && timed <= 6000);
++    if (!timed || timed > 6000) return;
++    void *library = dlopen(getenv("OCERZ_WMGL_LIBRARY"), RTLD_LOCAL | RTLD_LAZY);
++    void (*begin)(void) = library ? (void (*)(void))dlsym(library, "wmgl_batch_begin") : NULL;
++    void (*end)(void) = library ? (void (*)(void))dlsym(library, "wmgl_batch_end") : NULL;
++    check("load the native GL batch functions", begin && end);
++    if (!begin || !end) return;
++    const char *mode = getenv("OCERZ_WMGL_BATCH_BENCH");
++    const int batched = mode && !strcmp(mode, "1");
++    const char *indexMode = getenv("OCERZ_WMGL_INDEXED_BENCH");
++    const int indexed = indexMode && !strcmp(indexMode, "1");
++    const char *arbMode = getenv("OCERZ_WMGL_ARB_BENCH");
++    const int useArb = arbMode && !strcmp(arbMode, "1");
++
++    cross(gl, "_glGenFramebuffers", 2, (uint32_t[]){ 1, DATA + 0xd00 });
++    cross(gl, "_glGenRenderbuffers", 2, (uint32_t[]){ 1, DATA + 0xd04 });
++    uint32_t fb = m32_rd(DATA + 0xd00), rb = m32_rd(DATA + 0xd04);
++    check("create the offscreen color target", fb && rb);
++    if (!fb || !rb) return;
++    cross(gl, "_glBindFramebuffer", 2, (uint32_t[]){ 0x8D40, fb });
++    cross(gl, "_glBindRenderbuffer", 2, (uint32_t[]){ 0x8D41, rb });
++    cross(gl, "_glRenderbufferStorage", 4, (uint32_t[]){ 0x8D41, 0x8058, WIDTH, HEIGHT });
++    cross(gl, "_glFramebufferRenderbuffer", 4, (uint32_t[]){ 0x8D40, 0x8CE0, 0x8D41, rb });
++    check("offscreen target has a complete framebuffer",
++          cross(gl, "_glCheckFramebufferStatus", 1, (uint32_t[]){ 0x8D40 }) == 0x8CD5);
++    cross(gl, "_glViewport", 4, (uint32_t[]){ 0, 0, WIDTH, HEIGHT });
++    uint32_t elementBuffer = 0;
++    if (indexed) {
++        cross(gl, "_glGenBuffers", 2, (uint32_t[]){ 1, DATA + 0xd08 });
++        elementBuffer = m32_rd(DATA + 0xd08);
++        check("allocate an element buffer", elementBuffer != 0);
++        cross(gl, "_glBindBuffer", 2, (uint32_t[]){ 0x8893, elementBuffer });
++        const uint16_t indices[] = {0, 1, 2};
++        memcpy(m32_h(DATA + 0xd10), indices, sizeof indices);
++        call("_glBufferData", 4, (uint32_t[]){ 0x8893, sizeof indices, DATA + 0xd10, 0x88E4 });
++    }
++    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ target, 0x8A13, 0 });
++    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ target, 0x8A12, 0 });
++    check("the synthetic stream uses explicit range writes into fresh storage",
++          cross(gl, "_glGetError", 0, NULL) == 0);
++
++    uint32_t vertexProgram = 0;
++    if (useArb) {
++        const char source[] = "!!ARBvp1.0\nMOV result.position, vertex.position;\n"
++                              "MOV result.color, vertex.color;\nEND\n";
++        memcpy(m32_h(DATA + 0x3000), source, sizeof source);
++        cross(gl, "_glGenProgramsARB", 2, (uint32_t[]){ 1, DATA + 0xd18 });
++        vertexProgram = m32_rd(DATA + 0xd18);
++        cross(gl, "_glBindProgramARB", 2, (uint32_t[]){ 0x8620, vertexProgram });
++        cross(gl, "_glProgramStringARB", 4,
++              (uint32_t[]){ 0x8620, 0x8875, sizeof source - 1, DATA + 0x3000 });
++        cross(gl, "_glEnable", 1, (uint32_t[]){ 0x8620 });
++        check("load the ARB vertex shader with a fixed-function fragment stage",
++              vertexProgram && cross(gl, "_glGetError", 0, NULL) == 0);
++    }
++
++    const char *names[] = {
++        "_glClear", "_glBufferData", "_glBufferSubData", "_glMapBuffer",
++        "_glFlushMappedBufferRangeAPPLE", "_glUnmapBuffer", "_glVertexPointer",
++        "_glColor4ub", indexed ? "_glDrawRangeElementsEXT" : "_glDrawArrays", "_glFinish"
++    };
++    enum { CLEAR, STORAGE, SUBDATA, MAP, FLUSH, UNMAP, POINTER, COLOR, DRAW, FINISH };
++    uint32_t traps[FINISH + 1];
++    for (int i = 0; i <= FINISH; i++) {
++        traps[i] = m32_export(gl, names[i]);
++        check(names[i], traps[i] != 0);
++    }
++    if (g_failures) return;
++
++    const unsigned drawSize[] = { 1056, 1296, 1584 };
++    float payload[1584 / sizeof(float)] = {0};
++    uint64_t start = 0;
++    for (unsigned frame = 0; frame < WARMUP + timed; frame++) {
++        if (frame == WARMUP) {
++            bench_gl_call(traps[FINISH], 0, NULL);
++            if (sampleFrames)
++                fprintf(stderr, "wmgl-batch: measuring the draw stream\n");
++            start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++        }
++        if (batched) begin();
++        bench_gl_call(traps[CLEAR], 1, (uint32_t[]){ 0x4000 });
++        bench_gl_call(traps[STORAGE], 4, (uint32_t[]){ target, SIZE, 0, 0x88E8 });
++        unsigned previous = UINT32_MAX;
++        for (unsigned draw = 0; draw < DRAWS; draw++) {
++            unsigned slot = draw * WRITES / DRAWS;
++            unsigned offset = slot * STRIDE;
++            if (slot != previous) {
++                float x = ((slot % 8) - 3.5f) * 0.24f;
++                float y = ((slot / 8 % 6) - 2.5f) * 0.30f;
++                payload[0] = x - 0.08f; payload[1] = y - 0.08f;
++                payload[2] = x + 0.08f; payload[3] = y - 0.08f;
++                payload[4] = x;         payload[5] = y + 0.08f;
++                unsigned size = drawSize[slot % 3];
++                if (slot % 16 == 0) {
++                    memcpy(m32_h(DATA + 0x1000), payload, size);
++                    bench_gl_call(traps[SUBDATA], 4, (uint32_t[]){ target, offset, size, DATA + 0x1000 });
++                } else {
++                    uint32_t guest = bench_gl_call(traps[MAP], 2, (uint32_t[]){ target, 0x88B9 });
++                    if (!guest) {
++                        if (batched) end();
++                        check("mappable stream storage", 0);
++                        return;
++                    }
++                    memcpy(m32_h(guest + offset), payload, size);
++                    bench_gl_call(traps[FLUSH], 3, (uint32_t[]){ target, offset, size });
++                    bench_gl_call(traps[UNMAP], 1, (uint32_t[]){ target });
++                }
++                previous = slot;
++            }
++            bench_gl_call(traps[POINTER], 4, (uint32_t[]){ 2, 0x1406, 0, offset });
++            bench_gl_call(traps[COLOR], 4, (uint32_t[]){ 227, (slot + 40) & 255, (frame + 83) & 255, 255 });
++            if (indexed)
++                bench_gl_call(traps[DRAW], 6, (uint32_t[]){ 4, 0, 2, 3, 0x1403, 0 });
++            else
++                bench_gl_call(traps[DRAW], 3, (uint32_t[]){ 4, 0, 3 });
++        }
++        if (batched) end();
++    }
++    bench_gl_call(traps[FINISH], 0, NULL);
++    uint64_t elapsed = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start;
++
++    uint32_t pixels = m32_malloc(WIDTH * HEIGHT * 4);
++    check("allocate the representative framebuffer readback", pixels != 0);
++    if (!pixels) return;
++    cross(gl, "_glReadPixels", 7, (uint32_t[]){ 0, 0, WIDTH, HEIGHT, 0x1908, 0x1401, pixels });
++    const uint8_t *image = m32_h(pixels);
++    uint64_t hash = 14695981039346656037ull;
++    size_t colored = 0;
++    for (size_t i = 0; i < WIDTH * HEIGHT * 4; i++) {
++        hash = (hash ^ image[i]) * 1099511628211ull;
++        colored += (i % 4 == 0 && image[i] == 227);
++    }
++    m32_free(pixels);
++    check("the synthetic draw stream rendered and passed GL checks",
++          colored > 10000 && cross(gl, "_glGetError", 0, NULL) == 0);
++    printf("wmgl-batch: %lu frames in %llu ns, RGBA %016llx, colored %zu\n",
++           timed, (unsigned long long)elapsed, (unsigned long long)hash, colored);
++
++    cross(gl, "_glBindFramebuffer", 2, (uint32_t[]){ 0x8D40, 0 });
++    cross(gl, "_glDeleteFramebuffers", 2, (uint32_t[]){ 1, DATA + 0xd00 });
++    cross(gl, "_glDeleteRenderbuffers", 2, (uint32_t[]){ 1, DATA + 0xd04 });
++    if (elementBuffer)
++        call("_glDeleteBuffers", 2, (uint32_t[]){ 1, DATA + 0xd08 });
++    if (vertexProgram) {
++        cross(gl, "_glDisable", 1, (uint32_t[]){ 0x8620 });
++        cross(gl, "_glDeleteProgramsARB", 2, (uint32_t[]){ 1, DATA + 0xd18 });
++    }
++    dlclose(library);
++}
++
+ static void test_wmgl_storage(void)
+ {
+     enum { ARRAY = 0x8892, DYNAMIC = 0x88E8, READ_WRITE = 0x88BA, SIZE = 2 * 1024 * 1024 };
+@@ -880,6 +1051,8 @@ static void test_wmgl_storage(void)
+     check("Metal draws from the guest-written vertices", m32_rd(DATA + 0xc58) == 0xff2bc911);
+     if (getenv("OCERZ_WMGL_MAP_BENCH"))
+         bench_wmgl_mapped_writes(gl, ARRAY);
++    if (getenv("OCERZ_WMGL_BATCH_BENCH"))
++        bench_wmgl_draw_batch(gl, ARRAY);
+ 
+     uint32_t old = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
+     check("map the original buffer before replacing its storage", old != 0);
