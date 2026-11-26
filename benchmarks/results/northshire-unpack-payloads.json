@@ -1,0 +1,23 @@
+{
+  "seconds": 36.001,
+  "swaps": 2196,
+  "unpack_copied_bytes": 36691771392,
+  "unpack_whole_aligned_maps": 4374,
+  "copy_ns": 2467057000,
+  "copyback_bytes": 0,
+  "flush_calls": 4374,
+  "flush_bytes": 147577728,
+  "flush_le16k": 2190,
+  "flush_le64k": 2184,
+  "flush_le256k": 0,
+  "flush_le1m": 0,
+  "flush_gt1m": 0,
+  "average_incoming_copy_us_per_map": 564.03,
+  "average_incoming_copy_ms_per_swap": 1.12,
+  "observed_upload_return_pcs": [
+    "0x8fcd1c",
+    "0x8fd02f",
+    "0x8fd12d"
+  ],
+  "callsite_counter_interval_total_maps": 65536
+}

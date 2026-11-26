@@ -1,0 +1,23 @@
+{
+  "seconds": 36.008,
+  "maps": 372736,
+  "allocations": 9644,
+  "reused": 0,
+  "incoming_bytes": 50637832192,
+  "evictions": 9644,
+  "grows": 0,
+  "write_only_bytes": 50637832192,
+  "array_bytes": 10112466944,
+  "element_bytes": 0,
+  "pack_bytes": 0,
+  "unpack_bytes": 40525365248,
+  "other_bytes": 0,
+  "unpack_whole_write_bytes": 40525365248,
+  "unpack_aligned_maps": 4831,
+  "aligned_lt64k_bytes": 0,
+  "aligned_64k_to256k_bytes": 0,
+  "aligned_gt256k_to1m_bytes": 0,
+  "aligned_gt1m_bytes": 40525365248,
+  "aligned_unpack_bytes": 40525365248,
+  "aligned_unpack_percent": 100.0
+}

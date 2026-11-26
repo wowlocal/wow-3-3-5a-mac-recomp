@@ -47,3 +47,24 @@ A four-second profile in single-threaded mode stopped showing the threaded `glFl
 A separate two-minute measurement added timestamps around the host AGL swap. Its median rate was **97.72 AGL swap returns per second**, with **23.39 ms p95** and **zero stalls over 250 ms**. The host swap accounted for 0.03% of aggregate frame time, while the 95th-percentile interval between swaps was 23.38 ms. Legacy OpenGL submits presentation work on a separate thread, so waits for that thread may appear between swap calls. The new baseline has yet to be paired with a controlled performance change. [Raw timing summary](results/northshire-perf-split-baseline.json)
 
 For precise hold timing, compile the [optional mouse helper](trial-input.swift) with `xcrun swiftc -O benchmarks/trial-input.swift -o build/trial-input`. It sends input to the running `Wrath Trial.app` process and prints the monotonic time of press and release. The same holds can be performed with a physical mouse.
+
+## Shared texture uploads
+
+The client makes whole 8 MiB write-only mappings for texture uploads, while the sampled explicit flushes covered at most 64 KiB each. A 36-second trace accounted for 1.12 ms of incoming unpack-buffer copies per completed swap on average. The shared-upload path leases those pages to an isolated guest address for the lifetime of the native GL mapping. All other mappings fall back to copied storage. [Alignment trace summary](results/northshire-gl-map-alignment.json) · [Upload trace summary](results/northshire-unpack-payloads.json)
+
+Each comparison used the same build and saved 1365 × 768 settings. Both arms ran the documented 120-second in-world route, including six measured mouse holds. The second pair disabled copy diagnostics in both arms.
+
+| Mode | Median FPS | 95th-percentile frame time | Stalls over 250 ms | Average CPU | Peak footprint |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Copy mode with diagnostics | 106.21 | 13.40 ms | 0 | 90.52% | 752.78 MiB |
+| Shared mode with diagnostics | 118.29 | 12.17 ms | 0 | 87.14% | 748.85 MiB |
+| Copy mode | 105.49 | 13.36 ms | 0 | 89.35% | 751.36 MiB |
+| Shared mode | 118.11 | 12.19 ms | 0 | 87.14% | 748.30 MiB |
+
+All 24 measured mouse holds kept rendering. Counters in the first shared run recorded 48,477 acquired and released mappings and zero incoming unpack copies at the sampled point. The runs report completed AGL swaps. A contemporaneous control matters because the older controls vary. [Copy control](results/northshire-unpack-alias-control-release.json) · [Shared repeat](results/northshire-unpack-alias-release.json)
+
+### Ten-minute play and relaunch
+
+The diagnostics-free shared session recorded 117 median FPS, 12.21 ms p95, and no stalls over 250 ms in 600.004 seconds. Movement, camera turns, held clicks, and NPC dialogue worked. WoW released all 173,929 acquired mappings during a clean quit, kept the saved settings and license choices, and re-entered Northshire after relaunch. [Ten-minute report](results/northshire-unpack-alias-ten-minutes.json)
+
+The native fixtures check texture readback and compare the setup and revocation cost of a fixed alias with a full copy. They use real CGL mappings in their own process. Build either with `xcrun clang -O2 -Wno-deprecated-declarations benchmarks/gl-map-alias-probe.c -framework OpenGL -o build/gl-map-alias-probe`, substituting the cost fixture name for the second build. [Readback fixture](gl-map-alias-probe.c) · [Timing fixture](gl-map-alias-cost.c)

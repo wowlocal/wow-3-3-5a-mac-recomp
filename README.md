@@ -2,7 +2,7 @@
 
 Run the original Intel Mac client for World of Warcraft 3.3.5a (build 12340) through AArchX and connect to a local AzerothCore realm. The patch covers Carbon keyboard and mouse events, QuickDraw coordinates, and AGL/OpenGL behavior used by this client. It also adds optional frame-time and settings diagnostics.
 
-The trial was tested on an M4 Pro running macOS 27.2.1. It signed in to the local realm, ran in Northshire for ten minutes, and preserved settings and license choices through clean relaunches. See the [Northshire report](benchmarks/northshire.md) and [raw benchmark summaries](benchmarks/results).
+The trial was tested on an M4 Pro running macOS 27.2.1. Shared texture uploads increased median FPS from 105.49 to 118.11 on the same 1365 × 768 Northshire route and reduced the 95th-percentile frame time from 13.36 to 12.19 ms. The optimized client also completed a ten-minute play check and preserved settings and license choices through an in-game quit and relaunch. See the [Northshire report](benchmarks/northshire.md) and [raw benchmark summaries](benchmarks/results).
 
 ## Build the trial runtime
 
@@ -44,6 +44,8 @@ Follow the [AzerothCore Docker guide](https://www.azerothcore.org/wiki/install-w
 ```
 
 Use the locale matching your client, such as `enUS` or `ruRU`. Add `--check` to check the paths and realm setting before launch. Use `--trace-settings` to diagnose file access. Press Escape to dismiss the old CPU compatibility notice. Quit from within WoW so the game saves its preferences.
+
+Add `--unpack-alias` to enable the shared texture-upload path tested on the M4 Pro. It shares eligible upload pages inside the process and preserves the native OpenGL map, flush, and unmap calls. Other mappings still use the copied path. The public launcher starts in copy mode by default. Pass `--copy-unpack` to switch back when reusing a command.
 
 `--profile` prints the swap log path. For a two-minute run, pass the client PID, log path, and a fresh JSON output path to `scripts/measure.py`.
 

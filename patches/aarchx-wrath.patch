@@ -1,17 +1,20 @@
 diff --git a/include/ocerz/m32.h b/include/ocerz/m32.h
-index ce46352..98667df 100644
+index ce46352..70177be 100644
 --- a/include/ocerz/m32.h
 +++ b/include/ocerz/m32.h
-@@ -69,6 +69,8 @@ extern const M32SpecialEntry m32_iokit_specials[];    /* src/m32_iokit.c: regist
+@@ -69,6 +69,11 @@ extern const M32SpecialEntry m32_iokit_specials[];    /* src/m32_iokit.c: regist
  extern const M32SpecialEntry m32_cl_specials[];       /* src/m32_cl.c: OpenCL on the arm64 OpenCL */
  void m32_qd_window_gone(void *window);                 /* src/m32_qd.c: DisposeWindow drops the window's port */
  void *m32_qd_port_window(uint32_t port);               /* a QuickDraw port's host window, or NULL */
 +void *m32_agl_current_window(void);
++int m32_gl_unpack_alias_enabled(void);
++void m32_gl_alias_context_created(void *context);
++void m32_gl_alias_context_destroyed(struct OcerzVM *vm, void *context);
 +int m32_carbon_agl_content_click(uint32_t guest_event);
  int m32_qd_port_pixels(uint32_t port, int *w, int *h, uint32_t *rowbytes, uint32_t *pixels);   /* a GWorld's */
  extern const M32SpecialEntry m32_agl_specials[];    /* src/m32_agl.c: AGL on the arm64 AGL, ports as drawables */
  int m32_fastcall(struct OcerzVM *vm, OcerzCPU *cpu, uint32_t trap);   /* a trap made from inside a block */
-@@ -89,7 +91,7 @@ uint32_t m32_trap_slot(uint64_t trap);   /* src/m32_bridge.c: a guest word holdi
+@@ -89,7 +94,7 @@ uint32_t m32_trap_slot(uint64_t trap);   /* src/m32_bridge.c: a guest word holdi
  
  /* vertex and element arrays in buffer objects (src/m32_gl.c): with a buffer bound, a gl*Pointer's or a glDraw*Elements'
   * pointer is an offset into it and crosses as it is */
@@ -20,7 +23,7 @@ index ce46352..98667df 100644
  int m32_gl_ptr_kind(const char *name);
  uint64_t m32_gl_ptr(int kind, uint32_t guest_ptr);
  void m32_gl_bound(int kind, uint32_t target, uint32_t buffer);   /* after glBindBuffer(target, buffer), glBindVertexArray */
-@@ -161,6 +163,8 @@ int m32_export_sigs(M32Export *e);   /* parses e->gsig and e->hsig once; 0 when
+@@ -161,6 +166,8 @@ int m32_export_sigs(M32Export *e);   /* parses e->gsig and e->hsig once; 0 when
  extern __thread void *m32_cross_self;
  int m32_call_native_catching(const void *fn, const uint64_t *x, const uint64_t *v, const uint64_t *stack,
                               uint64_t stackbytes, void *x8, uint64_t *out_x, uint64_t *out_v, void **exception);
@@ -72,7 +75,7 @@ index a7c09aa..1d8353d 100644
      if (getenv("OCERZ_M32_ACTIVATE"))
          dispatch_after_f(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), NULL,
 diff --git a/src/m32_agl.c b/src/m32_agl.c
-index e8f4160..873fdc9 100644
+index e8f4160..c6bcc47 100644
 --- a/src/m32_agl.c
 +++ b/src/m32_agl.c
 @@ -16,10 +16,12 @@
@@ -88,21 +91,46 @@ index e8f4160..873fdc9 100644
  
  #include "ocerz/interp.h"
  #include "ocerz/m32.h"
-@@ -184,6 +186,12 @@ static uint32_t drawable_of(Obj ctx)
+@@ -184,17 +186,59 @@ static uint32_t drawable_of(Obj ctx)
      return port;
  }
  
+-static int agl_CreateContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? m32_handle(agl.create_context(H(0), H(1))) : 0); }
+-static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
 +void *m32_agl_current_window(void)
 +{
 +    Obj ctx = ready() ? agl.get_current() : NULL;
 +    return ctx ? m32_qd_port_window(drawable_of(ctx)) : NULL;
 +}
 +
- static int agl_CreateContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? m32_handle(agl.create_context(H(0), H(1))) : 0); }
- static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
++static int agl_CreateContext(struct OcerzVM *vm, OcerzCPU *cpu)
  {
-@@ -194,7 +202,25 @@ static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
-     RET(agl.destroy_context(H(0)));
+     (void)vm;
++    Obj context = ready() && A(0) ? agl.create_context(H(0), H(1)) : NULL;
++    if (context && m32_gl_unpack_alias_enabled()) {
++        void *native = NULL;
++        if (!agl.get_cgl_context(context, &native))
++            native = NULL;
++        m32_gl_alias_context_created(native);
++    }
++    RET(m32_handle(context));
++}
++
++static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
++{
+     if (!ready() || !A(0))
+         RET(0);
+-    remember(H(0), 0);
+-    RET(agl.destroy_context(H(0)));
++    Obj context = H(0);
++    void *native = NULL;
++    if (m32_gl_unpack_alias_enabled() && !agl.get_cgl_context(context, &native))
++        native = NULL;
++    remember(context, 0);
++    unsigned char result = agl.destroy_context(context);
++    if (result && native)
++        m32_gl_alias_context_destroyed(vm, native);
++    RET(result);
  }
  static int agl_CopyContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? agl.copy_context(H(0), H(1), A(2)) : 0); }
 -static int agl_UpdateContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? agl.update_context(H(0)) : 0); }
@@ -128,7 +156,7 @@ index e8f4160..873fdc9 100644
  static int agl_SetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? agl.set_current(H(0)) : 0); }
  static int agl_GetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? m32_handle(agl.get_current()) : 0); }
  
-@@ -240,7 +266,48 @@ static int agl_SetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(r
+@@ -240,7 +284,48 @@ static int agl_SetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(r
  static int agl_GetHIViewRef(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? m32_handle(agl.get_hiview_ref(H(0))) : 0); }
  static int agl_SetVirtualScreen(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? agl.set_virtual_screen(H(0), (int32_t)A(1)) : 0); }
  static int agl_GetVirtualScreen(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() && A(0) ? (uint32_t)agl.get_virtual_screen(H(0)) : 0); }
@@ -440,10 +468,101 @@ index b9498b6..e0f4346 100644
          m32_gl_bound(e->gl_ptr, m32_rd((uint32_t)cpu->gpr[OCERZ_RSP] + 4), m32_rd((uint32_t)cpu->gpr[OCERZ_RSP] + 8));
      static int log_gl = -1, log_nan = -1, log_stat = -1;
 diff --git a/src/m32_gl.c b/src/m32_gl.c
-index e329171..0477a6f 100644
+index e329171..6c061d1 100644
 --- a/src/m32_gl.c
 +++ b/src/m32_gl.c
-@@ -119,8 +119,14 @@ int m32_gl_ptr_kind(const char *name)
+@@ -18,14 +18,22 @@
+  *
+  * ponytail: 256 shadows, a linear scan under one lock behind a one-slot hint.
+  */
++#include <inttypes.h>
++#include <mach/mach.h>
++#include <mach/mach_vm.h>
+ #include <pthread.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <sys/mman.h>
++#include <time.h>
++#include <unistd.h>
+ 
+ #include "ocerz/bridge.h"
+ #include "ocerz/interp.h"
++#include "ocerz/jit.h"
+ #include "ocerz/m32.h"
++#include "ocerz/mem.h"
+ 
+ #define GL_LIB "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL"
+ 
+@@ -35,9 +43,36 @@ typedef struct Shadow {
+     uint8_t *host;                 /* while mapped: the driver's pointer to the mapped range */
+     uint32_t size, flushed;        /* the mapped range's size; whether the guest flushed any part of it */
+     uint32_t bufsize, mirror;      /* the buffer's size (0: not known); whether the copy is the buffer's mirror */
++    uint32_t alias;                /* an isolated guest range while a native PBO map is live */
+ } Shadow;
+ static Shadow g_shadows[256];
+ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
++static int g_reuse_shadow_storage, g_log_map_stats, g_alias_unpack;
++static uint64_t g_maps, g_allocations, g_reused_storage, g_copy_in_bytes;
++static uint64_t g_evictions, g_grows, g_write_only_bytes;
++static uint64_t g_target_copy_bytes[5];   /* array, element, pixel pack, pixel unpack, other */
++static size_t g_host_page;
++static uint64_t g_unpack_whole_write_copy_bytes, g_unpack_aligned_maps;
++static uint64_t g_unpack_aligned_bytes[4]; /* below 64 KiB, through 256 KiB, through 1 MiB, larger */
++static uint64_t g_unpack_copy_ns, g_unpack_copyback_bytes;
++static uint64_t g_unpack_flush_calls, g_unpack_flush_bytes;
++static uint64_t g_unpack_flush_counts[5]; /* through 16 KiB, 64 KiB, 256 KiB, 1 MiB, larger */
++static struct { uint32_t caller; uint64_t maps, bytes; } g_unpack_callers[8];
++static uint64_t g_unpack_other_caller_maps;
++static uint64_t g_unpack_aliased, g_unpack_alias_released;
++static unsigned g_live_aliases;
++static struct { void *ctx, *group; } g_alias_contexts[16];
++static int g_alias_contexts_incomplete;
++static pthread_once_t g_map_options_once = PTHREAD_ONCE_INIT;
++
++static void map_options(void)
++{
++    g_reuse_shadow_storage = getenv("OCERZ_M32_REUSE_GL_SHADOW_STORAGE") != NULL;
++    g_log_map_stats = getenv("OCERZ_M32_GL_MAP_STATS") != NULL;
++    const char *unpack_alias = getenv("OCERZ_M32_UNPACK_ALIAS");
++    g_alias_unpack = unpack_alias && strcmp(unpack_alias, "1") == 0;
++    g_host_page = (size_t)getpagesize();
++}
+ 
+ static struct {
+     void *(*current)(void);
+@@ -45,8 +80,10 @@ static struct {
+     void (*buffer_data)(unsigned, intptr_t, const void *, unsigned);
+     void (*buffer_sub_data)(unsigned, intptr_t, intptr_t, const void *);
+     void (*delete_buffers)(int, const uint32_t *);
++    unsigned char (*is_buffer)(uint32_t);
+     void (*getiv)(unsigned, int *);
+     void (*buffer_iv)(unsigned, unsigned, int *);
++    void (*get_pointer)(unsigned, unsigned, void **);
+     void *(*map)(unsigned, unsigned);
+     void *(*map_range)(unsigned, intptr_t, intptr_t, unsigned);
+     unsigned char (*unmap)(unsigned);
+@@ -58,9 +95,11 @@ static void gl_init(void)
+ {
+     if (gl.map)
+         return;
++    pthread_once(&g_map_options_once, map_options);
+     gl.current = (void *(*)(void))ocerz_bridge_host_symbol(GL_LIB, "CGLGetCurrentContext");
+     gl.getiv = (void (*)(unsigned, int *))ocerz_bridge_host_symbol(GL_LIB, "glGetIntegerv");
+     gl.buffer_iv = (void (*)(unsigned, unsigned, int *))ocerz_bridge_host_symbol(GL_LIB, "glGetBufferParameteriv");
++    gl.get_pointer = (void (*)(unsigned, unsigned, void **))ocerz_bridge_host_symbol(GL_LIB, "glGetBufferPointerv");
+     gl.map_range = (void *(*)(unsigned, intptr_t, intptr_t, unsigned))ocerz_bridge_host_symbol(GL_LIB, "glMapBufferRange");
+     gl.unmap = (unsigned char (*)(unsigned))ocerz_bridge_host_symbol(GL_LIB, "glUnmapBuffer");
+     gl.flush_apple = (void (*)(unsigned, intptr_t, intptr_t))ocerz_bridge_host_symbol(GL_LIB, "glFlushMappedBufferRangeAPPLE");
+@@ -70,6 +109,7 @@ static void gl_init(void)
+     gl.buffer_sub_data =
+         (void (*)(unsigned, intptr_t, intptr_t, const void *))ocerz_bridge_host_symbol(GL_LIB, "glBufferSubData");
+     gl.delete_buffers = (void (*)(int, const uint32_t *))ocerz_bridge_host_symbol(GL_LIB, "glDeleteBuffers");
++    gl.is_buffer = (unsigned char (*)(uint32_t))ocerz_bridge_host_symbol(GL_LIB, "glIsBuffer");
+     __atomic_store_n(&gl.map, (void *(*)(unsigned, unsigned))ocerz_bridge_host_symbol(GL_LIB, "glMapBuffer"),
+                      __ATOMIC_RELEASE);
+ }
+@@ -119,8 +159,14 @@ int m32_gl_ptr_kind(const char *name)
      static const char *const elements[] = { "_glDrawElements", "_glDrawRangeElements", "_glDrawRangeElementsEXT",
          "_glDrawElementsInstanced", "_glDrawElementsInstancedARB", "_glDrawElementsInstancedEXT",
          "_glDrawElementsBaseVertex", "_glDrawRangeElementsBaseVertex", "_glDrawElementsInstancedBaseVertex", NULL };
@@ -458,7 +577,7 @@ index e329171..0477a6f 100644
      for (int i = 0; arrays[i]; i++)
          if (!strcmp(name, arrays[i]))
              return M32_GL_ARRAY;
-@@ -137,7 +143,11 @@ int m32_gl_ptr_kind(const char *name)
+@@ -137,7 +183,11 @@ int m32_gl_ptr_kind(const char *name)
  uint64_t m32_gl_ptr(int kind, uint32_t g)
  {
      Binds *b = binds();
@@ -471,6 +590,490 @@ index e329171..0477a6f 100644
      return buffer ? g : (uint64_t)(uintptr_t)m32_host(g);
  }
  
+@@ -171,6 +221,131 @@ static void *share_group(void)
+     return g ? g : ctx;
+ }
+ 
++int m32_gl_unpack_alias_enabled(void)
++{
++    pthread_once(&g_map_options_once, map_options);
++    return g_alias_unpack;
++}
++
++static void revoke_alias(struct OcerzVM *vm, uint32_t guest, uint32_t size)
++{
++    ocerz_jit_invalidate_range(vm, guest, size);
++    if (ocerz_unmap(guest, size) != OCERZ_OK && mprotect(m32_h(guest), size, PROT_NONE) != 0) {
++        fprintf(stderr, "ocerz: could not revoke a shared unpack mapping\n");
++        abort();
++    }
++}
++
++static void release_alias(struct OcerzVM *vm, Shadow *shadow)
++{
++    revoke_alias(vm, shadow->alias, shadow->size);
++    shadow->alias = 0;
++    shadow->host = NULL;
++    shadow->mirror = 0;
++    __atomic_sub_fetch(&g_live_aliases, 1, __ATOMIC_RELAXED);
++    __atomic_add_fetch(&g_unpack_alias_released, 1, __ATOMIC_RELAXED);
++}
++
++void m32_gl_alias_context_created(void *context)
++{
++    gl_init();
++    void *group = context && gl.share_group ? gl.share_group(context) : NULL;
++    pthread_mutex_lock(&g_lock);
++    if (context && group) {
++        for (size_t i = 0; i < sizeof g_alias_contexts / sizeof g_alias_contexts[0]; i++) {
++            if (g_alias_contexts[i].ctx == context) {
++                pthread_mutex_unlock(&g_lock);
++                return;
++            }
++        }
++        for (size_t i = 0; i < sizeof g_alias_contexts / sizeof g_alias_contexts[0]; i++) {
++            if (!g_alias_contexts[i].ctx) {
++                g_alias_contexts[i].ctx = context;
++                g_alias_contexts[i].group = group;
++                pthread_mutex_unlock(&g_lock);
++                return;
++            }
++        }
++    }
++    g_alias_contexts_incomplete = 1;
++    pthread_mutex_unlock(&g_lock);
++}
++
++void m32_gl_alias_context_destroyed(struct OcerzVM *vm, void *context)
++{
++    pthread_mutex_lock(&g_lock);
++    void *group = NULL;
++    for (size_t i = 0; context && i < sizeof g_alias_contexts / sizeof g_alias_contexts[0]; i++) {
++        if (g_alias_contexts[i].ctx == context) {
++            group = g_alias_contexts[i].group;
++            g_alias_contexts[i].ctx = NULL;
++            g_alias_contexts[i].group = NULL;
++            break;
++        }
++    }
++    for (size_t i = 0; group && i < sizeof g_alias_contexts / sizeof g_alias_contexts[0]; i++)
++        if (g_alias_contexts[i].group == group)
++            group = NULL;
++    if (group && !g_alias_contexts_incomplete) {
++        for (size_t i = 0; i < sizeof g_shadows / sizeof g_shadows[0]; i++)
++            if (g_shadows[i].group == group && g_shadows[i].alias)
++                release_alias(vm, &g_shadows[i]);
++        uint64_t acquired = __atomic_load_n(&g_unpack_aliased, __ATOMIC_RELAXED);
++        if (acquired)
++            fprintf(stderr, "ocerz: GL unpack alias lifetime acquired=%" PRIu64
++                    " released=%" PRIu64 " live=%u\n", acquired,
++                    __atomic_load_n(&g_unpack_alias_released, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED));
++    }
++    pthread_mutex_unlock(&g_lock);
++}
++
++/* The measured workload maps one whole 8 MiB upload buffer per transfer. A
++ * registered, unshared AGL context is required before handing guest code the
++ * driver's pages. Additional contexts keep existing aliases live but disable
++ * admission in their shared group. */
++static uint32_t try_unpack_alias(struct OcerzVM *vm, void *group, uint8_t *host, uint32_t size)
++{
++    if (size != 8 * 1024 * 1024 || !g_host_page || (uintptr_t)host % g_host_page || size % g_host_page)
++        return 0;
++    void *context = gl.current ? gl.current() : NULL;
++    unsigned members = 0;
++    int known = 0;
++    pthread_mutex_lock(&g_lock);
++    if (context && group && !g_alias_contexts_incomplete)
++        for (size_t i = 0; i < sizeof g_alias_contexts / sizeof g_alias_contexts[0]; i++)
++            if (g_alias_contexts[i].group == group) {
++                members++;
++                known |= g_alias_contexts[i].ctx == context;
++            }
++    pthread_mutex_unlock(&g_lock);
++    if (!known || members != 1)
++        return 0;
++
++    uint64_t guest = ocerz_map_donate(size);
++    if (!guest)
++        return 0;
++    if (guest > M32_HANDLE_LO - size) {
++        ocerz_unmap(guest, size);
++        return 0;
++    }
++    ocerz_jit_invalidate_range(vm, guest, size);
++    mach_vm_address_t expected = (uintptr_t)m32_h((uint32_t)guest), location = expected;
++    vm_prot_t current = VM_PROT_NONE, maximum = VM_PROT_NONE;
++    kern_return_t status = mach_vm_remap(mach_task_self(), &location, size, 0,
++                                         VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE, mach_task_self(),
++                                         (uintptr_t)host, FALSE, &current, &maximum, VM_INHERIT_NONE);
++    vm_prot_t rw = VM_PROT_READ | VM_PROT_WRITE;
++    if (status != KERN_SUCCESS || location != expected || (current & rw) != rw ||
++        (current & VM_PROT_EXECUTE) ||
++        ((maximum & VM_PROT_EXECUTE) &&
++         mach_vm_protect(mach_task_self(), location, size, TRUE, rw) != KERN_SUCCESS)) {
++        revoke_alias(vm, (uint32_t)guest, size);
++        return 0;
++    }
++    return (uint32_t)guest;
++}
++
+ /* only these are mirrored: the guest's own calls are the only writers m32 sees */
+ static int mirrored(unsigned target) { return target == 0x8892 || target == 0x8893; }   /* GL_[ELEMENT_]ARRAY_BUFFER */
+ 
+@@ -202,7 +377,7 @@ static int is(const Shadow *s, void *group, uint32_t buffer) { return s->group =
+ /* whether s is the shadow of (group, buffer) with a guest copy (live) or a mapping (!live) */
+ static int has(const Shadow *s, void *group, uint32_t buffer, int live)
+ {
+-    return is(s, group, buffer) && (live ? s->guest != 0 : s->host != NULL);
++    return is(s, group, buffer) && (live ? s->guest || s->alias : s->host != NULL);
+ }
+ 
+ static Shadow *lookup(void *group, uint32_t buffer, int live)
+@@ -236,20 +411,36 @@ static Shadow *shadow_for(void *group, uint32_t buffer, uint32_t size)
+             spare = &g_shadows[i];   /* empty, or an unmapped one to recycle */
+     }
+     if (!s && spare) {
+-        m32_free(spare->guest);
+-        *spare = (Shadow){ group, buffer, 0, 0, NULL, 0, 0, 0, 0 };
++        uint32_t guest = 0, cap = 0;
++        if (g_log_map_stats && spare->guest)
++            __atomic_add_fetch(&g_evictions, 1, __ATOMIC_RELAXED);
++        /* An evicted, unmapped buffer can donate storage. Start with no valid
++         * mirror or size for the new object, and bound the excess capacity. */
++        if (g_reuse_shadow_storage && spare->guest && spare->cap >= size && spare->cap - size <= 65536) {
++            guest = spare->guest;
++            cap = spare->cap;
++            if (g_log_map_stats)
++                __atomic_add_fetch(&g_reused_storage, 1, __ATOMIC_RELAXED);
++        } else {
++            m32_free(spare->guest);
++        }
++        *spare = (Shadow){ .group = group, .buffer = buffer, .guest = guest, .cap = cap };
+         s = spare;
+     }
+     if (s && s->cap < size) {
++        if (g_log_map_stats && s->guest)
++            __atomic_add_fetch(&g_grows, 1, __ATOMIC_RELAXED);
+         m32_free(s->guest);
+         s->guest = m32_malloc(size);
++        if (g_log_map_stats)
++            __atomic_add_fetch(&g_allocations, 1, __ATOMIC_RELAXED);
+         s->cap = s->guest ? size : 0;
+         s->mirror = 0;
+     }
+     if (s)
+         __atomic_store_n(&g_hint, (int)(s - g_shadows), __ATOMIC_RELAXED);
+     pthread_mutex_unlock(&g_lock);
+-    return s && s->guest ? s : NULL;
++    return s && (!size || s->guest) ? s : NULL;
+ }
+ 
+ static Shadow *mapped(unsigned target) { return lookup(share_group(), bound(target), 0); }
+@@ -257,27 +448,141 @@ static Shadow *mapped(unsigned target) { return lookup(share_group(), bound(targ
+ #define RET(v) do { m32_ret(cpu, (uint32_t)(v), 0, 0); return OCERZ_STEP_OK; } while (0)
+ 
+ /* whole: the mapping is the whole buffer, of size bytes, and the shadow may be (or become) its mirror */
+-static int map_common(OcerzCPU *cpu, unsigned target, uint32_t buffer, void *group, uint8_t *host, uint32_t size,
+-                      int whole)
++static int map_common(struct OcerzVM *vm, OcerzCPU *cpu, unsigned target, uint32_t buffer, void *group,
++                      uint8_t *host, uint32_t size, int whole, int write_only)
+ {
+     if (!host)
+         RET(0);
+-    Shadow *s = shadow_for(group, buffer, size ? size : 1);
++    uint32_t alias = 0;
++    if (g_alias_unpack && whole && write_only && target == 0x88EC)
++        alias = try_unpack_alias(vm, group, host, size);
++    Shadow *s = shadow_for(group, buffer, alias ? 0 : size ? size : 1);
+     if (!s) {
++        if (alias)
++            revoke_alias(vm, alias, size);
+         fprintf(stderr, "ocerz: m32: glMapBuffer: no guest shadow for %u bytes\n", (unsigned)size);
+         gl.unmap(target);
+         RET(0);
+     }
+-    int keep = whole && mirrored(target);
+-    if (!(keep && s->mirror))
++    /* A successful new driver map proves that any previous mapping ended. */
++    if (s->alias)
++        release_alias(vm, s);
++    if (alias) {
++        s->alias = alias;
++        __atomic_add_fetch(&g_live_aliases, 1, __ATOMIC_RELAXED);
++        __atomic_add_fetch(&g_unpack_aliased, 1, __ATOMIC_RELAXED);
++    }
++    int keep = !alias && whole && mirrored(target);
++    int copy_in = !alias && !(keep && s->mirror);
++    int measure_copy = g_log_map_stats && copy_in && target == 0x88EC && size;
++    uint64_t started = measure_copy ? clock_gettime_nsec_np(CLOCK_MONOTONIC) : 0;
++    if (copy_in)
+         memcpy(m32_h(s->guest), host, size);
++    if (measure_copy) {
++        __atomic_add_fetch(&g_unpack_copy_ns, clock_gettime_nsec_np(CLOCK_MONOTONIC) - started, __ATOMIC_RELAXED);
++        uint32_t caller = m32_rd((uint32_t)cpu->gpr[OCERZ_RSP]);
++        pthread_mutex_lock(&g_lock);
++        unsigned slot = 0;
++        while (slot < sizeof g_unpack_callers / sizeof g_unpack_callers[0] &&
++               g_unpack_callers[slot].caller && g_unpack_callers[slot].caller != caller)
++            slot++;
++        if (caller && slot < sizeof g_unpack_callers / sizeof g_unpack_callers[0]) {
++            g_unpack_callers[slot].caller = caller;
++            g_unpack_callers[slot].maps++;
++            g_unpack_callers[slot].bytes += size;
++        } else {
++            g_unpack_other_caller_maps++;
++        }
++        pthread_mutex_unlock(&g_lock);
++    }
++    if (g_log_map_stats) {
++        if (copy_in) {
++            unsigned bucket;
++            switch (target) {
++            case 0x8892: bucket = 0; break;
++            case 0x8893: bucket = 1; break;
++            case 0x88EB: bucket = 2; break;
++            case 0x88EC: bucket = 3; break;
++            default: bucket = 4; break;
++            }
++            __atomic_add_fetch(&g_copy_in_bytes, size, __ATOMIC_RELAXED);
++            __atomic_add_fetch(&g_target_copy_bytes[bucket], size, __ATOMIC_RELAXED);
++            if (write_only)
++                __atomic_add_fetch(&g_write_only_bytes, size, __ATOMIC_RELAXED);
++            if (bucket == 3 && whole && write_only && size) {
++                __atomic_add_fetch(&g_unpack_whole_write_copy_bytes, size, __ATOMIC_RELAXED);
++                if (g_host_page && (uintptr_t)host % g_host_page == 0 && size % g_host_page == 0) {
++                    unsigned size_bucket = size < 65536 ? 0 : size <= 262144 ? 1 : size <= 1048576 ? 2 : 3;
++                    __atomic_add_fetch(&g_unpack_aligned_maps, 1, __ATOMIC_RELAXED);
++                    __atomic_add_fetch(&g_unpack_aligned_bytes[size_bucket], size, __ATOMIC_RELAXED);
++                }
++            }
++        }
++        uint64_t maps = __atomic_add_fetch(&g_maps, 1, __ATOMIC_RELAXED);
++        if (maps == 128 || (maps & 4095) == 0) {
++            fprintf(stderr, "ocerz: GL maps=%" PRIu64 " allocations=%" PRIu64
++                    " reused=%" PRIu64 " incoming_bytes=%" PRIu64 " evictions=%" PRIu64
++                    " grows=%" PRIu64 " write_only_bytes=%" PRIu64
++                    " array_bytes=%" PRIu64 " element_bytes=%" PRIu64
++                    " pack_bytes=%" PRIu64 " unpack_bytes=%" PRIu64 " other_bytes=%" PRIu64
++                    " unpack_whole_write_bytes=%" PRIu64 " unpack_aligned_maps=%" PRIu64
++                    " aligned_lt64k_bytes=%" PRIu64 " aligned_64k_to256k_bytes=%" PRIu64
++                    " aligned_gt256k_to1m_bytes=%" PRIu64 " aligned_gt1m_bytes=%" PRIu64 "\n",
++                    maps, __atomic_load_n(&g_allocations, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_reused_storage, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_copy_in_bytes, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_evictions, __ATOMIC_RELAXED), __atomic_load_n(&g_grows, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_write_only_bytes, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_target_copy_bytes[0], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_target_copy_bytes[1], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_target_copy_bytes[2], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_target_copy_bytes[3], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_target_copy_bytes[4], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_whole_write_copy_bytes, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_aligned_maps, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_aligned_bytes[0], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_aligned_bytes[1], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_aligned_bytes[2], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_aligned_bytes[3], __ATOMIC_RELAXED));
++            fprintf(stderr, "ocerz: GL unpack copy_ns=%" PRIu64 " copyback_bytes=%" PRIu64
++                    " flush_calls=%" PRIu64 " flush_bytes=%" PRIu64
++                    " flush_le16k=%" PRIu64 " flush_le64k=%" PRIu64 " flush_le256k=%" PRIu64
++                    " flush_le1m=%" PRIu64 " flush_gt1m=%" PRIu64
++                    " aliases=%" PRIu64 " released=%" PRIu64 " live=%u\n",
++                    __atomic_load_n(&g_unpack_copy_ns, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_copyback_bytes, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_flush_calls, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_flush_bytes, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_flush_counts[0], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_flush_counts[1], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_flush_counts[2], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_flush_counts[3], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_flush_counts[4], __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_aliased, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_unpack_alias_released, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED));
++            if ((maps & 65535) == 0) {
++                struct { uint32_t caller; uint64_t maps, bytes; } sites[8];
++                uint64_t other;
++                pthread_mutex_lock(&g_lock);
++                memcpy(sites, g_unpack_callers, sizeof sites);
++                other = g_unpack_other_caller_maps;
++                pthread_mutex_unlock(&g_lock);
++                for (unsigned i = 0; i < sizeof sites / sizeof sites[0] && sites[i].caller; i++)
++                    fprintf(stderr, "ocerz: GL unpack caller=%#x maps=%" PRIu64 " bytes=%" PRIu64 "\n",
++                            sites[i].caller, sites[i].maps, sites[i].bytes);
++                if (other)
++                    fprintf(stderr, "ocerz: GL unpack other_caller_maps=%" PRIu64 "\n", other);
++            }
++        }
++    }
+     if (whole)
+         s->bufsize = size;
+     s->mirror = keep;
+     s->host = host;
+     s->size = size;
+     s->flushed = 0;
+-    RET(s->guest);
++    RET(alias ? alias : s->guest);
+ }
+ 
+ /* glMapBuffer(target, access) */
+@@ -297,28 +602,37 @@ static int sp_glMapBuffer(struct OcerzVM *vm, OcerzCPU *cpu)
+         gl.buffer_iv(target, 0x8764, &q);   /* GL_BUFFER_SIZE */
+         size = (uint32_t)q;
+     }
+-    return map_common(cpu, target, buffer, group, gl.map(target, m32_arg(cpu, 1)), size, 1);
++    unsigned access = m32_arg(cpu, 1);
++    return map_common(vm, cpu, target, buffer, group, gl.map(target, access), size, 1, access == 0x88B9 /* GL_WRITE_ONLY */);
+ }
+ /* glMapBufferRange(target, offset, length, access): the shadow holds just the range, and mirrors nothing */
+ static int sp_glMapBufferRange(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+     gl_init();
+     unsigned target = m32_arg(cpu, 0);
+-    uint32_t len = m32_arg(cpu, 2);
+-    return map_common(cpu, target, bound(target), share_group(),
+-                      gl.map_range(target, (int32_t)m32_arg(cpu, 1), len, m32_arg(cpu, 3)), len, 0);
++    uint32_t len = m32_arg(cpu, 2), access = m32_arg(cpu, 3);
++    return map_common(vm, cpu, target, bound(target), share_group(),
++                      gl.map_range(target, (int32_t)m32_arg(cpu, 1), len, access), len, 0,
++                      (access & 3) == 2 /* WRITE_BIT without READ_BIT */);
+ }
+ 
+ /* glBufferData(target, size, data, usage): the buffer's new size; without data its contents are undefined, which any
+  * shadow mirrors, and with data the shadow takes them too */
+ static int sp_glBufferData(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+-    (void)vm;
+     gl_init();
+     unsigned target = m32_arg(cpu, 0);
+     int32_t size = (int32_t)m32_arg(cpu, 1);
+     uint32_t data = m32_arg(cpu, 2);
++    Shadow *lease = __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED) ? mapped(target) : NULL;
+     gl.buffer_data(target, size, data ? m32_host(data) : NULL, m32_arg(cpu, 3));
++    if (lease && lease->alias) {
++        int still_mapped = 1; /* leave the alias live if a rejected call leaves the query unanswered */
++        gl.buffer_iv(target, 0x88BC /* GL_BUFFER_MAPPED */, &still_mapped);
++        if (still_mapped)
++            RET(0);
++        release_alias(vm, lease);
++    }
+     if (mirrored(target)) {
+         void *group = share_group();
+         uint32_t buffer = bound(target);
+@@ -364,15 +678,27 @@ static int sp_glBufferSubData(struct OcerzVM *vm, OcerzCPU *cpu)
+ /* glDeleteBuffers(n, buffers): their shadows go, so a name made again starts with none */
+ static int sp_glDeleteBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+-    (void)vm;
+     gl_init();
+     int32_t n = (int32_t)m32_arg(cpu, 0);
+     uint32_t names = m32_arg(cpu, 1);
+     void *group = share_group();
++    int live = __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED) > 0;
++    int valid_query = -1;
++    if (live && n > 0 && names) {
++        /* A rejected deletion inside Begin/End leaves the sentinel unchanged.
++         * Query only when there is an outstanding alias. */
++        gl.getiv(0x88EF /* GL_PIXEL_UNPACK_BUFFER_BINDING */, &valid_query);
++        gl.delete_buffers(n, (const uint32_t *)m32_h(names));
++    }
+     pthread_mutex_lock(&g_lock);
+     for (int32_t i = 0; names && i < n; i++) {
+         Shadow *s = find(group, m32_rd(names + 4 * (uint32_t)i));
+         if (s) {
++            if (s->alias) {
++                if (valid_query < 0 || !gl.is_buffer || gl.is_buffer(s->buffer))
++                    continue;
++                release_alias(vm, s);
++            }
+             m32_free(s->guest);
+             *s = (Shadow){ 0 };
+         }
+@@ -380,7 +706,7 @@ static int sp_glDeleteBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
+     pthread_mutex_unlock(&g_lock);
+     for (int32_t i = 0; names && i < n && i < 65536; i++)
+         unbind_deleted(m32_rd(names + 4 * (uint32_t)i));
+-    if (n >= 0)
++    if (n >= 0 && !(live && n > 0 && names))
+         gl.delete_buffers(n, names ? (const uint32_t *)m32_h(names) : NULL);
+     RET(0);
+ }
+@@ -392,8 +718,17 @@ static int flush_common(OcerzCPU *cpu, void (*flush)(unsigned, intptr_t, intptr_
+     uint32_t off = m32_arg(cpu, 1), len = m32_arg(cpu, 2);
+     Shadow *s = mapped(target);
+     if (s && off <= s->size && len <= s->size - off) {
+-        memcpy(s->host + off, m32_h(s->guest + off), len);
++        if (s->alias)
++            __atomic_thread_fence(__ATOMIC_SEQ_CST);
++        else
++            memcpy(s->host + off, m32_h(s->guest + off), len);
+         s->flushed = 1;
++        if (g_log_map_stats && target == 0x88EC && len) {
++            unsigned bucket = len <= 16384 ? 0 : len <= 65536 ? 1 : len <= 262144 ? 2 : len <= 1048576 ? 3 : 4;
++            __atomic_add_fetch(&g_unpack_flush_calls, 1, __ATOMIC_RELAXED);
++            __atomic_add_fetch(&g_unpack_flush_bytes, len, __ATOMIC_RELAXED);
++            __atomic_add_fetch(&g_unpack_flush_counts[bucket], 1, __ATOMIC_RELAXED);
++        }
+     }
+     if (flush)
+         flush(target, off, len);
+@@ -407,14 +742,45 @@ static int sp_glUnmapBuffer(struct OcerzVM *vm, OcerzCPU *cpu)
+     gl_init();
+     unsigned target = m32_arg(cpu, 0);
+     Shadow *s = mapped(target);
++    if (s && s->alias) {
++        __atomic_thread_fence(__ATOMIC_SEQ_CST);
++        unsigned char result = gl.unmap(target);
++        int still_mapped = 1;
++        if (!result)
++            gl.buffer_iv(target, 0x88BC /* GL_BUFFER_MAPPED */, &still_mapped);
++        if (result || !still_mapped)
++            release_alias(vm, s);
++        RET(result);
++    }
+     if (s) {
+-        if (!s->flushed)
++        if (!s->flushed) {
+             memcpy(s->host, m32_h(s->guest), s->size);
++            if (g_log_map_stats && target == 0x88EC)
++                __atomic_add_fetch(&g_unpack_copyback_bytes, s->size, __ATOMIC_RELAXED);
++        }
+         s->host = NULL;
+     }
+     RET(gl.unmap(target));
+ }
+ 
++/* GetBufferPointerv's native result must round-trip to the same i386 address. */
++static int sp_glGetBufferPointerv(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    gl_init();
++    unsigned target = m32_arg(cpu, 0);
++    uint32_t out = m32_arg(cpu, 2);
++    void *pointer = (void *)UINTPTR_MAX;
++    if (gl.get_pointer)
++        gl.get_pointer(target, m32_arg(cpu, 1), out ? &pointer : NULL);
++    if (out && pointer != (void *)UINTPTR_MAX) {
++        Shadow *s = pointer ? mapped(target) : NULL;
++        uint32_t guest = s && s->host == pointer ? (s->alias ? s->alias : s->guest) : m32_handle(pointer);
++        m32_wr(out, guest);
++    }
++    RET(0);
++}
++
+ /* CGLSetParameter(ctx, param, const GLint *values): passed through; the swap interval (kCGLCPSwapInterval, 222) the
+  * game asks for is logged once, and OCERZ_M32_SWAPINTERVAL=<n> replaces it (vsync quantizes a frame to 60/n fps) */
+ static int sp_CGLSetParameter(struct OcerzVM *vm, OcerzCPU *cpu)
+@@ -527,6 +893,7 @@ const M32SpecialEntry m32_gl_specials[] = {
+     { "_glShaderSource", sp_glShaderSource }, { "_glShaderSourceARB", sp_glShaderSourceARB },
+     { "_glMapBuffer", sp_glMapBuffer }, { "_glMapBufferARB", sp_glMapBuffer },
+     { "_glMapBufferRange", sp_glMapBufferRange },
++    { "_glGetBufferPointerv", sp_glGetBufferPointerv }, { "_glGetBufferPointervARB", sp_glGetBufferPointerv },
+     { "_glFlushMappedBufferRange", sp_glFlushMappedBufferRange },
+     { "_glFlushMappedBufferRangeAPPLE", sp_glFlushMappedBufferRangeAPPLE },
+     { "_glUnmapBuffer", sp_glUnmapBuffer }, { "_glUnmapBufferARB", sp_glUnmapBuffer },
 diff --git a/src/m32_libsystem.c b/src/m32_libsystem.c
 index 2b14f08..ccc19f5 100644
 --- a/src/m32_libsystem.c
@@ -540,10 +1143,18 @@ index 33bee91..a068b54 100644
      { "_GetPortClipRegion", qd_GetPortClipRegion }, { "_SetPortClipRegion", qd_SetPortClipRegion },
      { "_GetPortVisibleRegion", qd_GetPortVisibleRegion },
 diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
-index bc80579..bc8db6e 100644
+index bc80579..c6e0a66 100644
 --- a/tests/unit/test_m32.c
 +++ b/tests/unit/test_m32.c
-@@ -480,6 +480,48 @@ static void test_quickdraw(void)
+@@ -21,6 +21,7 @@
+ #include <limits.h>
+ #include <locale.h>
+ #include <mach-o/loader.h>
++#include <mach/mach_vm.h>
+ #include <signal.h>
+ #include <pthread.h>
+ #include <stdio.h>
+@@ -480,6 +481,264 @@ static void test_quickdraw(void)
      call("_SetGWorld", 2, s);
  }
  
@@ -589,18 +1200,256 @@ index bc80579..bc8db6e 100644
 +    }
 +}
 +
++static void test_agl_buffer_storage(void)
++{
++    enum { ARRAY = 0x8892, DYNAMIC_DRAW = 0x88E8, READ_WRITE = 0x88BA, FLUSHING_UNMAP_APPLE = 0x8A13 };
++    void (*gen)(int, uint32_t *) = (void (*)(int, uint32_t *))dlsym(RTLD_DEFAULT, "glGenBuffers");
++    void (*bind)(unsigned, uint32_t) = (void (*)(unsigned, uint32_t))dlsym(RTLD_DEFAULT, "glBindBuffer");
++    void (*data)(unsigned, intptr_t, const void *, unsigned) =
++        (void (*)(unsigned, intptr_t, const void *, unsigned))dlsym(RTLD_DEFAULT, "glBufferData");
++    void (*read)(unsigned, intptr_t, intptr_t, void *) =
++        (void (*)(unsigned, intptr_t, intptr_t, void *))dlsym(RTLD_DEFAULT, "glGetBufferSubData");
++    void (*parameter)(unsigned, unsigned, int) =
++        (void (*)(unsigned, unsigned, int))dlsym(RTLD_DEFAULT, "glBufferParameteriAPPLE");
++    check("AGL buffer test entry points", gen && bind && data && read && parameter);
++    if (!gen || !bind || !data || !read || !parameter)
++        return;
++    uint32_t names[2] = { 0 };
++    gen(2, names);
++    check("create two distinct GL buffers", names[0] && names[1] && names[0] != names[1]);
++    if (!names[0] || !names[1])
++        return;
++    for (int i = 0; i < 2; i++) {
++        uint32_t initial[4] = { 17u + (uint32_t)i, 101, 202, 303 };
++        uint32_t result[4] = { 0 };
++        bind(ARRAY, names[i]);
++        data(ARRAY, sizeof initial, initial, DYNAMIC_DRAW);
++        if (i)
++            parameter(ARRAY, FLUSHING_UNMAP_APPLE, 0);
++        uint32_t guest = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++        check("a mapping contains its own buffer data", guest &&
++              !memcmp(m32_h(guest), initial, sizeof initial));
++        if (!guest)
++            continue;
++        call("_glGetBufferPointerv", 3, (uint32_t[]){ ARRAY, 0x88BD, DATA + 0xc60 });
++        check("the ordinary shadow pointer round-trips through the GL query", m32_rd(DATA + 0xc60) == guest);
++        m32_wr(guest, 90u + (uint32_t)i);
++        if (i)
++            call("_glFlushMappedBufferRangeAPPLE", 3, (uint32_t[]){ ARRAY, 0, sizeof(uint32_t) });
++        check("the buffer unmaps through the guest bridge",
++              (call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) & 0xff) == 1);
++        read(ARRAY, 0, sizeof result, result);
++        initial[0] = 90u + (uint32_t)i;
++        check("host readback preserves writes and untouched data", !memcmp(result, initial, sizeof result));
++    }
++    memcpy(m32_h(DATA + 0xc50), names, sizeof names);
++    call("_glDeleteBuffers", 2, (uint32_t[]){ 2, DATA + 0xc50 });
++}
++
++static void test_agl_guest_unpack_alias(void)
++{
++    enum { UNPACK = 0x88EC, STREAM_DRAW = 0x88E0, WRITE_ONLY = 0x88B9,
++           FLUSHING_UNMAP_APPLE = 0x8A13, SIZE = 8 * 1024 * 1024 };
++    void (*gen)(int, uint32_t *) = (void (*)(int, uint32_t *))dlsym(RTLD_DEFAULT, "glGenBuffers");
++    void (*bind)(unsigned, uint32_t) = (void (*)(unsigned, uint32_t))dlsym(RTLD_DEFAULT, "glBindBuffer");
++    void (*data)(unsigned, intptr_t, const void *, unsigned) =
++        (void (*)(unsigned, intptr_t, const void *, unsigned))dlsym(RTLD_DEFAULT, "glBufferData");
++    void *(*map)(unsigned, unsigned) = (void *(*)(unsigned, unsigned))dlsym(RTLD_DEFAULT, "glMapBuffer");
++    unsigned char (*unmap)(unsigned) = (unsigned char (*)(unsigned))dlsym(RTLD_DEFAULT, "glUnmapBuffer");
++    void (*parameter)(unsigned, unsigned, int) =
++        (void (*)(unsigned, unsigned, int))dlsym(RTLD_DEFAULT, "glBufferParameteriAPPLE");
++    void (*flush)(unsigned, intptr_t, intptr_t) =
++        (void (*)(unsigned, intptr_t, intptr_t))dlsym(RTLD_DEFAULT, "glFlushMappedBufferRangeAPPLE");
++    void (*read)(unsigned, intptr_t, intptr_t, void *) =
++        (void (*)(unsigned, intptr_t, intptr_t, void *))dlsym(RTLD_DEFAULT, "glGetBufferSubData");
++    void (*remove)(int, const uint32_t *) = (void (*)(int, const uint32_t *))dlsym(RTLD_DEFAULT, "glDeleteBuffers");
++    check("guest unpack alias test entry points", gen && bind && data && map && unmap && parameter && flush && read && remove);
++    if (!gen || !bind || !data || !map || !unmap || !parameter || !flush || !read || !remove)
++        return;
++    uint8_t *sentinel = malloc(SIZE);
++    check("allocate unpack test data", sentinel != NULL);
++    if (!sentinel)
++        return;
++    memset(sentinel, 0x25, SIZE);
++    uint32_t names[2] = { 0 };
++    gen(2, names);
++    size_t page = (size_t)getpagesize();
++    for (int explicit_flush = 0; explicit_flush < 2; explicit_flush++) {
++        bind(UNPACK, names[explicit_flush]);
++        data(UNPACK, SIZE, sentinel, STREAM_DRAW);
++        if (explicit_flush)
++            parameter(UNPACK, FLUSHING_UNMAP_APPLE, 0);
++        void *host = map(UNPACK, WRITE_ONLY);
++        check("the driver returns a whole aligned 8 MiB unpack mapping", host && (uintptr_t)host % page == 0);
++        if (!host)
++            continue;
++        uint64_t guest = ocerz_map_donate(SIZE);
++        check("reserve an isolated i386 address range", guest && guest <= M32_HANDLE_LO - SIZE);
++        if (guest && guest <= M32_HANDLE_LO - SIZE && (uintptr_t)host % page == 0) {
++            mach_vm_address_t target = (uintptr_t)m32_h((uint32_t)guest);
++            mach_vm_address_t alias = target;
++            vm_prot_t current = VM_PROT_NONE, max = VM_PROT_NONE;
++            kern_return_t kr = mach_vm_remap(mach_task_self(), &alias, SIZE, 0,
++                                             VM_FLAGS_FIXED | VM_FLAGS_OVERWRITE, mach_task_self(), (uintptr_t)host,
++                                             FALSE, &current, &max, VM_INHERIT_NONE);
++            int writable = kr == KERN_SUCCESS && alias == target && (current & VM_PROT_WRITE) && !(current & VM_PROT_EXECUTE);
++            check("alias whole writable PBO pages into the isolated guest range", writable);
++            if (writable) {
++                const uint32_t offset = SIZE - (uint32_t)page + 64;
++                m32_wr((uint32_t)guest + offset, 0x85421355);
++                if (explicit_flush)
++                    flush(UNPACK, offset, sizeof(uint32_t));
++                check("revoke the guest alias while the native map is valid", ocerz_unmap(guest, SIZE) == OCERZ_OK &&
++                      !ocerz_addr_committed(guest));
++                check("the native unpack buffer still unmaps normally", unmap(UNPACK) != 0);
++                uint32_t pixels[3] = { 0 };
++                read(UNPACK, offset - sizeof(uint32_t), sizeof pixels, pixels);
++                check("guest address writes appear with neighboring bytes intact",
++                      pixels[0] == 0x25252525 && pixels[1] == 0x85421355 && pixels[2] == 0x25252525);
++                continue;
++            }
++        }
++        if (guest)
++            ocerz_unmap(guest, SIZE);
++        unmap(UNPACK);
++    }
++    remove(2, names);
++    free(sentinel);
++}
++
++static uint32_t test_live_agl_unpack_alias(void)
++{
++    enum { UNPACK = 0x88EC, ARRAY = 0x8892, STREAM_DRAW = 0x88E0, WRITE_ONLY = 0x88B9,
++           POINTER = 0x88BD, FLUSHING_UNMAP_APPLE = 0x8A13, SIZE = 8 * 1024 * 1024, OFFSET = SIZE - 16400 };
++    void (*gen)(int, uint32_t *) = (void (*)(int, uint32_t *))dlsym(RTLD_DEFAULT, "glGenBuffers");
++    void (*bind)(unsigned, uint32_t) = (void (*)(unsigned, uint32_t))dlsym(RTLD_DEFAULT, "glBindBuffer");
++    void (*data)(unsigned, intptr_t, const void *, unsigned) =
++        (void (*)(unsigned, intptr_t, const void *, unsigned))dlsym(RTLD_DEFAULT, "glBufferData");
++    void (*read)(unsigned, intptr_t, intptr_t, void *) =
++        (void (*)(unsigned, intptr_t, intptr_t, void *))dlsym(RTLD_DEFAULT, "glGetBufferSubData");
++    void (*parameter)(unsigned, unsigned, int) =
++        (void (*)(unsigned, unsigned, int))dlsym(RTLD_DEFAULT, "glBufferParameteriAPPLE");
++    unsigned (*get_error)(void) = (unsigned (*)(void))dlsym(RTLD_DEFAULT, "glGetError");
++    void (*begin)(unsigned) = (void (*)(unsigned))dlsym(RTLD_DEFAULT, "glBegin");
++    void (*end)(void) = (void (*)(void))dlsym(RTLD_DEFAULT, "glEnd");
++    check("runtime alias test entry points", gen && bind && data && read && parameter && get_error && begin && end);
++    if (!gen || !bind || !data || !read || !parameter || !get_error || !begin || !end)
++        return 0;
++    uint8_t *sentinel = malloc(SIZE);
++    check("allocate runtime alias test data", sentinel != NULL);
++    if (!sentinel)
++        return 0;
++    memset(sentinel, 0x47, SIZE);
++    uint32_t names[2] = { 0 };
++    gen(2, names);
++    uint32_t query[] = { UNPACK, POINTER, DATA + 0xc64 };
++    for (int i = 0; i < 2; i++) {
++        bind(UNPACK, names[i]);
++        data(UNPACK, SIZE, sentinel, STREAM_DRAW);
++        if (i)
++            parameter(UNPACK, FLUSHING_UNMAP_APPLE, 0);
++        uint32_t guest = call("_glMapBufferARB", 2, (uint32_t[]){ UNPACK, WRITE_ONLY });
++        check("the upload uses a page-aligned guest alias", guest && guest % getpagesize() == 0);
++        if (!guest)
++            continue;
++        call("_glGetBufferPointervARB", 3, query);
++        check("the pointer query returns the exact active guest alias", m32_rd(query[2]) == guest);
++        m32_wr(guest + OFFSET, 0xa3875213);
++        if (i)
++            call("_glFlushMappedBufferRangeAPPLE", 3, (uint32_t[]){ UNPACK, OFFSET, sizeof(uint32_t) });
++        check("normal unmap revokes the shared guest pages",
++              call("_glUnmapBufferARB", 1, (uint32_t[]){ UNPACK }) == 1 && !ocerz_addr_committed(guest));
++        uint32_t out[3] = { 0 };
++        read(UNPACK, OFFSET - 4, sizeof out, out);
++        check("the native buffer kept both its write and its neighbors",
++              out[0] == 0x47474747 && out[1] == 0xa3875213 && out[2] == 0x47474747);
++    }
++    free(sentinel);
++    bind(UNPACK, names[0]);
++    uint32_t alias = call("_glMapBuffer", 2, (uint32_t[]){ UNPACK, WRITE_ONLY });
++    bind(ARRAY, names[0]);
++    call("_glBufferDataARB", 4, (uint32_t[]){ ARRAY, UINT32_MAX, 0, STREAM_DRAW });
++    unsigned error = get_error();
++    check("a rejected alternate-target allocation preserves the mapping and GL error",
++          alias && ocerz_addr_committed(alias) && error != 0);
++    call("_glBufferData", 4, (uint32_t[]){ ARRAY, SIZE, 0, STREAM_DRAW });
++    error = get_error();
++    call("_glGetBufferPointerv", 3, query);
++    if (error) {
++        /* The M4 legacy renderer rejects reallocation of a live mapping. */
++        check("the driver still exposes the original alias after it rejects resizing",
++              alias && ocerz_addr_committed(alias) && m32_rd(query[2]) == alias);
++        check("unmapping through another target revokes the shared buffer",
++              call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) == 1 && !ocerz_addr_committed(alias));
++        call("_glBufferData", 4, (uint32_t[]){ ARRAY, SIZE, 0, STREAM_DRAW });
++        call("_glGetBufferPointerv", 3, query);
++    }
++    check("reallocation leaves no committed old alias or current mapping",
++          alias && !ocerz_addr_committed(alias) && m32_rd(query[2]) == 0 && get_error() == 0);
++    alias = call("_glMapBuffer", 2, (uint32_t[]){ UNPACK, WRITE_ONLY });
++    m32_wr(DATA + 0xc50, names[0]);
++    begin(0 /* GL_POINTS */);
++    call("_glDeleteBuffers", 2, (uint32_t[]){ 1, DATA + 0xc50 });
++    end();
++    error = get_error();
++    check("a rejected delete retains the live mapping and driver error",
++          alias && ocerz_addr_committed(alias) && error == 0x0502 /* GL_INVALID_OPERATION */);
++    call("_glDeleteBuffersARB", 2, (uint32_t[]){ 1, DATA + 0xc50 });
++    check("deleting the mapped object revokes its alias", alias && !ocerz_addr_committed(alias));
++    bind(UNPACK, names[1]);
++    data(UNPACK, 65536, NULL, STREAM_DRAW);
++    parameter(UNPACK, FLUSHING_UNMAP_APPLE, 1);
++    uint32_t copied = call("_glMapBuffer", 2, (uint32_t[]){ UNPACK, WRITE_ONLY });
++    check("a small upload maps through the copied fallback", copied != 0);
++    if (copied) {
++        m32_wr(copied + 4, 0xc34b142d);
++        call("_glGetBufferPointerv", 3, query);
++        check("the pointer query addresses the upload fallback", m32_rd(query[2]) == copied);
++        check("the upload fallback unmaps", call("_glUnmapBuffer", 1, (uint32_t[]){ UNPACK }) == 1);
++        uint32_t saved = 0;
++        read(UNPACK, 4, sizeof saved, &saved);
++        check("the fallback preserves the guest's native upload bytes", saved == 0xc34b142d);
++    }
++    data(UNPACK, SIZE, NULL, STREAM_DRAW);
++    alias = call("_glMapBuffer", 2, (uint32_t[]){ UNPACK, WRITE_ONLY });
++    check("a final alias is live before context destruction", alias && ocerz_addr_committed(alias));
++    return alias;
++}
++
  /* AGL on a window's QuickDraw port: the context draws into the window (src/m32_agl.c) */
  static void test_agl(uint32_t port)
  {
-@@ -493,6 +535,7 @@ static void test_agl(uint32_t port)
+@@ -493,6 +752,10 @@ static void test_agl(uint32_t port)
      check("aglGetDrawable answers the port", call("_aglGetDrawable", 1, (uint32_t[]){ ctx }) == port);
      check("aglSetCurrentContext", (call("_aglSetCurrentContext", 1, (uint32_t[]){ ctx }) & 0xff) == 1 &&
                                    call("_aglGetCurrentContext", 0, NULL) == ctx);
 +    test_agl_click_scope(port);
++    test_agl_buffer_storage();
++    if (getenv("OCERZ_M32_TEST_GL_ALIAS"))
++        test_agl_guest_unpack_alias();
      void (*clear_color)(float, float, float, float) = (void (*)(float, float, float, float))dlsym(RTLD_DEFAULT, "glClearColor");
      void (*clear)(uint32_t) = (void (*)(uint32_t))dlsym(RTLD_DEFAULT, "glClear");
      void (*read)(int, int, int, int, uint32_t, uint32_t, void *) =
-@@ -524,8 +567,6 @@ static void test_agl(uint32_t port)
+@@ -516,16 +779,25 @@ static void test_agl(uint32_t port)
+     check("aglGetCGLContext", (call("_aglGetCGLContext", 2, (uint32_t[]){ ctx, DATA + 0xc40 }) & 0xff) == 1 &&
+                               m32_rd(DATA + 0xc40) != 0);
+     call("_aglSwapBuffers", 1, (uint32_t[]){ ctx });
++    uint32_t alias = getenv("OCERZ_M32_TEST_GL_ALIAS") && m32_gl_unpack_alias_enabled() ?
++        test_live_agl_unpack_alias() : 0;
++    uint32_t peer = alias ? call("_aglCreateContext", 2, (uint32_t[]){ pf, ctx }) : 0;
++    if (alias)
++        check("create another context with the original buffer share group", peer != 0);
+     check("aglSetDrawable(NULL) detaches", (call("_aglSetDrawable", 2, (uint32_t[]){ ctx, 0 }) & 0xff) == 1 &&
+                                            call("_aglGetDrawable", 1, (uint32_t[]){ ctx }) == 0);
+     call("_aglSetCurrentContext", 1, (uint32_t[]){ 0 });
+     check("aglDestroyContext", (call("_aglDestroyContext", 1, (uint32_t[]){ ctx }) & 0xff) == 1);
++    if (peer) {
++        check("destroying one shared context preserves the buffer alias", ocerz_addr_committed(alias));
++        check("destroy the remaining shared context", call("_aglDestroyContext", 1, (uint32_t[]){ peer }) == 1);
++    }
++    if (alias)
++        check("destroying the last context revokes its live unpack alias", !ocerz_addr_committed(alias));
+     call("_aglDestroyPixelFormat", 1, (uint32_t[]){ pf });
      check("aglGetError", call("_aglGetError", 0, NULL) == 0);
  }
  
@@ -609,7 +1458,7 @@ index bc80579..bc8db6e 100644
  /* Carbon event parameters cross in their i386 layouts; UPPs are their functions; EventRecords are 16 bytes */
  static void test_event_params(uint32_t w, uint32_t port)
  {
-@@ -596,6 +637,25 @@ static void test_event_params(uint32_t w, uint32_t port)
+@@ -596,6 +868,25 @@ static void test_event_params(uint32_t w, uint32_t port)
      memcpy(&message, m32_h(DATA + 0xd82), 4);
      check("... in i386's 16 bytes: keyDown, 'a'", what == 3 /* keyDown */ && message == 'a');
      void (*release)(const void *) = (void (*)(const void *))dlsym(RTLD_DEFAULT, "CFRelease");
@@ -635,7 +1484,7 @@ index bc80579..bc8db6e 100644
      release(ev);
      release(down);
  
-@@ -1228,6 +1288,14 @@ static void test_carbon(void)
+@@ -1228,6 +1519,14 @@ static void test_carbon(void)
          call("_GlobalToLocal", 1, (uint32_t[]){ DATA + 0xa90 });
          memcpy(p0, m32_h(DATA + 0xa90), 4);
          check("GlobalToLocal takes it away", p0[0] == 5 && p0[1] == 7);

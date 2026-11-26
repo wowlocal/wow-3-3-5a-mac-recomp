@@ -2,7 +2,7 @@
 set -eu
 
 if (( $# < 4 )); then
-    print -u2 'Usage: launch.sh TRIAL_APP AARCHX_RUNTIME WRITABLE_GAME_DIR LOCALE [--profile] [--trace-settings] [--check]'
+    print -u2 'Usage: launch.sh TRIAL_APP AARCHX_RUNTIME WRITABLE_GAME_DIR LOCALE [--profile] [--trace-settings] [--check] [--unpack-alias|--copy-unpack]'
     exit 2
 fi
 
@@ -14,11 +14,14 @@ shift 4
 profile=0
 trace_settings=0
 check_only=0
+unpack_alias=0
 for option in "$@"; do
     case "$option" in
         --profile) profile=1 ;;
         --trace-settings) trace_settings=1 ;;
         --check) check_only=1 ;;
+        --unpack-alias) unpack_alias=1 ;;
+        --copy-unpack) unpack_alias=0 ;;
         *) print -u2 "Unknown option $option"; exit 2 ;;
     esac
 done
@@ -64,6 +67,7 @@ if [[ "${WRATH_TRIAL_LOCKED:-}" != "$app" ]]; then
     flags=()
     if (( profile )); then flags+=(--profile); fi
     if (( trace_settings )); then flags+=(--trace-settings); fi
+    if (( unpack_alias )); then flags+=(--unpack-alias); fi
     exec /usr/bin/lockf -k -t 0 "${app:h}/.wrath-launch.lock" \
         /usr/bin/env "WRATH_TRIAL_LOCKED=$app" "$0" "$app" "$runtime" "$game" "$locale" "${flags[@]}"
 fi
@@ -96,6 +100,7 @@ fi
 if (( trace_settings )); then
     extra+=(--env OCERZ_M32LOG=files,exit --env OCERZ_M32_SETTINGS_IO=1)
 fi
+extra+=(--env "OCERZ_M32_UNPACK_ALIAS=$unpack_alias")
 
 /usr/bin/open -n --stdout "$log.stdout.log" --stderr "$log.log" \
     "${extra[@]}" \
