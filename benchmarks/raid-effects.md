@@ -88,3 +88,15 @@ The same binary averaged **55.42 swaps/s** in the control and **55.78 swaps/s** 
 ## Guest CPU profile
 
 The installed runtime recorded five successive eight-second profiling intervals after the 24-caster scene warmed at 1365 × 768. Executing already translated guest code accounted for **60.9–65.8%** of sampled CPU time on the hottest guest thread. Compiling new blocks took **0–1 ms** per interval at the log's millisecond resolution. This measures the compilation cost that precompiling the same blocks could remove. Improving warmed throughput would require faster generated code or less rendering work. [Guest CPU measurements](results/raid-guest-cpu-profile.json)
+
+## Native mapped-upload probe
+
+The standalone OpenGL probe draws 48 batches per frame using the raid's three measured payload sizes and a rolling 2 MiB vertex buffer. The accelerated legacy OpenGL profile exposed `GL_APPLE_flush_buffer_range`. The probe compared mapping, explicit flushing, and unmapping each write with `glBufferSubData`. It kept driver serialization enabled and verified identical framebuffer pixels.
+
+The 200-frame runs took **2.73–3.04 ms/frame** with `glBufferSubData` and **6.70–8.64 ms/frame** with mapped writes. This is a native offscreen measurement. The mapped variant stays out of the trial runtime. [Native probe results](results/vertex-upload-explicit-flush.json)
+
+```sh
+xcrun clang -O2 -Wall -Wextra -Wno-deprecated-declarations -framework OpenGL \
+    benchmarks/gl-map-upload-probe.c -o /tmp/wrath-map-upload-probe
+/tmp/wrath-map-upload-probe
+```

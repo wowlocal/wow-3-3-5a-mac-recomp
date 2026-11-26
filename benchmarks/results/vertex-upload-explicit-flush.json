@@ -1,0 +1,61 @@
+{
+  "fixture": "native offscreen triangle batches",
+  "viewport": [
+    1365,
+    768
+  ],
+  "open_gl_profile": "2.1 Metal - 91.7",
+  "arb_map_buffer_range": false,
+  "apple_flush_buffer_range": true,
+  "identical_rendered_output": true,
+  "colored_pixels": 161622,
+  "vertex_buffer_bytes": 2097152,
+  "uploads_per_frame": 48,
+  "payload_sizes_bytes": [
+    1056,
+    1296,
+    1584
+  ],
+  "runs": [
+    {
+      "mode": "subdata",
+      "frames": 30,
+      "wall_ms_per_frame": 4.997
+    },
+    {
+      "mode": "explicit-flush",
+      "frames": 30,
+      "wall_ms_per_frame": 5.738
+    },
+    {
+      "mode": "subdata",
+      "frames": 200,
+      "wall_ms_per_frame": 3.037
+    },
+    {
+      "mode": "explicit-flush",
+      "frames": 200,
+      "wall_ms_per_frame": 7.45
+    },
+    {
+      "mode": "explicit-flush",
+      "frames": 200,
+      "wall_ms_per_frame": 8.641
+    },
+    {
+      "mode": "subdata",
+      "frames": 200,
+      "wall_ms_per_frame": 3.013
+    },
+    {
+      "mode": "subdata",
+      "frames": 200,
+      "wall_ms_per_frame": 2.733
+    },
+    {
+      "mode": "explicit-flush",
+      "frames": 200,
+      "wall_ms_per_frame": 6.695
+    }
+  ]
+}
