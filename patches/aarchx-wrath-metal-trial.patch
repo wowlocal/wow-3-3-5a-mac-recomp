@@ -1,0 +1,485 @@
+diff --git a/Makefile b/Makefile
+index 6e58699..f5993ed 100644
+--- a/Makefile
++++ b/Makefile
+@@ -44,6 +44,11 @@ SYSLIBS := $(foreach l,system_c system_kernel system_pthread system_malloc syste
+ SRCS := $(wildcard src/*.c)
+ ASRCS := $(wildcard src/*.s)
+ MSRCS := $(wildcard src/*.m)
++ifneq ($(strip $(WMGL_INCLUDE)),)
++CFLAGS += -I"$(WMGL_INCLUDE)" -DOCERZ_WMGL_TRIAL
++else
++MSRCS := $(filter-out src/m32_wmgl.m,$(MSRCS))
++endif
+ OBJS := $(SRCS:.c=.o) $(ASRCS:.s=.o) $(MSRCS:.m=.o)
+ DEPS := $(SRCS:.c=.d)
+ CORE_OBJS := $(filter-out src/main.o,$(OBJS))
+diff --git a/include/ocerz/m32_wmgl.h b/include/ocerz/m32_wmgl.h
+new file mode 100644
+index 0000000..dae0ebd
+--- /dev/null
++++ b/include/ocerz/m32_wmgl.h
+@@ -0,0 +1,23 @@
++#ifndef OCERZ_M32_WMGL_H
++#define OCERZ_M32_WMGL_H
++
++/* Trial-only WineMetalGL sidecar. The guest still owns an ordinary AGL
++ * context and Carbon window. OpenGL calls use the selected renderer. */
++#ifdef OCERZ_WMGL_TRIAL
++int m32_wmgl_enabled(void);
++int m32_wmgl_symbol(const char *name, void **address);
++int m32_wmgl_create(void *agl, void *share);
++void m32_wmgl_destroy(void *agl);
++int m32_wmgl_set_current(void *agl);
++int m32_wmgl_drawable(void *agl, void *window);
++int m32_wmgl_swap(void *agl);
++#else
++static inline int m32_wmgl_symbol(const char *name, void **address) { return 0; }
++static inline int m32_wmgl_create(void *agl, void *share) { return 1; }
++static inline void m32_wmgl_destroy(void *agl) {}
++static inline int m32_wmgl_set_current(void *agl) { return 1; }
++static inline int m32_wmgl_drawable(void *agl, void *window) { return 1; }
++static inline int m32_wmgl_swap(void *agl) { return 0; }
++#endif
++
++#endif
+diff --git a/src/bridge.c b/src/bridge.c
+index 6267c88..7323fcb 100644
+--- a/src/bridge.c
++++ b/src/bridge.c
+@@ -374,6 +374,7 @@
+  * matched again on its low half.
+  */
+ #include "ocerz/bridge.h"
++#include "ocerz/m32_wmgl.h"
+ #include "ocerz/apidb.h"
+ #include "ocerz/abi.h"
+ #include "ocerz/blocks.h"
+@@ -3756,6 +3757,9 @@ void *ocerz_bridge_host_symbol(const char *install_name, const char *host_sym)
+ {
+     if (!host_sym)
+         return NULL;
++    void *graphics = NULL;
++    if (m32_wmgl_symbol(host_sym, &graphics))
++        return graphics;
+     void *own = g_br_host_sym ? g_br_host_sym(host_sym) : NULL;
+     if (own)
+         return own;
+diff --git a/src/m32_agl.c b/src/m32_agl.c
+index 8f7ec40..89d9563 100644
+--- a/src/m32_agl.c
++++ b/src/m32_agl.c
+@@ -27,6 +27,7 @@
+ 
+ #include "ocerz/interp.h"
+ #include "ocerz/m32.h"
++#include "ocerz/m32_wmgl.h"
+ 
+ #define RET(v) do { m32_ret(cpu, (uint32_t)(v), 0, 0); return OCERZ_STEP_OK; } while (0)
+ #define A(i) m32_arg(cpu, i)
+@@ -198,6 +199,10 @@ static int agl_CreateContext(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+     (void)vm;
+     Obj context = ready() && A(0) ? agl.create_context(H(0), H(1)) : NULL;
++    if (context && !m32_wmgl_create(context, H(1))) {
++        agl.destroy_context(context);
++        RET(0);
++    }
+     if (context && m32_gl_unpack_alias_enabled()) {
+         void *native = NULL;
+         if (!agl.get_cgl_context(context, &native))
+@@ -217,6 +222,8 @@ static int agl_DestroyContext(struct OcerzVM *vm, OcerzCPU *cpu)
+         native = NULL;
+     remember(context, 0);
+     unsigned char result = agl.destroy_context(context);
++    if (result)
++        m32_wmgl_destroy(context);
+     if (result && native)
+         m32_gl_alias_context_destroyed(vm, native);
+     RET(result);
+@@ -241,7 +248,11 @@ static int agl_UpdateContext(struct OcerzVM *vm, OcerzCPU *cpu)
+     }
+     RET((unsigned char)out_x[0]);
+ }
+-static int agl_SetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? agl.set_current(H(0)) : 0); }
++static int agl_SetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    RET(ready() && agl.set_current(H(0)) && m32_wmgl_set_current(H(0)));
++}
+ static int agl_GetCurrentContext(struct OcerzVM *vm, OcerzCPU *cpu) { (void)vm; RET(ready() ? m32_handle(agl.get_current()) : 0); }
+ 
+ /* aglSetDrawable(AGLContext, AGLDrawable): the port's window, or its GWorld's pixels; NULL detaches */
+@@ -266,6 +277,8 @@ static int agl_SetDrawable(struct OcerzVM *vm, OcerzCPU *cpu)
+         m32_log_once("AGL: aglSetDrawable with something that is no QuickDraw port (AGL_BAD_DRAWABLE):", "aglSetDrawable");
+         RET(0);
+     }
++    if (ok && (!port || win))
++        ok = m32_wmgl_drawable(ctx, win);
+     remember(ctx, ok ? port : 0);
+     RET(ok);
+ }
+@@ -324,7 +337,8 @@ static int agl_SwapBuffers(struct OcerzVM *vm, OcerzCPU *cpu)
+         pthread_once(&g_frame_times_once, open_frame_times);
+         int timed = g_frame_times && m32_qd_port_window(drawable_of(ctx));
+         uint64_t entry = timed ? clock_gettime_nsec_np(CLOCK_MONOTONIC) : 0;
+-        agl.swap_buffers(ctx);
++        if (!m32_wmgl_swap(ctx))
++            agl.swap_buffers(ctx);
+         if (timed) {
+             uint64_t returned = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+             if (g_frame_trace)
+diff --git a/src/m32_bridge.c b/src/m32_bridge.c
+index 5d446b0..d76fa5f 100644
+--- a/src/m32_bridge.c
++++ b/src/m32_bridge.c
+@@ -20,6 +20,7 @@
+ #include "ocerz/m32_db.h"
+ #include "ocerz/m32_objc.h"
+ #include "ocerz/m32.h"
++#include "ocerz/m32_wmgl.h"
+ #include "ocerz/types.h"
+ #include "ocerz/vm.h"
+ 
+@@ -337,7 +338,8 @@ uint32_t m32_export(const char *lib, const char *name)
+             e->gnote = r.guest;
+             e->hnote = r.host;
+             e->host_fn = ocerz_bridge_host_symbol(lib ? lib : OCERZ_BRIDGE_LIBSYSTEM, r.host_symbol);
+-            if (!e->host_fn)
++            void *graphics = NULL;
++            if (!e->host_fn && !m32_wmgl_symbol(r.host_symbol, &graphics))
+                 e->host_fn = dlsym(RTLD_DEFAULT, r.host_symbol);
+             if (!e->host_fn) {
+                 e->kind = M32_EX_BAD;
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+new file mode 100644
+index 0000000..9377b79
+--- /dev/null
++++ b/src/m32_wmgl.m
+@@ -0,0 +1,326 @@
++#import <AppKit/AppKit.h>
++#import <QuartzCore/CAMetalLayer.h>
++#include <dlfcn.h>
++#include <pthread.h>
++#include <objc/runtime.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <math.h>
++
++#include "ocerz/m32_wmgl.h"
++#include "winemetalgl/driver.h"
++
++static pthread_once_t initialization = PTHREAD_ONCE_INIT;
++static struct {
++    int (*initialize)(unsigned);
++    unsigned (*formats)(struct wmgl_pixel_format *, unsigned, unsigned *);
++    wmgl_context *(*create)(int, wmgl_context *, const int *, int *);
++    void (*destroy)(wmgl_context *);
++    wmgl_surface *(*window)(void *, int, int, int);
++    wmgl_surface *(*pbuffer)(int, int, int);
++    void (*release)(wmgl_surface *);
++    int (*current)(wmgl_context *, wmgl_surface *, wmgl_surface *);
++    int (*swap)(wmgl_surface *);
++    void (*flush)(wmgl_surface *, unsigned, int, int, int);
++    void *(*proc)(const char *);
++} driver;
++static int format;
++
++typedef struct {
++    void *agl;
++    wmgl_context *context;
++    wmgl_surface *surface;
++    CAMetalLayer *layer;
++    NSWindow *overlay;
++    void *carbon;
++    uint32_t window_number;
++    int width, height;
++    unsigned long swaps;
++} Sidecar;
++static Sidecar contexts[64];
++static __thread Sidecar *current;
++
++static void initialize(void)
++{
++    const char *name = getenv("OCERZ_WMGL_LIBRARY");
++    if (!name || !*name)
++        return;
++    void *handle = *name == '/' ? dlopen(name, RTLD_NOW | RTLD_LOCAL) : NULL;
++    if (!handle) {
++        fprintf(stderr, "ocerz: cannot open the requested WineMetalGL core: %s\n", name);
++        exit(2);
++    }
++#define LOAD(member, symbol) do { \
++    driver.member = (__typeof__(driver.member))dlsym(handle, symbol); \
++    if (!driver.member) { fprintf(stderr, "ocerz: missing WineMetalGL ABI %s\n", symbol); exit(2); } \
++} while (0)
++    LOAD(initialize, "wmgl_initialize");
++    LOAD(formats, "wmgl_get_pixel_formats");
++    LOAD(create, "wmgl_context_create");
++    LOAD(destroy, "wmgl_context_destroy");
++    LOAD(window, "wmgl_surface_create_window");
++    LOAD(pbuffer, "wmgl_surface_create_pbuffer");
++    LOAD(release, "wmgl_surface_destroy");
++    LOAD(current, "wmgl_make_current");
++    LOAD(swap, "wmgl_surface_swap");
++    LOAD(flush, "wmgl_surface_flush");
++    LOAD(proc, "wmgl_get_proc_address");
++#undef LOAD
++    struct wmgl_pixel_format formats[128];
++    unsigned window_count = 0;
++    if (driver.initialize(WMGL_DRIVER_ABI_VERSION) == 0) {
++        unsigned count = driver.formats(formats, 128, &window_count);
++        for (unsigned i = 0; i < count && i < 128; i++) {
++            struct wmgl_pixel_format *f = &formats[i];
++            if (f->draw_to_window && f->double_buffer &&
++                f->red_bits == 8 && f->alpha_bits == 8 && f->depth_bits == 24 &&
++                f->stencil_bits == 8 && f->samples <= 1 && !f->srgb_capable && !f->float_components) {
++                format = (int)i + 1;
++                break;
++            }
++        }
++    }
++    if (!format) {
++        fprintf(stderr, "ocerz: WineMetalGL has no matching accelerated window format\n");
++        exit(2);
++    }
++    fprintf(stderr, "ocerz: trial WineMetalGL core enabled (format %d)\n", format);
++}
++
++int m32_wmgl_enabled(void)
++{
++    pthread_once(&initialization, initialize);
++    return format != 0;
++}
++
++int m32_wmgl_symbol(const char *name, void **address)
++{
++    if (!name || strncmp(name, "gl", 2) || name[2] < 'A' || name[2] > 'Z' || !m32_wmgl_enabled())
++        return 0;
++    *address = driver.proc(name);
++    return 1;
++}
++
++static Sidecar *find(void *agl)
++{
++    for (size_t i = 0; agl && i < sizeof contexts / sizeof contexts[0]; i++)
++        if (contexts[i].agl == agl)
++            return &contexts[i];
++    return NULL;
++}
++
++int m32_wmgl_create(void *agl, void *share)
++{
++    if (!m32_wmgl_enabled())
++        return 1;
++    Sidecar *peer = find(share);
++    if (!pthread_main_np() || !agl || (share && !peer))
++        return 0;
++    for (size_t i = 0; i < sizeof contexts / sizeof contexts[0]; i++) {
++        if (contexts[i].agl)
++            continue;
++        int error = 0;
++        const int request[] = { 0x2091, 2, 0x2092, 1, 0 };
++        wmgl_context *context = driver.create(format, peer ? peer->context : NULL, request, &error);
++        if (!context) {
++            fprintf(stderr, "ocerz: WineMetalGL context creation failed (%d)\n", error);
++            return 0;
++        }
++        wmgl_surface *surface = driver.pbuffer(format, 1, 1);
++        if (!surface) {
++            driver.destroy(context);
++            return 0;
++        }
++        contexts[i] = (Sidecar){ .agl = agl, .context = context, .surface = surface, .width = 1, .height = 1 };
++        return 1;
++    }
++    return 0;
++}
++
++int m32_wmgl_set_current(void *agl)
++{
++    if (!m32_wmgl_enabled())
++        return 1;
++    Sidecar *ctx = find(agl);
++    if (!pthread_main_np() || (agl && !ctx))
++        return 0;
++    wmgl_surface *surface = ctx ? ctx->surface : NULL;
++    if (!driver.current(ctx ? ctx->context : NULL, surface, surface))
++        return 0;
++    current = ctx;
++    return 1;
++}
++
++void m32_wmgl_destroy(void *agl)
++{
++    Sidecar *ctx = find(agl);
++    if (!ctx || !pthread_main_np())
++        return;
++    if (current == ctx)
++        m32_wmgl_set_current(NULL);
++    driver.destroy(ctx->context);
++    driver.release(ctx->surface);
++    [ctx->layer removeFromSuperlayer];
++    [ctx->layer release];
++    [ctx->overlay close];
++    [ctx->overlay release];
++    memset(ctx, 0, sizeof(*ctx));
++}
++
++static NSWindow *overlay_window(void *window, uint32_t *number, int *width, int *height)
++{
++    typedef struct { int16_t top, left, bottom, right; } CarbonRect;
++    void *carbon = dlopen("/System/Library/Frameworks/Carbon.framework/Frameworks/HIToolbox.framework/HIToolbox",
++                         RTLD_LAZY | RTLD_LOCAL);
++    uint32_t (*window_id)(void *) = carbon ? (uint32_t (*)(void *))dlsym(carbon, "HIWindowGetCGWindowID") : NULL;
++    int32_t (*window_bounds)(void *, uint16_t, CarbonRect *) =
++        carbon ? (int32_t (*)(void *, uint16_t, CarbonRect *))dlsym(carbon, "GetWindowBounds") : NULL;
++    CarbonRect bounds;
++    if (!window_id || !window_bounds || window_bounds(window, 33 /* kWindowContentRgn */, &bounds))
++        return nil;
++    NSArray *screens = [(id)objc_getClass("NSScreen") screens];
++    NSScreen *primary = [screens count] ? [screens objectAtIndex:0] : nil;
++    if (!primary)
++        return nil;
++    *number = window_id(window);
++    *width = bounds.right - bounds.left;
++    *height = bounds.bottom - bounds.top;
++    if (!*number || *width <= 0 || *height <= 0)
++        return nil;
++    NSRect rect = NSMakeRect(bounds.left, NSMaxY(primary.frame) - bounds.bottom, *width, *height);
++    NSWindow *overlay = [[(id)objc_getClass("NSWindow") alloc] initWithContentRect:rect
++                        styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
++    overlay.releasedWhenClosed = NO;
++    overlay.ignoresMouseEvents = YES;
++    overlay.hasShadow = NO;
++    overlay.title = [(id)objc_getClass("NSString") stringWithUTF8String:"WoW Metal Trial Output"];
++    return overlay;
++}
++
++int m32_wmgl_drawable(void *agl, void *window)
++{
++    if (!m32_wmgl_enabled())
++        return 1;
++    Sidecar *ctx = find(agl);
++    if (!ctx || !pthread_main_np())
++        return 0;
++    if (ctx->carbon == window && (ctx->overlay || !window))
++        return 1;
++    int width = 1, height = 1;
++    uint32_t number = 0;
++    NSWindow *overlay = nil;
++    CAMetalLayer *layer = nil;
++    if (window) {
++        overlay = overlay_window(window, &number, &width, &height);
++        if (!overlay) {
++            fprintf(stderr, "ocerz: could not position Metal output inside Carbon window bounds\n");
++            return 0;
++        }
++        layer = [[(id)objc_getClass("CAMetalLayer") alloc] init];
++        if (!layer) {
++            [overlay release];
++            return 0;
++        }
++        layer.frame = overlay.contentView.bounds;
++        layer.contentsScale = 1;
++        layer.drawableSize = CGSizeMake(width, height);
++        layer.autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
++    }
++    wmgl_surface *surface = layer ? driver.window(layer, format, width, height) : driver.pbuffer(format, width, height);
++    if (!surface || (current == ctx && !driver.current(ctx->context, surface, surface))) {
++        if (surface)
++            driver.release(surface);
++        [layer release];
++        [overlay release];
++        return 0;
++    }
++    [ctx->layer removeFromSuperlayer];
++    [ctx->layer release];
++    [ctx->overlay close];
++    [ctx->overlay release];
++    driver.release(ctx->surface);
++    ctx->layer = layer;
++    ctx->overlay = overlay;
++    ctx->surface = surface;
++    ctx->carbon = window;
++    ctx->window_number = number;
++    ctx->width = width;
++    ctx->height = height;
++    ctx->swaps = 0;
++    if (overlay) {
++        overlay.contentView.wantsLayer = YES;
++        [overlay.contentView.layer addSublayer:layer];
++        driver.flush(surface, WMGL_FLUSH_INTERVAL, width, height, 0);
++        [overlay orderWindow:NSWindowAbove relativeTo:number];
++        fprintf(stderr, "ocerz: trial WineMetalGL aligned with Carbon window %dx%d\n", width, height);
++    }
++    return 1;
++}
++
++static void capture_frame(Sidecar *ctx, const char *path)
++{
++    void (*get)(unsigned, int *) = (void (*)(unsigned, int *))driver.proc("glGetIntegerv");
++    void (*bind)(unsigned, unsigned) = (void (*)(unsigned, unsigned))driver.proc("glBindFramebuffer");
++    void (*read_buffer)(unsigned) = (void (*)(unsigned))driver.proc("glReadBuffer");
++    void (*read)(int, int, int, int, unsigned, unsigned, void *) =
++        (void (*)(int, int, int, int, unsigned, unsigned, void *))driver.proc("glReadPixels");
++    unsigned char *pixels = calloc((size_t)ctx->width * ctx->height, 4);
++    if (!pixels || current != ctx) {
++        free(pixels);
++        return;
++    }
++    void (*bind_buffer)(unsigned, unsigned) = (void (*)(unsigned, unsigned))driver.proc("glBindBuffer");
++    void (*pixel_store)(unsigned, int) = (void (*)(unsigned, int))driver.proc("glPixelStorei");
++    if (!get || !bind || !read_buffer || !read || !bind_buffer || !pixel_store) {
++        free(pixels);
++        return;
++    }
++    int framebuffer = 0, buffer = 0, pack = 0;
++    const unsigned pack_fields[] = { 0x0D02, 0x0D03, 0x0D04, 0x0D05 };
++    int pack_values[4] = { 0, 0, 0, 4 };
++    get(0x88ED, &pack);
++    bind_buffer(0x88EB, 0);
++    for (int i = 0; i < 4; i++) {
++        get(pack_fields[i], &pack_values[i]);
++        pixel_store(pack_fields[i], i == 3 ? 4 : 0);
++    }
++    get(0x8CAA, &framebuffer);
++    bind(0x8CA8, 0);
++    get(0x0C02, &buffer);
++    read_buffer(0x0405);
++    read(0, 0, ctx->width, ctx->height, 0x1908, 0x1401, pixels);
++    read_buffer(buffer);
++    bind(0x8CA8, framebuffer);
++    for (int i = 0; i < 4; i++)
++        pixel_store(pack_fields[i], pack_values[i]);
++    bind_buffer(0x88EB, pack);
++    FILE *stream = fopen(path, "wb");
++    if (stream) {
++        fprintf(stream, "P6\n%d %d\n255\n", ctx->width, ctx->height);
++        for (int y = ctx->height - 1; y >= 0; y--)
++            for (int x = 0; x < ctx->width; x++)
++                fwrite(pixels + ((size_t)y * ctx->width + x) * 4, 3, 1, stream);
++        fclose(stream);
++        fprintf(stderr, "ocerz: saved Metal trial backbuffer readback\n");
++    }
++    free(pixels);
++}
++
++int m32_wmgl_swap(void *agl)
++{
++    Sidecar *ctx = find(agl);
++    if (!ctx)
++        return 0;
++    if (ctx->layer && ctx->swaps == 239) {
++        const char *path = getenv("OCERZ_WMGL_READBACK");
++        if (path && *path)
++            capture_frame(ctx, path);
++    }
++    int presented = driver.swap(ctx->surface);
++    if (ctx->layer && ++ctx->swaps == 1) {
++        [ctx->overlay orderWindow:NSWindowAbove relativeTo:ctx->window_number];
++        fprintf(stderr, "ocerz: trial WineMetalGL first window swap (presented=%d)\n", presented);
++    }
++    return 1;
++}

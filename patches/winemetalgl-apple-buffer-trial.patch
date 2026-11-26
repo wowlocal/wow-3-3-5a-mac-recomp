@@ -1,0 +1,120 @@
+diff --git a/src/core/api/buffer.mm b/src/core/api/buffer.mm
+index 3b42c26..b295677 100644
+--- a/src/core/api/buffer.mm
++++ b/src/core/api/buffer.mm
+@@ -579,7 +579,48 @@ void GetBufferSubData(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr s
+     std::memcpy(data, static_cast<uint8_t*>(buffer->mtl.contents) + offset, static_cast<size_t>(size));
+ }
+ 
+-void* MapBufferRange(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access) {
++void BufferParameteriAPPLE(Context& ctx, GLenum target, GLenum pname, GLint param) {
++    switch (target) {
++    case GL_ARRAY_BUFFER: case GL_ELEMENT_ARRAY_BUFFER:
++    case GL_PIXEL_PACK_BUFFER: case GL_PIXEL_UNPACK_BUFFER: break;
++    default: return ctx.setError(GL_INVALID_ENUM);
++    }
++    if (pname != GL_BUFFER_FLUSHING_UNMAP_APPLE && pname != GL_BUFFER_SERIALIZED_MODIFY_APPLE)
++        return ctx.setError(GL_INVALID_ENUM);
++    if (param != GL_FALSE && param != GL_TRUE)
++        return ctx.setError(GL_INVALID_VALUE);
++    Buffer* buffer = boundBuffer(ctx, target);
++    if (!buffer) return;
++    if (pname == GL_BUFFER_FLUSHING_UNMAP_APPLE)
++        buffer->appleFlushOnUnmap = param == GL_TRUE;
++    else
++        buffer->appleSerializedModify = param == GL_TRUE;
++}
++
++GLboolean TestObjectAPPLE(Context& ctx, GLenum object, GLuint name) {
++    if (object != GL_BUFFER_OBJECT_APPLE) {
++        ctx.unimplemented("glTestObjectAPPLE");
++        return GL_FALSE;
++    }
++    const RefPtr<Buffer> buffer = ctx.share().buffers.getRef(name);
++    if (!buffer) {
++        ctx.setError(GL_INVALID_OPERATION);
++        return GL_FALSE;
++    }
++    return gpuBusy(ctx, *buffer) ? GL_FALSE : GL_TRUE;
++}
++
++void FinishObjectAPPLE(Context& ctx, GLenum object, GLint name) {
++    if (object != GL_BUFFER_OBJECT_APPLE)
++        return ctx.unimplemented("glFinishObjectAPPLE");
++    const RefPtr<Buffer> buffer = ctx.share().buffers.getRef(static_cast<GLuint>(name));
++    if (!buffer)
++        return ctx.setError(GL_INVALID_OPERATION);
++    waitForGpuUnlocked(ctx, buffer->lastUseSerial);
++}
++
++static void* mapBufferRange(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr length,
++                            GLbitfield access, bool appleUnsynchronized) {
+     Buffer* buffer = boundBuffer(ctx, target);
+     if (!buffer) return nullptr;
+     const GLbitfield known = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT |
+@@ -617,7 +658,7 @@ void GetBufferSubData(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr s
+         return nullptr;
+     }
+     id<MTLBuffer> staging = nil;
+-    if (!(access & GL_MAP_UNSYNCHRONIZED_BIT) && gpuBusy(ctx, *buffer)) {
++    if (!appleUnsynchronized && !(access & GL_MAP_UNSYNCHRONIZED_BIT) && gpuBusy(ctx, *buffer)) {
+         // Immutable storage is never renamed: an invalidating map just waits.
+         if ((access & GL_MAP_INVALIDATE_BUFFER_BIT) && !buffer->immutable && !buffer->pinned) {
+             rename(ctx, *buffer, false);
+@@ -650,6 +691,10 @@ void GetBufferSubData(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr s
+     return buffer->mapPointer;
+ }
+ 
++void* MapBufferRange(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access) {
++    return mapBufferRange(ctx, target, offset, length, access, false);
++}
++
+ void* MapBuffer(Context& ctx, GLenum target, GLenum access) {
+     Buffer* buffer = boundBuffer(ctx, target);
+     if (!buffer) return nullptr;
+@@ -667,7 +712,10 @@ void GetBufferSubData(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr s
+         buffer->mapAccess = bits;
+         return nullptr;
+     }
+-    return MapBufferRange(ctx, target, 0, buffer->size, bits);
++    const bool writable = (bits & GL_MAP_WRITE_BIT) != 0;
++    if (writable && !buffer->appleFlushOnUnmap)
++        bits |= GL_MAP_FLUSH_EXPLICIT_BIT;
++    return mapBufferRange(ctx, target, 0, buffer->size, bits, writable && !buffer->appleSerializedModify);
+ }
+ 
+ GLboolean UnmapBuffer(Context& ctx, GLenum target) {
+@@ -695,7 +743,10 @@ GLboolean UnmapBuffer(Context& ctx, GLenum target) {
+ void FlushMappedBufferRange(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr length) {
+     Buffer* buffer = boundBuffer(ctx, target);
+     if (!buffer) return;
+-    if (!buffer->mapped || !(buffer->mapAccess & GL_MAP_FLUSH_EXPLICIT_BIT)) return ctx.setError(GL_INVALID_OPERATION);
++    const bool apple = ctx.currentCommand && std::strcmp(ctx.currentCommand, "glFlushMappedBufferRangeAPPLE") == 0;
++    if (!buffer->mapped || !(buffer->mapAccess & GL_MAP_WRITE_BIT) ||
++        (!apple && !(buffer->mapAccess & GL_MAP_FLUSH_EXPLICIT_BIT)))
++        return ctx.setError(GL_INVALID_OPERATION);
+     if (offset < 0 || length < 0 || length > buffer->mapLength - offset) return ctx.setError(GL_INVALID_VALUE);
+     ++buffer->version;  // shared storage: the CPU writes are already visible
+ }
+@@ -736,6 +787,8 @@ void GetBufferParameteri64v(Context& ctx, GLenum target, GLenum pname, GLint64*
+     Buffer* buffer = boundBuffer(ctx, target);
+     if (!buffer || !params) return;
+     switch (pname) {
++    case GL_BUFFER_FLUSHING_UNMAP_APPLE: *params = buffer->appleFlushOnUnmap; return;
++    case GL_BUFFER_SERIALIZED_MODIFY_APPLE: *params = buffer->appleSerializedModify; return;
+     case GL_BUFFER_SIZE: *params = buffer->size; return;
+     case GL_BUFFER_USAGE: *params = buffer->usage; return;
+     case GL_BUFFER_ACCESS:
+diff --git a/src/core/objects.h b/src/core/objects.h
+index d2a8bc7..00e00f1 100644
+--- a/src/core/objects.h
++++ b/src/core/objects.h
+@@ -45,6 +45,8 @@ public:
+     bool pinned = false;
+     GLbitfield storageFlags = 0;
+     // Mapping state (glMapBuffer*).
++    bool appleFlushOnUnmap = true;
++    bool appleSerializedModify = true;
+     bool mapped = false;
+     GLbitfield mapAccess = 0;
+     GLintptr mapOffset = 0;

@@ -144,3 +144,27 @@ Across four launches, the warmed 200-output runs took **0.168–0.389 ms per out
 xcrun swiftc -O -framework Metal benchmarks/metal-raid-stream.swift -o /tmp/wrath-metal-raid-stream
 /tmp/wrath-metal-raid-stream
 ```
+
+## Live Metal backend prototype
+
+The opt-in AArchX sidecar rendered the original WoW login screen at **1365 × 768**. The Carbon window retains its input role, and a borderless Metal window presents over its content rectangle. The experiment uses a fixed window size and requires the Carbon window to be foreground for the input checks.
+
+The WineMetalGL patch implements the Apple buffer-object synchronization and mapped-write options that this client calls. The native test observed a buffer busy before finishing it, verified its completion afterward, and checked that a flushed range preserved the neighboring bytes. All **336** upstream GPU tests passed with the patch. A clean AArchX build with the experimental backend disabled passed **806 general checks** and **4,296 Carbon checks**.
+
+Use dedicated source checkouts at AArchX `96754ec605d2cf57e2a05d0cf0f6d2e1c8177741` and WineMetalGL `fac2219f37bbbe132f7d67a530a035ae033aa437`. Apply the existing Wrath patch before the experimental AArchX patch. Build into a separate copy of the trial app. [WineMetalGL driver ABI](https://github.com/metalsharp/WineMetalGL/blob/fac2219f37bbbe132f7d67a530a035ae033aa437/include/winemetalgl/driver.h)
+
+```sh
+git -C "$METAL_TRIAL_AARCHX" apply "$TRIAL_REPO/patches/aarchx-wrath.patch"
+git -C "$METAL_TRIAL_AARCHX" apply "$TRIAL_REPO/patches/aarchx-wrath-metal-trial.patch"
+git -C "$METAL_TRIAL_WMGL" apply "$TRIAL_REPO/patches/winemetalgl-apple-buffer-trial.patch"
+cmake -S "$METAL_TRIAL_WMGL" -B "$METAL_TRIAL_BUILD" -G Ninja \
+    -DWMGL_HOST_ONLY=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build "$METAL_TRIAL_BUILD" --target winemetalgl_core
+make -C "$METAL_TRIAL_AARCHX" WMGL_INCLUDE="$METAL_TRIAL_WMGL/include" ocerz
+ditto "$TRIAL_APP" "$METAL_TRIAL_APP"
+install -m 755 "$METAL_TRIAL_AARCHX/ocerz" "$METAL_TRIAL_APP/Contents/MacOS/ocerz"
+codesign --force --sign - "$METAL_TRIAL_APP"
+OCERZ_WMGL_LIBRARY="$METAL_TRIAL_BUILD/libwinemetalgl.dylib" \
+    WINEMETALGL_SETTINGS=0 WINEMETALGL_SHADER_CACHE=0 WINEMETALGL_CRASH_HANDLER=0 \
+    "$TRIAL_REPO/scripts/launch.sh" "$METAL_TRIAL_APP" "$RUNTIME" "$GAME_DIR" ruRU --copy-unpack --profile
+```
