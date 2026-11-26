@@ -1,0 +1,112 @@
+{
+  "casters": 24,
+  "camera": "fixed",
+  "tracked_state_off": {
+    "resolution": [
+      1365,
+      768
+    ],
+    "timing": {
+      "swaps": 3325,
+      "duration_ns": 60000866000,
+      "average_swap_fps": 55.416,
+      "median_fps": 57.96,
+      "p50_frame_ms": 17.254,
+      "p95_frame_ms": 25.665,
+      "p99_frame_ms": 30.614,
+      "stalls_over_250_ms": 0,
+      "longest_gap_ms": 39.87,
+      "median_inside_swap_ms": 0.0,
+      "p95_inside_swap_ms": 0.01,
+      "median_between_swaps_ms": 17.25,
+      "p95_between_swaps_ms": 25.66,
+      "time_inside_swap_percent": 0.02,
+      "slowest_5pct_time_inside_swap_percent": 0.01,
+      "duration_seconds": 60.001,
+      "average_client_cpu_percent": 84.29,
+      "peak_sampled_client_footprint_mib": 750.88,
+      "footprint_sample_interval_seconds": 0.5
+    },
+    "trace": {
+      "overlap_seconds": 5.994330292,
+      "agl_swaps": 243,
+      "verified_completions": 243,
+      "completion_p99_ms": 44.21725,
+      "gpu_active_percent": 29.146130107840243,
+      "gpu_active_ms_per_output": {
+        "total": 7.1897749218107,
+        "Vertex": 3.0470317736625514,
+        "Fragment": 2.801007551440329,
+        "Compute": 1.4975596872427983
+      }
+    },
+    "main_thread_samples": 1599,
+    "main_thread_buckets_percent": {
+      "other_opengl": 34.8968105065666,
+      "other_runtime_or_host": 6.629143214509068,
+      "unsymbolicated_guest": 42.15134459036898,
+      "gl_binding_query": 11.194496560350219,
+      "gl_flush": 5.128205128205129
+    },
+    "buffer_subdata_samples": {
+      "buffer_subdata": 470,
+      "share_group_query": 470
+    }
+  },
+  "tracked_state_on": {
+    "resolution": [
+      1365,
+      768
+    ],
+    "timing": {
+      "swaps": 3347,
+      "duration_ns": 60003547000,
+      "average_swap_fps": 55.78,
+      "median_fps": 58.75,
+      "p50_frame_ms": 17.021,
+      "p95_frame_ms": 26.125,
+      "p99_frame_ms": 31.103,
+      "stalls_over_250_ms": 0,
+      "longest_gap_ms": 35.98,
+      "median_inside_swap_ms": 0.0,
+      "p95_inside_swap_ms": 0.01,
+      "median_between_swaps_ms": 17.02,
+      "p95_between_swaps_ms": 26.12,
+      "time_inside_swap_percent": 0.02,
+      "slowest_5pct_time_inside_swap_percent": 0.01,
+      "duration_seconds": 60.004,
+      "average_client_cpu_percent": 83.57,
+      "peak_sampled_client_footprint_mib": 751.03,
+      "footprint_sample_interval_seconds": 0.5
+    },
+    "trace": {
+      "overlap_seconds": 6.017752791,
+      "agl_swaps": 246,
+      "verified_completions": 246,
+      "completion_p99_ms": 41.731459,
+      "gpu_active_percent": 29.43246436857496,
+      "gpu_active_ms_per_output": {
+        "total": 7.1998900243902435,
+        "Vertex": 3.3827855650406504,
+        "Fragment": 2.6720001585365853,
+        "Compute": 1.368075162601626
+      }
+    },
+    "main_thread_samples": 1713,
+    "main_thread_buckets_percent": {
+      "gl_binding_query": 41.62288382953882,
+      "other_runtime_or_host": 5.078809106830122,
+      "other_opengl": 6.713368359603035,
+      "unsymbolicated_guest": 42.848803269118505,
+      "gl_flush": 3.7361354349095155
+    },
+    "buffer_subdata_samples": {
+      "buffer_subdata": 2,
+      "share_group_query": 1
+    }
+  },
+  "tracked_uploads_reported": 147457,
+  "native_state_checks_reported": 145,
+  "tracked_state_mismatches_logged": 0,
+  "binding_query_inside_map_samples": 712
+}
