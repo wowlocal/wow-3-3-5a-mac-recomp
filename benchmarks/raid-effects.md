@@ -242,3 +242,11 @@ The offscreen draw profile showed that ordinary `glBufferSubData` updates could 
 The two-stage ARB workload fell from **1.03 to 0.77 ms/frame** across four interleaved 120-frame runs per arm. A separate counter run recorded **2,640 upload-related pass endings with staging and zero with direct writes**. The framebuffer checksums matched. A focused readback verified both an already queued draw and a later draw from a disjoint updated range. With serialization enabled, the staging path kept the same render-pass and upload-blit counts with the trial flag off or on. All **336 GPU tests** passed with the flag enabled. [Direct upload measurements](results/winemetalgl-apple-subdata-ab.json)
 
 Apply `patches/winemetalgl-apple-subdata-trial.patch` after the ARB program key patch and rebuild the core. The draw benchmark can compare `OCERZ_WMGL_APPLE_SUBDATA=0` and `OCERZ_WMGL_APPLE_SUBDATA=1`. Use `OCERZ_WMGL_BENCH_COUNTS=1` for a separate counter run. The background login capture produced no `glBufferParameteriAPPLE` calls in the targeted trace. The live raid still needs to establish which buffers are eligible.
+
+## Client selection of Apple buffer options
+
+The opt-in capability patch advertises `GL_APPLE_flush_buffer_range` in compatibility contexts. In the background login A/B, a shared 3,825-byte diagnostic cap kept the same 150 legacy extensions in both runs, plus the Apple extension in the candidate. With that extension visible, the client set both Apple buffer options to zero on array and unpack buffers and allocated a guest-backed 2 MiB buffer.
+
+With the extension visible in both arms, both settings of the direct-upload trial rendered the original login at 1365 × 768 and completed a five-second GPU smoke window with consecutive sequence numbers. The guard and allocator were available at startup. Direct-upload activation remains an in-world check. The 336 GPU tests passed with both trial flags enabled. [Client capability check](results/winemetalgl-apple-buffer-capability.json)
+
+Apply `patches/winemetalgl-apple-buffer-capability-trial.patch` after the upload patch to reproduce the capability experiment. Set `OCERZ_WMGL_ADVERTISE_APPLE_BUFFER_RANGE=1` to expose the extension. The chosen cap applies to the A/B diagnostic. Set `OCERZ_WMGL_TRACE_APPLE_SUBDATA=1` to log the first eligible direct upload.

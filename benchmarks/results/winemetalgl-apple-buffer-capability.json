@@ -1,0 +1,99 @@
+{
+  "scene": "background original game login",
+  "viewport": [
+    1365,
+    768
+  ],
+  "legacy_extension_cap_bytes": 3825,
+  "unchanged_legacy_extensions": 150,
+  "flags_by_extension_toggle": {
+    "0": {
+      "gl_get_string_calls": 11,
+      "guest_backed_2mib_allocated": false,
+      "apple_buffer_parameter_calls": []
+    },
+    "1": {
+      "gl_get_string_calls": 11,
+      "guest_backed_2mib_allocated": true,
+      "apple_buffer_parameter_calls": [
+        {
+          "target": "0x8892",
+          "parameter": "0x8a12",
+          "value": 0,
+          "calls": 17
+        },
+        {
+          "target": "0x8892",
+          "parameter": "0x8a13",
+          "value": 0,
+          "calls": 16
+        },
+        {
+          "target": "0x88ec",
+          "parameter": "0x8a12",
+          "value": 0,
+          "calls": 2
+        },
+        {
+          "target": "0x88ec",
+          "parameter": "0x8a13",
+          "value": 0,
+          "calls": 2
+        }
+      ]
+    }
+  },
+  "states_by_direct_upload_toggle": {
+    "0": {
+      "gpu_smoke": {
+        "stream": 1,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 147,
+        "first_sequence": 250,
+        "last_sequence": 396,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 4999300041,
+        "measurement_duration_ns": 5000000000,
+        "average_completed_fps": 29.2,
+        "p99_gpu_completion_gap_ns": 49151791,
+        "min_draws": 86,
+        "max_draws": 93
+      },
+      "direct_upload_witness_observed": false,
+      "guest_backed_2mib_allocated": true,
+      "median_draws": 88.0,
+      "median_render_passes": 5.0,
+      "median_command_buffer_commits": 3.0,
+      "median_upload_blit_ends": 1.0
+    },
+    "1": {
+      "gpu_smoke": {
+        "stream": 1,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 146,
+        "first_sequence": 250,
+        "last_sequence": 395,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 4980347250,
+        "measurement_duration_ns": 5000000000,
+        "average_completed_fps": 29.0,
+        "p99_gpu_completion_gap_ns": 43654375,
+        "min_draws": 86,
+        "max_draws": 93
+      },
+      "direct_upload_witness_observed": false,
+      "guest_backed_2mib_allocated": true,
+      "median_draws": 88.0,
+      "median_render_passes": 5.0,
+      "median_command_buffer_commits": 3.0,
+      "median_upload_blit_ends": 1.0
+    }
+  },
+  "gpu_tests_with_both_experiments_enabled": 336
+}

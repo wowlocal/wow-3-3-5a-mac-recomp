@@ -1,0 +1,49 @@
+diff --git a/src/core/api/buffer.mm b/src/core/api/buffer.mm
+index 3b5d558..05b2e0d 100644
+--- a/src/core/api/buffer.mm
++++ b/src/core/api/buffer.mm
+@@ -1,6 +1,7 @@
+ // Buffer objects (GL 3.3 section 2.9).
+ 
+ #include <algorithm>
++#include <atomic>
+ #include <cstdlib>
+ #include <cstring>
+ #include <mutex>
+@@ -527,10 +528,20 @@ void BufferSubData(Context& ctx, GLenum target, GLintptr offset, GLsizeiptr size
+         }
+     }
+     auto* destination = static_cast<uint8_t*>(buffer->mtl.contents) + offset;
+-    if (applicationSynchronized)
++    if (applicationSynchronized) {
++        static const bool traceAppleSubData = [] {
++            const char* value = std::getenv("OCERZ_WMGL_TRACE_APPLE_SUBDATA");
++            return value && value[0] == '1' && !value[1];
++        }();
++        if (traceAppleSubData) {
++            static std::atomic_flag reported;
++            if (!reported.test_and_set(std::memory_order_relaxed))
++                WMGL_INFO(Buffer, "first direct upload to the application-synchronized 2 MiB vertex buffer");
++        }
+         std::memmove(destination, data, static_cast<size_t>(size));
+-    else
++    } else {
+         std::memcpy(destination, data, static_cast<size_t>(size));
++    }
+     buffer->shadowWrite(offset, size, data);
+     ++buffer->version;
+ }
+diff --git a/src/core/context.mm b/src/core/context.mm
+index f668772..f7c1e08 100644
+--- a/src/core/context.mm
++++ b/src/core/context.mm
+@@ -127,6 +127,9 @@ void noCurrentContext(const char* command) {
+         // The compatibility profile (W22), and the extensions GL 1.2-2.1
+         // made core that engines of that era still test for.
+         extensions_.push_back("GL_ARB_compatibility");
++        const char* appleBufferTrial = std::getenv("OCERZ_WMGL_ADVERTISE_APPLE_BUFFER_RANGE");
++        if (appleBufferTrial && appleBufferTrial[0] == '1' && !appleBufferTrial[1])
++            extensions_.push_back("GL_APPLE_flush_buffer_range");
+         for (const char* name :
+              {"GL_ARB_multitexture", "GL_ARB_transpose_matrix", "GL_ARB_texture_env_add", "GL_EXT_texture_env_add",
+               "GL_ARB_texture_env_combine", "GL_EXT_texture_env_combine", "GL_ARB_texture_env_dot3",
