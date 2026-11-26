@@ -1,0 +1,87 @@
+{
+  "raid": {
+    "full_intervals_between_swaps": 114,
+    "median_draw_calls_per_interval": 826.0,
+    "median_array_map_and_unmap_calls_per_interval": 680.0,
+    "median_array_reallocations_per_interval": 1.0,
+    "rolling_buffer_count": 1,
+    "rolling_buffer_small_uploads": 2598,
+    "uploads_followed_by_draw_before_next_write_or_swap": 2598,
+    "uploads_with_later_draw_declaring_overlapping_vertex_range": 2598,
+    "uploads_covering_an_entire_declared_vertex_range": 2598,
+    "uploads_covering_an_entire_known_enabled_attribute_range": 2598,
+    "observed_generic_vertex_attributes": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      7
+    ],
+    "generic_vertex_attributes_with_observed_enable_state": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      7
+    ],
+    "draw_range_elements_calls": 93705,
+    "casters": 24,
+    "viewport": [
+      1365,
+      768
+    ],
+    "instrumented_call_order_only": true
+  },
+  "offscreen_open_gl": {
+    "fixture": "native offscreen triangle batches",
+    "draws_per_frame": 48,
+    "buffer_store_reallocates_every_two_frames": true,
+    "pixel_equality_verified": true,
+    "runs": [
+      {
+        "mode": "interleaved",
+        "frames": 30,
+        "wall_ms_per_frame": 4.131
+      },
+      {
+        "mode": "grouped",
+        "frames": 30,
+        "wall_ms_per_frame": 1.609
+      },
+      {
+        "mode": "interleaved",
+        "frames": 200,
+        "wall_ms_per_frame": 2.804
+      },
+      {
+        "mode": "grouped",
+        "frames": 200,
+        "wall_ms_per_frame": 1.346
+      },
+      {
+        "mode": "grouped",
+        "frames": 200,
+        "wall_ms_per_frame": 1.4
+      },
+      {
+        "mode": "interleaved",
+        "frames": 200,
+        "wall_ms_per_frame": 2.925
+      },
+      {
+        "mode": "interleaved",
+        "frames": 200,
+        "wall_ms_per_frame": 3.197
+      },
+      {
+        "mode": "grouped",
+        "frames": 200,
+        "wall_ms_per_frame": 1.638
+      }
+    ]
+  }
+}
