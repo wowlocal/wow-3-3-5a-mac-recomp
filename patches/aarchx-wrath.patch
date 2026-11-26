@@ -379,7 +379,7 @@ index f0e05bf..7d0e865 100644
 +    [(id)exception release];
 +}
 diff --git a/src/m32_cross.c b/src/m32_cross.c
-index b9498b6..e0f4346 100644
+index b9498b6..dcaf6cb 100644
 --- a/src/m32_cross.c
 +++ b/src/m32_cross.c
 @@ -15,6 +15,7 @@
@@ -443,7 +443,7 @@ index b9498b6..e0f4346 100644
          else
              put_int(&hc, v, ha->size);
      }
-+    if (getenv("OCERZ_DIAG_ALERT") && !strcmp(e->name, "_CreateStandardAlert")) {
++    if (!strcmp(e->name, "_CreateStandardAlert") && getenv("OCERZ_DIAG_ALERT")) {
 +        fprintf(stderr, "ocerz: diagnostic Carbon alert title and explanation\n");
 +        if (hc.x[1])
 +            log_cfdesc((void *)(uintptr_t)hc.x[1]);
@@ -463,7 +463,7 @@ index b9498b6..e0f4346 100644
      static int log_calls = -1, log_files = -1;
      if (log_calls < 0)
          log_calls = getenv("OCERZ_M32LOG") && strstr(getenv("OCERZ_M32LOG"), "calls");
-@@ -1118,9 +1147,25 @@ int m32_cross(struct OcerzVM *vm, OcerzCPU *cpu, M32Export *e)
+@@ -1118,9 +1147,26 @@ int m32_cross(struct OcerzVM *vm, OcerzCPU *cpu, M32Export *e)
      if (log_trace < 0)
          log_trace = getenv("OCERZ_M32LOG") && strstr(getenv("OCERZ_M32LOG"), "drawtrace");
      if (log_dump && !strcmp(e->name, "_CGLFlushDrawable"))
@@ -472,8 +472,9 @@ index b9498b6..e0f4346 100644
      if (log_trace && !strcmp(e->name, "_CGLFlushDrawable"))
          trace_flush();
 +    static int uploads;
-+    if (uploads < 25 && getenv("OCERZ_DIAG_UPLOADS") &&
-+        (!strcmp(e->name, "_glTexImage2D") || !strncmp(e->name, "_glCompressedTexImage2D", 23))) {
++    if (uploads < 25 &&
++        (!strcmp(e->name, "_glTexImage2D") || !strncmp(e->name, "_glCompressedTexImage2D", 23)) &&
++        getenv("OCERZ_DIAG_UPLOADS")) {
 +        int unpack = 0, size = 0;
 +        const char *lib = "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL";
 +        void (*getiv)(unsigned, int *) = (void (*)(unsigned, int *))ocerz_bridge_host_symbol(lib, "glGetIntegerv");
@@ -490,7 +491,7 @@ index b9498b6..e0f4346 100644
      struct OcerzBridgeFrame frame;
      ocerz_bridge_raise(&frame, e->lib, e->name, e->hnote, e->host_fn);
      void *exc = NULL;
-@@ -1143,6 +1188,22 @@ int m32_cross(struct OcerzVM *vm, OcerzCPU *cpu, M32Export *e)
+@@ -1143,6 +1189,22 @@ int m32_cross(struct OcerzVM *vm, OcerzCPU *cpu, M32Export *e)
          return m32_objc_guest_throw(cpu, m32_objc_to_guest(exc));
      }
      m32_save_errno(cpu);

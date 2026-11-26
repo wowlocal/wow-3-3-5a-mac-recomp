@@ -213,3 +213,9 @@ The installed Game Performance capture retained about 0.121 seconds of usable GP
 The installed trace showed a median 3.12 ms of GPU activity per rendered output. Across the capture, the union of client GPU intervals came to 3.11 ms of active GPU time per confirmed output. That already exceeds the 2.0 ms total budget for 500 FPS at the measured workload. The uninstrumented two-minute runs averaged 137.45 swaps/s, up 16.0% from the keyboard-corrected control. The tested build falls short of the 500 FPS target.
 
 [Render trace summary](results/northshire-movement-render-trace.json)
+
+### Buffer-map order experiment
+
+Moving the driver map ahead of its state queries passed the buffer readback and shared-upload tests. The alternating-buffer fixture took 6.50 ms median with the original order and 6.62 ms with map-first across five paired batches. On the two-minute route, the same binary averaged 129.21 swaps/s with the original order and 130.46 with map-first. P99 was 13.22 ms and 13.00 ms, respectively. These runs left the buffer order unchanged. A separate run of the installed release averaged 127.62 swaps/s while the weather was changing.
+
+The patch now checks the imported function name before scanning the environment for the alert and upload diagnostics. The isolated host-call fixture went from about 154 to 37 ns per check, and both diagnostic settings produced matching decisions. This measurement covers the guard, while the route results include driver and guest execution.

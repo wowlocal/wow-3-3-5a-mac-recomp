@@ -1,0 +1,13 @@
+{
+  "common_seconds": 9.024863625,
+  "agl_swaps": 341,
+  "render_verified_completions": 342,
+  "gpu_completion_p99_ms": 44.956834,
+  "game_gpu_active_percent": 41.272971423986476,
+  "gpu_active_ms_per_frame": {
+    "total": 10.89131399122807,
+    "Vertex": 5.339700087719298,
+    "Fragment": 4.278153418128655,
+    "Compute": 1.7404818362573098
+  }
+}
