@@ -1,0 +1,73 @@
+{
+  "winemetalgl_revision": "fac2219f37bbbe132f7d67a530a035ae033aa437",
+  "machine": "M4 Pro",
+  "settings_and_shader_file_cache_disabled": true,
+  "upstream_gpu_tests": {
+    "passed": 336,
+    "failed_checks": 0
+  },
+  "upstream_host_arb_tests": {
+    "passed": 6,
+    "failed_checks": 0
+  },
+  "upstream_full_host_status": "stopped at a nonterminating intentional crash test",
+  "apple_buffer_parameter_error": "GL_INVALID_OPERATION",
+  "explicit_range_map_preserved_adjacent_bytes": true,
+  "small_probe_draws_per_frame": 48,
+  "small_probe_interleaved_ms": {
+    "apple": [
+      2.804,
+      2.925,
+      3.197
+    ],
+    "winemetalgl": [
+      1.641,
+      1.174,
+      1.137
+    ]
+  },
+  "draw_and_map_probe": {
+    "viewport": [
+      1365,
+      768
+    ],
+    "draws_per_frame": 826,
+    "write_only_maps_per_frame": 340,
+    "ordinary_uploads_per_frame": 23,
+    "rgba_readback_checksum": "9472e673471af488",
+    "timed_frames_per_run": 60,
+    "mapped_writes_ms_per_frame": {
+      "apple": [
+        49.276,
+        50.744,
+        45.827
+      ],
+      "winemetalgl": [
+        85.399,
+        81.504,
+        75.477
+      ]
+    },
+    "submit_each_write_directly_ms_per_frame": {
+      "apple": [
+        22.103,
+        20.837,
+        24.483
+      ],
+      "winemetalgl": [
+        12.723,
+        9.26,
+        9.513
+      ]
+    }
+  },
+  "live_raid_map_profile": {
+    "maps_observed": 39225,
+    "write_only_maps": 39225,
+    "maps_with_one_range_flush": 39225,
+    "observed_flush_bytes_min": 96,
+    "observed_flush_bytes_p50": 320,
+    "observed_flush_bytes_p95": 24064,
+    "observed_flush_bytes_max": 100672
+  }
+}
