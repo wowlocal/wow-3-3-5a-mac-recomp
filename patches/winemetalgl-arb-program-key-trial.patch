@@ -1,0 +1,234 @@
+diff --git a/src/core/compat/arb_program.cpp b/src/core/compat/arb_program.cpp
+index 905d79b..34aa4eb 100644
+--- a/src/core/compat/arb_program.cpp
++++ b/src/core/compat/arb_program.cpp
+@@ -1490,17 +1490,17 @@ std::shared_ptr<const Parsed> parse(Kind kind, const char* source, size_t length
+     return out;
+ }
+ 
+-std::string emitKey(const Parsed& p, const EmitOptions& o) {
+-    std::string k;
+-    auto put32 = [&](uint32_t v) { k.append(reinterpret_cast<const char*>(&v), 4); };
+-    k.push_back(static_cast<char>(o.flat));
++EmitKey emitKey(const Parsed& p, const EmitOptions& o) {
++    EmitKey key{};
++    key[0] = static_cast<char>(o.flat);
+     if (p.kind == Kind::Vertex) {
+-        k.push_back(static_cast<char>(p.positionInvariant ? o.clipPlanes : 0));
++        key[1] = static_cast<char>(p.positionInvariant ? o.clipPlanes : 0);
+     } else {
+-        k.push_back(static_cast<char>(o.twoSide && (p.colorRead[0] || p.colorRead[1])));
+-        put32(o.pointCoordReplace & p.texCoordRead);
++        key[1] = static_cast<char>(o.twoSide && (p.colorRead[0] || p.colorRead[1]));
++        const uint32_t pointCoords = o.pointCoordReplace & p.texCoordRead;
++        std::memcpy(key.data() + 2, &pointCoords, sizeof pointCoords);
+     }
+-    return k;
++    return key;
+ }
+ 
+ std::string emit(const Parsed& p, const EmitOptions& o) {
+diff --git a/src/core/compat/arb_program.h b/src/core/compat/arb_program.h
+index cb6678c..c9da0ce 100644
+--- a/src/core/compat/arb_program.h
++++ b/src/core/compat/arb_program.h
+@@ -18,6 +18,7 @@
+ // when used, arb_pmInv[8]; texture image unit n is the sampler ff_tex<n>.
+ #pragma once
+ 
++#include <array>
+ #include <cstdint>
+ #include <memory>
+ #include <string>
+@@ -99,7 +100,8 @@ const char* envName(Kind kind, bool env);
+ 
+ // The bits of EmitOptions that change emit()'s output for this program
+ // (cache keys).
+-std::string emitKey(const Parsed& program, const EmitOptions& options);
++using EmitKey = std::array<char, 6>;
++EmitKey emitKey(const Parsed& program, const EmitOptions& options);
+ 
+ // GLSL of a parsed program (ok == true).
+ std::string emit(const Parsed& program, const EmitOptions& options);
+diff --git a/src/core/compat/arb_programs.mm b/src/core/compat/arb_programs.mm
+index 3d10c54..cc5d7ee 100644
+--- a/src/core/compat/arb_programs.mm
++++ b/src/core/compat/arb_programs.mm
+@@ -1,8 +1,10 @@
+ #include "core/compat/arb_programs.h"
+ 
+ #include <algorithm>
++#include <array>
+ #include <cstring>
+ #include <map>
++#include <string_view>
+ 
+ #include "core/compat/fixed_function.h"
+ #include "core/context.h"
+@@ -110,32 +112,40 @@ bool arbVertexProgramActive(const Context& ctx) {
+         needs.fogCoord = fp->fogCoordRead || fp->fog;
+     }
+     needs.twoSide = f.vertexProgramTwoSide;
+-    std::string key;
+-    std::string fixedKey;
+-    if (vp) {
+-        key += "V" + std::to_string(stage[0]->serial) + ":" + arb::emitKey(*vp, vo);
+-    } else {
+-        fixedFunctionStage(ctx, mode, true, needs, fixedKey, nullptr);
+-        key += fixedKey;
+-    }
+-    key += '|';
+-    if (fp) {
+-        key += "F" + std::to_string(stage[1]->serial) + ":" + arb::emitKey(*fp, fo);
+-    } else {
+-        fixedFunctionStage(ctx, mode, false, needs, fixedKey, nullptr);
+-        key += fixedKey;
+-    }
++    // Each stage starts with its kind tag and has a fixed width for that kind.
++    // The program serial changes on reload. No source or GL object pointer is cached here.
++    constexpr size_t kArbStageBytes = 1 + sizeof(uint64_t) + std::tuple_size_v<arb::EmitKey>;
++    constexpr size_t kMaxStageBytes = std::max(kArbStageBytes, std::tuple_size_v<FixedStageKey>);
++    std::array<char, 2 * kMaxStageBytes> storage;
++    char* out = storage.data();
++    auto appendArbStage = [&](char tag, const ArbProgramObject& object, const arb::EmitOptions& options) {
++        *out++ = tag;
++        std::memcpy(out, &object.serial, sizeof(object.serial));
++        out += sizeof(object.serial);
++        const auto bits = arb::emitKey(*object.parsed, options);
++        out = std::copy(bits.begin(), bits.end(), out);
++    };
++    auto appendFixedStage = [&](bool vertex) {
++        FixedStageKey fixed;
++        fixedFunctionStage(ctx, mode, vertex, needs, &fixed, nullptr);
++        out = std::copy(fixed.begin(), fixed.end(), out);
++    };
++    if (vp) appendArbStage('V', *stage[0], vo);
++    else appendFixedStage(true);
++    if (fp) appendArbStage('F', *stage[1], fo);
++    else appendFixedStage(false);
++    const std::string_view key(storage.data(), static_cast<size_t>(out - storage.data()));
+ 
+     auto& cache = ctx.share().arbLinkedPrograms;
+     auto it = cache.find(key);
+     if (it == cache.end()) {
+         // Programs reloaded or deleted leave entries behind: start over past a bound.
+         if (cache.size() >= 1024) cache.clear();
+-        std::string vs, fs, unused;
++        std::string vs, fs;
+         if (vp) vs = arb::emit(*vp, vo);
+-        else fixedFunctionStage(ctx, mode, true, needs, unused, &vs);
++        else fixedFunctionStage(ctx, mode, true, needs, nullptr, &vs);
+         if (fp) fs = arb::emit(*fp, fo);
+-        else fixedFunctionStage(ctx, mode, false, needs, unused, &fs);
++        else fixedFunctionStage(ctx, mode, false, needs, nullptr, &fs);
+         std::map<std::string, GLuint> bindings;
+         for (int n = 1; vp && n < arb::Limits::kVertexAttribs; ++n)
+             if (vp->genericRead >> n & 1u) bindings["arb_attrib" + std::to_string(n)] = static_cast<GLuint>(n);
+@@ -169,7 +179,7 @@ bool arbVertexProgramActive(const Context& ctx) {
+             linked.matrixCount = linked.matrixOffset >= 0 ? matrices : 0;
+             linked.inverseCount = linked.inverseOffset >= 0 ? inverses : 0;
+         }
+-        it = cache.emplace(key, std::move(linked)).first;  // failures are cached too (logged once)
++        it = cache.emplace(std::string(key), std::move(linked)).first;  // failures are cached too (logged once)
+     }
+     ArbLinked& linked = it->second;
+     if (!linked.program) return nullptr;
+diff --git a/src/core/compat/fixed_function.h b/src/core/compat/fixed_function.h
+index 5dca327..0957197 100644
+--- a/src/core/compat/fixed_function.h
++++ b/src/core/compat/fixed_function.h
+@@ -13,11 +13,13 @@
+ // and texenv programs, and cached in the share group.
+ #pragma once
+ 
++#include <array>
+ #include <cstdint>
+ #include <map>
+ #include <string>
+ #include <vector>
+ 
++#include "core/compat/fixed_state.h"
+ #include "core/gl/types.h"
+ #include "core/util/ref.h"
+ 
+@@ -75,7 +77,9 @@ struct FixedStageNeeds {
+     bool fogCoord = false;   // vertex: ff_fogCoord
+     bool twoSide = false;    // fragment: ff_back for back faces
+ };
+-void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStageNeeds& needs, std::string& key,
++// One stage tag, 20 top-level state bytes, and 27 bytes per texture unit.
++using FixedStageKey = std::array<char, 1 + 20 + 27 * FixedState::kTextureUnits>;
++void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStageNeeds& needs, FixedStageKey* key,
+                         std::string* source);
+ // The fixed-function vertex stage writes back colours (two-sided lighting).
+ bool fixedFunctionTwoSided(Context& ctx, GLenum mode);
+diff --git a/src/core/compat/fixed_function.mm b/src/core/compat/fixed_function.mm
+index f95a873..cf8d097 100644
+--- a/src/core/compat/fixed_function.mm
++++ b/src/core/compat/fixed_function.mm
+@@ -250,7 +250,7 @@ float normalScale(const Mat4& mvInv) {
+ // Each field in the shader key is an initialized byte. Lookup can view the
+ // bytes in place; the share group's map owns a copy only on a cache miss.
+ static_assert(sizeof(UnitKey) == 27);
+-static_assert(sizeof(Key) == 20 + 27 * FixedState::kTextureUnits);
++static_assert(sizeof(Key) + 1 == std::tuple_size_v<FixedStageKey>);
+ static_assert(std::has_unique_object_representations_v<Key>);
+ 
+ uint8_t formatClass(GLenum baseFormat) {
+@@ -777,7 +777,7 @@ void fixedFunctionSources(Context& ctx, GLenum mode, std::string& vertex, std::s
+     fragment = fragmentSource(key);
+ }
+ 
+-void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStageNeeds& needs, std::string& key,
++void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStageNeeds& needs, FixedStageKey* key,
+                         std::string* source) {
+     const FixedState& f = ctx.state.fixed;
+     const Key full = buildKey(ctx, mode);
+@@ -799,8 +799,6 @@ void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStage
+             k.fog = 1;
+             k.fogFromCoord = f.fogCoordSource == GL_FOG_COORD;
+         }
+-        key.assign(1, 'v');
+-        key.append(k.view());
+         if (source) *source = vertexSource(k);
+     } else {
+         k.flat = full.flat;
+@@ -814,10 +812,12 @@ void fixedFunctionStage(Context& ctx, GLenum mode, bool vertex, const FixedStage
+             k.units[u].texgen = 0;
+             std::fill(std::begin(k.units[u].texgenMode), std::end(k.units[u].texgenMode), 0);
+         }
+-        key.assign(1, 'f');
+-        key.append(k.view());
+         if (source) *source = fragmentSource(k);
+     }
++    if (key) {
++        (*key)[0] = vertex ? 'v' : 'f';
++        std::memcpy(key->data() + 1, &k, sizeof k);
++    }
+ }
+ 
+ bool fixedFunctionTwoSided(Context& ctx, GLenum mode) {
+diff --git a/src/core/share_group.h b/src/core/share_group.h
+index 1e62a99..b80729a 100644
+--- a/src/core/share_group.h
++++ b/src/core/share_group.h
+@@ -56,16 +56,16 @@ public:
+ 
+     // Compatibility profile: generated fixed-function programs by state key
+     // (core/compat/fixed_function.h), and display lists (compat/display_list.h).
+-    struct FixedFunctionKeyHash {
++    struct ShaderKeyHash {
+         using is_transparent = void;
+         size_t operator()(std::string_view key) const { return std::hash<std::string_view>{}(key); }
+     };
+-    std::unordered_map<std::string, RefPtr<Program>, FixedFunctionKeyHash, std::equal_to<>> fixedFunctionPrograms;
++    std::unordered_map<std::string, RefPtr<Program>, ShaderKeyHash, std::equal_to<>> fixedFunctionPrograms;
+     std::map<GLuint, RefPtr<DisplayList>> displayLists;
+     // ARB assembly program objects (their own name space) and the generated
+     // programs that run them (compat/arb_programs.h).
+     std::unordered_map<GLuint, std::shared_ptr<compat::ArbProgramObject>> arbPrograms;
+-    std::unordered_map<std::string, compat::ArbLinked> arbLinkedPrograms;
++    std::unordered_map<std::string, compat::ArbLinked, ShaderKeyHash, std::equal_to<>> arbLinkedPrograms;
+ 
+ private:
+     GLuint nextShaderProgram_ = 1;

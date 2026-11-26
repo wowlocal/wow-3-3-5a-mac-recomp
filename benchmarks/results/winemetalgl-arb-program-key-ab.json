@@ -1,0 +1,121 @@
+{
+  "scene": "offscreen indexed AArchX draw workload",
+  "viewport": [
+    1365,
+    768
+  ],
+  "draws_per_frame": 826,
+  "write_only_maps_per_frame": 340,
+  "ordinary_uploads_per_frame": 23,
+  "warmup_frames": 12,
+  "runs_by_arb_stage_count": {
+    "1": {
+      "control": [
+        {
+          "frames": 120,
+          "wall_ns": 133849416,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 135355834,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 136447125,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 131123875,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        }
+      ],
+      "packed": [
+        {
+          "frames": 120,
+          "wall_ns": 125941750,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 135920542,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 125561417,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 131953125,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        }
+      ]
+    },
+    "2": {
+      "control": [
+        {
+          "frames": 120,
+          "wall_ns": 128226208,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 127719833,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 132178500,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 132132709,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        }
+      ],
+      "packed": [
+        {
+          "frames": 120,
+          "wall_ns": 115599917,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 117443541,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 123283958,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        },
+        {
+          "frames": 120,
+          "wall_ns": 115824459,
+          "representative_rgba_checksum": "33851ee23055494c",
+          "drawn_pixel_count": 161622
+        }
+      ]
+    }
+  }
+}

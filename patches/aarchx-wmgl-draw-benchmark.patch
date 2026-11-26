@@ -1,8 +1,8 @@
 diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
-index 0033e65..2267e19 100644
+index 0033e65..2964561 100644
 --- a/tests/unit/test_m32.c
 +++ b/tests/unit/test_m32.c
-@@ -817,6 +817,177 @@ static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
+@@ -817,6 +817,181 @@ static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
             TIMED, (unsigned long long)elapsed, (double)elapsed / TIMED);
  }
  
@@ -39,7 +39,8 @@ index 0033e65..2267e19 100644
 +    const char *indexMode = getenv("OCERZ_WMGL_INDEXED_BENCH");
 +    const int indexed = indexMode && !strcmp(indexMode, "1");
 +    const char *arbMode = getenv("OCERZ_WMGL_ARB_BENCH");
-+    const int useArb = arbMode && !strcmp(arbMode, "1");
++    const unsigned arbStages = arbMode && !strcmp(arbMode, "2") ? 2 :
++                               arbMode && !strcmp(arbMode, "1") ? 1 : 0;
 +
 +    cross(gl, "_glGenFramebuffers", 2, (uint32_t[]){ 1, DATA + 0xd00 });
 +    cross(gl, "_glGenRenderbuffers", 2, (uint32_t[]){ 1, DATA + 0xd04 });
@@ -68,19 +69,22 @@ index 0033e65..2267e19 100644
 +    check("the synthetic stream uses explicit range writes into fresh storage",
 +          cross(gl, "_glGetError", 0, NULL) == 0);
 +
-+    uint32_t vertexProgram = 0;
-+    if (useArb) {
-+        const char source[] = "!!ARBvp1.0\nMOV result.position, vertex.position;\n"
-+                              "MOV result.color, vertex.color;\nEND\n";
-+        memcpy(m32_h(DATA + 0x3000), source, sizeof source);
-+        cross(gl, "_glGenProgramsARB", 2, (uint32_t[]){ 1, DATA + 0xd18 });
-+        vertexProgram = m32_rd(DATA + 0xd18);
-+        cross(gl, "_glBindProgramARB", 2, (uint32_t[]){ 0x8620, vertexProgram });
++    const unsigned programTargets[] = { 0x8620, 0x8804 };
++    const char *sources[] = {
++        "!!ARBvp1.0\nMOV result.position, vertex.position;\nMOV result.color, vertex.color;\nEND\n",
++        "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n"
++    };
++    for (unsigned stage = 0; stage < arbStages; stage++) {
++        unsigned program = DATA + 0xd18 + stage * 4;
++        const char *source = sources[stage];
++        size_t length = strlen(source);
++        memcpy(m32_h(DATA + 0x3000), source, length + 1);
++        cross(gl, "_glGenProgramsARB", 2, (uint32_t[]){ 1, program });
++        cross(gl, "_glBindProgramARB", 2, (uint32_t[]){ programTargets[stage], m32_rd(program) });
 +        cross(gl, "_glProgramStringARB", 4,
-+              (uint32_t[]){ 0x8620, 0x8875, sizeof source - 1, DATA + 0x3000 });
-+        cross(gl, "_glEnable", 1, (uint32_t[]){ 0x8620 });
-+        check("load the ARB vertex shader with a fixed-function fragment stage",
-+              vertexProgram && cross(gl, "_glGetError", 0, NULL) == 0);
++              (uint32_t[]){ programTargets[stage], 0x8875, (uint32_t)length, DATA + 0x3000 });
++        cross(gl, "_glEnable", 1, (uint32_t[]){ programTargets[stage] });
++        check("load the benchmark's ARB program", m32_rd(program) && cross(gl, "_glGetError", 0, NULL) == 0);
 +    }
 +
 +    const char *names[] = {
@@ -170,9 +174,9 @@ index 0033e65..2267e19 100644
 +    cross(gl, "_glDeleteRenderbuffers", 2, (uint32_t[]){ 1, DATA + 0xd04 });
 +    if (elementBuffer)
 +        call("_glDeleteBuffers", 2, (uint32_t[]){ 1, DATA + 0xd08 });
-+    if (vertexProgram) {
-+        cross(gl, "_glDisable", 1, (uint32_t[]){ 0x8620 });
-+        cross(gl, "_glDeleteProgramsARB", 2, (uint32_t[]){ 1, DATA + 0xd18 });
++    for (unsigned stage = 0; stage < arbStages; stage++) {
++        cross(gl, "_glDisable", 1, (uint32_t[]){ programTargets[stage] });
++        cross(gl, "_glDeleteProgramsARB", 2, (uint32_t[]){ 1, DATA + 0xd18 + stage * 4 });
 +    }
 +    dlclose(library);
 +}
@@ -180,7 +184,7 @@ index 0033e65..2267e19 100644
  static void test_wmgl_storage(void)
  {
      enum { ARRAY = 0x8892, DYNAMIC = 0x88E8, READ_WRITE = 0x88BA, SIZE = 2 * 1024 * 1024 };
-@@ -880,6 +1051,8 @@ static void test_wmgl_storage(void)
+@@ -880,6 +1055,8 @@ static void test_wmgl_storage(void)
      check("Metal draws from the guest-written vertices", m32_rd(DATA + 0xc58) == 0xff2bc911);
      if (getenv("OCERZ_WMGL_MAP_BENCH"))
          bench_wmgl_mapped_writes(gl, ARRAY);
