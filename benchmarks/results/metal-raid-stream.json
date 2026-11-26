@@ -1,0 +1,112 @@
+{
+  "viewport": [
+    1365,
+    768
+  ],
+  "fixture": "offscreen synthetic triangles with shared vertex writes",
+  "draws_per_output": 826,
+  "synthetic_triangles_per_output": 110205,
+  "captured_raid_median_triangle_primitives_per_swap": 111288,
+  "shared_vertex_writes_per_output": 363,
+  "shared_frame_slots": 8,
+  "command_buffers_per_output": 1,
+  "per_output_marker_readback_verified": true,
+  "runs": [
+    {
+      "launch": 1,
+      "verified_outputs": 12,
+      "wall_ms_per_output": 1.212,
+      "gpu_completion_interval_p99_ms": 1.299
+    },
+    {
+      "launch": 1,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.389,
+      "gpu_completion_interval_p99_ms": 1.618
+    },
+    {
+      "launch": 1,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.275,
+      "gpu_completion_interval_p99_ms": 1.207
+    },
+    {
+      "launch": 1,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.198,
+      "gpu_completion_interval_p99_ms": 0.81
+    },
+    {
+      "launch": 2,
+      "verified_outputs": 12,
+      "wall_ms_per_output": 1.311,
+      "gpu_completion_interval_p99_ms": 5.406
+    },
+    {
+      "launch": 2,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.379,
+      "gpu_completion_interval_p99_ms": 1.175
+    },
+    {
+      "launch": 2,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.256,
+      "gpu_completion_interval_p99_ms": 0.837
+    },
+    {
+      "launch": 2,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.209,
+      "gpu_completion_interval_p99_ms": 0.646
+    },
+    {
+      "launch": 3,
+      "verified_outputs": 12,
+      "wall_ms_per_output": 0.887,
+      "gpu_completion_interval_p99_ms": 0.561
+    },
+    {
+      "launch": 3,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.175,
+      "gpu_completion_interval_p99_ms": 0.597
+    },
+    {
+      "launch": 3,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.181,
+      "gpu_completion_interval_p99_ms": 0.631
+    },
+    {
+      "launch": 3,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.173,
+      "gpu_completion_interval_p99_ms": 0.408
+    },
+    {
+      "launch": 4,
+      "verified_outputs": 12,
+      "wall_ms_per_output": 0.934,
+      "gpu_completion_interval_p99_ms": 0.63
+    },
+    {
+      "launch": 4,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.172,
+      "gpu_completion_interval_p99_ms": 0.403
+    },
+    {
+      "launch": 4,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.168,
+      "gpu_completion_interval_p99_ms": 0.403
+    },
+    {
+      "launch": 4,
+      "verified_outputs": 200,
+      "wall_ms_per_output": 0.175,
+      "gpu_completion_interval_p99_ms": 0.592
+    }
+  ]
+}

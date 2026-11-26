@@ -133,3 +133,14 @@ An offscreen workload used **826 draws, 340 maps and 23 ordinary uploads** per f
 The same binary compared the existing native write-only mapping with an experimental path for the 2 MiB rolling buffer. The candidate used a guest-memory shadow and passed each explicit flush range to the native upload call, preserving the order of draws. More than one million maps used this path during the session. Each arm passed 4,351 Carbon checks, including range readback of neighboring bytes and the mapped pointer round trip.
 
 Throughput fell from **54.93 swaps/s to 16.02**, and p99 rose from **31.86 ms to 72.47 ms**. The short candidate trace matched 45 qualifying GPU completions to 45 swaps. GPU active work per output increased from **10.27 ms to 43.36 ms** across the short traces. The candidate put 1,069 of 1,495 main-thread samples in the unmap's state query, with 995 under the driver's queued buffer upload. The runtime keeps the existing native mapping. [Mapped-write A/B measurements](results/raid-array-map-upload-ab.json)
+
+## Native Metal shared-buffer probe
+
+The raid diagnostic declared a median of **111,288 triangle primitives per swap**, across **826 draws**. The native Metal probe uses a similar draw and triangle count with synthetic geometry, a simple shader, and **363 vertex writes** to shared memory. It encodes each output into one command buffer and keeps eight frame slots. Each draw consumes its own updated range, and a frame-specific pixel readback verifies each GPU completion.
+
+Across four launches, the warmed 200-output runs took **0.168–0.389 ms per output**. GPU completion intervals were **0.403–1.618 ms at p99**. The cold starts were measured separately. This isolates the direct submission and buffer-write path. The live raid measurements include WoW's shaders, effects, framebuffers, game logic, and compatibility layers. [Metal stream results](results/metal-raid-stream.json)
+
+```sh
+xcrun swiftc -O -framework Metal benchmarks/metal-raid-stream.swift -o /tmp/wrath-metal-raid-stream
+/tmp/wrath-metal-raid-stream
+```
