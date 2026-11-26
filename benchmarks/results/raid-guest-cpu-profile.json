@@ -1,0 +1,63 @@
+{
+  "casters": 24,
+  "camera": "fixed",
+  "resolution": [
+    1365,
+    768
+  ],
+  "profiling_interval_seconds": 8,
+  "sampling_interval_microseconds": 2000,
+  "hottest_guest_thread_only": true,
+  "periods": [
+    {
+      "elapsed_seconds": 48,
+      "sampled_cpu_ms": 3822,
+      "translated_code_percent": 62.1,
+      "runtime_percent": 37.9,
+      "new_blocks": 243,
+      "live_blocks": 110494,
+      "translation_ms": 1,
+      "retirement_ms": 0
+    },
+    {
+      "elapsed_seconds": 56,
+      "sampled_cpu_ms": 3321,
+      "translated_code_percent": 62.0,
+      "runtime_percent": 38.0,
+      "new_blocks": 43,
+      "live_blocks": 110537,
+      "translation_ms": 0,
+      "retirement_ms": 0
+    },
+    {
+      "elapsed_seconds": 64,
+      "sampled_cpu_ms": 3746,
+      "translated_code_percent": 62.2,
+      "runtime_percent": 37.8,
+      "new_blocks": 65,
+      "live_blocks": 110602,
+      "translation_ms": 0,
+      "retirement_ms": 0
+    },
+    {
+      "elapsed_seconds": 72,
+      "sampled_cpu_ms": 3587,
+      "translated_code_percent": 65.8,
+      "runtime_percent": 34.2,
+      "new_blocks": 4,
+      "live_blocks": 110606,
+      "translation_ms": 0,
+      "retirement_ms": 0
+    },
+    {
+      "elapsed_seconds": 80,
+      "sampled_cpu_ms": 3854,
+      "translated_code_percent": 60.9,
+      "runtime_percent": 39.1,
+      "new_blocks": 75,
+      "live_blocks": 110681,
+      "translation_ms": 0,
+      "retirement_ms": 0
+    }
+  ]
+}
