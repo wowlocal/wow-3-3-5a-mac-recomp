@@ -1,0 +1,221 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live headless 24-caster Northshire raid, one renderer and one switch",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "in_world_readbacks_checked": 4,
+  "workspace_monitor_seconds_per_launch": 95,
+  "parallel_diagnostics_in_timed_windows": false,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "uniform_segments_enabled": false,
+      "complete_input_script_count": 26,
+      "mapped_renderer_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 5386,
+      "first_sequence": 4560,
+      "last_sequence": 9945,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991194125,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 89.75,
+      "p99_gpu_completion_gap_ns": 17907875,
+      "min_draws": 700,
+      "max_draws": 943
+    },
+    {
+      "launch": 2,
+      "uniform_segments_enabled": true,
+      "complete_input_script_count": 26,
+      "mapped_renderer_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 5770,
+      "first_sequence": 4650,
+      "last_sequence": 10419,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997470500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 96.15,
+      "p99_gpu_completion_gap_ns": 15974750,
+      "min_draws": 672,
+      "max_draws": 942
+    },
+    {
+      "launch": 3,
+      "uniform_segments_enabled": true,
+      "complete_input_script_count": 26,
+      "mapped_renderer_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 5763,
+      "first_sequence": 4650,
+      "last_sequence": 10412,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995967250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 96.03333333333333,
+      "p99_gpu_completion_gap_ns": 15791125,
+      "min_draws": 701,
+      "max_draws": 956
+    },
+    {
+      "launch": 4,
+      "uniform_segments_enabled": false,
+      "complete_input_script_count": 26,
+      "mapped_renderer_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 5674,
+      "first_sequence": 4561,
+      "last_sequence": 10234,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991954125,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 94.55,
+      "p99_gpu_completion_gap_ns": 16438500,
+      "min_draws": 692,
+      "max_draws": 926
+    }
+  ],
+  "medians": {
+    "control": {
+      "average_completed_fps": 92.15,
+      "p99_gpu_completion_gap_ns": 17173187.5
+    },
+    "trial": {
+      "average_completed_fps": 96.09166666666667,
+      "p99_gpu_completion_gap_ns": 15882937.5
+    }
+  },
+  "mixed_array_gpu_regression_suite": {
+    "control_passed": 337,
+    "trial_passed": 337
+  },
+  "separate_diagnostic_vertex_profiles_with_223_parameters": [
+    {
+      "assembly_instructions": 26,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 3
+    },
+    {
+      "assembly_instructions": 31,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 3
+    },
+    {
+      "assembly_instructions": 40,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 45,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 47,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 221,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 52,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 221,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 53,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 60,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 65,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 221,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 65,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 12
+    },
+    {
+      "assembly_instructions": 72,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 221,
+      "relative_array_reads": 6
+    },
+    {
+      "assembly_instructions": 77,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 221,
+      "relative_array_reads": 12
+    },
+    {
+      "assembly_instructions": 78,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 12
+    },
+    {
+      "assembly_instructions": 85,
+      "declared_parameters": 223,
+      "materialized_array_before": 223,
+      "contiguous_uniform_range": 222,
+      "relative_array_reads": 12
+    }
+  ]
+}

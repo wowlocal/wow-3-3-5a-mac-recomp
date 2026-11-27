@@ -1,0 +1,176 @@
+--- a/src/core/compat/arb_program.cpp
++++ b/src/core/compat/arb_program.cpp
+@@ -75,6 +75,9 @@
+     // indexing reads the uniform array directly.
+     enum Range : uint8_t { None, Env, Local } range = None;
+     int base = 0;
++    // The longest uniform run in a mixed array, if it has one.
++    Range segment = None;
++    int segmentStart = 0, segmentBase = 0, segmentLength = 0;
+ };
+
+ struct Body {
+@@ -422,15 +425,27 @@
+             if (size >= 0 && size != static_cast<int>(array.elements.size()))
+                 failAt(pos, "array size does not match its initializers");
+             if (array.elements.empty()) failAt(pos, "empty array");
++            for (size_t first = 0; first < ranges.size();) {
++                const auto [kind, base] = ranges[first];
++                size_t last = first + 1;
++                if (kind) {
++                    while (last < ranges.size() && ranges[last].first == kind &&
++                           ranges[last].second == base + static_cast<int>(last - first))
++                        ++last;
++                    const int length = static_cast<int>(last - first);
++                    if (length > array.segmentLength) {
++                        array.segment = kind == 1 ? ArrayDecl::Env : ArrayDecl::Local;
++                        array.segmentStart = static_cast<int>(first);
++                        array.segmentBase = base;
++                        array.segmentLength = length;
++                    }
++                }
++                first = last;
++            }
+             // One contiguous env or local range: index the uniform array.
+-            if (ranges[0].first) {
+-                bool contiguous = true;
+-                for (size_t i = 1; i < ranges.size(); ++i)
+-                    contiguous &= ranges[i].first == ranges[0].first && ranges[i].second == ranges[0].second + static_cast<int>(i);
+-                if (contiguous) {
+-                    array.range = ranges[0].first == 1 ? ArrayDecl::Env : ArrayDecl::Local;
+-                    array.base = ranges[0].second;
+-                }
++            if (array.segmentLength == static_cast<int>(array.elements.size())) {
++                array.range = array.segment;
++                array.base = array.segmentBase;
+             }
+             out_.parameters += static_cast<int>(array.elements.size());
+             Symbol s{Symbol::ParamArray};
+@@ -1168,6 +1183,15 @@
+ public:
+     Emitter(const Parsed& p, const EmitOptions& o) : p_(p), o_(o), b_(*p.body) {}
+
++    bool usesUniformSegment(const ArrayDecl& array) const {
++        static const bool enabled = [] {
++            const char* value = std::getenv("WINEMETALGL_ARB_UNIFORM_SEGMENTS");
++            return value && std::strcmp(value, "1") == 0;
++        }();
++        return enabled && p_.kind == Kind::Vertex && array.range == ArrayDecl::None &&
++               array.segmentLength >= 16 && array.elements.size() - array.segmentLength <= 32;
++    }
++
+     std::string run() {
+         const bool vs = p_.kind == Kind::Vertex;
+         std::string s = "#version 130\n";
+@@ -1209,12 +1233,26 @@
+                  "    float a = abs(x), e = floor(log2(a));\n"
+                  "    return vec4(e, a / exp2(e), log2(a), 1.0);\n"
+                  "}\n";
++        for (size_t i = 0; i < b_.arrays.size(); ++i) {
++            const ArrayDecl& array = b_.arrays[i];
++            if (!usesUniformSegment(array)) continue;
++            const int start = array.segmentStart, end = start + array.segmentLength;
++            const char* uniforms = envName(p_.kind, array.segment == ArrayDecl::Env);
++            s += "vec4 arb_param" + std::to_string(i) + "(int index) {\n";
++            s += "    if (index >= " + std::to_string(start) + " && index < " + std::to_string(end) + ") return " +
++                 uniforms + "[" + std::to_string(array.segmentBase) + " + (index - " + std::to_string(start) + ")];\n";
++            s += "    switch (index) {\n";
++            for (int j = 0; j < static_cast<int>(array.elements.size()); ++j)
++                if (j < start || j >= end)
++                    s += "    case " + std::to_string(j) + ": return " + array.elements[j] + ";\n";
++            s += "    }\n    return vec4(0.0);\n}\n";
++        }
+         s += "void main() {\n";
+         for (int i = 0; i < b_.temps; ++i) s += "    vec4 t" + std::to_string(i) + " = vec4(0.0);\n";
+         for (int i = 0; i < b_.addresses; ++i) s += "    ivec4 a" + std::to_string(i) + " = ivec4(0);\n";
+         for (size_t i = 0; i < b_.arrays.size(); ++i) {
+             const ArrayDecl& a = b_.arrays[i];
+-            if (a.range != ArrayDecl::None) continue;
++            if (a.range != ArrayDecl::None || usesUniformSegment(a)) continue;
+             s += "    vec4 p" + std::to_string(i) + "[" + std::to_string(a.elements.size()) + "] = vec4[](";
+             for (size_t e = 0; e < a.elements.size(); ++e) s += (e ? ", " : "") + a.elements[e];
+             s += ");\n";
+@@ -1312,6 +1350,10 @@
+                         ", 0, " + std::to_string(size - 1) + ")";
+             } else {
+                 index = std::to_string(o.offset);
++            }
++            if (usesUniformSegment(a)) {
++                if (o.relative < 0) return a.elements[static_cast<size_t>(o.offset)];
++                return "arb_param" + std::to_string(o.index) + "(" + index + ")";
+             }
+             if (a.range == ArrayDecl::None) return "p" + std::to_string(o.index) + "[" + index + "]";
+             const std::string arr = envName(p_.kind, a.range == ArrayDecl::Env);
+@@ -1505,7 +1547,25 @@
+
+ std::string emit(const Parsed& p, const EmitOptions& o) {
+     if (!p.ok || !p.body) return {};
+-    return Emitter(p, o).run();
++    Emitter emitter(p, o);
++    if (p.kind == Kind::Vertex && std::getenv("WINEMETALGL_PROFILE_RAID_LIGHTING")) {
++        size_t largest = 0, segment = 0, dynamicReads = 0;
++        bool fast = false;
++        for (const auto& array : p.body->arrays) {
++            if (array.range != ArrayDecl::None || array.elements.size() <= largest) continue;
++            largest = array.elements.size();
++            segment = static_cast<size_t>(array.segmentLength);
++            fast = emitter.usesUniformSegment(array);
++        }
++        for (const auto& instruction : p.body->code)
++            for (const auto& operand : instruction.src)
++                if (operand.base == Operand::Array && operand.relative >= 0 &&
++                    p.body->arrays[static_cast<size_t>(operand.index)].range == ArrayDecl::None)
++                    ++dynamicReads;
++        std::fprintf(stderr, "ocerz: ARB array profile ins=%d params=%d local=%zu span=%zu relative=%zu optimized=%d\n",
++                     p.instructions, p.parameters, largest, segment, dynamicReads, fast);
++    }
++    return emitter.run();
+ }
+
+ }  // namespace wmgl::compat::arb
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -340,6 +340,43 @@
+     CHECK_GL();
+ }
+
++ARB_TEST(arb_mixed_parameter_array_selects_uniform_and_literal_elements) {
++    identity();
++    load(GL_VERTEX_PROGRAM_ARB,
++         "!!ARBvp1.0\n"
++         "ADDRESS a;\n"
++         "PARAM selector = program.env[0];\n"
++         "PARAM colors[22] = { {1,0,0,1}, program.env[7..26], {1,1,1,1} };\n"
++         "ARL a.x, selector.x;\n"
++         "MOV result.position, vertex.position;\n"
++         "MOV result.color, colors[a.x];\n"
++         "END\n");
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 7, 0, 1, 0, 1);
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 26, 0, 0, 1, 1);
++    glEnable(GL_VERTEX_PROGRAM_ARB);
++    clear();
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 0, 0, 0, 0);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kRed));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 1, 0, 0, 0);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kGreen));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 20, 0, 0, 0);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kBlue));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 21, 0, 0, 0);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kWhite));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, -4, 0, 0, 0);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kRed));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 41, 0, 0, 0);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kWhite));
++    glDisable(GL_VERTEX_PROGRAM_ARB);
++    CHECK_GL();
++}
++
+ ARB_TEST(arb_program_errors_and_queries) {
+     const char bad[] = "!!ARBfp1.0\nMOV result.color, nowhere;\nEND\n";
+     GLuint id = 0;
