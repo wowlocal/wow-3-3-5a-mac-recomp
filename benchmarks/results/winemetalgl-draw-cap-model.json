@@ -1,0 +1,786 @@
+{
+  "model": "Continuing render pass with direct draw limits and swap at the end",
+  "complete_intervals": 114,
+  "median_draws_per_interval": 826.0,
+  "median_triangles_per_interval": 111288.0,
+  "triangle_budget": 65000,
+  "example_frame": 100,
+  "counting_triangle_strips": {
+    "first_tested_setting_with_at_most_two_buffers": 81,
+    "results": [
+      {
+        "draw_setting": 64,
+        "continuing_pass_draw_cap": 512,
+        "frames_by_buffer_count": {
+          "3": 114
+        },
+        "max_draws_per_buffer": 512,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 512,
+            "triangles": 44809
+          },
+          {
+            "draws": 89,
+            "triangles": 1226
+          }
+        ]
+      },
+      {
+        "draw_setting": 65,
+        "continuing_pass_draw_cap": 520,
+        "frames_by_buffer_count": {
+          "3": 114
+        },
+        "max_draws_per_buffer": 520,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 520,
+            "triangles": 44835
+          },
+          {
+            "draws": 81,
+            "triangles": 1200
+          }
+        ]
+      },
+      {
+        "draw_setting": 66,
+        "continuing_pass_draw_cap": 528,
+        "frames_by_buffer_count": {
+          "3": 114
+        },
+        "max_draws_per_buffer": 528,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 528,
+            "triangles": 45695
+          },
+          {
+            "draws": 73,
+            "triangles": 340
+          }
+        ]
+      },
+      {
+        "draw_setting": 67,
+        "continuing_pass_draw_cap": 536,
+        "frames_by_buffer_count": {
+          "2": 1,
+          "3": 113
+        },
+        "max_draws_per_buffer": 536,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 536,
+            "triangles": 45755
+          },
+          {
+            "draws": 65,
+            "triangles": 280
+          }
+        ]
+      },
+      {
+        "draw_setting": 68,
+        "continuing_pass_draw_cap": 544,
+        "frames_by_buffer_count": {
+          "2": 3,
+          "3": 111
+        },
+        "max_draws_per_buffer": 544,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 544,
+            "triangles": 45771
+          },
+          {
+            "draws": 57,
+            "triangles": 264
+          }
+        ]
+      },
+      {
+        "draw_setting": 69,
+        "continuing_pass_draw_cap": 552,
+        "frames_by_buffer_count": {
+          "2": 6,
+          "3": 108
+        },
+        "max_draws_per_buffer": 552,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 552,
+            "triangles": 45807
+          },
+          {
+            "draws": 49,
+            "triangles": 228
+          }
+        ]
+      },
+      {
+        "draw_setting": 70,
+        "continuing_pass_draw_cap": 560,
+        "frames_by_buffer_count": {
+          "2": 9,
+          "3": 105
+        },
+        "max_draws_per_buffer": 560,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 560,
+            "triangles": 45829
+          },
+          {
+            "draws": 41,
+            "triangles": 206
+          }
+        ]
+      },
+      {
+        "draw_setting": 71,
+        "continuing_pass_draw_cap": 568,
+        "frames_by_buffer_count": {
+          "2": 18,
+          "3": 96
+        },
+        "max_draws_per_buffer": 568,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 568,
+            "triangles": 45925
+          },
+          {
+            "draws": 33,
+            "triangles": 110
+          }
+        ]
+      },
+      {
+        "draw_setting": 72,
+        "continuing_pass_draw_cap": 576,
+        "frames_by_buffer_count": {
+          "2": 25,
+          "3": 89
+        },
+        "max_draws_per_buffer": 576,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 576,
+            "triangles": 45955
+          },
+          {
+            "draws": 25,
+            "triangles": 80
+          }
+        ]
+      },
+      {
+        "draw_setting": 73,
+        "continuing_pass_draw_cap": 584,
+        "frames_by_buffer_count": {
+          "2": 32,
+          "3": 82
+        },
+        "max_draws_per_buffer": 584,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 584,
+            "triangles": 45987
+          },
+          {
+            "draws": 17,
+            "triangles": 48
+          }
+        ]
+      },
+      {
+        "draw_setting": 74,
+        "continuing_pass_draw_cap": 592,
+        "frames_by_buffer_count": {
+          "2": 41,
+          "3": 73
+        },
+        "max_draws_per_buffer": 592,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 592,
+            "triangles": 46005
+          },
+          {
+            "draws": 9,
+            "triangles": 30
+          }
+        ]
+      },
+      {
+        "draw_setting": 75,
+        "continuing_pass_draw_cap": 600,
+        "frames_by_buffer_count": {
+          "2": 56,
+          "3": 58
+        },
+        "max_draws_per_buffer": 600,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 600,
+            "triangles": 46033
+          },
+          {
+            "draws": 1,
+            "triangles": 2
+          }
+        ]
+      },
+      {
+        "draw_setting": 76,
+        "continuing_pass_draw_cap": 608,
+        "frames_by_buffer_count": {
+          "2": 72,
+          "3": 42
+        },
+        "max_draws_per_buffer": 608,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 601,
+            "triangles": 46035
+          }
+        ]
+      },
+      {
+        "draw_setting": 77,
+        "continuing_pass_draw_cap": 616,
+        "frames_by_buffer_count": {
+          "2": 88,
+          "3": 26
+        },
+        "max_draws_per_buffer": 616,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 601,
+            "triangles": 46035
+          }
+        ]
+      },
+      {
+        "draw_setting": 78,
+        "continuing_pass_draw_cap": 624,
+        "frames_by_buffer_count": {
+          "2": 101,
+          "3": 13
+        },
+        "max_draws_per_buffer": 624,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 601,
+            "triangles": 46035
+          }
+        ]
+      },
+      {
+        "draw_setting": 79,
+        "continuing_pass_draw_cap": 632,
+        "frames_by_buffer_count": {
+          "2": 109,
+          "3": 5
+        },
+        "max_draws_per_buffer": 632,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 601,
+            "triangles": 46035
+          }
+        ]
+      },
+      {
+        "draw_setting": 80,
+        "continuing_pass_draw_cap": 640,
+        "frames_by_buffer_count": {
+          "2": 111,
+          "3": 3
+        },
+        "max_draws_per_buffer": 640,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 601,
+            "triangles": 46035
+          }
+        ]
+      },
+      {
+        "draw_setting": 81,
+        "continuing_pass_draw_cap": 648,
+        "frames_by_buffer_count": {
+          "2": 114
+        },
+        "max_draws_per_buffer": 648,
+        "example_buffers": [
+          {
+            "draws": 225,
+            "triangles": 65195
+          },
+          {
+            "draws": 601,
+            "triangles": 46035
+          }
+        ]
+      }
+    ]
+  },
+  "counting_direct_triangle_lists_only": {
+    "first_tested_setting_with_at_most_two_buffers": 81,
+    "results": [
+      {
+        "draw_setting": 64,
+        "continuing_pass_draw_cap": 512,
+        "frames_by_buffer_count": {
+          "3": 114
+        },
+        "max_draws_per_buffer": 512,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 512,
+            "triangles": 43941
+          },
+          {
+            "draws": 88,
+            "triangles": 1224
+          }
+        ]
+      },
+      {
+        "draw_setting": 65,
+        "continuing_pass_draw_cap": 520,
+        "frames_by_buffer_count": {
+          "3": 114
+        },
+        "max_draws_per_buffer": 520,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 520,
+            "triangles": 44741
+          },
+          {
+            "draws": 80,
+            "triangles": 424
+          }
+        ]
+      },
+      {
+        "draw_setting": 66,
+        "continuing_pass_draw_cap": 528,
+        "frames_by_buffer_count": {
+          "3": 114
+        },
+        "max_draws_per_buffer": 528,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 528,
+            "triangles": 44833
+          },
+          {
+            "draws": 72,
+            "triangles": 332
+          }
+        ]
+      },
+      {
+        "draw_setting": 67,
+        "continuing_pass_draw_cap": 536,
+        "frames_by_buffer_count": {
+          "2": 2,
+          "3": 112
+        },
+        "max_draws_per_buffer": 536,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 536,
+            "triangles": 44887
+          },
+          {
+            "draws": 64,
+            "triangles": 278
+          }
+        ]
+      },
+      {
+        "draw_setting": 68,
+        "continuing_pass_draw_cap": 544,
+        "frames_by_buffer_count": {
+          "2": 3,
+          "3": 111
+        },
+        "max_draws_per_buffer": 544,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 544,
+            "triangles": 44903
+          },
+          {
+            "draws": 56,
+            "triangles": 262
+          }
+        ]
+      },
+      {
+        "draw_setting": 69,
+        "continuing_pass_draw_cap": 552,
+        "frames_by_buffer_count": {
+          "2": 6,
+          "3": 108
+        },
+        "max_draws_per_buffer": 552,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 552,
+            "triangles": 44939
+          },
+          {
+            "draws": 48,
+            "triangles": 226
+          }
+        ]
+      },
+      {
+        "draw_setting": 70,
+        "continuing_pass_draw_cap": 560,
+        "frames_by_buffer_count": {
+          "2": 10,
+          "3": 104
+        },
+        "max_draws_per_buffer": 560,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 560,
+            "triangles": 44963
+          },
+          {
+            "draws": 40,
+            "triangles": 202
+          }
+        ]
+      },
+      {
+        "draw_setting": 71,
+        "continuing_pass_draw_cap": 568,
+        "frames_by_buffer_count": {
+          "2": 19,
+          "3": 95
+        },
+        "max_draws_per_buffer": 568,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 568,
+            "triangles": 45057
+          },
+          {
+            "draws": 32,
+            "triangles": 108
+          }
+        ]
+      },
+      {
+        "draw_setting": 72,
+        "continuing_pass_draw_cap": 576,
+        "frames_by_buffer_count": {
+          "2": 25,
+          "3": 89
+        },
+        "max_draws_per_buffer": 576,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 576,
+            "triangles": 45087
+          },
+          {
+            "draws": 24,
+            "triangles": 78
+          }
+        ]
+      },
+      {
+        "draw_setting": 73,
+        "continuing_pass_draw_cap": 584,
+        "frames_by_buffer_count": {
+          "2": 32,
+          "3": 82
+        },
+        "max_draws_per_buffer": 584,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 584,
+            "triangles": 45119
+          },
+          {
+            "draws": 16,
+            "triangles": 46
+          }
+        ]
+      },
+      {
+        "draw_setting": 74,
+        "continuing_pass_draw_cap": 592,
+        "frames_by_buffer_count": {
+          "2": 42,
+          "3": 72
+        },
+        "max_draws_per_buffer": 592,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 592,
+            "triangles": 45137
+          },
+          {
+            "draws": 8,
+            "triangles": 28
+          }
+        ]
+      },
+      {
+        "draw_setting": 75,
+        "continuing_pass_draw_cap": 600,
+        "frames_by_buffer_count": {
+          "2": 58,
+          "3": 56
+        },
+        "max_draws_per_buffer": 600,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 600,
+            "triangles": 45165
+          }
+        ]
+      },
+      {
+        "draw_setting": 76,
+        "continuing_pass_draw_cap": 608,
+        "frames_by_buffer_count": {
+          "2": 75,
+          "3": 39
+        },
+        "max_draws_per_buffer": 608,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 600,
+            "triangles": 45165
+          }
+        ]
+      },
+      {
+        "draw_setting": 77,
+        "continuing_pass_draw_cap": 616,
+        "frames_by_buffer_count": {
+          "2": 89,
+          "3": 25
+        },
+        "max_draws_per_buffer": 616,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 600,
+            "triangles": 45165
+          }
+        ]
+      },
+      {
+        "draw_setting": 78,
+        "continuing_pass_draw_cap": 624,
+        "frames_by_buffer_count": {
+          "2": 101,
+          "3": 13
+        },
+        "max_draws_per_buffer": 624,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 600,
+            "triangles": 45165
+          }
+        ]
+      },
+      {
+        "draw_setting": 79,
+        "continuing_pass_draw_cap": 632,
+        "frames_by_buffer_count": {
+          "2": 109,
+          "3": 5
+        },
+        "max_draws_per_buffer": 632,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 600,
+            "triangles": 45165
+          }
+        ]
+      },
+      {
+        "draw_setting": 80,
+        "continuing_pass_draw_cap": 640,
+        "frames_by_buffer_count": {
+          "2": 111,
+          "3": 3
+        },
+        "max_draws_per_buffer": 640,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 600,
+            "triangles": 45165
+          }
+        ]
+      },
+      {
+        "draw_setting": 81,
+        "continuing_pass_draw_cap": 648,
+        "frames_by_buffer_count": {
+          "2": 114
+        },
+        "max_draws_per_buffer": 646,
+        "example_buffers": [
+          {
+            "draws": 226,
+            "triangles": 66065
+          },
+          {
+            "draws": 600,
+            "triangles": 45165
+          }
+        ]
+      }
+    ]
+  }
+}

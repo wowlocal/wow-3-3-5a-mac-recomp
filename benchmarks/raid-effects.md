@@ -532,3 +532,21 @@ The unchanged histogram control reached only **321 FPS** at the outset of the fi
 The warmed 60-second pairs split the wins. The draw limit alone reached **1,443 FPS and 0.766 ms p99**, then **1,486 FPS and 0.740 ms p99**. At 65,000 triangles the paired runs reached **1,463 FPS and 0.751 ms p99**, then **1,455 FPS and 0.754 ms p99**. Every run matched its native reference pixels and logged consecutive GPU completions. The trial retains 65,000 for live validation. [Warmed comparisons](results/winemetalgl-captured-draw-order-ab.json)
 
 The three diagnostic traces matched 3,601 display callbacks with zero confirmed presentations. The desktop session was unlocked before the benchmark and locked when checked after capture. These measurements describe GPU completions in the replay. [Presentation diagnostics](results/winemetalgl-captured-draw-order-ab.json)
+
+### Draw cap across the captured raid intervals
+
+With the triangle budget fixed at 65,000, the continuing-pass model checked `WINEMETALGL_COMMIT_DRAWS` settings from 64 through 81 across **114** complete raid swap intervals. Setting 81 raises the draw cap from 512 to 648 and is the first tested setting that fits every interval into two command buffers. Counting triangle strips toward the budget and counting only direct triangle lists gave the same result at 64, 80, and 81. [Draw cap model](results/winemetalgl-draw-cap-model.json)
+
+| Draw setting | Draw cap | Intervals with two buffers | Intervals with three buffers |
+| --- | ---: | ---: | ---: |
+| 64 | 512 | 0 | 114 |
+| 72 | 576 | 25 | 89 |
+| 80 | 640 | 111 | 3 |
+| 81 | 648 | 114 | 0 |
+
+The model reproduces the ordered replay's measured **225 + 512 + 89** split at 64 and predicts **225 + 601** at 81. It treats each swap interval as a continuing pass with one backend draw per logged call. Live passes can end on framebuffer changes, synchronization, or other state transitions. Setting 81 is a candidate for a paired capture at the same triangle budget. [Captured replay traces](results/winemetalgl-captured-draw-order-ab.json)
+
+```sh
+python3 benchmarks/model-raid-submissions.py CALL_LOG --example-frame 100 \
+    --draw-settings $(seq 64 81)
+```
