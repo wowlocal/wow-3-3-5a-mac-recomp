@@ -1,0 +1,173 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -45,6 +45,15 @@
+
+ add_subdirectory(vendor/SPIRV-Cross)
+ add_subdirectory(vendor/glslang)
++
++set(WMGL_ARB_SPIRV_TOOLS_SOURCE "" CACHE PATH "Optional source tree for the ARB vertex SPIR-V optimizer")
++if(WMGL_ARB_SPIRV_TOOLS_SOURCE)
++    set(SPIRV_SKIP_EXECUTABLES ON)
++    set(SPIRV_SKIP_TESTS ON)
++    set(SPIRV_SKIP_INSTALL ON)
++    set(SPIRV_WERROR OFF)
++    add_subdirectory("${WMGL_ARB_SPIRV_TOOLS_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/wmgl-spirv-tools")
++endif()
+
+ find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
+ find_library(METAL_FRAMEWORK Metal REQUIRED)
+@@ -117,6 +126,10 @@
+     "${WMGL_GEN_DIR}")
+ target_link_libraries(wmgl_portable PUBLIC
+     glslang glslang-default-resource-limits SPIRV spirv-cross-core spirv-cross-glsl spirv-cross-msl)
++if(WMGL_ARB_SPIRV_TOOLS_SOURCE)
++    target_compile_definitions(wmgl_portable PUBLIC WMGL_ENABLE_ARB_SPIRV_OPT=1)
++    target_link_libraries(wmgl_portable PUBLIC SPIRV-Tools-opt)
++endif()
+ set_target_properties(wmgl_portable PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+ file(GLOB WMGL_CORE_SOURCES CONFIGURE_DEPENDS
+diff --git a/src/core/shader/compiler.h b/src/core/shader/compiler.h
+--- a/src/core/shader/compiler.h
++++ b/src/core/shader/compiler.h
+@@ -121,6 +121,7 @@
+     // transformFeedbackVaryings list the outputs an emulation captures: no
+     // MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS limit.
+     bool captureLayout = false;
++    bool optimizeArbVertex = false;
+     // GL_ARB_gl_spirv: the shaders are SPIR-V modules translated to GLSL
+     // (spirv_input.h); `spirvUnnamed`: one of them has no debug names.
+     bool spirv = false, spirvUnnamed = false;
+diff --git a/src/core/shader/compiler.cpp b/src/core/shader/compiler.cpp
+--- a/src/core/shader/compiler.cpp
++++ b/src/core/shader/compiler.cpp
+@@ -1,4 +1,8 @@
+ #include "core/shader/compiler.h"
++
++#ifdef WMGL_ENABLE_ARB_SPIRV_OPT
++#include <spirv-tools/optimizer.hpp>
++#endif
+ #include "core/shader/link_file_cache.h"
+
+ #include <glslang/Public/ResourceLimits.h>
+@@ -3349,6 +3353,34 @@
+         options.disableOptimizer = true;
+         options.validate = false;
+         glslang::GlslangToSpv(*intermediate, result.stages[s].spirv, &options);
++#ifdef WMGL_ENABLE_ARB_SPIRV_OPT
++        if (input.optimizeArbVertex && s == static_cast<int>(Stage::Vertex)) {
++            auto& original = result.stages[s].spirv;
++            const size_t before = original.size();
++            std::vector<uint32_t> optimized;
++            std::string error;
++            spvtools::Optimizer optimizer(SPV_ENV_VULKAN_1_1);
++            optimizer.RegisterPerformancePasses(true);
++            optimizer.SetMessageConsumer([&](spv_message_level_t level, const char*, const spv_position_t&, const char* message) {
++                if (level <= SPV_MSG_ERROR && error.empty()) error = message;
++            });
++            spvtools::OptimizerOptions opt;
++            opt.set_preserve_bindings(true);
++            const bool success = optimizer.Run(original.data(), original.size(), &optimized, opt) &&
++                                 spvtools::SpirvTools(SPV_ENV_VULKAN_1_1).Validate(optimized);
++            if (success) original.swap(optimized);
++            static const bool report = [] {
++                const char* value = std::getenv("WINEMETALGL_ARB_SPIRV_OPT_LOG");
++                return value && std::strcmp(value, "1") == 0;
++            }();
++            if (report) {
++                std::fprintf(stderr, "winemetalgl: ARB SPIR-V optimization success=%d before=%zu after=%zu\n",
++                             success, before, original.size());
++                if (!success && !error.empty())
++                    std::fprintf(stderr, "winemetalgl: ARB SPIR-V optimizer diagnostic: %.300s\n", error.c_str());
++            }
++        }
++#endif
+         result.stages[s].present = true;
+         if (input.separable && !input.internal)
+             hashVaryingLocations(result.stages[s].spirv, static_cast<Stage>(s), explicitVaryings);
+@@ -4877,7 +4909,11 @@
+     addNumber(input.transformFeedbackMode);
+     addNumber(uint64_t{input.es});
+     addNumber(uint64_t{input.separable} | uint64_t{input.internal} << 1 | uint64_t{input.captureLayout} << 2 |
+-              uint64_t{input.spirv} << 3 | uint64_t{input.spirvUnnamed} << 4);
++              uint64_t{input.spirv} << 3 | uint64_t{input.spirvUnnamed} << 4 |
++              uint64_t{input.optimizeArbVertex} << 5);
++#ifdef WMGL_ENABLE_ARB_SPIRV_OPT
++    if (input.optimizeArbVertex) add(spvSoftwareVersionDetailsString());
++#endif
+     return key;
+ }
+
+diff --git a/src/core/compat/fixed_function.h b/src/core/compat/fixed_function.h
+--- a/src/core/compat/fixed_function.h
++++ b/src/core/compat/fixed_function.h
+@@ -64,7 +64,8 @@
+ // Links an internal program (not in any name table) from GLSL sources.
+ // Samplers named "<prefix>N" sample texture unit N.
+ RefPtr<Program> linkInternalProgram(const std::string& vertex, const std::string& fragment, const char* samplerPrefix,
+-                                    std::string& log, const std::map<std::string, GLuint>& attribBindings = {});
++                                    std::string& log, const std::map<std::string, GLuint>& attribBindings = {},
++                                    bool arbVertex = false);
+
+ // The fixed-function stage that runs with an ARB program in the other one
+ // (compat/arb_programs.h): its cache key and (when `source`) its GLSL, with
+diff --git a/src/core/compat/fixed_function.mm b/src/core/compat/fixed_function.mm
+--- a/src/core/compat/fixed_function.mm
++++ b/src/core/compat/fixed_function.mm
+@@ -773,12 +773,33 @@
+ }
+
+ RefPtr<Program> linkInternalProgram(const std::string& vertex, const std::string& fragment, const char* samplerPrefix,
+-                                    std::string& log, const std::map<std::string, GLuint>& attribBindings) {
++                                    std::string& log, const std::map<std::string, GLuint>& attribBindings,
++                                    bool arbVertex) {
+     shader::LinkInput input;
+     input.attribBindings = attribBindings;
+     input.shaders.push_back({shader::Stage::Vertex, vertex});
+     input.shaders.push_back({shader::Stage::Fragment, fragment});
++#ifdef WMGL_ENABLE_ARB_SPIRV_OPT
++    static const bool optimize = [] {
++        const char* value = std::getenv("WINEMETALGL_ARB_SPIRV_OPT");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    input.optimizeArbVertex = arbVertex && optimize;
++#else
++    (void)arbVertex;
++#endif
+     shader::LinkResult result = shader::link(input);
++    if (input.optimizeArbVertex) {
++        static const bool report = [] {
++            const char* value = std::getenv("WINEMETALGL_ARB_SPIRV_OPT_LOG");
++            return value && std::strcmp(value, "1") == 0;
++        }();
++        if (report) std::fprintf(stderr, "winemetalgl: ARB SPIR-V optimized attempt linked=%d\n", result.ok);
++    }
++    if (!result.ok && input.optimizeArbVertex) {
++        input.optimizeArbVertex = false;
++        result = shader::link(input);
++    }
+     if (!result.ok) {
+         log = result.log;
+         return nullptr;
+diff --git a/src/core/compat/arb_programs.mm b/src/core/compat/arb_programs.mm
+--- a/src/core/compat/arb_programs.mm
++++ b/src/core/compat/arb_programs.mm
+@@ -175,7 +175,7 @@
+             if (vp->genericRead >> n & 1u) bindings["arb_attrib" + std::to_string(n)] = static_cast<GLuint>(n);
+         std::string log;
+         ArbLinked linked;
+-        linked.program = linkInternalProgram(vs, fs, "ff_tex", log, bindings);
++        linked.program = linkInternalProgram(vs, fs, "ff_tex", log, bindings, vp != nullptr);
+         if (padding.packed.array >= 0) {
+             const auto& packed = padding.packed;
+             int count = packed.size;
+@@ -185,7 +185,7 @@
+                 padding = {};
+                 vs = arb::emit(*vp, vo, &padding, trimVaryings ? &varyings : nullptr);
+                 log.clear();
+-                linked.program = linkInternalProgram(vs, fs, "ff_tex", log, bindings);
++                linked.program = linkInternalProgram(vs, fs, "ff_tex", log, bindings, vp != nullptr);
+             } else {
+                 linked.packedOffset = offset + packed.first * 16;
+                 linked.packedSource = packed.base;

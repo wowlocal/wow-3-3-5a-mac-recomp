@@ -1205,3 +1205,20 @@ A separate compilation log showed **5–11** omitted interface variables over **
 | Fragment-consumed interface | 110.21 | 15.49 ms |
 
 Throughput fell in both pairs, and p99 moved in opposite directions. The baseline keeps the contiguous uniform layout with the full interface. All four warmed 60-second launches verified the camera, spell schedule, overlapping effects, consecutive GPU completions and zero visible windows or activations. [Live A/B and compile witness](results/raid-winemetalgl-headless-arb-trim-varyings-ab.json)
+
+### Optimize the internal ARB vertex SPIR-V
+
+The trial optionally links SPIRV-Tools and runs its performance passes for the internal ARB vertex stage. It preserves the entry-point interface and bindings, validates the optimized module, and retains the original if optimization or validation fails. The internal program linker retries with the original vertex module if the optimized link fails. Cache keys include the optimizer version when enabled.
+
+Apply `patches/winemetalgl-arb-vertex-spirv-opt-trial.patch` after the varying trial. Configure with `-DWMGL_ARB_SPIRV_TOOLS_SOURCE=/path/to/SPIRV-Tools` and enable `WINEMETALGL_ARB_SPIRV_OPT=1`. The test used the SPIRV-Tools and SPIRV-Headers revisions pinned by glslang's `known_good.json`, listed with archive hashes in the result. Without that build option, the ordinary link path is available.
+
+A separate live diagnostic validated **38** optimized vertex modules, all smaller than their originals. The median reduction was **50.34%** by SPIR-V word count. All **40** optimized link attempts succeeded on the first attempt, including links that reused in-process compilation results.
+
+| ARB vertex SPIR-V | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original | 117.03 | 14.55 ms |
+| Optimized | 119.21 | 14.57 ms |
+
+The first pair gained **6.07 FPS** and shortened p99 by **0.46 ms**. The reverse pair lost **1.70 FPS** and added **0.49 ms** to p99. The option remains experimental. The four warmed 60-second timings used the same contiguous array implementation and disabled file-backed shader and pipeline caches. Each launch verified the camera, effects, all cast timing rows, consecutive GPU completions and zero visible windows or activations.
+
+With these cache settings, each mode passed two full suites of **340** GPU tests and four focused fragment-switch checks. One full run with default caches reported a pixel mismatch on a fragment switch. The repeated full suite with default caches passed. [Live A/B and validation](results/raid-winemetalgl-headless-arb-vertex-spirv-opt-ab.json)
