@@ -1,0 +1,75 @@
+{
+  "hardware": "Apple M4 Pro",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "scene": "Stationary Northshire without the raid fixture",
+  "bridge_crossing_diagnostics": false,
+  "initial_foreground_cap": 200,
+  "initial_background_cap": 30,
+  "initial_launch_reference": {
+    "verified_completed_renders": 10934,
+    "first_sequence": 63661,
+    "last_sequence": 74594,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 59994444834,
+    "measurement_duration_ns": 60000000000,
+    "average_completed_fps": 182.21666666666667,
+    "p99_gpu_completion_gap_ns": 11905834,
+    "min_draws": 417,
+    "max_draws": 465
+  },
+  "same_launch_windows": [
+    {
+      "maxfps_readback": 0,
+      "maxfps_background_readback": 30,
+      "verified_completed_renders": 11524,
+      "first_sequence": 36912,
+      "last_sequence": 48435,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999719500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 192.05,
+      "p99_gpu_completion_gap_ns": 11797000,
+      "min_draws": 399,
+      "max_draws": 463,
+      "peak_one_second_gpu_fps": 203.0,
+      "one_second_windows_above_200_fps": 2
+    },
+    {
+      "maxfps_readback": 200,
+      "maxfps_background_readback": 30,
+      "verified_completed_renders": 11285,
+      "first_sequence": 55942,
+      "last_sequence": 67226,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998506625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 188.06666666666666,
+      "p99_gpu_completion_gap_ns": 11858709,
+      "min_draws": 396,
+      "max_draws": 448,
+      "peak_one_second_gpu_fps": 194.0,
+      "one_second_windows_above_200_fps": 0
+    },
+    {
+      "maxfps_readback": 0,
+      "maxfps_background_readback": 30,
+      "verified_completed_renders": 11505,
+      "first_sequence": 76678,
+      "last_sequence": 88182,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997169084,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 191.73333333333332,
+      "p99_gpu_completion_gap_ns": 11698166,
+      "min_draws": 385,
+      "max_draws": 451,
+      "peak_one_second_gpu_fps": 206.0,
+      "one_second_windows_above_200_fps": 9
+    }
+  ],
+  "median_uncapped_average_fps": 191.89166666666665
+}

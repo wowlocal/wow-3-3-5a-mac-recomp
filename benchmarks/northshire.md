@@ -120,6 +120,12 @@ All six mouse holds kept rendering. The largest swap gap overlapping a hold was 
 
 With bridge logging off, fixed-function uniform storage reused, and the byte-valued GL fast path enabled, the 120-second route averaged **177.60 GPU-completed FPS** at **11.84 ms p99**. The GPU log had zero gaps in frame sequence. The swap log showed zero gaps over 250 ms. All six mouse holds kept rendering, with a maximum overlapping swap gap of **23.20 ms**. Native keyboard movement and Deputy Willem's dialogue worked. [Clean route and input results](results/northshire-winemetalgl-clean.json)
 
+### Foreground FPS limit
+
+The trial client reported a default `maxFPS` of **200** and `maxFPSBk` of **30**. With `SET maxFPS "0"` in the isolated client's `WTF/Config.wtf`, it read back zero after relaunch. The foreground cap can also be changed in game with `/run SetCVar("maxFPS", 0)` and checked with `/run print(GetCVar("maxFPS"), GetCVar("maxFPSBk"))`. [Frame cap and measurement record](results/northshire-foreground-fps-cap.json)
+
+Three warmed 60-second windows in the same stationary Northshire session alternated uncapped, capped at 200, and uncapped. They averaged **192.05**, **188.07**, and **191.73 GPU-completed FPS**, with **11.80**, **11.86**, and **11.70 ms p99**. The highest one-second completion rate was **203**, **194**, and **206 FPS**, respectively. The full-raid acceptance runs require `maxFPS=0` so the default limit cannot prevent a result above 200 FPS. [Paired completion measurements](results/northshire-foreground-fps-cap.json)
+
 The control sample put 281 of 1,585 main-thread samples under the OpenGL state query and 200 under OpenGL flush. The query stack included renderer draw work executing while it drained the queue. An offscreen fixture reproduced the draw and upload output with and without the queries, but the fixture's queries took about 0.1 µs and did not reproduce the in-game wait.
 
 In a separate launch with `OCERZ_GUESTPROF=2000 OCERZ_GUESTPROF_PERIOD=8 OCERZ_GUESTPROF_HOT=1`, the four warmed foreground periods each spent 0–2 ms compiling new blocks. The translated blocks accounted for 63–66% of sampled CPU time on the hottest guest thread. Precompiling the same blocks can remove the small compilation cost in that scene. Lowering the cost of executing them would require changes to the generated code.
