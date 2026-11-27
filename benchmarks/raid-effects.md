@@ -1760,3 +1760,25 @@ Short mode lost **0.28 FPS** against long mode in both pairs while p99 fell **0.
 ```sh
 python3 benchmarks/summarize-raid-short-ebp.py CAPTURE_ROOT I386_CLIENT PRIOR_STACK_CAPTURE_1 PRIOR_STACK_CAPTURE_2
 ```
+
+### Pack the profiled i386 hot blocks before lazy translation
+
+The trial records original guest block entries and ARM64 PCs on CPU-time-weighted samples. A training launch ranks entries within the original i386 executable's text by sampled CPU time. A subsequent launch pretranslates up to 1,024 ordered entries in one arena span after its first dispatcher miss inside that text. It accepts readable, executable guest addresses. The rest of the program still translates on demand.
+
+Apply `patches/aarchx-m32-hot-code-order-trial.patch` after the combined i386 stack and ARM64 profiler patch. On the training launch, enable the guest profiler and set `OCERZ_GUESTPROF_I386_BLOCK_LOG` to a fresh `i386-blocks.ns`. Generate the ordered list from that capture. On the candidate launch, set `OCERZ_M32_HOT_ORDER` to the list with the translation cache disabled. Pretranslation uses generic guest-state metadata. The comparison measures that complete pretranslation policy.
+
+The runtime passed **806** general i386 checks. The focused i386 fixture matched the interpreter with the order absent and present. The ordered run prepared the two executable blocks and skipped a listed data address. A malformed list produced a diagnostic and the fixture still matched the interpreter.
+
+The training capture sampled **3,882** client blocks. The selected **1,024** accounted for **74.43%** of sampled CPU time within translated client code. Each ordered launch translated all 1,024 blocks before lazy dispatch, taking **6.51–6.98 ms** after reading the list and spanning about **704 KiB** of the arena. The paired placement profiles shared **885** sampled seed blocks. The number of 16 KiB pages covering 80% of their weight fell from **64 to 18**. Over all sampled client code it fell from **142 to 110**. These are sampled page counts.
+
+| Translation policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Lazy | 133.88 | 12.77 ms |
+| Hot order | 133.88 | 12.55 ms |
+
+Throughput changed by **+0.80 and −0.78 FPS** in the two pairs. P99 improved by **0.26 and 0.17 ms**. Keep lazy translation as the baseline and retain the ordered launcher as an experiment. All four 60-second windows and the two block profiles checked the saved camera, overlapping effects, 26 timing rows and consecutive GPU completions. The captures stayed offscreen while the older trial was suspended. [Live measurements and sampled-page counts](results/raid-aarchx-i386-hot-code-order-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-hot-layout.py CAPTURE_ROOT I386_CLIENT --prepare
+python3 benchmarks/summarize-raid-hot-layout.py CAPTURE_ROOT I386_CLIENT
+```

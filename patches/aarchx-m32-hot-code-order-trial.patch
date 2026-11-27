@@ -1,0 +1,178 @@
+diff --git a/src/vm.c b/src/vm.c
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -623,4 +623,5 @@
+ typedef struct {
+     uint64_t leaf;
++    uint64_t block;
+     uintptr_t host_pc;
+     uint32_t host_instruction;
+@@ -630,5 +631,6 @@
+
+ static void gp_i386_stack(const OcerzVM *vm, const OcerzCPU *cpu,
+-                         const arm_thread_state64_t *state, int include_host, GpI386Stack *sample)
++                         const arm_thread_state64_t *state, int include_host, int unwind,
++                         GpI386Stack *sample)
+ {
+     const void *pc = (const void *)(uintptr_t)arm_thread_state64_get_pc(*state);
+@@ -638,8 +640,11 @@
+         return;
+     sample->leaf = fi.insn_rip;
++    sample->block = fi.block_rip;
++    sample->host_pc = (uintptr_t)pc;
+     if (include_host) {
+-        sample->host_pc = (uintptr_t)pc;
+         sample->host_instruction = __atomic_load_n((const uint32_t *)pc, __ATOMIC_RELAXED);
+     }
++    if (!unwind)
++        return;
+
+     uint64_t gpr[16];
+@@ -698,4 +703,8 @@
+     if (arm64_path && *arm64_path && !arm64_log)
+         perror("ocerz: opening i386/ARM64 guest stack log");
++    const char *block_path = getenv("OCERZ_GUESTPROF_I386_BLOCK_LOG");
++    FILE *block_log = block_path && *block_path ? fopen(block_path, "wx") : NULL;
++    if (block_path && *block_path && !block_log)
++        perror("ocerz: opening i386 block layout log");
+     mach_port_t hot = MACH_PORT_NULL;
+     uint64_t pstart = start;
+@@ -745,10 +754,10 @@
+             uint64_t sop = cpus[i]->slow_op;
+             GpI386Stack stack = {0};
+-            if ((stack_log || arm64_log) && kr == KERN_SUCCESS)
+-                gp_i386_stack(vm, cpus[i], &st, arm64_log != NULL, &stack);
++            if ((stack_log || arm64_log || block_log) && kr == KERN_SUCCESS)
++                gp_i386_stack(vm, cpus[i], &st, arm64_log != NULL, stack_log || arm64_log, &stack);
+             thread_resume(ports[i]);
+             if (kr != KERN_SUCCESS)
+                 continue;
+-            if (stack_log || arm64_log) {
++            if (stack_log || arm64_log || block_log) {
+                 uint64_t stamp = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+                 if (stack_log)
+@@ -756,4 +765,7 @@
+                 if (arm64_log)
+                     gp_write_i386_stack(arm64_log, stamp, w, 1, &stack);
++                if (block_log)
++                    fprintf(block_log, "%llu %u %llx %llx\n", (unsigned long long)stamp, w,
++                            (unsigned long long)stack.block, (unsigned long long)stack.host_pc);
+             }
+             const void *pc = (const void *)(uintptr_t)arm_thread_state64_get_pc(st);
+@@ -790,4 +802,6 @@
+             if (arm64_log)
+                 fflush(arm64_log);
++            if (block_log)
++                fflush(block_log);
+             next = now + period;
+             pstart = now;
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -31223,4 +31223,69 @@
+ }
+
++static void m32_pretranslate_hot_order(OcerzJit *jit, uint64_t rip)
++{
++    enum { HOT_ORDER_LIMIT = 1024 };
++    static int state;
++    static uint64_t text_lo, text_hi;
++    static uint32_t entries[HOT_ORDER_LIMIT];
++    static size_t count;
++    if (state < 0)
++        return;
++    if (!state) {
++        state = -1;
++        const char *path = getenv("OCERZ_M32_HOT_ORDER");
++        if (!path || !*path || ocerz_tcache_mode() != OCERZ_TC_OFF)
++            return;
++        FILE *file = fopen(path, "r");
++        if (!file) {
++            perror("ocerz: opening i386 hot code order");
++            return;
++        }
++        unsigned long long lo, hi, entry;
++        int valid = fscanf(file, "%llx %llx", &lo, &hi) == 2 &&
++                    lo && lo < hi && hi <= (1ull << 32);
++        while (valid && fscanf(file, "%llx", &entry) == 1) {
++            valid = entry >= lo && entry < hi && count < HOT_ORDER_LIMIT;
++            if (valid)
++                entries[count++] = (uint32_t)entry;
++        }
++        valid = valid && feof(file) && !ferror(file);
++        fclose(file);
++        if (!valid || !count) {
++            fprintf(stderr, "ocerz: invalid i386 hot code order\n");
++            return;
++        }
++        text_lo = lo;
++        text_hi = hi;
++        state = 1;
++    }
++    if (rip < text_lo || rip >= text_hi)
++        return;
++    state = -1;
++    const uint64_t started = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++    const uint32_t *first_word = jit->code_cur;
++    size_t compiled = 0, present = 0;
++    g_plain_mem = jit_plain_now(jit);
++    // Match the compiler's generic entry setup for code with no executing guest state.
++    g_xlat_cpu = NULL;
++    g_xlat_ftop = -1;
++    for (size_t i = 0; i < count && !jit->code_full && !jit_space_low(jit); ++i) {
++        uint64_t entry = entries[i];
++        const int prot = ocerz_addr_prot(entry);
++        if (prot < 0 || (prot & (PROT_READ | PROT_EXEC)) != (PROT_READ | PROT_EXEC))
++            continue;
++        if (cache_lookup(jit, entry, 1)) {
++            ++present;
++            continue;
++        }
++        JitBlock *block = translate(jit, entry, 1);
++        if (block && block->code)
++            ++compiled;
++    }
++    fprintf(stderr, "ocerz: i386 hot code order seeds=%zu compiled=%zu present=%zu bytes=%zu ns=%llu\n",
++            count, compiled, present, (size_t)(jit->code_cur - first_word) * sizeof(*first_word),
++            (unsigned long long)(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - started));
++}
++
+ int ocerz_jit_step(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
+@@ -31312,4 +31377,6 @@
+             }
+         }
++        if (cpu->mode32)
++            m32_pretranslate_hot_order(jit, cpu->rip);
+         b = cache_lookup(jit, cpu->rip, cpu->mode32);
+         if (!b) {
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -72,4 +72,5 @@
+ static int g_ebp_case = -1;
+ static int g_shared_base_case = -1;
++static int g_hot_order_case;
+ static OcerzVM g_vm;
+ static OcerzCPU *cpu(void) { return &g_vm.cpu; }
+@@ -265,4 +266,9 @@
+     Snapshot si, sj;
+     plant(at, code, n);
++    if (g_hot_order_case && ocerz_protect(M32_CODE, 0x4000, PROT_READ | PROT_EXEC) != OCERZ_OK) {
++        fprintf(stderr, "FAIL: cannot mark the hot-order fixture executable\n");
++        ++g_failures;
++        return 0;
++    }
+     ocerz_jit_invalidate_all(&g_vm);
+     if (!run_interp(at, esp)) {
+@@ -318,4 +324,10 @@
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
+
++    if (getenv("OCERZ_TEST_JIT32_HOT_ORDER")) {
++        g_hot_order_case = 1;
++        CASE("Hot-order blocks preserve the interpreter result", M32_CODE, M32_STACK,
++             0xb8,1,0,0,0, 0xeb,0, 0x83,0xc0,2, 0xa3,0x20,0x00,0x50,0x00);
++        return g_failures != 0;
++    }
+     if (argc == 2 && argv[1][0] >= '0' && argv[1][0] <= '5' && argv[1][1] == 0) {
+         const unsigned index = argv[1][0] - '0';
