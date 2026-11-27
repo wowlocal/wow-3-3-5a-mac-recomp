@@ -1,0 +1,195 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+index c206e40..e507670 100644
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -167,6 +167,7 @@ void warnUndrawable(const Framebuffer& fb, const char* point, const Attachment*
+             target = RenderTargetDesc();
+             return false;
+         }
++        if (surface->hasPublishedColor()) surface->prepareColorWrite(ctx_.stream(), true);
+         // describe() resets the descriptor before installing the surface attachments.
+         surface->describe(target);
+         const bool srgb = ctx_.state.framebufferSRGB && ctx_.windowSrgb();
+@@ -4608,6 +4609,15 @@ void scanIndexRange(const uint8_t* p, GLsizei count, uint32_t& lo, uint32_t& hi)
+     }
+     const ContextState& st = ctx_.state;
+     if (st.rasterizerDiscard) return;
++    if (!st.drawFramebuffer) {
++        Surface* surface = ctx_.drawSurface();
++        if (surface && surface->hasPublishedColor() && (mask & GL_COLOR_BUFFER_BIT) &&
++            st.defaultDrawBuffer != GL_NONE && !(st.scissorTests & 1u) && !st.conditionalRender.active) {
++            const auto& colorMask = st.colorMask[0];
++            if (colorMask[0] && colorMask[1] && colorMask[2] && colorMask[3])
++                surface->prepareColorWrite(ctx_.stream(), false);
++        }
++    }
+     RenderTargetDesc target;
+     TargetFormats formats;
+     if (!drawTarget(target, formats)) return;
+diff --git a/src/core/surface.h b/src/core/surface.h
+index 01a8884..1fbb640 100644
+--- a/src/core/surface.h
++++ b/src/core/surface.h
+@@ -78,6 +78,10 @@ public:
+         return depth == 16 ? GL_DEPTH_COMPONENT16 : depth == 32 ? GL_DEPTH_COMPONENT32F : GL_DEPTH_COMPONENT24;
+     }
+     void describe(RenderTargetDesc& target) const;
++    bool hasPublishedColor() const { return renderSpare_ != nil; }
++    // Detach from a texture owned by the presenter before writing to it.
++    // A complete color clear can discard the preserved back-buffer pixels.
++    void prepareColorWrite(CommandStream& stream, bool preserve);
+ 
+     // Resolves (if multisampled) and presents the back buffer. The stream's
+     // command buffer is committed.
+@@ -108,6 +112,7 @@ private:
+     uint32_t samples_ = 1;
+     int interval_ = 1;
+     id<MTLTexture> color_ = nil, resolve_ = nil, depthStencil_ = nil, depthResolve_ = nil, linearColor_ = nil;
++    id<MTLTexture> renderSpare_ = nil;
+     std::mutex pipelineMutex_;
+     id<MTLRenderPipelineState> presentPipeline_ = nil;
+     id<MTLSamplerState> presentSampler_ = nil;
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+index f0a35d9..86a9b41 100644
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -60,6 +60,14 @@ bool flushBeforeSlotWait() {
+     return enabled;
+ }
+ 
++bool rotateMailboxColor() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("OCERZ_WMGL_MAILBOX_ROTATE_COLOR");
++        return value && value[0] == '1' && !value[1];
++    }();
++    return enabled;
++}
++
+ id<MTLRenderPipelineState> mailboxCopyPipeline(MTLPixelFormat format) {
+     if (format != MTLPixelFormatRGBA8Unorm) return nil;
+     static id<MTLRenderPipelineState> pipeline = []() -> id<MTLRenderPipelineState> {
+@@ -249,6 +257,7 @@ unsigned onscreenPixelFormatCount() {
+     id<MTLRenderPipelineState> copyPipeline = nil;
+     bool stop = false;
+     id<MTLCommandQueue> queue = nil;
++    id<MTLCommandQueue> renderQueue = nil;  // set for rotating color textures
+     std::thread thread;
+ };
+ 
+@@ -271,9 +280,11 @@ unsigned onscreenPixelFormatCount() {
+     });
+     lock.unlock();
+     mailbox_.reset();
++    renderSpare_ = nil;
+ }
+ 
+ void Surface::allocate() {
++    renderSpare_ = nil;
+     id<MTLDevice> device = Device::get().mtl();
+     const wmgl_pixel_format& pf = pixelFormat();
+     MTLTextureDescriptor* desc = [MTLTextureDescriptor
+@@ -318,6 +329,23 @@ unsigned onscreenPixelFormatCount() {
+     }
+ }
+ 
++void Surface::prepareColorWrite(CommandStream& stream, bool preserve) {
++    if (!renderSpare_) return;
++    if (mailbox_->renderQueue != stream.queue().mtl()) {
++        stopMailbox();
++        return;
++    }
++    id<MTLTexture> previous = color_;
++    color_ = renderSpare_;
++    renderSpare_ = nil;
++    if (preserve) {
++        id<MTLBlitCommandEncoder> blit = stream.blit();
++        [blit copyFromTexture:previous sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
++                   sourceSize:MTLSizeMake(width_, height_, 1) toTexture:color_ destinationSlice:0
++             destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
++    }
++}
++
+ void Surface::resize(int width, int height, CommandStream* stream) {
+     width = std::max(1, width);
+     height = std::max(1, height);
+@@ -660,7 +688,8 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+ bool Surface::swapMailbox(CommandStream& stream, uint64_t draws) {
+     id<MTLTexture> source = resolvedColor();
+     if (mailbox_ && (mailbox_->slots[0].width != source.width || mailbox_->slots[0].height != source.height ||
+-                     mailbox_->slots[0].pixelFormat != source.pixelFormat))
++                     mailbox_->slots[0].pixelFormat != source.pixelFormat ||
++                     (mailbox_->renderQueue && mailbox_->renderQueue != stream.queue().mtl())))
+         stopMailbox();
+     if (!mailbox_) {
+         mailbox_ = std::make_unique<Mailbox>();
+@@ -676,7 +705,9 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+         desc.storageMode = MTLStorageModePrivate;
+         desc.usage = MTLTextureUsageShaderRead | MTLTextureUsagePixelFormatView;
+         box->copyPipeline = mailboxCopyPipeline(source.pixelFormat);
+-        if (box->copyPipeline) desc.usage |= MTLTextureUsageRenderTarget;
++        if (rotateMailboxColor() && samples_ == 1 && source.pixelFormat == MTLPixelFormatRGBA8Unorm)
++            box->renderQueue = stream.queue().mtl();
++        if (box->copyPipeline || box->renderQueue) desc.usage |= MTLTextureUsageRenderTarget;
+         for (int i = 0; i < Mailbox::kSlots; ++i) box->slots[i] = [Device::get().mtl() newTextureWithDescriptor:desc];
+         box->queue = [Device::get().mtl() newCommandQueue];
+         CAMetalLayer* layer = layer_;
+@@ -736,6 +767,8 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     FILE* timings = box->timings;
+     int slot = -1;
+     uint64_t sequence;
++    const bool canPublish = box->renderQueue && !renderSpare_ && stream.drawsSinceCommit() != 0;
++    bool published = false;
+     const uint64_t slotBegin = timings ? stats::nowNanos() : 0;
+     {
+         // A free slot, else the finished frame the presenter has not taken
+@@ -744,10 +777,11 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+         std::unique_lock<std::mutex> lock(box->mutex);
+         const auto reusable = [&] {
+             for (int i = 0; i < Mailbox::kSlots; ++i)
+-                if (box->state[i] == Mailbox::Free || box->state[i] == Mailbox::Ready) return true;
++                if (box->slots[i] != source && (box->state[i] == Mailbox::Free || box->state[i] == Mailbox::Ready))
++                    return true;
+             return false;
+         };
+-        if (flushBeforeSlotWait() && !reusable()) {
++        if (!canPublish && flushBeforeSlotWait() && !reusable()) {
+             // Submit the draw commands while there is no slot to copy into.
+             // The eventual copy uses the same render queue after these draws.
+             lock.unlock();
+@@ -756,9 +790,16 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+         }
+         box->changed.wait(lock, reusable);
+         for (int i = 0; i < Mailbox::kSlots && slot < 0; ++i)
+-            if (box->state[i] == Mailbox::Free) slot = i;
++            if (box->state[i] == Mailbox::Free && box->slots[i] != source) slot = i;
+         for (int i = 0; i < Mailbox::kSlots && slot < 0; ++i)
+-            if (box->state[i] == Mailbox::Ready) slot = i;
++            if (box->state[i] == Mailbox::Ready && box->slots[i] != source) slot = i;
++        if (canPublish && box->slots[slot]) {
++            // Keep the published texture readable until the next color write.
++            // That write can use the old slot storage as its render target.
++            renderSpare_ = box->slots[slot];
++            box->slots[slot] = source;
++            published = true;
++        }
+         box->state[slot] = Mailbox::Pending;
+         sequence = box->nextSequence++;
+         box->sequence[slot] = sequence;
+@@ -767,7 +808,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     const uint64_t dimensions = (uint64_t(source.width) << 32) | uint64_t(source.height);
+     const uint64_t recordingStream = box->recordingStream;
+     id<MTLRenderCommandEncoder> copy = nil;
+-    if (box->copyPipeline) {
++    if (!published && box->copyPipeline) {
+         MTLRenderPassDescriptor* pass = [MTLRenderPassDescriptor renderPassDescriptor];
+         pass.colorAttachments[0].texture = box->slots[slot];
+         pass.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+@@ -781,7 +822,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+         [copy setFragmentTexture:source atIndex:0];
+         [copy drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+         [copy endEncoding];
+-    } else {
++    } else if (!published) {
+         id<MTLBlitCommandEncoder> blit = stream.blit();
+         [blit copyFromTexture:source sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
+                    sourceSize:MTLSizeMake(source.width, source.height, 1) toTexture:box->slots[slot] destinationSlice:0

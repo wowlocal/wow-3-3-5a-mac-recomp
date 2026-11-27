@@ -427,3 +427,24 @@ The windowed replay measured all four flag combinations in four interleaved bloc
 | Both | 1,315 | 2.63 ms | 1,271 | 2.96 ms |
 
 Both changes together lowered p99 against the control in every short block and against each individual change in three blocks. To reproduce the combined arm, set `OCERZ_WMGL_FLUSH_BEFORE_SLOT_WAIT=1` and `OCERZ_WMGL_MAILBOX_RASTER_COPY=1`. [Paired and sustained results](results/winemetalgl-combined-mailbox-ab.json)
+
+### Publish the rendered color texture directly
+
+The direct-publication trial hands the rendered linear RGBA8 texture to the mailbox and retains it as the readable back buffer. Before the next color write, it switches to the spare texture from that slot. A full unmasked color clear can use the spare immediately. Partial and masked clears and other writes copy the preserved pixels first. A swap with an unchanged back buffer uses the regular copy path. [Replay and pixel checks](results/winemetalgl-published-color-ab.json)
+
+In four paired six-second windows with early submission and raster copy enabled in both arms, direct publication raised median throughput from **1,261 to 1,382 GPU-completed FPS** and lowered median p99 from **3.02 to 2.25 ms**. All four pairs improved on both metrics and matched the reference pixels. [Short paired runs](results/winemetalgl-published-color-ab.json)
+
+Build the native preservation check against the trial library to verify reads after swap, repeated swaps, partial and masked clears, resize, and a render-queue switch.
+
+```sh
+xcrun clang++ -std=c++17 -O2 -fobjc-arc -Wno-deprecated-declarations \
+    -I "$METAL_TRIAL_WMGL/include" -L "$METAL_TRIAL_BUILD" -lwinemetalgl \
+    -Wl,-rpath,"$METAL_TRIAL_BUILD" -framework Foundation -framework QuartzCore \
+    "$TRIAL_REPO/benchmarks/wmgl-published-color-check.mm" -o /tmp/wmgl-published-color-check
+OCERZ_WMGL_MAILBOX_ROTATE_COLOR=1 OCERZ_WMGL_MAILBOX_RASTER_COPY=1 \
+    OCERZ_WMGL_FLUSH_BEFORE_SLOT_WAIT=1 /tmp/wmgl-published-color-check
+```
+
+The warmed 60-second pair moved from **1,304 FPS and 2.67 ms p99** to **1,367 FPS and 2.38 ms p99**. A separate ten-second encoder capture matched **13,232** render command buffers, each without a blit interval. The render pass reached **2.43 ms p99**. The pass and command-buffer durations agreed within 42 ns in that capture. With the trial enabled, the original client rendered its background login screen and recorded 146 consecutive GPU completions. [Sustained and encoder results](results/winemetalgl-published-color-ab.json)
+
+Apply `patches/winemetalgl-published-color-trial.patch` after the raster copy patch and set `OCERZ_WMGL_MAILBOX_ROTATE_COLOR=1`. Direct publication is eligible on the single-sample windowed linear RGBA8 path when a draw is pending on the render queue. Live raid and input validation are still pending.
