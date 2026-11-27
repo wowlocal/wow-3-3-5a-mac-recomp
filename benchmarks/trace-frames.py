@@ -6,7 +6,7 @@ import json
 import math
 import subprocess
 import xml.etree.ElementTree as ElementTree
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from collections import Counter, defaultdict, namedtuple
 from pathlib import Path
 from statistics import median
@@ -277,7 +277,33 @@ def mailbox_sample(times, seconds):
     return sample_end, gap_end, sample_duration
 
 
-def mailbox_report(frames, pid, width, height, seconds=None):
+def completion_segments(times, sequences, duration_ns, segment_ns):
+    start = times[0]
+    segments = []
+    for offset in range(0, duration_ns, segment_ns):
+        stop_offset = min(offset + segment_ns, duration_ns)
+        lower, upper = start + offset, start + stop_offset
+        # Count completions in (lower, upper], so the segment counts add
+        # up to the window's FPS numerator without double-counting markers.
+        completions = bisect_right(times, upper) - bisect_right(times, lower)
+        # Assign each gap to the segment where it begins, including a gap
+        # crossing a segment or the full measurement's right boundary.
+        first = bisect_left(times, lower)
+        last = min(bisect_left(times, upper), len(times) - 1)
+        gaps = sorted(times[i + 1] - times[i] for i in range(first, last))
+        segments.append({
+            "start_offset_ns": offset,
+            "duration_ns": stop_offset - offset,
+            "completed_frames": completions,
+            "average_completed_fps": completions * 1e9 / (stop_offset - offset),
+            "gap_count": len(gaps),
+            "p99_gpu_completion_gap_ns": gaps[math.ceil(0.99 * len(gaps)) - 1] if gaps else None,
+            "missing_sequences": sequences[last] - sequences[first] - len(gaps) if gaps else 0,
+        })
+    return segments
+
+
+def mailbox_report(frames, pid, width, height, seconds=None, segment_seconds=None):
     if len(frames) < 2:
         raise ValueError("Fewer than two completed WineMetalGL renders at the requested size")
     frames.sort()
@@ -291,7 +317,7 @@ def mailbox_report(frames, pid, width, height, seconds=None):
     missing = sequences[gap_end - 1] - sequences[0] + 1 - gap_end
     times = times[:gap_end]
     gaps = sorted(b - a for a, b in zip(times, times[1:]))
-    return {
+    report = {
         "pid": pid,
         "window_size": [width, height],
         "verified_completed_renders": verified,
@@ -305,6 +331,9 @@ def mailbox_report(frames, pid, width, height, seconds=None):
         "min_draws": min(frame[2] for frame in frames),
         "max_draws": max(frame[2] for frame in frames),
     }
+    if segment_seconds is not None:
+        report["segments"] = completion_segments(times, sequences, sample_duration, segment_seconds * 10**9)
+    return report
 
 
 def presentation_report(path, pid, stream, completed_sequences):
@@ -570,7 +599,7 @@ def frame_timing_report(path, pid, stream, frames, pass_log=None, submission_log
 
 
 def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None, timing_log=None,
-                pass_log=None, submission_log=None):
+                pass_log=None, submission_log=None, segment_seconds=None):
     streams = defaultdict(list)
     dimensions = (width << 32) | height
     with path.open() as log:
@@ -591,7 +620,7 @@ def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, prese
         frames = [frame for frame in frames if frame[0] >= start_sequence]
         if not any(frame[0] == start_sequence for frame in frames):
             raise ValueError("The requested starting GPU completion is missing")
-    report = mailbox_report(frames, pid, width, height, seconds)
+    report = mailbox_report(frames, pid, width, height, seconds, segment_seconds)
     if present_log is not None:
         # GPU and display events join by the renderer's sequence identity.
         completed = {seq for seq, _, _ in frames[:report["verified_completed_renders"]]}
@@ -621,26 +650,30 @@ def main():
     parser.add_argument("--submission-log", type=Path, help="attribute final-buffer dispatch wait to recorded GPU work")
     parser.add_argument("--start-sequence", type=int, help="first completed frame in the measurement")
     parser.add_argument("--seconds", type=int, help="require this many seconds of completed GPU work")
+    parser.add_argument("--segment-seconds", type=int, help="summarize consecutive parts of a GPU completion window")
     options = parser.parse_args()
     if min(options.pid, options.width, options.height, options.run) <= 0:
         parser.error("PID, viewport dimensions, and run number must be positive")
     if (options.wmgl or options.wmgl_log) and options.frame_log:
         parser.error("--frame-log applies to the AGL window-write analysis")
-    log_options = (options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log)
+    log_options = (options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log,
+                   options.segment_seconds)
     if not options.wmgl_log and any(value is not None for value in log_options):
-        parser.error("--stream, --start-sequence, --seconds, --present-log, and --timing-log require --wmgl-log")
+        parser.error("GPU completion log options require --wmgl-log")
     if options.pass_log is not None and options.timing_log is None:
         parser.error("--pass-log requires --timing-log")
     if options.submission_log is not None and options.timing_log is None:
         parser.error("--submission-log requires --timing-log")
-    if any(value is not None and value <= 0 for value in (options.stream, options.start_sequence, options.seconds)):
-        parser.error("Stream, starting sequence, and duration must be positive")
+    if any(value is not None and value <= 0 for value in (
+        options.stream, options.start_sequence, options.seconds, options.segment_seconds,
+    )):
+        parser.error("Stream, starting sequence, and durations must be positive")
     try:
         if options.wmgl_log:
             report = mailbox_log(
                 options.trace, options.pid, options.width, options.height,
                 options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log,
-                options.pass_log, options.submission_log,
+                options.pass_log, options.submission_log, options.segment_seconds,
             )
             print(json.dumps(report, indent=2))
             return

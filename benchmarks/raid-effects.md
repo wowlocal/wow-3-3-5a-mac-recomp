@@ -195,9 +195,11 @@ python3 "$TRIAL_REPO/benchmarks/trace-frames.py" GPU.ns PID 1365 768 \
     --wmgl-log --start-sequence SEQUENCE --seconds 60
 ```
 
-Use `--seconds 600` for the ten-minute run. If the log contains multiple mailbox generations at the requested size, select the generation that covers the run with `--stream`.
+Use `--seconds 600 --segment-seconds 60` for the ten-minute run to see how completion rate and p99 change minute by minute. If the log contains multiple mailbox generations at the requested size, select the generation that covers the run with `--stream`.
 
 With GL statistics disabled, **193** calibration records from the direct file matched the Instruments signposts for sequence, dimensions, draw count, and GPU timestamp. A subsequent fixed **60-second login-screen window** contained **1,749** successful GPU completion records including its start marker, with zero missing sequence numbers. This verified the extended recording path at 1365 × 768. The background login screen averaged 29.13 completed FPS and had a 41.34 ms p99, with the raid workload still awaiting in-world testing. [Direct GPU recording results](results/metal-login-direct-60s.json)
+
+For live acceptance on the M4 Pro, use the fixed camera with all 24 casters at 1365 × 768 and VSync off. Preserve the spell effects and cast schedule. Collect three warmed 60-second windows and one warmed 600-second window from the GPU completion log. Each window must average at least 500 newly rendered frames per second, with p99 completion gaps of 2.0 ms or less. Check sequence continuity, confirm the visible spell effects and combat timing, and run the movement and input checks separately in Northshire. [Northshire route](northshire.md)
 
 ## Guest-backed Metal vertex storage
 
@@ -494,3 +496,9 @@ Four interleaved six-second blocks compared **62,500**, **65,000**, and **67,500
 The two sustained pairs started after at least five seconds of completed GPU rendering and reversed run order. At 65,000, the runs reached **1,343 FPS and 2.148 ms p99**, then **1,359 FPS and 2.173 ms p99**. At 62,500, the corresponding results were **1,320 FPS and 2.226 ms p99**, then **1,358 FPS and 2.119 ms p99**. The pairs split the p99 wins and favored 65,000 on throughput. The 65,000 setting is the comparison baseline for the trial. [Warmed comparisons](results/winemetalgl-nearby-triangle-ab.json)
 
 Separate submission traces verified **466 + 360** draws per frame at 65,000 and **448 + 378** at 62,500. The union of the render buffers' GPU execution intervals reached **2.111 ms p99** and **2.492 ms p99**, respectively, in those captures. All 336 renderer tests passed. [Submission traces](results/winemetalgl-nearby-triangle-ab.json)
+
+### Ten-minute windowed replay
+
+At 65,000 triangles, the warmed windowed i386 replay averaged **1,351.95 GPU-completed FPS** over exactly 600 seconds. It recorded **811,173** consecutive GPU completions including the start marker, with 826 draws per output. The p99 completion gap was **2.055 ms**, about 55 µs above the 2.0 ms target. Minute-level p99 ranged from **2.002 to 2.112 ms**, and minute-level throughput ranged from **1,344.07 to 1,361.70 FPS**. [GPU completion measurements](results/winemetalgl-triangle-budget-soak.json)
+
+All ten post-start memory samples read **106.5 MiB** of process RSS. The ending framebuffer matched the reference checksum and all 71 harness checks passed. To repeat the run, set `OCERZ_WMGL_I386_SECONDS=612` with the same windowed flags, select the first GPU completion at least five seconds after the first recorded completion, and analyze with `--seconds 600 --segment-seconds 60`. The live raid acceptance runs and input checks are pending. [Replay and memory measurements](results/winemetalgl-triangle-budget-soak.json)
