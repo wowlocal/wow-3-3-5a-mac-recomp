@@ -1,0 +1,147 @@
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -249,6 +249,13 @@
+     }
+     // Draws recorded in the command buffer being recorded.
+     uint32_t drawsSinceCommit() const { return drawsSinceCommit_; }
++    bool hasDrawSubmissionThisFrame() const { return frameHasDrawSubmission_; }
++    uint64_t earlyDrawCredit() const { return earlyDrawCredit_; }
++    void flushEarlyFrame(uint64_t credit);
++    void resetFrameSubmissionBudget() {
++        frameHasDrawSubmission_ = false;
++        earlyDrawCredit_ = 0;
++    }
+     uint64_t trianglesSinceCommit() const { return trianglesSinceCommit_; }
+     // The CPU waited this frame for indirect commands the GPU wrote: such a
+     // wait drains the GPU, which then idles while the CPU records
+@@ -314,6 +321,8 @@
+     RenderTargetDesc pendingTarget_;
+     PendingClear pending_;
+     bool drawsInPass_ = false;
++    bool frameHasDrawSubmission_ = false;
++    uint64_t earlyDrawCredit_ = 0;
+     uint32_t drawsSinceCommit_ = 0;
+     uint64_t trianglesSinceCommit_ = 0;
+     uint64_t submissionTraceStream_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -653,6 +653,11 @@
+     lastPrelude_ = nil;
+ }
+
++void CommandStream::flushEarlyFrame(uint64_t credit) {
++    flush(true);
++    earlyDrawCredit_ = credit;
++}
++
+ uint64_t CommandStream::flush(bool keepPendingClear) {
+     flushDeferred_ = false;
+     if (__builtin_expect(deferred_ != nullptr, 0)) runDeferred();
+@@ -663,6 +668,10 @@
+     stats::count(&stats::Frame::commits);
+     lastCommitNanos_ = stats::nowNanos();
+     const uint32_t submittedDraws = drawsSinceCommit_;
++    if (submittedDraws) {
++        frameHasDrawSubmission_ = true;
++        earlyDrawCredit_ = 0;
++    }
+     drawsSinceCommit_ = 0;
+     trianglesSinceCommit_ = 0;
+     if (!profile_.empty()) {
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -608,6 +608,10 @@
+ }
+
+ bool Surface::swap(CommandStream& stream) {
++    struct FrameBudgetReset {
++        CommandStream& stream;
++        ~FrameBudgetReset() { stream.resetFrameSubmissionBudget(); }
++    } reset{stream};
+     stats::Timer presentTimer(&stats::Frame::presentNanos);
+     const uint64_t draws = stats::g_recordMailboxDraws ? stats::takeMailboxDraws() : 0;
+     resolveForRead(stream);
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2570,11 +2570,26 @@
+     // the GPU idles little after a wait, and every such commit splits the
+     // G-buffer pass (Foundation probe: 24.2 -> 21.1 ms a frame without).
+     static const uint64_t eagerNanos = micros("WINEMETALGL_EAGER_US", 0);
++    static const uint64_t earlyDraws = []() -> uint64_t {
++        const char* v = std::getenv("WINEMETALGL_IDLE_FIRST_DRAWS");
++        return v && *v ? std::strtoull(v, nullptr, 10) : 0;
++    }();
+     CommandStream& stream = ctx_.stream();
+     const uint64_t recorded = stream.drawsSinceCommit();
+     if (!draws || !recorded) return;
+     if (target && passNanos && !stream.continuesPass(*target) && stats::nowNanos() - stream.lastCommitNanos() >= passNanos) {
+         stream.flush(true);
++        return;
++    }
++    const uint64_t continuingLimit = uint64_t{draws} * 8;
++    // Start the first default-framebuffer submission while the queue has
++    // nothing in flight. Transfer the unused draw budget to the next
++    // submission so early work does not introduce an additional split.
++    if (earlyDraws >= draws && recorded >= earlyDraws && recorded < continuingLimit &&
++        (recorded - earlyDraws) % 32 == 0 && !stream.hasDrawSubmissionThisFrame() &&
++        target && !ctx_.state.drawFramebuffer && ctx_.drawSurface() && stream.continuesPass(*target) &&
++        !triangleSubmissionBudget() && stream.queue().idle()) {
++        stream.flushEarlyFrame(continuingLimit - recorded);
+         return;
+     }
+     // In frames where the CPU waited for indirect commands the GPU wrote
+@@ -2589,7 +2604,7 @@
+     if (target && stream.continuesPass(*target) && !idle) {
+         const uint64_t triangleBudget = triangleSubmissionBudget();
+         const bool reachedTriangleBudget = triangleBudget && stream.trianglesSinceCommit() >= triangleBudget;
+-        if (!reachedTriangleBudget && recorded < uint64_t{draws} * 8) return;
++        if (!reachedTriangleBudget && recorded < continuingLimit + stream.earlyDrawCredit()) return;
+     }
+     stream.flush(true);
+ }
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -472,6 +472,38 @@
+     CHECK_GL();
+ }
+
++TEST(arb_idle_first_submission_keeps_draw_output) {
++    gpu::Fixture fixture(64, 64, false);
++    CHECK(fixture.ok);
++    if (!fixture.ok) return;
++    loadArb();
++    identity();
++    load(GL_VERTEX_PROGRAM_ARB,
++         "!!ARBvp1.0\n"
++         "MOV result.position, vertex.position;\n"
++         "MOV result.color, vertex.color;\n"
++         "END\n");
++    GLuint vbo = 0;
++    glGenBuffers(1, &vbo);
++    const GLfloat vertices[] = {-1, -1, 1, -1, 0, 1};
++    glBindBuffer(GL_ARRAY_BUFFER, vbo);
++    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
++    glVertexPointer(2, GL_FLOAT, 0, nullptr);
++    glEnableClientState(GL_VERTEX_ARRAY);
++    glEnable(GL_VERTEX_PROGRAM_ARB);
++    for (int frame = 0; frame < 2; ++frame) {
++        clear();
++        glColor4f(frame == 0, 0, frame == 1, 1);
++        for (int draw = 0; draw < 100; ++draw) glDrawArrays(GL_TRIANGLES, 0, 3);
++        CHECK(wmgl_surface_swap(fixture.surface));
++        CHECK(pixel(32, 32, frame == 0 ? kRed : kBlue));
++    }
++    glDisable(GL_VERTEX_PROGRAM_ARB);
++    glDisableClientState(GL_VERTEX_ARRAY);
++    glDeleteBuffers(1, &vbo);
++    CHECK_GL();
++}
++
+ ARB_TEST(arb_program_errors_and_queries) {
+     const char bad[] = "!!ARBfp1.0\nMOV result.color, nowhere;\nEND\n";
+     GLuint id = 0;

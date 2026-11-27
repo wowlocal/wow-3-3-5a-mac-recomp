@@ -1255,3 +1255,16 @@ The diagnostic works backward from the ARB writes to `result.position`, followin
 The two 30-second windows covered **6,789** consecutive verified outputs. The position probe covered every submitted reference in the observed direct ARB paths. Both runs verified the camera, overlapping spell effects, all 26 timing rows, and zero visible trial windows or activations. The reported fractions count matching input signatures weighted by submitted references. [Live position-input measurements](results/raid-winemetalgl-headless-arb-position-input-reuse.json)
 
 Apply `patches/winemetalgl-arb-position-reuse-profile-trial.patch` after the vertex reuse probe. The same log variables and summarizer accept both record formats. A six-frame GPU test verified that changing color preserves the position match, changing the position uniform breaks it, and a different program with the same position calculation preserves it. The renderer passed **340** GPU tests with the probe off.
+
+### Submit the first default-framebuffer batch when the queue is empty
+
+The trial can submit the first continuing default-framebuffer pass early when the renderer's queue has no commands in flight. It checks at the selected draw threshold and every 32 draws until the normal threshold. The unused draw budget carries over to the next submission. A focused test verified two 100-draw frames with batches of 64 + 36 in control and 32 + 68 with the trial. Both modes passed **340** GPU tests.
+
+Apply `patches/winemetalgl-idle-first-submission-trial.patch` to the renderer. Set `WINEMETALGL_IDLE_FIRST_DRAWS=256` for the trial and keep the ordinary 512-draw continuing-pass threshold. The separate 20-second diagnostic recorded first submissions at **256 draws in 2,389 of 2,494** intervals. All 2,494 used two command buffers. The median interval between the first and final submissions increased from **2.58 to 3.60 ms**.
+
+| First submission scheduling | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Ordinary threshold | 122.90 | 14.39 ms |
+| Early threshold when the queue is empty | 123.03 | 13.88 ms |
+
+P99 shortened by **0.56 and 0.46 ms** in the two pairs. The median throughput difference was **0.13 FPS**. Keep this as an optional baseline for tail-latency comparisons. All four warmed 60-second timings had submission logging off and verified the camera, cast schedule, overlapping effects, consecutive GPU completions and zero trial windows or activations. [Live A/B and command-buffer diagnostics](results/raid-winemetalgl-headless-idle-first-submission-ab.json)
