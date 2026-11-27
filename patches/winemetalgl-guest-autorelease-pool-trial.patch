@@ -1,0 +1,47 @@
+diff --git a/include/winemetalgl/driver.h b/include/winemetalgl/driver.h
+--- a/include/winemetalgl/driver.h
++++ b/include/winemetalgl/driver.h
+@@ -123,6 +123,8 @@
+  * (the Wine module's batches, src/wine/unix/unix_main.c). */
+ void wmgl_batch_begin(void);
+ void wmgl_batch_end(void);
++/* Skip call-local pools on a thread while its caller owns an active pool. */
++void wmgl_set_guest_pool_active(int active);
+
+ void wmgl_stats_enable(int enable);
+ void wmgl_stats_reset(void);
+diff --git a/src/core/driver.mm b/src/core/driver.mm
+--- a/src/core/driver.mm
++++ b/src/core/driver.mm
+@@ -404,6 +404,10 @@
+     if (CallPool::depth > 0 && --CallPool::depth == 0) objc_autoreleasePoolPop(t_batchPool);
+ }
+
++WMGL_EXPORT void wmgl_set_guest_pool_active(int active) {
++    CallPool::guestPoolActive = active != 0;
++}
++
+ WMGL_EXPORT const char* wmgl_renderer_string(void) {
+     // GL_RENDERER's string, WINEMETALGL_RENDERER included.
+     return rendererString().c_str();
+diff --git a/src/core/context.h b/src/core/context.h
+--- a/src/core/context.h
++++ b/src/core/context.h
+@@ -258,14 +258,15 @@
+ // Inside another pool of this kind (a batch of calls, wmgl_batch_begin) a
+ // call adds none: the outer one drains when the batch ends.
+ struct CallPool {
+-    CallPool() : token(depth++ ? nullptr : objc_autoreleasePoolPush()) {}
++    CallPool() : token(depth++ || guestPoolActive ? nullptr : objc_autoreleasePoolPush()) {}
+     ~CallPool() {
+-        if (--depth == 0) objc_autoreleasePoolPop(token);
++        if (--depth == 0 && token) objc_autoreleasePoolPop(token);
+     }
+     CallPool(const CallPool&) = delete;
+     CallPool& operator=(const CallPool&) = delete;
+     void* token;
+     static thread_local int depth;  // pools of this kind open on this thread
++    static inline thread_local bool guestPoolActive = false;
+ };
+
+ // Scoped share-group lock (every GL command runs under it).

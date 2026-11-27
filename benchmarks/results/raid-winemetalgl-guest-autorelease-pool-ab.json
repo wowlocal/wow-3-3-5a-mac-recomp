@@ -1,0 +1,316 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "GPU-completed frames from the original client with the full offscreen raid fixture.",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_rows_per_launch": 26,
+  "continuing_draw_threshold": 512,
+  "idle_first_draw_threshold": 256,
+  "completed_serial_fast_path": true,
+  "arb_contiguous_segments": true,
+  "i386_general_base_hoist": true,
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256": "613c0c00f08c1bd507aa5c4c2f64d2ce20b2a1fc826c3fd13ee6412ab2704f75",
+  "process_isolation_verified": true,
+  "selected_for_followup": true,
+  "runs": [
+    {
+      "run": 1,
+      "borrow_guest_pool": false,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "end_rss_kib": 428992,
+      "window": {
+        "stream": 1,
+        "pid": 52783,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7366,
+        "first_sequence": 4469,
+        "last_sequence": 11834,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59997615041,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 122.75,
+        "p99_gpu_completion_gap_ns": 13380875,
+        "min_draws": 702,
+        "max_draws": 969
+      }
+    },
+    {
+      "run": 2,
+      "borrow_guest_pool": true,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "end_rss_kib": 371376,
+      "window": {
+        "stream": 1,
+        "pid": 92816,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7456,
+        "first_sequence": 4469,
+        "last_sequence": 11924,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59995438250,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 124.25,
+        "p99_gpu_completion_gap_ns": 13568250,
+        "min_draws": 696,
+        "max_draws": 955
+      }
+    },
+    {
+      "run": 3,
+      "borrow_guest_pool": true,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "end_rss_kib": 384464,
+      "window": {
+        "stream": 1,
+        "pid": 29240,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7442,
+        "first_sequence": 4469,
+        "last_sequence": 11910,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59996575291,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 124.01666666666667,
+        "p99_gpu_completion_gap_ns": 13356875,
+        "min_draws": 690,
+        "max_draws": 965
+      }
+    },
+    {
+      "run": 4,
+      "borrow_guest_pool": false,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "end_rss_kib": 393008,
+      "window": {
+        "stream": 1,
+        "pid": 66745,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7330,
+        "first_sequence": 4381,
+        "last_sequence": 11710,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59997898959,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 122.15,
+        "p99_gpu_completion_gap_ns": 13592666,
+        "min_draws": 682,
+        "max_draws": 983
+      }
+    }
+  ],
+  "medians": {
+    "renderer_call_pool": {
+      "average_completed_fps": 122.45,
+      "p99_gpu_completion_gap_ns": 13486770.5
+    },
+    "client_owned_pool": {
+      "average_completed_fps": 124.13333333333333,
+      "p99_gpu_completion_gap_ns": 13462562.5
+    }
+  },
+  "paired_trial_minus_control": [
+    {
+      "average_completed_fps": 1.5,
+      "p99_gpu_completion_gap_ns": 187375
+    },
+    {
+      "average_completed_fps": 1.86666666666666,
+      "p99_gpu_completion_gap_ns": -235791
+    }
+  ],
+  "verification": {
+    "general_i386_checks_passed": 806,
+    "gpu_suite_checks_passed_without_guest_pool_borrowing": 341,
+    "scope_counter_rows_after_world_readback": 28,
+    "swaps_between_sampled_rows": 3456,
+    "swaps_with_eligible_pool_between_sampled_rows": 3456,
+    "guest_pool_opens_between_sampled_rows": 6912,
+    "guest_pool_closes_between_sampled_rows": 6912
+  },
+  "memory_diagnostics": {
+    "scope": "Separate 20-second launches with physical-footprint and RSS samples every two seconds.",
+    "control": {
+      "window": {
+        "stream": 1,
+        "pid": 34502,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 2466,
+        "first_sequence": 4382,
+        "last_sequence": 6847,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 19991945709,
+        "measurement_duration_ns": 20000000000,
+        "average_completed_fps": 123.25,
+        "p99_gpu_completion_gap_ns": 13593875,
+        "min_draws": 690,
+        "max_draws": 941
+      },
+      "samples": [
+        {
+          "seconds": 0,
+          "resident_bytes": 613597184,
+          "physical_footprint_bytes": 801474192
+        },
+        {
+          "seconds": 2,
+          "resident_bytes": 611844096,
+          "physical_footprint_bytes": 799819408
+        },
+        {
+          "seconds": 4,
+          "resident_bytes": 613646336,
+          "physical_footprint_bytes": 801556112
+        },
+        {
+          "seconds": 6,
+          "resident_bytes": 610615296,
+          "physical_footprint_bytes": 798508688
+        },
+        {
+          "seconds": 8,
+          "resident_bytes": 610729984,
+          "physical_footprint_bytes": 798394000
+        },
+        {
+          "seconds": 10,
+          "resident_bytes": 612401152,
+          "physical_footprint_bytes": 798344848
+        },
+        {
+          "seconds": 12,
+          "resident_bytes": 612810752,
+          "physical_footprint_bytes": 800933520
+        },
+        {
+          "seconds": 14,
+          "resident_bytes": 612401152,
+          "physical_footprint_bytes": 798197392
+        },
+        {
+          "seconds": 16,
+          "resident_bytes": 612548608,
+          "physical_footprint_bytes": 798115472
+        },
+        {
+          "seconds": 18,
+          "resident_bytes": 612990976,
+          "physical_footprint_bytes": 798672528
+        }
+      ],
+      "peak_sampled_physical_footprint_bytes": 801556112,
+      "first_to_last_footprint_change_bytes": -2801664
+    },
+    "trial": {
+      "window": {
+        "stream": 1,
+        "pid": 13065,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 2482,
+        "first_sequence": 4381,
+        "last_sequence": 6862,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 19993974125,
+        "measurement_duration_ns": 20000000000,
+        "average_completed_fps": 124.05,
+        "p99_gpu_completion_gap_ns": 13524334,
+        "min_draws": 674,
+        "max_draws": 987
+      },
+      "samples": [
+        {
+          "seconds": 0,
+          "resident_bytes": 514637824,
+          "physical_footprint_bytes": 794281592
+        },
+        {
+          "seconds": 2,
+          "resident_bytes": 512081920,
+          "physical_footprint_bytes": 797869688
+        },
+        {
+          "seconds": 4,
+          "resident_bytes": 511361024,
+          "physical_footprint_bytes": 797312632
+        },
+        {
+          "seconds": 6,
+          "resident_bytes": 456048640,
+          "physical_footprint_bytes": 798787192
+        },
+        {
+          "seconds": 8,
+          "resident_bytes": 454508544,
+          "physical_footprint_bytes": 797476472
+        },
+        {
+          "seconds": 10,
+          "resident_bytes": 456048640,
+          "physical_footprint_bytes": 796247672
+        },
+        {
+          "seconds": 12,
+          "resident_bytes": 455409664,
+          "physical_footprint_bytes": 793953912
+        },
+        {
+          "seconds": 14,
+          "resident_bytes": 456179712,
+          "physical_footprint_bytes": 794625656
+        },
+        {
+          "seconds": 16,
+          "resident_bytes": 455868416,
+          "physical_footprint_bytes": 794625656
+        },
+        {
+          "seconds": 18,
+          "resident_bytes": 456146944,
+          "physical_footprint_bytes": 794478200
+        }
+      ],
+      "peak_sampled_physical_footprint_bytes": 798787192,
+      "first_to_last_footprint_change_bytes": 196608
+    }
+  },
+  "abandoned_rotation_pilot": "Rotating a renderer-owned outer pool at swap prematurely popped an NSAutoreleasePool created by the guest. The subsequent guest release aborted. The recorded A/B uses the guest-owned pool.",
+  "appkit_restart_recovery": "A fresh isolated launcher bundle identifier separated the diagnostics from the aborted pilot\u2019s AppKit restored state."
+}

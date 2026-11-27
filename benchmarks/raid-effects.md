@@ -1390,3 +1390,20 @@ A separate diagnostic with submission and vertex logging enabled verified a firs
 The first pair gained **0.67 FPS** and shortened p99 by **0.45 ms**. The reverse pair lost **1.10 FPS** and lengthened p99 by **0.43 ms**. The vertex budget stays off for the next performance baseline. All four warmed 60-second launches verified the camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations.
 
 Both settings passed **341** GPU tests with ordinary draw submission settings. In the focused test, the heavier instanced frame changed from **32 + 68** draws to **8 + 92** draws and matched the reference pixels. The other frame used **32 + 68** draws in both arms. [Live A/B, submission diagnostics, and test counts](results/raid-winemetalgl-idle-first-vertex-budget-ab.json)
+
+### Use the guest's autorelease pool during a frame
+
+An initial pilot rotated a renderer-owned pool at swap. The client had opened its own `NSAutoreleasePool` inside that scope and released it after the swap. Rotating the outer pool prematurely removed the inner pool, and the later guest release aborted. Restarting the trial under a fresh launcher bundle identifier separated it from the pilot's AppKit restored state.
+
+The measured implementation tracks the native `NSAutoreleasePool` objects opened by the guest through Objective-C messages. WineMetalGL skips its call-local pool while an eligible guest pool is present. The client owns the pool and performs its drain. The bridge ends borrowing at each swap, on release of the active pool, or when its callback scope ends. Borrowing resumes when a new pool opens for the current frame. Tracking runs on the main thread of the isolated headless trial.
+
+Apply `patches/aarchx-wmgl-guest-autorelease-pool-trial.patch` after the headless realm patches. Apply `patches/winemetalgl-guest-autorelease-pool-trial.patch` to the renderer. Set `OCERZ_M32_HEADLESS_FRAME_BATCH=1` and keep the same runtime and library in both arms. In a separate diagnostic with `OCERZ_M32_HEADLESS_FRAME_BATCH_LOG=1`, an eligible pool was present at **3,456 of 3,456** swaps between sampled counters. The guest opened and closed **6,912** pools in that interval.
+
+| Autorelease pool policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Renderer call-local pools | 122.45 | 13.49 ms |
+| Eligible guest pool | 124.13 | 13.46 ms |
+
+Throughput rose **1.50 and 1.87 FPS** across the two pairs. P99 rose **0.19 ms** and fell **0.24 ms**, respectively. Use the option for follow-up throughput comparisons. Each warmed 60-second run verified the camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations.
+
+Separate 20-second diagnostics sampled physical footprint every two seconds. Sampled peaks were **764.42 MiB** in control and **761.78 MiB** with borrowing. The borrowed run changed by **+0.19 MiB** from its first sample to its last. The renderer passed **341** GPU tests with borrowing off, and the patched runtime passed **806** general i386 checks. [Full-raid A/B, scope counts, and memory samples](results/raid-winemetalgl-guest-autorelease-pool-ab.json)

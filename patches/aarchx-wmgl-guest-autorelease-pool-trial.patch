@@ -1,0 +1,205 @@
+diff --git a/include/ocerz/m32_wmgl.h b/include/ocerz/m32_wmgl.h
+--- a/include/ocerz/m32_wmgl.h
++++ b/include/ocerz/m32_wmgl.h
+@@ -14,6 +14,10 @@
+ int m32_wmgl_set_current(void *agl);
+ int m32_wmgl_drawable(void *agl, void *window);
+ int m32_wmgl_swap(void *agl);
++int m32_wmgl_guest_pool_enter(void);
++void m32_wmgl_guest_pool_leave(void);
++int m32_wmgl_guest_pool_before(void *self, const char *selector);
++void m32_wmgl_guest_pool_open(void *pool);
+ uint32_t m32_wmgl_guest_buffer(const void *host, size_t size);
+ int m32_wmgl_guest_storage_enabled(void);
+ int m32_wmgl_array_buffer_binding(uint32_t *name);
+@@ -24,6 +28,10 @@
+ static inline int m32_wmgl_set_current(void *agl) { return 1; }
+ static inline int m32_wmgl_drawable(void *agl, void *window) { return 1; }
+ static inline int m32_wmgl_swap(void *agl) { return 0; }
++static inline int m32_wmgl_guest_pool_enter(void) { return 0; }
++static inline void m32_wmgl_guest_pool_leave(void) {}
++static inline int m32_wmgl_guest_pool_before(void *self, const char *selector) { return 0; }
++static inline void m32_wmgl_guest_pool_open(void *pool) {}
+ static inline uint32_t m32_wmgl_guest_buffer(const void *host, size_t size) { return 0; }
+ static inline int m32_wmgl_guest_storage_enabled(void) { return 0; }
+ static inline int m32_wmgl_array_buffer_binding(uint32_t *name) { return 0; }
+diff --git a/src/m32_callback.c b/src/m32_callback.c
+--- a/src/m32_callback.c
++++ b/src/m32_callback.c
+@@ -16,6 +16,7 @@
+ #include "ocerz/bridge.h"
+ #include "ocerz/decode.h"
+ #include "ocerz/m32.h"
++#include "ocerz/m32_wmgl.h"
+ #include "ocerz/m32_objc.h"
+ #include "ocerz/m32_sig.h"
+ #include "ocerz/vm.h"
+@@ -70,7 +71,9 @@
+     struct OcerzBridgeFrame saved;
+     ocerz_bridge_guest_enter(&saved);
+     uint64_t fpcr = ocerz_afp_guest();   /* translated code relies on FPCR.AH (src/cpu.c) */
++    int pool_scope = m32_wmgl_guest_pool_enter();
+     ocerz_vm_call32(vm, fn, &call, top, M32_TRAP(M32_ID_SENTINEL));
++    if (pool_scope) m32_wmgl_guest_pool_leave();
+     ocerz_afp_restore(fpcr);
+     ocerz_bridge_guest_leave(&saved);
+     if (edx)
+diff --git a/src/m32_objc.c b/src/m32_objc.c
+--- a/src/m32_objc.c
++++ b/src/m32_objc.c
+@@ -24,6 +24,7 @@
+ #include "ocerz/interp.h"
+ #include "ocerz/mem.h"
+ #include "ocerz/m32_objc.h"
++#include "ocerz/m32_wmgl.h"
+ #include "ocerz/m32_objcrt.h"
+ #include "ocerz/m32_image.h"
+ #include "ocerz/m32_sig.h"
+@@ -1490,7 +1491,10 @@
+     if (f & SF_HIDPI)
+         chose_hidpi(hself, 1);
+     uint32_t removed = tag_message(name) == 2 ? rd((uint32_t)cpu->gpr[OCERZ_RSP] + 12) : 0;
++    const int pool_open = !is_super && m32_wmgl_guest_pool_before(hself, name);
+     int r = m32_cross(vm, cpu, e);
++    if (pool_open && r == OCERZ_STEP_OK)
++        m32_wmgl_guest_pool_open(m32_objc_to_host((uint32_t)cpu->gpr[OCERZ_RAX]));
+     if (removed)
+         m32_tag_free(removed);
+     if ((f & SF_GL_VIEW) && is_kind(lookup_cls, "NSOpenGLView"))   /* attaches its own */
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -34,6 +34,7 @@
+     void (*flush)(wmgl_surface *, unsigned, int, int, int);
+     void *(*proc)(const char *);
+     int (*array_buffer_binding)(unsigned *);
++    void (*set_guest_pool_active)(int);
+ } driver;
+ static int format;
+ static int guestBufferStorage;
+@@ -177,6 +178,7 @@
+     LOAD(flush, "wmgl_surface_flush");
+     LOAD(proc, "wmgl_get_proc_address");
+ #undef LOAD
++    driver.set_guest_pool_active = (__typeof__(driver.set_guest_pool_active))dlsym(handle, "wmgl_set_guest_pool_active");
+     const char *directBinding = getenv("OCERZ_WMGL_ARRAY_BINDING");
+     if (directBinding && !strcmp(directBinding, "1"))
+         driver.array_buffer_binding = (__typeof__(driver.array_buffer_binding))dlsym(handle, "wmgl_array_buffer_binding");
+@@ -864,6 +866,92 @@
+     ++stage;
+ }
+
++static __thread struct {
++    unsigned depth, count, disabled;
++    struct { void *object; unsigned depth; uint64_t frame; } pools[32];
++    uint64_t frame;
++    uint64_t swaps, covered, opened, closed;
++} guestPools;
++
++static int borrow_guest_pools(void)
++{
++    static int enabled = -1;
++    if (!pthread_main_np()) return 0;
++    if (enabled < 0) {
++        const char *headless = getenv("OCERZ_M32_HEADLESS_TRIAL");
++        const char *batch = getenv("OCERZ_M32_HEADLESS_FRAME_BATCH");
++        enabled = headless && !strcmp(headless, "1") && batch && !strcmp(batch, "1");
++    }
++    return enabled && m32_wmgl_enabled() && driver.set_guest_pool_active;
++}
++
++static int current_guest_pool(void)
++{
++    return !guestPools.disabled && guestPools.count &&
++           guestPools.pools[guestPools.count - 1].frame == guestPools.frame;
++}
++
++static void publish_guest_pools(void)
++{
++    driver.set_guest_pool_active(current_guest_pool());
++}
++
++int m32_wmgl_guest_pool_enter(void)
++{
++    if (!borrow_guest_pools()) return 0;
++    ++guestPools.depth;
++    return 1;
++}
++
++void m32_wmgl_guest_pool_leave(void)
++{
++    while (guestPools.count && guestPools.pools[guestPools.count - 1].depth == guestPools.depth)
++        --guestPools.count;
++    --guestPools.depth;
++    publish_guest_pools();
++}
++
++int m32_wmgl_guest_pool_before(void *self, const char *selector)
++{
++    if (!borrow_guest_pools() || guestPools.disabled) return 0;
++    if (!strcmp(selector, "release") || !strcmp(selector, "drain") || !strcmp(selector, "dealloc")) {
++        for (unsigned i = guestPools.count; i > 0; --i) {
++            if (guestPools.pools[i - 1].object != self) continue;
++            guestPools.count = i - 1;
++            ++guestPools.closed;
++            publish_guest_pools();
++            break;
++        }
++        return 0;
++    }
++    if (strcmp(selector, "init") && strcmp(selector, "new")) return 0;
++    const Class pool = objc_getClass("NSAutoreleasePool");
++    if (!pool) return 0;
++    return !strcmp(selector, "new") ? self == pool : object_getClass(self) == pool;
++}
++
++void m32_wmgl_guest_pool_open(void *pool)
++{
++    if (!pool || guestPools.disabled) return;
++    if (guestPools.count == sizeof(guestPools.pools) / sizeof(guestPools.pools[0])) {
++        guestPools.disabled = 1;
++        publish_guest_pools();
++        return;
++    }
++    for (unsigned i = 0; i < guestPools.count; ++i) {
++        if (guestPools.pools[i].object == pool) {
++            guestPools.disabled = 1;
++            publish_guest_pools();
++            return;
++        }
++    }
++    guestPools.pools[guestPools.count].object = pool;
++    guestPools.pools[guestPools.count].depth = guestPools.depth;
++    guestPools.pools[guestPools.count++].frame = guestPools.frame;
++    ++guestPools.opened;
++    publish_guest_pools();
++}
++
+ int m32_wmgl_swap(void *agl)
+ {
+     Sidecar *ctx = find(agl);
+@@ -878,6 +966,24 @@
+     if (m32_headless_trial && getenv("OCERZ_HEADLESS_REALM_LOGIN"))
+         trial_realm_login(ctx);
+     int presented = driver.swap(ctx->surface);
++    if (has_drawable && !ctx->layer && borrow_guest_pools()) {
++        const int covered = current_guest_pool();
++        ++guestPools.frame;
++        // A guest pool may outlive this frame. Resume only after a new pool opens.
++        if (covered) publish_guest_pools();
++        static int log = -1;
++        if (log < 0) {
++            const char *value = getenv("OCERZ_M32_HEADLESS_FRAME_BATCH_LOG");
++            log = value && !strcmp(value, "1");
++        }
++        if (log) {
++            guestPools.covered += covered;
++            if ((++guestPools.swaps & 127u) == 0)
++                fprintf(stderr, "ocerz: trial guest pool swaps=%llu covered=%llu opened=%llu closed=%llu\n",
++                        (unsigned long long)guestPools.swaps, (unsigned long long)guestPools.covered,
++                        (unsigned long long)guestPools.opened, (unsigned long long)guestPools.closed);
++        }
++    }
+     if (has_drawable)
+         ++ctx->swaps;
+     if (ctx->layer && ctx->swaps == 1) {
