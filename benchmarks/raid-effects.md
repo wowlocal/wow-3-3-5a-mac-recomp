@@ -1778,6 +1778,8 @@ The training capture sampled **3,882** client blocks. The selected **1,024** acc
 
 Throughput changed by **+0.80 and −0.78 FPS** in the two pairs. P99 improved by **0.26 and 0.17 ms**. Keep lazy translation as the baseline and retain the ordered launcher as an experiment. All four 60-second windows and the two block profiles checked the saved camera, overlapping effects, 26 timing rows and consecutive GPU completions. The captures stayed offscreen while the older trial was suspended. [Live measurements and sampled-page counts](results/raid-aarchx-i386-hot-code-order-ab.json)
 
+Separate 12-second CPU Counters recordings used the Instruction Delivery Bottlenecks mode with one capture per translation policy. Instruction-cache misses accounted for **15.78%** of sustainable instruction bandwidth in the lazy capture and **16.53%** with hot ordering. The denser pages and these measured delivery costs can vary independently. These two captures describe the sampled intervals. The four minute windows provide the throughput comparison. [Instruction delivery counters](results/raid-aarchx-i386-hot-code-order-delivery.json)
+
 ```sh
 python3 benchmarks/summarize-raid-hot-layout.py CAPTURE_ROOT I386_CLIENT --prepare
 python3 benchmarks/summarize-raid-hot-layout.py CAPTURE_ROOT I386_CLIENT

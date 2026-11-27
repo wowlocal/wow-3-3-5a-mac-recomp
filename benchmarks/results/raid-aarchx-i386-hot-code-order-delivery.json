@@ -1,0 +1,104 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "runtime_sha256": "0d89d5daf64eeedcf346a9fa12bfef5f6dcdd98a67d29f96bfabec1297ede503",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "seed_list_sha256": "c3be03aecf5ab8d06b527357689e7c6400743ffdba497622b72d9450606b7cbf",
+  "seed_count": 1024,
+  "base_commit": "3640718",
+  "scope": "Separate instruction-delivery CPU Counters traces on the live lazy and packed i386 raid modes.",
+  "trace_time_limit_seconds": 12,
+  "verified_timed_script_rows": 26,
+  "visual_readbacks_verified": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "copied_client_process_guard_passed": true,
+  "legacy_paused_during_captures": true,
+  "legacy_resumed_after_each_pause": true,
+  "traces": [
+    {
+      "mode": "lazy",
+      "duration_seconds": 12.887225,
+      "instruments_version": "27.0 (27A266a)",
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4155,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 31993013875,
+        "measurement_duration_ns": 32000000000,
+        "average_completed_fps": 129.8125,
+        "p99_gpu_completion_gap_ns": 13431375,
+        "min_draws": 695,
+        "max_draws": 983
+      },
+      "counters": {
+        "complete_intervals": 28740,
+        "incomplete_or_zero_cycle_intervals": 0,
+        "complete_intervals_by_core_type": {
+          "Performance": 28740
+        },
+        "trace_relative_bounds_ns": [
+          405166041,
+          12887165958
+        ],
+        "complete_interval_duration_ns": 12367570740,
+        "cycles": 47440498943,
+        "cycle_weighted_bandwidth_shares": {
+          "delivery_bandwidth": 0.07465042520141581,
+          "delivery_latency_icache": 0.15781419655922274,
+          "delivery_latency_itlb": 0.004135410750819162,
+          "delivery_latency_other": 0.05180921363103274
+        }
+      }
+    },
+    {
+      "mode": "hot",
+      "duration_seconds": 12.758901,
+      "instruments_version": "27.0 (27A266a)",
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4161,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 31999603125,
+        "measurement_duration_ns": 32000000000,
+        "average_completed_fps": 130.0,
+        "p99_gpu_completion_gap_ns": 13499416,
+        "min_draws": 666,
+        "max_draws": 961
+      },
+      "counters": {
+        "complete_intervals": 28430,
+        "incomplete_or_zero_cycle_intervals": 0,
+        "complete_intervals_by_core_type": {
+          "Performance": 28430
+        },
+        "trace_relative_bounds_ns": [
+          272355500,
+          12757977083
+        ],
+        "complete_interval_duration_ns": 12351981964,
+        "cycles": 47820084001,
+        "cycle_weighted_bandwidth_shares": {
+          "delivery_bandwidth": 0.07960871280644316,
+          "delivery_latency_icache": 0.16525244744308465,
+          "delivery_latency_itlb": 0.00469199765531508,
+          "delivery_latency_other": 0.057162070751241925
+        }
+      }
+    }
+  ]
+}
