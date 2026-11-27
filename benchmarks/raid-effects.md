@@ -611,3 +611,23 @@ Apply `patches/aarchx-wmgl-byte-leaf-trial.patch` after the existing AArchX tria
 The earlier instrumented client session logged **4.53 million** generic crossings for `strncasecmp`. The opt-in leaf calls the same macOS libc function after resolving both guest pointers and widening the unsigned length. The focused test ran six comparisons through a translated i386 import stub. Both arms preserved the signed results and length bounds. The trace showed six generic crossings in the control and zero with the leaf enabled. Each arm also passed all **806** general m32 checks. [ABI checks and previous crossing count](results/aarchx-i386-strncasecmp-leaf.json)
 
 In a headless benchmark with four interleaved launches per arm and 200,000 translated calls per timed sample, the median moved from **78.31 to 25.59 ns per comparison**. Apply `patches/aarchx-m32-strncasecmp-leaf-trial.patch` after the byte-leaf trial. Run `test_m32 strncasecmp-leaf` with `OCERZ_M32_STRNCASECMP_LEAF=1` and `OCERZ_BENCH_M32_STRNCASECMP=1`, then repeat with the leaf set to `0`. Use `OCERZ_TCACHE=off` and omit the call log while timing. The live A/B is pending. [Headless timings](results/aarchx-i386-strncasecmp-leaf.json)
+
+### GPU work per completed raid render
+
+The clean live control trace from the uniform-storage A/B included **604** outputs that matched the WineMetalGL GPU completion log within **42 ns** after aligning the clocks. The full 1365 × 768 fixture used the same 24 casters and draw setting 64. Five outputs in the matched sequence range lacked the required final fragment interval in the trace. The per-output statistics cover the matched set. [Matched Metal intervals](results/raid-winemetalgl-gpu-work.json)
+
+| Metal work | Mean per output | Median per output | p99 per output |
+| --- | ---: | ---: | ---: |
+| Vertex | 3.15 ms | 2.67 ms | 8.05 ms |
+| Fragment | 1.48 ms | 1.27 ms | 4.59 ms |
+| Union through render completion | 4.23 ms | 3.89 ms | 9.47 ms |
+
+The first two render buffers account for **97.4%** of the vertex activity. Each stage uses the union of its active intervals within the matched output. The union through render completion stops at the publication marker, and stages can overlap. At this observed GPU cost, removing CPU stalls alone would still leave the vertex stage averaging more than the full **2 ms** frame budget. Shader and draw attribution requires a separate capture. [Per-stage and per-buffer results](results/raid-winemetalgl-gpu-work.json)
+
+To reproduce the join, use a Metal System Trace plus the GPU completion log from the same process. Identify the final render buffer and one output shared by both records. In this trace, the final fragment interval in `Command Buffer 2` for trace frame 2 corresponds to GPU completion 16901. The analyzer checks the remaining render timestamps against that offset.
+
+```sh
+python3 benchmarks/trace-frames.py TRACE PID 1365 768 \
+    --wmgl-gpu-work GPU_LOG --output-buffer 'Command Buffer 2' \
+    --gpu-clock-anchor 2 16901
+```

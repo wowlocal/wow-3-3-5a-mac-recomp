@@ -263,6 +263,90 @@ def mailbox_frames(rows, pid, width, height):
     return mailbox_report(frames, pid, width, height)
 
 
+def mailbox_gpu_work(rows, completions, pid, output_buffer, anchor):
+    """Join active intervals to verified mailbox renders using a shared GPU clock."""
+    groups = defaultdict(list)
+    render_ends = {}
+    for row in rows:
+        if (not row["process"].get("fmt", "").endswith(f" ({pid})")
+                or row["state"].get("fmt") != "Active"):
+            continue
+        frame = int(row["frame-number"].text)
+        start = int(row["start"].text)
+        end = start + int(row["duration"].text)
+        stage = row["channel-name"].get("fmt", "")
+        label = row["event-label"].get("fmt", "").split(":", 1)[0]
+        groups[frame].append((start, end, stage, label))
+        if stage == "Fragment" and label == output_buffer:
+            render_ends[frame] = max(end, render_ends.get(frame, end))
+
+    anchor_frame, anchor_sequence = anchor
+    by_sequence = {sequence: time for sequence, time, _ in completions}
+    if anchor_frame not in render_ends or anchor_sequence not in by_sequence:
+        raise ValueError("The requested trace frame or GPU completion is missing")
+    offset = by_sequence[anchor_sequence] - render_ends[anchor_frame]
+    completions = sorted((time, sequence, draws) for sequence, time, draws in completions)
+    times = [time for time, _, _ in completions]
+    matches = []
+    unmatched = Counter()
+    per_output = defaultdict(list)
+    work_by_buffer = Counter()
+    for frame, events in sorted(groups.items()):
+        if frame not in render_ends:
+            unmatched["missing_output_fragment_interval"] += 1
+            continue
+        render_end = render_ends[frame]
+        target = render_end + offset
+        index = bisect_left(times, target)
+        actual, sequence, draws = min(completions[max(0, index - 1):index + 1],
+                                      key=lambda completion: abs(target - completion[0]))
+        error = abs(target - actual)
+        # Metal timestamps and the trace's converted GPU ticks can round
+        # independently. Reject matches beyond this sub-microsecond window.
+        if error > 250:
+            unmatched["clock_mismatch"] += 1
+            continue
+        stages = {stage for _, _, stage, _ in events}
+        if not {"Vertex", "Fragment"} <= stages:
+            unmatched["missing_vertex_or_fragment_stage"] += 1
+            continue
+        matches.append((sequence, draws, error))
+        for stage in stages:
+            per_output[stage].append(active_duration((a, b) for a, b, kind, _ in events if kind == stage))
+        per_output["all_gpu"].append(active_duration((a, b) for a, b, _, _ in events))
+        per_output["through_render_completion"].append(
+            active_duration((a, min(b, render_end)) for a, b, _, _ in events if a < render_end)
+        )
+        for stage, label in {(stage, label) for _, _, stage, label in events}:
+            work_by_buffer[(label, stage)] += active_duration(
+                (a, b) for a, b, kind, buffer in events if kind == stage and buffer == label
+            )
+    sequences = [sequence for sequence, _, _ in matches]
+    if len(sequences) < 2 or any(a >= b for a, b in zip(sequences, sequences[1:])):
+        raise ValueError("The GPU intervals did not match an ordered series of mailbox outputs")
+    if len(sequences) < len(render_ends) * 0.9:
+        raise ValueError("The clock anchor matched fewer than 90 percent of traced outputs")
+    return {
+        "trace_frame_groups": len(groups),
+        "matched_outputs": len(matches),
+        "unmatched_trace_groups": dict(unmatched),
+        "first_sequence": sequences[0],
+        "last_sequence": sequences[-1],
+        "unmatched_sequences_within_range": sequences[-1] - sequences[0] + 1 - len(matches),
+        "max_absolute_clock_error_ns": max(error for _, _, error in matches),
+        "min_draws": min(draws for _, draws, _ in matches),
+        "max_draws": max(draws for _, draws, _ in matches),
+        "active_time_per_output": {
+            stage: {"outputs": len(values), "mean_ns": sum(values) / len(values), **timing_stats(values)}
+            for stage, values in sorted(per_output.items())
+        },
+        "total_active_time_by_buffer_and_stage": {
+            label: {stage: time for (name, stage), time in sorted(work_by_buffer.items()) if name == label}
+            for label in sorted({label for label, _ in work_by_buffer})
+        },
+    }
+
+
 def mailbox_sample(times, seconds):
     sample_duration = times[-1] - times[0] if seconds is None else seconds * 10**9
     cutoff = times[0] + sample_duration
@@ -598,8 +682,7 @@ def frame_timing_report(path, pid, stream, frames, pass_log=None, submission_log
     return report
 
 
-def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None, timing_log=None,
-                pass_log=None, submission_log=None, segment_seconds=None):
+def mailbox_stream(path, pid, width, height, stream):
     streams = defaultdict(list)
     dimensions = (width << 32) | height
     with path.open() as log:
@@ -615,7 +698,12 @@ def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, prese
         if not streams:
             raise ValueError("No GPU completions at the requested PID and size")
         stream = next(iter(streams))
-    frames = streams.get(stream, [])
+    return stream, streams.get(stream, [])
+
+
+def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None, timing_log=None,
+                pass_log=None, submission_log=None, segment_seconds=None):
+    stream, frames = mailbox_stream(path, pid, width, height, stream)
     if start_sequence is not None:
         frames = [frame for frame in frames if frame[0] >= start_sequence]
         if not any(frame[0] == start_sequence for frame in frames):
@@ -642,7 +730,12 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--wmgl", action="store_true", help="read WineMetalGL's completed mailbox renders")
     mode.add_argument("--wmgl-log", action="store_true", help="read a WineMetalGL GPU completion log")
+    mode.add_argument("--wmgl-gpu-work", type=Path, metavar="GPU_LOG",
+                      help="join Metal GPU intervals to WineMetalGL completions")
     mode.add_argument("--encoder-breakdown", action="store_true", help="group traced AGL command buffers by encoder label")
+    parser.add_argument("--output-buffer", help="trace label of the buffer that completes rendering")
+    parser.add_argument("--gpu-clock-anchor", type=int, nargs=2, metavar=("TRACE_FRAME", "SEQUENCE"),
+                        help="trace frame and completion sequence for the same rendered output")
     parser.add_argument("--stream", type=int, help="mailbox generation to select from a GPU completion log")
     parser.add_argument("--present-log", type=Path, help="join Metal drawable presentations by render sequence")
     parser.add_argument("--timing-log", type=Path, help="attribute windowed GPU completion gaps to host and GPU phases")
@@ -656,7 +749,13 @@ def main():
         parser.error("PID, viewport dimensions, and run number must be positive")
     if (options.wmgl or options.wmgl_log) and options.frame_log:
         parser.error("--frame-log applies to the AGL window-write analysis")
-    log_options = (options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log,
+    if options.wmgl_gpu_work and (not options.output_buffer or not options.gpu_clock_anchor or options.frame_log):
+        parser.error("--wmgl-gpu-work requires --output-buffer and --gpu-clock-anchor")
+    if not options.wmgl_gpu_work and (options.output_buffer or options.gpu_clock_anchor):
+        parser.error("--output-buffer and --gpu-clock-anchor require --wmgl-gpu-work")
+    if options.stream is not None and not (options.wmgl_gpu_work or options.wmgl_log):
+        parser.error("--stream requires --wmgl-log or --wmgl-gpu-work")
+    log_options = (options.start_sequence, options.seconds, options.present_log, options.timing_log,
                    options.segment_seconds)
     if not options.wmgl_log and any(value is not None for value in log_options):
         parser.error("GPU completion log options require --wmgl-log")
@@ -669,6 +768,13 @@ def main():
     )):
         parser.error("Stream, starting sequence, and durations must be positive")
     try:
+        if options.wmgl_gpu_work:
+            _, completions = mailbox_stream(options.wmgl_gpu_work, options.pid, options.width, options.height,
+                                            options.stream)
+            report = mailbox_gpu_work(trace_rows(options.trace, options.run, "metal-gpu-intervals"), completions,
+                                      options.pid, options.output_buffer, options.gpu_clock_anchor)
+            print(json.dumps(report, indent=2))
+            return
         if options.wmgl_log:
             report = mailbox_log(
                 options.trace, options.pid, options.width, options.height,

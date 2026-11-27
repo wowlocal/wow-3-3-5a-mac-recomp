@@ -1,0 +1,87 @@
+{
+  "hardware": "Apple M4 Pro",
+  "renderer": "WineMetalGL control before fixed-function uniform storage reuse",
+  "workload": "Full fixed-camera, 24-caster live Northshire raid fixture",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "bridge_crossing_diagnostics": false,
+  "commit_draws": 64,
+  "triangle_budget": 65000,
+  "output_buffer": "Command Buffer 2",
+  "clock_anchor_trace_frame": 2,
+  "clock_anchor_mailbox_sequence": 16901,
+  "vertex_active_share_in_two_render_buffers": 0.9739157155778112,
+  "trace_frame_groups": 611,
+  "matched_outputs": 604,
+  "unmatched_trace_groups": {
+    "missing_output_fragment_interval": 7
+  },
+  "first_sequence": 16901,
+  "last_sequence": 17509,
+  "unmatched_sequences_within_range": 5,
+  "max_absolute_clock_error_ns": 42,
+  "min_draws": 764,
+  "max_draws": 856,
+  "active_time_per_output": {
+    "Compute": {
+      "outputs": 604,
+      "mean_ns": 76625.54966887417,
+      "p50_ns": 11499.5,
+      "p99_ns": 702666,
+      "max_ns": 1281500
+    },
+    "Fragment": {
+      "outputs": 604,
+      "mean_ns": 1483997.2483443709,
+      "p50_ns": 1270458.5,
+      "p99_ns": 4593668,
+      "max_ns": 6765916
+    },
+    "Vertex": {
+      "outputs": 604,
+      "mean_ns": 3146418.668874172,
+      "p50_ns": 2674396.5,
+      "p99_ns": 8052584,
+      "max_ns": 11594209
+    },
+    "all_gpu": {
+      "outputs": 604,
+      "mean_ns": 4619941.862582781,
+      "p50_ns": 4299042.0,
+      "p99_ns": 11369459,
+      "max_ns": 14250958
+    },
+    "through_render_completion": {
+      "outputs": 604,
+      "mean_ns": 4234403.518211921,
+      "p50_ns": 3891458.0,
+      "p99_ns": 9471041,
+      "max_ns": 13121167
+    }
+  },
+  "total_active_time_by_buffer_and_stage": {
+    "Command Buffer 0": {
+      "Fragment": 275307965,
+      "Vertex": 1065658995
+    },
+    "Command Buffer 2": {
+      "Fragment": 430604539,
+      "Vertex": 785206345
+    },
+    "Command Buffer 3": {
+      "Fragment": 187850290,
+      "Vertex": 49186535
+    },
+    "Command Buffer 5": {
+      "Fragment": 3457583,
+      "Vertex": 385001
+    },
+    "WineMetalGL prelude (uploads)": {
+      "Compute": 46281832,
+      "Fragment": 301876
+    }
+  }
+}
