@@ -1,0 +1,36 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Original WoW 3.3.5a login screen using the AArchX WineMetalGL offscreen drawable",
+  "display_monitor_seconds": 22,
+  "trial_activation_notifications": 0,
+  "maximum_visible_trial_windows": 0,
+  "window_poll_period_ms": 50,
+  "readback_dimensions": [
+    1365,
+    768
+  ],
+  "readback_identified_as": "Login screen",
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "ordinary_mode_test_checks": {
+    "general_m32": 806,
+    "wmgl_storage": 104
+  },
+  "gpu_completion_window": {
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 8086,
+    "first_sequence": 2000,
+    "last_sequence": 10085,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 9999211459,
+    "measurement_duration_ns": 10000000000,
+    "average_completed_fps": 808.5,
+    "p99_gpu_completion_gap_ns": 4675291,
+    "min_draws": 69,
+    "max_draws": 89
+  }
+}

@@ -1,0 +1,135 @@
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -158,5 +158,6 @@
+ uint32_t m32_handle_twin_lookup(void *host);   /* the guest object aliased to host, or 0 */
+ uint32_t m32_file(void *host_file);   /* src/m32_stdio.c: the guest FILE standing for a host one */
+ void m32_hud_start(void);             /* src/m32_bridge.c: OCERZ_M32_HUD's overlay */
++extern int m32_headless_trial;
+ void m32_activate_soon(void);         /* src/m32.c: the game's app comes to the front */
+ uint32_t m32_export_hostfn(void *fn, const char *gnote, const char *hnote);   /* host function as guest address */
+--- a/src/m32.c
++++ b/src/m32.c
+@@ -85,8 +85,11 @@
+  * would.  Launched from a shell it stays behind the active app, and macOS then runs a background app on the
+  * efficiency cores (always in Low Power Mode, after a while otherwise), which makes frame rates meaningless.
+  * m32_activate_soon does the same at once for a game that asks to be in front (SetFrontProcess). */
++int m32_headless_trial;
++
+ static void activate_now(void *unused)
+ {
++    if (m32_headless_trial) return;
+     void *(*send)(void *, void *) = (void *(*)(void *, void *))dlsym(RTLD_DEFAULT, "objc_msgSend");
+     void (*send_b)(void *, void *, int) = (void (*)(void *, void *, int))dlsym(RTLD_DEFAULT, "objc_msgSend");
+     void *(*cls)(const char *) = (void *(*)(const char *))dlsym(RTLD_DEFAULT, "objc_getClass");
+@@ -167,7 +170,9 @@
+         return 65;
+     }
+     m32_active = 1;
+-    if (getenv("OCERZ_M32_ACTIVATE"))
++    const char *headless = getenv("OCERZ_M32_HEADLESS_TRIAL");
++    m32_headless_trial = headless && !strcmp(headless, "1");
++    if (!m32_headless_trial && getenv("OCERZ_M32_ACTIVATE"))
+         dispatch_after_f(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), NULL,
+                          activate_now);
+     m32_log_imports = getenv("OCERZ_M32LOG") && strstr(getenv("OCERZ_M32LOG"), "imports");
+--- a/src/m32_carbon.c
++++ b/src/m32_carbon.c
+@@ -633,10 +633,22 @@
+     return NULL;
+ }
+
++static void headless_window(void *window) { (void)window; }
++static void headless_show_hide(void *window, unsigned char show) { (void)window; (void)show; }
++static int32_t headless_transform(const void *psn, uint32_t type) { (void)psn; (void)type; return 0; }
++
+ void *m32_carbon_wrap(const char *symbol, void *fn)
+ {
+     if (!fn || getenv("OCERZ_NO_M32_CARBON_WRAP"))
+         return fn;
++    if (m32_headless_trial) {
++        if (!strcmp(symbol, "ShowWindow") || !strcmp(symbol, "SelectWindow") || !strcmp(symbol, "BringToFront"))
++            return (void *)headless_window;
++        if (!strcmp(symbol, "ShowHide"))
++            return (void *)headless_show_hide;
++        if (!strcmp(symbol, "TransformProcessType"))
++            return (void *)headless_transform;
++    }
+     if (!strcmp(symbol, "CreateNewWindow")) {
+         g_create_new_window = (int32_t (*)(uint32_t, uint32_t, const void *, void **))fn;
+         return (void *)create_new_window;
+--- a/src/m32_libsystem.c
++++ b/src/m32_libsystem.c
+@@ -82,6 +82,10 @@
+  * process the call still goes through, and the app also asks to activate once its run loop turns, which is honored. */
+ static int sp_SetFrontProcess(struct OcerzVM *vm, OcerzCPU *cpu)
+ {
++    if (m32_headless_trial) {
++        m32_ret(cpu, 0, 0, 0);
++        return OCERZ_STEP_OK;
++    }
+     static short (*set_front)(const void *), (*same)(const void *, const void *, unsigned char *);
+     if (!set_front) {
+         same = (short (*)(const void *, const void *, unsigned char *))dlsym(RTLD_DEFAULT, "SameProcess");
+@@ -118,7 +122,7 @@
+     if (!transform)
+         transform = (int32_t (*)(const void *, uint32_t))dlsym(RTLD_DEFAULT, "TransformProcessType");
+     uint32_t psn = m32_arg(cpu, 0);
+-    if (psn && transform)
++    if (!m32_headless_trial && psn && transform)
+         transform(m32_h(psn), 1);   /* kProcessTransformToForegroundApplication; already one is no error to SDL */
+     m32_ret(cpu, 0, 0, 0);
+     return OCERZ_STEP_OK;
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -512,13 +512,21 @@
+     Sidecar *ctx = find(agl);
+     if (!ctx || !pthread_main_np())
+         return 0;
+-    if (ctx->carbon == window && (window ? ctx->overlay != nil : ctx->overlay == nil))
++    if (ctx->carbon == window && (m32_headless_trial || (window ? ctx->overlay != nil : ctx->overlay == nil)))
+         return 1;
+     int width = 1, height = 1;
+     void *handler = NULL;
+     NSWindow *overlay = nil;
+     CAMetalLayer *layer = nil;
+-    if (window) {
++    if (window && m32_headless_trial) {
++        CarbonRect bounds;
++        if (!load_window_host() || windowHost.bounds(window, CarbonContentRegion, &bounds))
++            return 0;
++        width = bounds.right - bounds.left;
++        height = bounds.bottom - bounds.top;
++        if (width <= 0 || height <= 0)
++            return 0;
++    } else if (window) {
+         NSRect frame;
+         if (load_window_host() && window_frame(window, &frame)) {
+             width = (int)frame.size.width;
+@@ -560,6 +568,8 @@
+     ctx->width = width;
+     ctx->height = height;
+     ctx->swaps = 0;
++    if (window && m32_headless_trial)
++        fprintf(stderr, "ocerz: trial WineMetalGL attached a %dx%d offscreen drawable\n", width, height);
+     if (overlay) {
+         overlay.contentView.wantsLayer = YES;
+         [overlay.contentView.layer addSublayer:layer];
+@@ -624,13 +634,16 @@
+     Sidecar *ctx = find(agl);
+     if (!ctx)
+         return 0;
+-    if (ctx->layer && ctx->swaps == 239) {
++    const int has_drawable = ctx->layer || (m32_headless_trial && ctx->carbon);
++    if (has_drawable && ctx->swaps == 239) {
+         const char *path = getenv("OCERZ_WMGL_READBACK");
+         if (path && *path)
+             capture_frame(ctx, path);
+     }
+     int presented = driver.swap(ctx->surface);
+-    if (ctx->layer && ++ctx->swaps == 1) {
++    if (has_drawable)
++        ++ctx->swaps;
++    if (ctx->layer && ctx->swaps == 1) {
+         sync_window(ctx, YES);
+         fprintf(stderr, "ocerz: trial WineMetalGL first window swap (presented=%d)\n", presented);
+     }

@@ -661,3 +661,15 @@ The fixed-function uniform block already supplies a directional light's half vec
 Separate instrumented runs moved the median of the mean render-encoder durations from **54.78 to 50.69 µs**. These timings span vertex and fragment work. The synthetic scene isolates a directional-light workload, and the live raid A/B is pending. [Encoder timing](results/winemetalgl-directional-half-vector-ab.json)
 
 Apply `patches/winemetalgl-directional-half-vector-trial.patch` to the WineMetalGL trial and rebuild. Run the indexed probe with `OCERZ_WMGL_PROBE_DIRECTIONAL_LIGHTS=1`, `WINEMETALGL_COMMIT_DRAWS=64`, and `OCERZ_WMGL_COMMIT_TRIANGLES=65000`. Supply `benchmarks/fixtures/raid-triangle-order.tsv` and a fresh `OCERZ_WMGL_GPU_LOG` for each launch.
+
+### Launch the original client with an offscreen drawable
+
+The headless trial gives the client's Carbon drawable a Metal pbuffer at the requested content dimensions. It suppresses trial window display and foreground activation. The normal launcher stays on its regular window path unless `OCERZ_M32_HEADLESS_TRIAL=1` is set.
+
+An isolated copy of the original client started with VSync and both FPS limits set to zero. The 22-second workspace monitor saw the trial process with zero activation notifications and zero visible trial windows. The readback showed the login screen at **1365 × 768**. A warmed ten-second window at that size averaged **808.5 GPU-completed FPS** at **4.68 ms p99** with consecutive completion sequences. The bridged storage and general runtime checks passed. Background sign-in and the 24-caster scene remain to be verified on this path. [Headless startup and GPU checks](results/raid-winemetalgl-headless-login.json)
+
+Apply `patches/aarchx-wmgl-headless-drawable-trial.patch` after the Carbon window sync and hide trials. Use a copy of the client and a separate signed launcher bundle with `CFBundleIdentifier=org.local.wrath-trial.headless` and `LSUIElement=true`. Set `maxFPS`, `maxFPSBk`, and `gxVSync` to zero in the copied client's `WTF/Config.wtf`. Start the monitor before launching the trial with `open -g -j -n`, the regular trial paths, `OCERZ_M32_HEADLESS_TRIAL=1`, and fresh `OCERZ_WMGL_GPU_LOG` and `OCERZ_WMGL_READBACK` paths. The monitor observes only the test bundle. The GPU completion log is compatible with the existing `trace-frames.py --wmgl-log` analyzer.
+
+```sh
+swift benchmarks/wmgl-headless-window-check.swift
+```
