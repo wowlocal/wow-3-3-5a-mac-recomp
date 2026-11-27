@@ -1,0 +1,70 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -25785,6 +25785,7 @@
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int m32_branch_profile = forward_m32 && ENV_ON("OCERZ_M32_BRANCH_PROFILE");
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -25834,7 +25835,12 @@
+                             : forward || (superblock_back_enabled() && target != rip && target < vpc);
+                         if (can_extend) {
+                             vext++;
+-                            if (!mode32 && forward && jcc_flip_wanted(scratch[vn - 1].rip)) {
++                            if (forward && (!mode32 || m32_branch_profile) &&
++                                jcc_flip_wanted(scratch[vn - 1].rip)) {
++                                if (m32_branch_profile && ENV_ON("OCERZ_FLIPLOG"))
++                                    fprintf(stderr, "ocerz: i386 branch trace rip=%#llx jcc=%#llx taken=%#llx\n",
++                                            (unsigned long long)rip, (unsigned long long)scratch[vn - 1].rip,
++                                            (unsigned long long)target);
+                                 g_tc_learned = 1;
+                                 scratch[vn - 1].ops[0].imm = fall;
+                                 scratch[vn - 1].cc ^= 1;
+@@ -26892,9 +26898,15 @@
+                 g_side[g_n_side].yc_dirty = g_yc_dirty;
+                 for (int r = 0; r < 16; r++) { g_side[g_n_side].l0[r] = g_l0[r]; g_side[g_n_side].l0_dbl[r] = g_l0_dbl[r]; }
+                 g_side[g_n_side].jcc_rip = insn->rip;
+-                g_side[g_n_side].ft_rip = insn->rip + insn->len;
++                const uint64_t original_fall = insn->rip + insn->len;
++                const uint64_t trace_next = mode32 ? blk->insns[i + 1].rip : original_fall;
++                g_side[g_n_side].ft_rip = trace_next;
+                 g_side[g_n_side].ft_site = NULL;
+-                g_side[g_n_side].probe = !mode32 && probe_wanted(insn->rip, insn->rip + insn->len);
++                // The alternate exit of the probe cannot replay an open FP batch.
++                const int m32_probe = m32_branch_profile && fpb_open < 0 &&
++                    trace_next == original_fall && insn->ops[0].imm > original_fall;
++                g_side[g_n_side].probe = (!mode32 || m32_probe) &&
++                    probe_wanted(insn->rip, trace_next);
+                 if (g_cc_cbz_reg >= 0) {
+                     if (g_cc_cbz_nz) a64_cbnz(&b, g_cc_cbz_sf, g_cc_cbz_reg, 0);
+                     else             a64_cbz(&b, g_cc_cbz_sf, g_cc_cbz_reg, 0);
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -328,6 +328,23 @@
+         return g_failures != 0;
+     }
+
++    const char *trace_case = getenv("OCERZ_TEST_JIT32_BRANCH_TRACE");
++    if (trace_case) {
++        if (trace_case[0] < '0' || trace_case[0] > '1' || trace_case[1]) return 2;
++        uint8_t code[] = {
++            0xb8, 1, 0, 0, 0,              // mov eax, 1 or 2
++            0x83, 0xf8, 1,                  // cmp eax, 1
++            0x75, 4,                         // jne over the store
++            0xc6, 0x43, 4, 0x42,            // mov byte [ebx + 4], 0x42
++            0x9f,                            // lahf at the join
++            0x88, 0x63, 8,                  // mov [ebx + 8], ah
++        };
++        code[1] += (uint8_t)(trace_case[0] - '0');
++        run_case("profiled forward branch with live flags", M32_CODE, M32_STACK,
++                 code, sizeof code);
++        return g_failures != 0;
++    }
++
+     const char *fpb_case = getenv("OCERZ_TEST_JIT32_FPB");
+     if (fpb_case) {
+         if (fpb_case[0] < '0' || fpb_case[0] > '5' || fpb_case[1]) return 2;

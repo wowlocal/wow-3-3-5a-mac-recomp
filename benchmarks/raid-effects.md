@@ -1069,3 +1069,19 @@ Run the analysis on the original 32-bit Mach-O file and the full guest-PC captur
 ```sh
 python3 benchmarks/summarize-i386-unwind-hotspots.py CAPTURE_DIR LOCAL_I386_EXECUTABLE
 ```
+
+### Choose the i386 forward path from observed branches
+
+The earlier forward-superblock trial always extends a trace along the fall-through path. This trial allows the existing branch profiler to sample eligible i386 forward edges. When the profiler selects the target, the next translation follows that target and preserves the original fall-through as a side exit. Both successors must be in the same guest page as the block entry. A branch with an open floating-point batch is ineligible for a probe.
+
+Apply `patches/aarchx-m32-profiled-forward-branches-trial.patch` after the forward-superblock and EBP hoist patches. Set `OCERZ_M32_FORWARD_SUPERBLOCK=1` and `OCERZ_M32_BRANCH_PROFILE=1` for this variant with the translation cache off. Both switches use presence, so unset them to use the baseline. Run `test_jit32` with `OCERZ_TEST_JIT32_BRANCH_TRACE` set to 0 and 1 in separate processes and `OCERZ_FLIP_JCC=0x400008` to force the known test edge. Both branch outcomes matched the interpreter's registers, flags and memory with and without the trial. Each of those modes passed **806** general checks.
+
+A separate run used `OCERZ_FLIPLOG=1` to verify branch choices. After in-world readback it logged **14,707** verdict rows and emitted inverted traces at **91** distinct branch addresses. Four of the addresses were in the hottest matched unwind range. A branch can appear in more than one trace or verdict row.
+
+| i386 forward path | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Baseline block chaining | 120.68 | 12.52 ms |
+| Merge along fall-through | 121.42 | 10.89 ms |
+| Merge with observed branch direction | 118.25 | 10.92 ms |
+
+Each mode ran twice for 60 seconds in mirrored order. The profiled path reduced throughput against both controls in both pairs. Fall-through merging improved throughput by **0.61%** and moved p99 in opposite directions across the pairs. The baseline keeps both switches off. Every run verified the camera, cast schedule, overlapping effects, consecutive GPU completions, zero visible trial windows or activations, and cleanup. [Six live-raid windows and branch witness](results/raid-aarchx-headless-i386-profiled-forward-branches.json)
