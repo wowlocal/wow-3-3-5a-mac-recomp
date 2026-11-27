@@ -1645,3 +1645,31 @@ Separate ten-second Time Profiler captures kept one-page storage enabled in both
 ```sh
 python3 benchmarks/summarize-raid-shadow-reuse.py TIMED_RUNS --indexed-storage
 ```
+
+### Recheck the CPU and GPU tail on the copied-shadow baseline
+
+The current baseline combines native-width client indices, fast share locking, guest autorelease-pool borrowing, and shadow allocation reuse. A Metal System Trace with Thread Activity matched **150** final GPU endpoints within **42 ns**. Those sparse endpoints align the clocks. The separate application submission log and the recorded scheduler states cover **2,745 consecutive completion intervals** over **21.28 seconds**. The analysis uses this capture for CPU scheduling and command-buffer timing.
+
+The main thread ran a median **7.63 ms** between final-buffer submissions. Running time accounted for **98.94%** of the total interval duration. In the slowest **28** completion intervals, the largest component increase over its typical median came from the final GPU span **17** times, main-thread running time **nine** times, and time when the main thread was off CPU **twice**.
+
+A separate Metal System Trace without Thread Activity matched **1,845 consecutive outputs** over **14.54 seconds**. The accelerator rows are clipped to consecutive completion gaps. Stage and process activity can overlap.
+
+| Median in traced completion gaps | All 1,844 gaps | Slowest 19 gaps |
+| --- | ---: | ---: |
+| Completion gap | 7.83 ms | 14.40 ms |
+| Client GPU active union | 1.99 ms | 7.93 ms |
+| Client vertex activity | 0.55 ms | 5.96 ms |
+| Client fragment activity | 1.28 ms | 3.83 ms |
+| Client activity overlapping external GPU activity | 0.57 ms | 7.21 ms |
+| Draws in the completed output | 825 | 881 |
+
+The older client recorded activity in **668 of 1,844** intervals, including **15 of 19** in the tail. Background activity and client vertex activity both rose in the tail. Measuring them together leaves their causal contributions open. Both launches used the accepted runtime and renderer, checked the saved camera, effects, and 26 timing rows, and recorded zero trial windows or activations. This instrumentation was separate from the throughput comparisons. [Scheduler and accelerator results](results/raid-winemetalgl-current-cpu-gpu-tail.json)
+
+Enable `OCERZ_WMGL_SUBMISSION_LOG` alongside the existing verified GPU log in each launch. Attach with the Metal System Trace template and add Thread Activity for the scheduler capture. Export `metal-gpu-intervals` and, for the scheduler capture, `thread-state`. Pass the separately observed legacy PID to track its GPU activity.
+
+```sh
+python3 benchmarks/summarize-raid-system-tail.py SCHEDULER_CAPTURE gpu-intervals.xml \
+    --scheduler-window --thread-states thread-states.xml --legacy-pid "$legacy_pid"
+python3 benchmarks/summarize-raid-system-tail.py ACCELERATOR_CAPTURE gpu-intervals.xml \
+    --legacy-pid "$legacy_pid"
+```
