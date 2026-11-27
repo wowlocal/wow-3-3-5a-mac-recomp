@@ -1175,3 +1175,18 @@ Apply `patches/winemetalgl-arb-uniform-padding-trial.patch` after the boolean se
 | Private literal slots and integer index selection | 119.84 | 12.54 ms |
 
 The first pair dropped **3.02 FPS** and added **2.48 ms** to p99. The reverse pair gained **1.40 FPS** and cut p99 by **3.94 ms**. The comparison baseline uses boolean vector selection. All four warmed 60-second launches verified the same camera, 26 cast timings, overlapping effects, consecutive GPU completions, and no trial windows or activations. [Full-raid A/B and compile witness](results/raid-winemetalgl-headless-arb-uniform-padding-ab.json)
+
+### Read the hottest mixed ARB array as one contiguous uniform
+
+The trial picks the longest eligible dynamically indexed array in each vertex program. It allocates a private uniform array in the original logical order. The linker fills the literal entries once and the draw path copies only the live segment. The shader uses one clamped index for the complete array. Any original environment or local values used elsewhere keep their original layout. If the specialized program fails to link or the reflected array is incomplete, the linker retries with the ordinary selector.
+
+Apply `patches/winemetalgl-arb-contiguous-segments-trial.patch` after the private literal slot patch. Enable `WINEMETALGL_ARB_CONTIGUOUS_SEGMENTS=1` with direct segments and boolean selection on. Both modes passed **339** GPU tests, including guest reads of independent parameters and guest writes to a numerical index that overlaps a private slot. The live compilation witness recorded leading literals in both hot 223-parameter shader shapes.
+
+In separate 20-second diagnostic launches, median time in OpenGL calls on the calling thread was **2.45 ms** in control and **2.43 ms** with the contiguous layout. The median GPU span of the first submission was **1.14 and 1.17 ms** respectively. These spans use command-buffer timestamps. The main timing runs had both sets of timers off.
+
+| Mixed ARB array reads | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Boolean vector selection | 119.79 | 13.34 ms |
+| Contiguous uniform | 121.98 | 10.92 ms |
+
+Throughput rose **1.83%** in the median and increased in both pairs. P99 shortened by **0.15 ms** in the first pair and **4.68 ms** in the reverse pair. Keep this option enabled for follow-up comparisons. Every warmed 60-second launch verified the camera, overlapping effects, 26 cast timing rows, consecutive GPU completions, and zero visible windows or activations. [Live A/B and phase diagnostics](results/raid-winemetalgl-headless-arb-contiguous-segments-ab.json)

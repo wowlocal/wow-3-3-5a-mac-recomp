@@ -1,0 +1,197 @@
+diff --git a/src/core/compat/arb_program.h b/src/core/compat/arb_program.h
+--- a/src/core/compat/arb_program.h
++++ b/src/core/compat/arb_program.h
+@@ -103,12 +103,21 @@
+ using EmitKey = std::array<char, 6>;
+ EmitKey emitKey(const Parsed& program, const EmitOptions& options);
+
++inline constexpr char kPackedVertexParameters[] = "arb_vpPacked";
+ struct UniformPadding {
+     struct Array {
+         std::array<int, 2> index{}, slot{};
+         int count = 0;
+         bool contiguous = false;
+     };
++    struct Packed {
++        int array = -1;
++        int size = 0, first = 0, length = 0, base = 0;
++        bool env = false;
++        std::array<int, 2> indices{};
++        std::array<std::array<float, 4>, 2> literals{};
++        int literalCount = 0;
++    } packed;
+     std::vector<Array> arrays;
+     std::vector<std::array<float, 4>> env, local;
+ };
+diff --git a/src/core/compat/arb_program.cpp b/src/core/compat/arb_program.cpp
+--- a/src/core/compat/arb_program.cpp
++++ b/src/core/compat/arb_program.cpp
+@@ -1219,6 +1219,9 @@
+         const size_t localCount = p_.localCount + (padding_ ? padding_->local.size() : 0);
+         if (envCount) s += std::string("uniform vec4 ") + envName(p_.kind, true) + "[" + std::to_string(envCount) + "];\n";
+         if (localCount) s += std::string("uniform vec4 ") + envName(p_.kind, false) + "[" + std::to_string(localCount) + "];\n";
++        if (padding_ && padding_->packed.array >= 0)
++            s += std::string("uniform vec4 ") + kPackedVertexParameters + "[" +
++                 std::to_string(padding_->packed.size) + "];\n";
+         if (p_.programMatrices) s += "uniform mat4 arb_pm[8];\n";
+         if (p_.programMatrixInverses) s += "uniform mat4 arb_pmInv[8];\n";
+         if (vs) {
+@@ -1260,6 +1263,10 @@
+             const int start = array.segmentStart, end = start + array.segmentLength;
+             const char* uniforms = envName(p_.kind, array.segment == ArrayDecl::Env);
+             s += "vec4 arb_param" + std::to_string(i) + "(int index) {\n";
++            if (padding_ && padding_->packed.array == static_cast<int>(i)) {
++                s += std::string("    return ") + kPackedVertexParameters + "[index];\n}\n";
++                continue;
++            }
+             if (padding_ && i < padding_->arrays.size() && padding_->arrays[i].count) {
+                 const auto& layout = padding_->arrays[i];
+                 if (layout.contiguous) {
+@@ -1412,7 +1419,12 @@
+                 index = std::to_string(o.offset);
+             }
+             if (usesUniformSegment(a)) {
+-                if (o.relative < 0) return a.elements[static_cast<size_t>(o.offset)];
++                if (o.relative < 0) {
++                    if (padding_ && padding_->packed.array == o.index &&
++                        o.offset >= padding_->packed.first && o.offset < padding_->packed.first + padding_->packed.length)
++                        return std::string(kPackedVertexParameters) + "[" + index + "]";
++                    return a.elements[static_cast<size_t>(o.offset)];
++                }
+                 return "arb_param" + std::to_string(o.index) + "(" + index + ")";
+             }
+             if (a.range == ArrayDecl::None) return "p" + std::to_string(o.index) + "[" + index + "]";
+@@ -1611,8 +1623,12 @@
+         const char* value = std::getenv("WINEMETALGL_ARB_UNIFORM_PADDING");
+         return value && std::strcmp(value, "1") == 0;
+     }();
++    static const bool packed = [] {
++        const char* value = std::getenv("WINEMETALGL_ARB_CONTIGUOUS_SEGMENTS");
++        return value && std::strcmp(value, "1") == 0;
++    }();
+     UniformPadding padding;
+-    if (!enabled || program.kind != Kind::Vertex || !program.body) return padding;
++    if ((!enabled && !packed) || program.kind != Kind::Vertex || !program.body) return padding;
+     const Body& body = *program.body;
+     std::vector<bool> relative(body.arrays.size());
+     for (const Instruction& instruction : body.code)
+@@ -1628,9 +1644,9 @@
+         const bool env = array.segment == ArrayDecl::Env;
+         auto& literals = env ? padding.env : padding.local;
+         const int initial = (env ? program.envCount : program.localCount) + static_cast<int>(literals.size());
+-        if (initial + extra > (env ? Limits::kEnvParameters : Limits::kLocalParameters)) continue;
++        if (!packed && initial + extra > (env ? Limits::kEnvParameters : Limits::kLocalParameters)) continue;
+         UniformPadding::Array layout;
+-        std::array<std::array<float, 4>, 2> values;
++        std::array<std::array<float, 4>, 2> values{};
+         const int end = array.segmentStart + array.segmentLength;
+         for (int j = 0; j < size; ++j) {
+             if (j >= array.segmentStart && j < end) continue;
+@@ -1640,6 +1656,13 @@
+             ++layout.count;
+         }
+         if (layout.count != extra) continue;
++        if (packed) {
++            if (array.segmentLength > padding.packed.length) {
++                padding.packed = {static_cast<int>(i), size, array.segmentStart, array.segmentLength,
++                                  array.segmentBase, env, layout.index, values, layout.count};
++            }
++            continue;
++        }
+         layout.contiguous = array.segmentStart == 0 && array.segmentBase + array.segmentLength == initial;
+         literals.insert(literals.end(), values.begin(), values.begin() + layout.count);
+         padding.arrays[i] = layout;
+diff --git a/src/core/compat/arb_programs.h b/src/core/compat/arb_programs.h
+--- a/src/core/compat/arb_programs.h
++++ b/src/core/compat/arb_programs.h
+@@ -57,6 +57,8 @@
+     int envOffset[2] = {-1, -1}, localOffset[2] = {-1, -1};  // default-block byte offsets, per stage
+     int envCount[2] = {}, localCount[2] = {};  // elements the linked program kept
+     uint64_t uploadedEnvVersion[2] = {UINT64_MAX, UINT64_MAX};
++    int packedOffset = -1, packedSource = 0, packedLength = 0;
++    bool packedEnvironment = false;
+     int matrixOffset = -1, inverseOffset = -1, matrixCount = 0, inverseCount = 0;
+     std::shared_ptr<const arb::Parsed> parsed[2];  // keeps the counts' programs alive
+ };
+diff --git a/src/core/compat/arb_programs.mm b/src/core/compat/arb_programs.mm
+--- a/src/core/compat/arb_programs.mm
++++ b/src/core/compat/arb_programs.mm
+@@ -159,7 +159,7 @@
+         // Programs reloaded or deleted leave entries behind: start over past a bound.
+         if (cache.size() >= 1024) cache.clear();
+         std::string vs, fs;
+-        const arb::UniformPadding padding = vp ? arb::uniformPadding(*vp) : arb::UniformPadding{};
++        arb::UniformPadding padding = vp ? arb::uniformPadding(*vp) : arb::UniformPadding{};
+         if (vp) vs = arb::emit(*vp, vo, &padding);
+         else fixedFunctionStage(ctx, mode, true, needs, nullptr, &vs);
+         if (fp) fs = arb::emit(*fp, fo);
+@@ -170,6 +170,32 @@
+         std::string log;
+         ArbLinked linked;
+         linked.program = linkInternalProgram(vs, fs, "ff_tex", log, bindings);
++        if (padding.packed.array >= 0) {
++            const auto& packed = padding.packed;
++            int count = packed.size;
++            const int offset = linked.program ?
++                uniformOffset(*linked.program, std::string(arb::kPackedVertexParameters) + "[0]", 16, count) : -1;
++            if (offset < 0 || count != packed.size) {
++                padding = {};
++                vs = arb::emit(*vp, vo, &padding);
++                log.clear();
++                linked.program = linkInternalProgram(vs, fs, "ff_tex", log, bindings);
++            } else {
++                linked.packedOffset = offset + packed.first * 16;
++                linked.packedSource = packed.base;
++                linked.packedLength = packed.length;
++                linked.packedEnvironment = packed.env;
++                for (int i = 0; i < packed.literalCount; ++i)
++                    store(*linked.program, offset + packed.indices[i] * 16, packed.literals[i].data(), 16);
++                static const bool report = [] {
++                    const char* value = std::getenv("WINEMETALGL_ARB_CONTIGUOUS_SEGMENTS_LOG");
++                    return value && std::strcmp(value, "1") == 0;
++                }();
++                if (report)
++                    std::fprintf(stderr, "winemetalgl: contiguous ARB uniforms ins=%d params=%d length=%d extras=%d prefix=%d\n",
++                                 vp->instructions, vp->parameters, packed.length, packed.literalCount, packed.first);
++            }
++        }
+         if (!linked.program) {
+             WMGL_ERR(Shader, "ARB program failed to link:\n%s\n--- vertex\n%s--- fragment\n%s", log.c_str(), vs.c_str(),
+                      fs.c_str());
+@@ -232,6 +258,10 @@
+         }
+         store(p, linked.localOffset[i], stage[i]->local.data(), static_cast<size_t>(linked.localCount[i]) * 16);
+     }
++    if (linked.packedOffset >= 0) {
++        const auto& source = linked.packedEnvironment ? ctx.arb.env[0] : stage[0]->local;
++        store(p, linked.packedOffset, source.data() + linked.packedSource, static_cast<size_t>(linked.packedLength) * 16);
++    }
+     if (linked.matrixOffset >= 0 || linked.inverseOffset >= 0) {
+         Mat4 m[FixedState::kProgramMatrices], inv[FixedState::kProgramMatrices];
+         for (int n = 0; n < FixedState::kProgramMatrices; ++n) {
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -401,9 +401,10 @@
+          "ADDRESS a;\n"
+          "PARAM selector = program.env[0];\n"
+          "PARAM colors[22] = { {1,0,0,1}, program.env[7..26], {1,1,1,1} };\n"
++         "PARAM bias = program.env[60];\n"
+          "ARL a.x, selector.x;\n"
+          "MOV result.position, vertex.position;\n"
+-         "MOV result.color, colors[a.x];\n"
++         "ADD result.color, colors[a.x], bias;\n"
+          "END\n");
+     glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 7, 0, 1, 0, 1);
+     glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 26, 0, 0, 1, 1);
+@@ -430,6 +431,10 @@
+     glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 41, 0, 0, 0);
+     quad(-1, 1);
+     CHECK(pixel(32, 32, kWhite));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, -1, 0, 0, 0);
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 60, -1, 0, 1, 0);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kBlue));
+     glDisable(GL_VERTEX_PROGRAM_ARB);
+     CHECK_GL();
+ }

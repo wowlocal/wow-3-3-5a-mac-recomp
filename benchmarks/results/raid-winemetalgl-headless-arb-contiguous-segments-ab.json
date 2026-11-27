@@ -1,0 +1,359 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "explicit_headless_interactive_qos": false,
+  "i386_forward_superblocks": false,
+  "i386_mov_base_uxtw": true,
+  "i386_fp_batch_v2": true,
+  "i386_ebp_hoist": true,
+  "vertex_shader_uniform_segments": true,
+  "arb_branchless_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "process_isolation": {
+    "other_trial_instances_detected": 0,
+    "guard_checkpoints": "Before the first launch and after each of four launches"
+  },
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "mode": "boolean_select_segments",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7311,
+      "first_sequence": 4737,
+      "last_sequence": 12047,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999774750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 121.83333333333333,
+      "p99_gpu_completion_gap_ns": 11084000,
+      "min_draws": 709,
+      "max_draws": 950
+    },
+    {
+      "launch": 2,
+      "mode": "contiguous_uniform_array",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7329,
+      "first_sequence": 4826,
+      "last_sequence": 12154,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996720500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 122.13333333333334,
+      "p99_gpu_completion_gap_ns": 10933791,
+      "min_draws": 687,
+      "max_draws": 954
+    },
+    {
+      "launch": 3,
+      "mode": "contiguous_uniform_array",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7311,
+      "first_sequence": 4826,
+      "last_sequence": 12136,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994159750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 121.83333333333333,
+      "p99_gpu_completion_gap_ns": 10912000,
+      "min_draws": 680,
+      "max_draws": 956
+    },
+    {
+      "launch": 4,
+      "mode": "boolean_select_segments",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7066,
+      "first_sequence": 4827,
+      "last_sequence": 11892,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59992983000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 117.75,
+      "p99_gpu_completion_gap_ns": 15587791,
+      "min_draws": 657,
+      "max_draws": 959
+    }
+  ],
+  "medians": {
+    "boolean_select_segments": {
+      "average_completed_fps": 119.79166666666666,
+      "p99_gpu_completion_gap_ns": 13335895.5
+    },
+    "contiguous_uniform_array": {
+      "average_completed_fps": 121.98333333333333,
+      "p99_gpu_completion_gap_ns": 10922895.5
+    }
+  },
+  "runtime_sha256": "a93d0024b82f7ff3e7383346f16403e10e07f542603b426390823f7991d86f89",
+  "renderer_sha256": "d6f26664676a3e38ec4f8f430bb8c6d66101ebe36ee28ade5694650d87df8fc5",
+  "visual_readback_checked_per_launch": true,
+  "diagnostic_arb_compile_log_off_in_timed_runs": true,
+  "compile_witness_diagnostic": {
+    "compiled_shape_counts": [
+      {
+        "assembly_instructions": 26,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 2
+      },
+      {
+        "assembly_instructions": 31,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 2
+      },
+      {
+        "assembly_instructions": 40,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 3
+      },
+      {
+        "assembly_instructions": 45,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 1
+      },
+      {
+        "assembly_instructions": 47,
+        "parameters": 223,
+        "copied_segment_length": 221,
+        "literal_count": 2,
+        "prefix_literals": 2,
+        "emissions": 1
+      },
+      {
+        "assembly_instructions": 52,
+        "parameters": 223,
+        "copied_segment_length": 221,
+        "literal_count": 2,
+        "prefix_literals": 2,
+        "emissions": 2
+      },
+      {
+        "assembly_instructions": 53,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 2
+      },
+      {
+        "assembly_instructions": 60,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 2
+      },
+      {
+        "assembly_instructions": 65,
+        "parameters": 223,
+        "copied_segment_length": 221,
+        "literal_count": 2,
+        "prefix_literals": 2,
+        "emissions": 1
+      },
+      {
+        "assembly_instructions": 65,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 2
+      },
+      {
+        "assembly_instructions": 72,
+        "parameters": 223,
+        "copied_segment_length": 221,
+        "literal_count": 2,
+        "prefix_literals": 2,
+        "emissions": 1
+      },
+      {
+        "assembly_instructions": 77,
+        "parameters": 223,
+        "copied_segment_length": 221,
+        "literal_count": 2,
+        "prefix_literals": 2,
+        "emissions": 1
+      },
+      {
+        "assembly_instructions": 78,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 2
+      },
+      {
+        "assembly_instructions": 85,
+        "parameters": 223,
+        "copied_segment_length": 222,
+        "literal_count": 1,
+        "prefix_literals": 1,
+        "emissions": 2
+      }
+    ],
+    "phase_diagnostics": {
+      "0": {
+        "consecutive_phase_rows": 4380,
+        "elapsed_on_calling_thread_ms": {
+          "gl_ms": {
+            "mean": 2.455570776255708,
+            "median": 2.45,
+            "p99": 2.84
+          },
+          "draw_bind_ms": {
+            "mean": 0.3157762557077626,
+            "median": 0.32,
+            "p99": 0.37
+          },
+          "draw_encode_ms": {
+            "mean": 0.48383333333333334,
+            "median": 0.48,
+            "p99": 0.55
+          },
+          "interval_ms": {
+            "mean": 8.566961187214613,
+            "median": 8.56,
+            "p99": 10.35
+          }
+        },
+        "gpu_intervals_by_final_submission": {
+          "final_submit_to_gpu_start_ns": {
+            "mean": 298283.63515255693,
+            "median": 173917,
+            "p99": 2624792
+          },
+          "final_gpu_span_ns": {
+            "mean": 1161306.3412118608,
+            "median": 710250,
+            "p99": 6471334
+          },
+          "earlier_submissions_gpu_spans_ns": {
+            "mean": 1548365.2905027934,
+            "median": 1135000,
+            "p99": 6655500
+          }
+        },
+        "gpu_completion_intervals": 2327,
+        "gpu_missing_sequences": 0,
+        "activation_notifications": 0,
+        "visible_trial_windows": 0
+      },
+      "1": {
+        "consecutive_phase_rows": 4315,
+        "elapsed_on_calling_thread_ms": {
+          "gl_ms": {
+            "mean": 2.439677867902665,
+            "median": 2.43,
+            "p99": 2.82
+          },
+          "draw_bind_ms": {
+            "mean": 0.3031100811123986,
+            "median": 0.3,
+            "p99": 0.35
+          },
+          "draw_encode_ms": {
+            "mean": 0.48623870220162224,
+            "median": 0.49,
+            "p99": 0.55
+          },
+          "interval_ms": {
+            "mean": 8.551360370799536,
+            "median": 8.56,
+            "p99": 10.2
+          }
+        },
+        "gpu_intervals_by_final_submission": {
+          "final_submit_to_gpu_start_ns": {
+            "mean": 294283.6736259054,
+            "median": 175542,
+            "p99": 2612042
+          },
+          "final_gpu_span_ns": {
+            "mean": 1142877.142735407,
+            "median": 677250,
+            "p99": 6145125
+          },
+          "earlier_submissions_gpu_spans_ns": {
+            "mean": 1549893.9599488708,
+            "median": 1170000,
+            "p99": 6202291
+          }
+        },
+        "gpu_completion_intervals": 2347,
+        "gpu_missing_sequences": 0,
+        "activation_notifications": 0,
+        "visible_trial_windows": 0
+      }
+    },
+    "gpu_missing_sequences": 0,
+    "activation_notifications": 0,
+    "visible_trial_windows": 0
+  },
+  "paired_trial_minus_control": [
+    {
+      "average_completed_fps": 0.30000000000001137,
+      "p99_gpu_completion_gap_ns": -150209
+    },
+    {
+      "average_completed_fps": 4.083333333333329,
+      "p99_gpu_completion_gap_ns": -4675791
+    }
+  ],
+  "gpu_tests_per_arm": 339,
+  "guest_writes_to_unpacked_uniforms_verified": true,
+  "guest_slot_isolation_verified": true,
+  "phase_diagnostics_run_with_instrumentation_separately": true,
+  "selected_for_followup": true
+}
