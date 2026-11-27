@@ -29,6 +29,29 @@ static void replay_wait(uint32_t wait, uint32_t release, uint32_t fence)
     bench_gl_call(release, 1, (uint32_t[]){ fence });
 }
 
+static uint32_t replay_window(uint32_t agl)
+{
+    require(dlopen(CARBON, RTLD_LAZY | RTLD_GLOBAL) != NULL, "could not open Carbon for the replay window");
+    const char *appkit = "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit";
+    require(dlopen(appkit, RTLD_LAZY | RTLD_GLOBAL) != NULL, "could not open AppKit for the replay window");
+    require(((id (*)(id, SEL))objc_msgSend)((id)objc_getClass("NSApplication"),
+                                           sel_registerName("sharedApplication")) != nil,
+            "could not initialize AppKit for the replay window");
+    const int16_t bounds[] = {100, 120, 100 + HEIGHT, 120 + WIDTH};
+    memcpy(m32_h(DATA + 0xa00), bounds, sizeof bounds);
+    m32_wr(DATA + 0xa10, 0);
+    const uint32_t attributes[] = {6 /* kDocumentWindowClass */, 0, DATA + 0xa00, DATA + 0xa10};
+    require(cross(CARBON, "_CreateNewWindow", 4, attributes) == 0,
+            "could not create the replay window");
+    const uint32_t window = m32_rd(DATA + 0xa10);
+    require(window != 0, "the replay window is missing");
+    cross(CARBON, "_ShowWindow", 1, &window);
+    const uint32_t port = call("_GetWindowPort", 1, &window);
+    require(port && call("_aglSetDrawable", 2, (uint32_t[]){agl, port}) == 1,
+            "could not attach the windowed Metal presenter");
+    return window;
+}
+
 static void bench_wmgl_i386(const char *gl, uint32_t agl, const char *histogram, const char *code)
 {
     const char *depth = getenv("OCERZ_WMGL_I386_DEPTH");
@@ -38,7 +61,9 @@ static void bench_wmgl_i386(const char *gl, uint32_t agl, const char *histogram,
     const char *duration = getenv("OCERZ_WMGL_I386_SECONDS");
     unsigned long seconds = duration ? strtoul(duration, &end, 10) : 8;
     require((!duration || !*end) && seconds > 0 && seconds <= 620, "invalid replay duration");
-    require(m32_wmgl_resize_pbuffer(WIDTH, HEIGHT), "could not resize the test pbuffer");
+    const char *mode = getenv("OCERZ_WMGL_I386_WINDOW");
+    const uint32_t window = mode && strcmp(mode, "1") == 0 ? replay_window(agl) : 0;
+    if (!window) require(m32_wmgl_resize_pbuffer(WIDTH, HEIGHT), "could not resize the test pbuffer");
 
     const uint32_t entry = CODE + 0x3000;
     FILE *image = fopen(code, "rb");
@@ -140,4 +165,8 @@ static void bench_wmgl_i386(const char *gl, uint32_t agl, const char *histogram,
     m32_free(frame.vertices);
     m32_free(frame.uploads);
     m32_free(frame.draws);
+    if (window) {
+        require(call("_aglSetDrawable", 2, (uint32_t[]){agl, 0}) == 1, "could not detach the replay window");
+        cross(CARBON, "_DisposeWindow", 1, &window);
+    }
 }

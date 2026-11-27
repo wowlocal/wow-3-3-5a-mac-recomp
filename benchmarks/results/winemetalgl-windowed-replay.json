@@ -1,0 +1,319 @@
+{
+  "hardware": "Apple M4 Pro",
+  "fixture": "winemetalgl-i386-indexed-gpu-ab.json",
+  "window_size": [
+    1365,
+    768
+  ],
+  "reference_frame_rgba_fnv1a64": "199a81aba2d36749",
+  "surface_ab": {
+    "runs": [
+      {
+        "order": 1,
+        "windowed": false,
+        "verified_completed_renders": 8447,
+        "first_sequence": 128,
+        "last_sequence": 8574,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999891834,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1407.6666666666667,
+        "p99_gpu_completion_gap_ns": 1893416,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 2,
+        "windowed": true,
+        "verified_completed_renders": 7549,
+        "first_sequence": 128,
+        "last_sequence": 7676,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999460959,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1258.0,
+        "p99_gpu_completion_gap_ns": 2935291,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 3,
+        "windowed": true,
+        "verified_completed_renders": 7362,
+        "first_sequence": 128,
+        "last_sequence": 7489,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999491916,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1226.8333333333333,
+        "p99_gpu_completion_gap_ns": 3254250,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 4,
+        "windowed": false,
+        "verified_completed_renders": 8689,
+        "first_sequence": 128,
+        "last_sequence": 8816,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999638375,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1448.0,
+        "p99_gpu_completion_gap_ns": 1920709,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 5,
+        "windowed": false,
+        "verified_completed_renders": 8677,
+        "first_sequence": 128,
+        "last_sequence": 8804,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999873000,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1446.0,
+        "p99_gpu_completion_gap_ns": 1839416,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 6,
+        "windowed": true,
+        "verified_completed_renders": 7404,
+        "first_sequence": 128,
+        "last_sequence": 7531,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999751666,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1233.8333333333333,
+        "p99_gpu_completion_gap_ns": 3103125,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 7,
+        "windowed": true,
+        "verified_completed_renders": 7392,
+        "first_sequence": 128,
+        "last_sequence": 7519,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999816000,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1231.8333333333333,
+        "p99_gpu_completion_gap_ns": 2912416,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 8,
+        "windowed": false,
+        "verified_completed_renders": 8575,
+        "first_sequence": 128,
+        "last_sequence": 8702,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999406375,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1429.0,
+        "p99_gpu_completion_gap_ns": 1790959,
+        "min_draws": 826,
+        "max_draws": 826
+      }
+    ],
+    "medians": [
+      {
+        "windowed": false,
+        "average_completed_fps": 1437.5,
+        "p99_gpu_completion_gap_ns": 1866416.0
+      },
+      {
+        "windowed": true,
+        "average_completed_fps": 1232.8333333333333,
+        "p99_gpu_completion_gap_ns": 3019208.0
+      }
+    ]
+  },
+  "background_presentation_diagnostic": {
+    "verified_completed_renders": 7484,
+    "first_sequence": 128,
+    "last_sequence": 7611,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 5999405875,
+    "measurement_duration_ns": 6000000000,
+    "average_completed_fps": 1247.1666666666667,
+    "p99_gpu_completion_gap_ns": 3223084,
+    "min_draws": 826,
+    "max_draws": 826,
+    "presentation": {
+      "matched_callbacks": 721,
+      "presented_frames": 0,
+      "presentation_interval_ns": 0,
+      "average_presented_fps": null
+    }
+  },
+  "windowed_profile": {
+    "warmed_frames": 4717,
+    "swap": {
+      "p50_ms": 0.01,
+      "p99_ms": 2.04,
+      "max_ms": 8.88,
+      "count_at_least_0_1_ms": 563
+    },
+    "acquire_mailbox_slot": {
+      "p50_ms": 0.0,
+      "p99_ms": 1.99,
+      "max_ms": 8.86,
+      "count_at_least_0_1_ms": 558
+    }
+  },
+  "mailbox_slots_ab": {
+    "runs": [
+      {
+        "order": 1,
+        "slots": 3,
+        "verified_completed_renders": 7552,
+        "first_sequence": 128,
+        "last_sequence": 7679,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5998261959,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1258.5,
+        "p99_gpu_completion_gap_ns": 2846291,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 2,
+        "slots": 5,
+        "verified_completed_renders": 7360,
+        "first_sequence": 128,
+        "last_sequence": 7487,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999576416,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1226.5,
+        "p99_gpu_completion_gap_ns": 3030250,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 3,
+        "slots": 5,
+        "verified_completed_renders": 7664,
+        "first_sequence": 128,
+        "last_sequence": 7791,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999746375,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1277.1666666666667,
+        "p99_gpu_completion_gap_ns": 2874541,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 4,
+        "slots": 3,
+        "verified_completed_renders": 7429,
+        "first_sequence": 128,
+        "last_sequence": 7556,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999592041,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1238.0,
+        "p99_gpu_completion_gap_ns": 3019000,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 5,
+        "slots": 3,
+        "verified_completed_renders": 7555,
+        "first_sequence": 128,
+        "last_sequence": 7682,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5998848041,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1259.0,
+        "p99_gpu_completion_gap_ns": 2997750,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 6,
+        "slots": 5,
+        "verified_completed_renders": 7834,
+        "first_sequence": 128,
+        "last_sequence": 7961,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999791666,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1305.5,
+        "p99_gpu_completion_gap_ns": 2828000,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 7,
+        "slots": 5,
+        "verified_completed_renders": 7737,
+        "first_sequence": 128,
+        "last_sequence": 7864,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999764375,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1289.3333333333333,
+        "p99_gpu_completion_gap_ns": 2903125,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 8,
+        "slots": 3,
+        "verified_completed_renders": 7469,
+        "first_sequence": 128,
+        "last_sequence": 7596,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999611666,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1244.6666666666667,
+        "p99_gpu_completion_gap_ns": 3276041,
+        "min_draws": 826,
+        "max_draws": 826
+      }
+    ],
+    "medians": [
+      {
+        "slots": 3,
+        "average_completed_fps": 1251.5833333333335,
+        "p99_gpu_completion_gap_ns": 3008375.0
+      },
+      {
+        "slots": 5,
+        "average_completed_fps": 1283.25,
+        "p99_gpu_completion_gap_ns": 2888833.0
+      }
+    ],
+    "five_slot_profile": {
+      "warmed_frames": 5195,
+      "swap": {
+        "p50_ms": 0.01,
+        "p99_ms": 0.05,
+        "max_ms": 1.72,
+        "count_at_least_0_1_ms": 21
+      },
+      "acquire_mailbox_slot": {
+        "p50_ms": 0.0,
+        "p99_ms": 0.0,
+        "max_ms": 1.69,
+        "count_at_least_0_1_ms": 21
+      }
+    }
+  },
+  "verification": {
+    "renderer_tests_passed": 336,
+    "renderer_failed_checks": 0,
+    "windowed_bridge_checks": 71,
+    "windowed_bridge_failed_checks": 0
+  }
+}

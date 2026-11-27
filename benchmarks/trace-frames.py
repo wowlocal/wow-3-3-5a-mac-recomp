@@ -302,7 +302,29 @@ def mailbox_report(frames, pid, width, height, seconds=None):
     }
 
 
-def mailbox_log(path, pid, width, height, stream, start_sequence, seconds):
+def presentation_report(path, pid, stream, completed_sequences):
+    callbacks = {}
+    with path.open() as log:
+        for line in log:
+            if not line.endswith("\n"):
+                break
+            process, stream_id, sequence, host_time = map(int, line.split())
+            if process != pid or stream_id != stream or sequence not in completed_sequences:
+                continue
+            if host_time < 0 or sequence in callbacks:
+                raise ValueError("Invalid presentation callback for a completed output")
+            callbacks[sequence] = host_time
+    times = [time for time in callbacks.values() if time > 0]
+    span = max(times) - min(times) if times else 0
+    return {
+        "matched_callbacks": len(callbacks),
+        "presented_frames": len(times),
+        "presentation_interval_ns": span,
+        "average_presented_fps": (len(times) - 1) * 1e9 / span if span else None,
+    }
+
+
+def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None):
     streams = defaultdict(list)
     dimensions = (width << 32) | height
     with path.open() as log:
@@ -324,6 +346,10 @@ def mailbox_log(path, pid, width, height, stream, start_sequence, seconds):
         if not any(frame[0] == start_sequence for frame in frames):
             raise ValueError("The requested starting GPU completion is missing")
     report = mailbox_report(frames, pid, width, height, seconds)
+    if present_log is not None:
+        # GPU and display events join by the renderer's sequence identity.
+        completed = {seq for seq, _, _ in frames[:report["verified_completed_renders"]]}
+        report["presentation"] = presentation_report(present_log, pid, stream, completed)
     return {"stream": stream, **report}
 
 
@@ -340,6 +366,7 @@ def main():
     mode.add_argument("--wmgl-log", action="store_true", help="read a WineMetalGL GPU completion log")
     mode.add_argument("--encoder-breakdown", action="store_true", help="group traced AGL command buffers by encoder label")
     parser.add_argument("--stream", type=int, help="mailbox generation to select from a GPU completion log")
+    parser.add_argument("--present-log", type=Path, help="join Metal drawable presentations by render sequence")
     parser.add_argument("--start-sequence", type=int, help="first completed frame in the measurement")
     parser.add_argument("--seconds", type=int, help="require this many seconds of completed GPU work")
     options = parser.parse_args()
@@ -347,15 +374,16 @@ def main():
         parser.error("PID, viewport dimensions, and run number must be positive")
     if (options.wmgl or options.wmgl_log) and options.frame_log:
         parser.error("--frame-log applies to the AGL window-write analysis")
-    if not options.wmgl_log and any(value is not None for value in (options.stream, options.start_sequence, options.seconds)):
-        parser.error("--stream, --start-sequence, and --seconds require --wmgl-log")
+    log_options = (options.stream, options.start_sequence, options.seconds, options.present_log)
+    if not options.wmgl_log and any(value is not None for value in log_options):
+        parser.error("--stream, --start-sequence, --seconds, and --present-log require --wmgl-log")
     if any(value is not None and value <= 0 for value in (options.stream, options.start_sequence, options.seconds)):
         parser.error("Stream, starting sequence, and duration must be positive")
     try:
         if options.wmgl_log:
             report = mailbox_log(
                 options.trace, options.pid, options.width, options.height,
-                options.stream, options.start_sequence, options.seconds,
+                options.stream, options.start_sequence, options.seconds, options.present_log,
             )
             print(json.dumps(report, indent=2))
             return

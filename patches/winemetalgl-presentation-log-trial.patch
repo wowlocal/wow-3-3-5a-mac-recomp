@@ -1,0 +1,72 @@
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -28,6 +28,17 @@
+ uint64_t newCompletionStream() {
+     static std::atomic<uint64_t> next{1};
+     return next.fetch_add(1, std::memory_order_relaxed);
++}
++
++FILE* presentationLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_PRESENT_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL presentation log");
++        return file;
++    }();
++    return log;
+ }
+ 
+ void recordCompletedRender(id<MTLCommandBuffer> finished, uint64_t recordingStream, uint64_t sequence,
+@@ -199,6 +210,7 @@
+     uint64_t sequence[kSlots] = {};
+     uint64_t nextSequence = 1;
+     uint64_t recordingStream = 0;
++    FILE* presentations = nullptr;
+     bool stop = false;
+     id<MTLCommandQueue> queue = nil;
+     std::thread thread;
+@@ -617,7 +629,8 @@
+     if (!mailbox_) {
+         mailbox_ = std::make_unique<Mailbox>();
+         Mailbox* box = mailbox_.get();
+-        if (stats::g_recordMailboxDraws)
++        box->presentations = presentationLog();
++        if (stats::g_recordMailboxDraws || box->presentations)
+             box->recordingStream = newCompletionStream();
+         MTLTextureDescriptor* desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:source.pixelFormat
+                                                                                          width:source.width
+@@ -632,6 +645,7 @@
+             raiseThreadQos("present");  // the render thread waits for its slots
+             for (;;) {
+                 int slot = -1;
++                uint64_t sequence;
+                 {
+                     std::unique_lock<std::mutex> lock(box->mutex);
+                     box->changed.wait(lock, [&] {
+@@ -646,6 +660,7 @@
+                         if (box->state[i] == Mailbox::Ready && (slot < 0 || box->sequence[i] > box->sequence[slot])) slot = i;
+                     for (int i = 0; i < Mailbox::kSlots; ++i)
+                         if (i != slot && box->state[i] == Mailbox::Ready) box->state[i] = Mailbox::Free;
++                    sequence = box->sequence[slot];
+                     box->state[slot] = Mailbox::Presenting;
+                 }
+                 box->changed.notify_all();
+@@ -654,6 +669,16 @@
+                     id<MTLCommandBuffer> commandBuffer = [box->queue commandBuffer];
+                     if (drawable) {
+                         encodePresent(commandBuffer, box->slots[slot], drawable);
++                        if (FILE* log = box->presentations) {
++                            // The callback may arrive after the mailbox is destroyed.
++                            const uint64_t stream = box->recordingStream;
++                            [drawable addPresentedHandler:^(id<MTLDrawable> presented) {
++                                const uint64_t time = uint64_t(presented.presentedTime * 1e9);
++                                std::fprintf(log, "%d %llu %llu %llu\n", getpid(),
++                                             (unsigned long long)stream, (unsigned long long)sequence,
++                                             (unsigned long long)time);
++                            }];
++                        }
+                         [commandBuffer presentDrawable:drawable];
+                     }
+                     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
