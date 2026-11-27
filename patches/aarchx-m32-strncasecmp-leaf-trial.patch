@@ -1,0 +1,163 @@
+--- a/src/m32_leaf.c
++++ b/src/m32_leaf.c
+@@ -18,6 +18,7 @@
+ #include <stdint.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <strings.h>
+ #include <time.h>
+
+ #include "ocerz/bridge.h"
+@@ -205,12 +206,32 @@
+     return r;
+ }
+
++static uint64_t leaf_strncasecmp(const char *left, const char *right, uint32_t limit)
++{
++    return (uint32_t)strncasecmp(left, right, (size_t)limit);
++}
++
++static const M32Leaf *strncasecmp_leaf(const M32Export *e)
++{
++    static const M32Leaf leaf = {
++        "_strncasecmp", (void *)leaf_strncasecmp, 3, 3, M32_LEAF_I32,
++        1, 1, 0, 1, 0
++    };
++    if (e->kind != M32_EX_FN || e->special || e->host_fn != (void *)strncasecmp ||
++        !e->gnote || !e->hnote || strcmp(e->gnote, "i(ssu)") || strcmp(e->hnote, "i(ppL)"))
++        return NULL;
++    const char *enabled = getenv("OCERZ_M32_STRNCASECMP_LEAF");
++    return enabled && strcmp(enabled, "1") == 0 ? &leaf : NULL;
++}
++
+ const M32Leaf *m32_leaf_for(uint32_t trap)
+ {
+     uint32_t id = trap - OCERZ_DYLDAPI_LO;
+     M32Export *e = m32_export_by_id(id);
+     if (!e || !e->name)
+         return NULL;
++    if (strcmp(e->name, "_strncasecmp") == 0)
++        return strncasecmp_leaf(e);
+     for (size_t i = 0; i < sizeof g_leaves / sizeof g_leaves[0]; i++)
+         if (!strcmp(e->name, g_leaves[i].name))
+             return &g_leaves[i];
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -27,6 +27,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <strings.h>
+ #include <sys/event.h>
+ #include <sys/mman.h>
+ #include <sys/socket.h>
+@@ -3277,6 +3278,87 @@
+     call("_NSCopyMemoryPages", 3, (uint32_t[]){ DATA + 0x900, pages, 7 });
+     check("NSCopyMemoryPages copies in the window", !strcmp((const char *)m32_h(pages), "copied"));
+     call("_NSDeallocateMemoryPages", 2, (uint32_t[]){ pages, 0x5000 });
++}
++
++
++/* A genuine i386 import stub called from translated cdecl guest code. */
++static void plant_string_compare(uint32_t entry, uint32_t slot, uint32_t iterations)
++{
++    const uint8_t code[] = {
++        0x55, 0x89, 0xe5, 0x53,             /* push ebp; mov ebp,esp; push ebx */
++        0xbb, 0, 0, 0, 0,                  /* mov ebx,iterations */
++        0xff, 0x75, 0x10,                   /* push [ebp+16]: count */
++        0xff, 0x75, 0x0c,                   /* push [ebp+12]: right */
++        0xff, 0x75, 0x08,                   /* push [ebp+8]: left */
++        0xe8, 9, 0, 0, 0,                  /* call the import stub */
++        0x83, 0xc4, 0x0c,                   /* add esp,12 */
++        0x4b, 0x75, 0xec,                   /* dec ebx; jne loop */
++        0x5b, 0x5d, 0xc3,                   /* pop ebx; pop ebp; ret */
++        0xff, 0x25, 0, 0, 0, 0             /* jmp [slot] */
++    };
++    memcpy(m32_h(entry), code, sizeof code);
++    m32_wr(entry + 5, iterations);
++    m32_wr(entry + 34, slot);
++}
++
++static void test_strncasecmp_leaf(void)
++{
++    static const struct { const char *left, *right; uint32_t limit; } cases[] = {
++        { "ArCaNe", "arcane", 10 },
++        { "ArcShadow", "aRCana", 3 },
++        { "apple", "Bomb", 5 },
++        { "zebra", "APPLE", 5 },
++        { "anything", "different", 0 },
++        { "arcane", "arcanes", 7 },
++    };
++    const uint32_t entry = CODE + 0x3800;
++    const uint32_t bench = CODE + 0x3900;
++    const uint32_t slot = DATA + 0x4440;
++    const uint32_t left = DATA + 0x4600;
++    const uint32_t right = DATA + 0x4700;
++    const uint32_t trap = m32_export("/usr/lib/libSystem.B.dylib", "_strncasecmp");
++    check("resolve real libc string comparison", trap != 0);
++    if (!trap)
++        return;
++    const char *enabled = getenv("OCERZ_M32_STRNCASECMP_LEAF");
++    const int wants_leaf = enabled && strcmp(enabled, "1") == 0;
++    const M32Leaf *leaf = m32_leaf_for(trap);
++    check("select the typed libc leaf only when requested", (leaf != NULL) == wants_leaf);
++    m32_wr(slot, trap);
++    enum { COUNT = 200000, SAMPLES = 7, WARMUP = 4 };
++    const int benchmark = getenv("OCERZ_BENCH_M32_STRNCASECMP") != NULL;
++    plant_string_compare(entry, slot, 1);
++    if (benchmark)
++        plant_string_compare(bench, slot, COUNT);
++    const int saved_jit = g_vm.jit_enabled, saved_active = m32_active;
++    const uint64_t saved_stack = cpu()->gpr[OCERZ_RSP];
++    cpu()->gpr[OCERZ_RSP] = STACK;
++    g_vm.jit_enabled = m32_active = 1;
++    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; ++i) {
++        put_str(left, cases[i].left);
++        put_str(right, cases[i].right);
++        uint32_t args[] = { left, right, cases[i].limit };
++        const uint32_t want = (uint32_t)strncasecmp(cases[i].left, cases[i].right, cases[i].limit);
++        const uint32_t got = m32_call(&g_vm, entry, args, 3, NULL, NULL);
++        check("translated comparison preserves the native signed result and length bound", got == want);
++    }
++    check("compared through a translated i386 import", g_vm.jit != NULL);
++    if (benchmark) {
++        put_str(left, "Glowing-luminous-raid-spell");
++        put_str(right, "GLOWING-LUMINOUS-RAID-SPELL");
++        uint32_t args[] = {left, right, 31};
++        for (int i = 0; i < WARMUP + SAMPLES; ++i) {
++            const uint64_t start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++            const uint32_t result = m32_call(&g_vm, bench, args, 3, NULL, NULL);
++            const uint64_t elapsed = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start;
++            check("repeated translated string comparisons return zero", result == 0);
++            if (i >= WARMUP)
++                printf("compare_ns %llu calls %u\n", (unsigned long long)elapsed, (unsigned)COUNT);
++        }
++    }
++    g_vm.jit_enabled = saved_jit;
++    m32_active = saved_active;
++    cpu()->gpr[OCERZ_RSP] = saved_stack;
+ }
+
+ int main(int argc, char **argv)
+@@ -3306,7 +3388,8 @@
+     ocerz_cpu_reset(cpu());
+     cpu()->mode32 = 1;
+     m32_heap_init();
+-    if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage"))) {
++    if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage") ||
++                     !strcmp(argv[1], "strncasecmp-leaf"))) {
+         char db[PATH_MAX];
+         if (!realpath("runtime/apis32", db)) {
+             fprintf(stderr, "test_m32: no runtime/apis32 here (make apis32, run from the repository)\n");
+@@ -3316,6 +3399,11 @@
+         char db64[PATH_MAX];
+         if (realpath("runtime/apis", db64))
+             setenv("OCERZ_APIDB", db64, 0);   /* the host side: frameworks the bridge opens by install name */
++        if (!strcmp(argv[1], "strncasecmp-leaf")) {
++            test_strncasecmp_leaf();
++            printf("test_m32 strncasecmp-leaf: %d checks, %d failed\n", g_checks, g_failures);
++            return g_failures != 0;
++        }
+         if (!strcmp(argv[1], "wmgl-storage")) {
+             test_wmgl_storage();
+             printf("test_m32 wmgl-storage: %d checks, %d failed\n", g_checks, g_failures);

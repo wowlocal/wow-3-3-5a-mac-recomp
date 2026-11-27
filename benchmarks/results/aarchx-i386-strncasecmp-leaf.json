@@ -1,0 +1,136 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Headless synthetic i386 guest calls to native libc strncasecmp",
+  "previous_logged_generic_crossings_full_instrumented_client_session": 4533755,
+  "calls_per_sample": 200000,
+  "warmup_samples_per_launch": 4,
+  "timed_samples_per_launch": 7,
+  "medians_and_checks": {
+    "generic_crossing": {
+      "abi_checks_passed": 9,
+      "general_m32_checks_passed": 806,
+      "generic_crossings_in_six_translated_comparisons": 6,
+      "median_ns_per_comparison": 78.3122925
+    },
+    "direct_leaf": {
+      "abi_checks_passed": 9,
+      "general_m32_checks_passed": 806,
+      "generic_crossings_in_six_translated_comparisons": 0,
+      "median_ns_per_comparison": 25.5882275
+    }
+  },
+  "runs": [
+    {
+      "launch_order": 1,
+      "leaf_enabled": false,
+      "median_duration_ns": 15622250,
+      "timed_durations_ns": [
+        15631791,
+        15319250,
+        15622250,
+        15453375,
+        16898083,
+        15936000,
+        15452667
+      ]
+    },
+    {
+      "launch_order": 2,
+      "leaf_enabled": true,
+      "median_duration_ns": 5029666,
+      "timed_durations_ns": [
+        5029666,
+        5904500,
+        5521334,
+        5384708,
+        5005500,
+        4989333,
+        4917667
+      ]
+    },
+    {
+      "launch_order": 3,
+      "leaf_enabled": true,
+      "median_duration_ns": 5207542,
+      "timed_durations_ns": [
+        4899584,
+        5498750,
+        5266500,
+        5207542,
+        5281625,
+        5020250,
+        4914209
+      ]
+    },
+    {
+      "launch_order": 4,
+      "leaf_enabled": false,
+      "median_duration_ns": 15702667,
+      "timed_durations_ns": [
+        15711708,
+        15715167,
+        15836291,
+        15702667,
+        15562541,
+        15700125,
+        15696000
+      ]
+    },
+    {
+      "launch_order": 5,
+      "leaf_enabled": false,
+      "median_duration_ns": 15757209,
+      "timed_durations_ns": [
+        15969250,
+        15757209,
+        15479000,
+        15508959,
+        16471708,
+        16429959,
+        15404209
+      ]
+    },
+    {
+      "launch_order": 6,
+      "leaf_enabled": true,
+      "median_duration_ns": 5181333,
+      "timed_durations_ns": [
+        5245167,
+        4941042,
+        4931250,
+        4984209,
+        5181333,
+        5301167,
+        5321417
+      ]
+    },
+    {
+      "launch_order": 7,
+      "leaf_enabled": true,
+      "median_duration_ns": 5053958,
+      "timed_durations_ns": [
+        5256916,
+        5061083,
+        5053958,
+        4973167,
+        5055125,
+        4990875,
+        4931250
+      ]
+    },
+    {
+      "launch_order": 8,
+      "leaf_enabled": false,
+      "median_duration_ns": 15245292,
+      "timed_durations_ns": [
+        14979625,
+        15676375,
+        15245292,
+        15211708,
+        14880667,
+        15661167,
+        15297583
+      ]
+    }
+  ]
+}
