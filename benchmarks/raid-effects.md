@@ -414,3 +414,16 @@ A separate fullscreen render pass fetched the RGBA8 source by integer pixel coor
 The warmed 60-second pair moved from **1,262 FPS and 3.14 ms p99** to **1,274 FPS and 2.80 ms p99**, with matching reference pixels and consecutive completions. A separate 257 × 256 GPU readback checked all 256 byte values in each RGBA channel. The original client also rendered the background login screen and recorded 146 consecutive GPU completions in a five-second sample. [Sustained replay and validation](results/winemetalgl-mailbox-copy-ab.json)
 
 Apply `patches/winemetalgl-raster-copy-trial.patch` after the early-submission trial patch. Set `OCERZ_WMGL_MAILBOX_RASTER_COPY=1` for this trial. It selects the render-pass copy for the linear RGBA8 surface and uses the normal blit for other formats or when the render encoder is unavailable. The measurements used early submission disabled. Live raid and input validation are still pending.
+
+### Early submission and render-pass copy together
+
+The windowed replay measured all four flag combinations in four interleaved blocks, then ran one warmed 60-second window per configuration. Every run matched the reference pixels and logged consecutive GPU completions. VSync was off and the mailbox used three slots. [Combined mailbox results](results/winemetalgl-combined-mailbox-ab.json)
+
+| Configuration | Six-second median FPS | Six-second median p99 | Sixty-second FPS | Sixty-second p99 |
+| --- | ---: | ---: | ---: | ---: |
+| Control | 1,257 | 3.01 ms | 1,215 | 3.41 ms |
+| Early submission | 1,243 | 3.00 ms | 1,209 | 3.20 ms |
+| Render-pass copy | 1,262 | 3.01 ms | 1,251 | 3.07 ms |
+| Both | 1,315 | 2.63 ms | 1,271 | 2.96 ms |
+
+Both changes together lowered p99 against the control in every short block and against each individual change in three blocks. To reproduce the combined arm, set `OCERZ_WMGL_FLUSH_BEFORE_SLOT_WAIT=1` and `OCERZ_WMGL_MAILBOX_RASTER_COPY=1`. [Paired and sustained results](results/winemetalgl-combined-mailbox-ab.json)
