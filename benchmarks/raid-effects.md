@@ -1373,3 +1373,20 @@ xcrun xctrace export --input CAPTURE_DIR/metal.trace --output CAPTURE_DIR/interv
 python3 benchmarks/summarize-metal-frame-capture.py CAPTURE_DIR \
     --intervals-xml CAPTURE_DIR/intervals.xml
 ```
+
+### Choose the first submission using submitted vertex references
+
+The trial can submit the first batch of a continuing default-framebuffer pass when the queue is idle and the recorded vertex references reach a budget. It checks in 32-draw steps beginning at the configured ordinary draw minimum. The 256-draw trigger and transfer of unused draw credit remain active. The estimate counts vertices or indices after expansion, multiplied by the instance count. GPU-provided indirect counts use the existing draw heuristic.
+
+Apply `patches/winemetalgl-idle-first-vertex-budget-trial.patch` after the idle-first-submission trial. Keep `WINEMETALGL_IDLE_FIRST_DRAWS=256` and `WINEMETALGL_COMMIT_DRAWS=64` in both arms. Set `WINEMETALGL_IDLE_FIRST_VERTICES=65000` for the trial. The chosen value is 65 percent of the control diagnostic's **100,719** median first-batch references, rounded to the nearest thousand. The reference counter describes the submitted workload before hardware vertex reuse.
+
+A separate diagnostic with submission and vertex logging enabled verified a first batch of **96 draws in 2,192 of 2,428** frames with the trial. The control submitted at **256 draws in 2,335 of 2,463** frames. All those frames completed in two draw-bearing buffers. The median first GPU span moved from **0.62 to 0.53 ms**, and the final span moved from **1.17 to 1.32 ms**. Use `OCERZ_WMGL_FIRST_VERTEX_LOG` for the process, serial, draw count and reference count. Join the serial to `OCERZ_WMGL_SUBMISSION_LOG` to identify each output's first buffer.
+
+| First batch policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing draw threshold | 122.75 | 13.80 ms |
+| Additional vertex budget | 122.53 | 13.80 ms |
+
+The first pair gained **0.67 FPS** and shortened p99 by **0.45 ms**. The reverse pair lost **1.10 FPS** and lengthened p99 by **0.43 ms**. The vertex budget stays off for the next performance baseline. All four warmed 60-second launches verified the camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations.
+
+Both settings passed **341** GPU tests with ordinary draw submission settings. In the focused test, the heavier instanced frame changed from **32 + 68** draws to **8 + 92** draws and matched the reference pixels. The other frame used **32 + 68** draws in both arms. [Live A/B, submission diagnostics, and test counts](results/raid-winemetalgl-idle-first-vertex-budget-ab.json)

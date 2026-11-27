@@ -1,0 +1,166 @@
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -251,6 +251,10 @@
+     uint32_t drawsSinceCommit() const { return drawsSinceCommit_; }
+     bool hasDrawSubmissionThisFrame() const { return frameHasDrawSubmission_; }
+     uint64_t earlyDrawCredit() const { return earlyDrawCredit_; }
++    static uint64_t firstSubmissionVertexBudget();
++    bool needsFirstSubmissionVertices() const;
++    void noteFirstSubmissionVertices(uint64_t references, uint64_t instances);
++    uint64_t firstSubmissionVertexReferences() const { return firstSubmissionVertexReferences_; }
+     void flushEarlyFrame(uint64_t credit);
+     void resetFrameSubmissionBudget() {
+         frameHasDrawSubmission_ = false;
+@@ -323,6 +327,7 @@
+     bool drawsInPass_ = false;
+     bool frameHasDrawSubmission_ = false;
+     uint64_t earlyDrawCredit_ = 0;
++    uint64_t firstSubmissionVertexReferences_ = 0;
+     uint32_t drawsSinceCommit_ = 0;
+     uint64_t trianglesSinceCommit_ = 0;
+     uint64_t submissionTraceStream_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -28,6 +28,17 @@
+         if (!path || !*path) return nullptr;
+         FILE* file = std::fopen(path, "wx");
+         if (!file) std::perror("cannot create WineMetalGL submission log");
++        return file;
++    }();
++    return log;
++}
++
++FILE* firstVertexLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_FIRST_VERTEX_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL first vertex log");
+         return file;
+     }();
+     return log;
+@@ -653,6 +664,26 @@
+     lastPrelude_ = nil;
+ }
+
++uint64_t CommandStream::firstSubmissionVertexBudget() {
++    static const uint64_t budget = [] {
++        const char* value = std::getenv("WINEMETALGL_IDLE_FIRST_VERTICES");
++        return value && *value ? uint64_t(std::strtoull(value, nullptr, 10)) : uint64_t(0);
++    }();
++    return budget;
++}
++
++bool CommandStream::needsFirstSubmissionVertices() const {
++    static const bool enabled = firstSubmissionVertexBudget() || firstVertexLog();
++    return enabled && !frameHasDrawSubmission_;
++}
++
++void CommandStream::noteFirstSubmissionVertices(uint64_t references, uint64_t instances) {
++    uint64_t expanded;
++    if (__builtin_mul_overflow(references, instances, &expanded) ||
++        __builtin_add_overflow(firstSubmissionVertexReferences_, expanded, &firstSubmissionVertexReferences_))
++        firstSubmissionVertexReferences_ = UINT64_MAX;
++}
++
+ void CommandStream::flushEarlyFrame(uint64_t credit) {
+     flush(true);
+     earlyDrawCredit_ = credit;
+@@ -669,9 +700,16 @@
+     lastCommitNanos_ = stats::nowNanos();
+     const uint32_t submittedDraws = drawsSinceCommit_;
+     if (submittedDraws) {
++        if (!frameHasDrawSubmission_) {
++            if (FILE* log = firstVertexLog()) {
++                std::fprintf(log, "%d %llu %u %llu\n", getpid(), (unsigned long long)serial_,
++                             submittedDraws, (unsigned long long)firstSubmissionVertexReferences_);
++            }
++        }
+         frameHasDrawSubmission_ = true;
+         earlyDrawCredit_ = 0;
+     }
++    firstSubmissionVertexReferences_ = 0;
+     drawsSinceCommit_ = 0;
+     trianglesSinceCommit_ = 0;
+     if (!profile_.empty()) {
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2321,6 +2321,9 @@
+         }
+         return true;
+     }
++    CommandStream& stream = ctx_.stream();
++    const bool countFirstVertices = stream.needsFirstSubmissionVertices();
++    const uint64_t instanceCount = static_cast<uint64_t>(std::max(1, instances));
+     // Metal on some virtual GPUs (DeviceCaps::drawOffsets16) keeps only 16
+     // bits of the vertex start and base vertex: such a draw goes through
+     // indices that hold the vertex numbers themselves, with no offset.
+@@ -2348,10 +2351,12 @@
+                                    indexBuffer:pattern->buffer indexBufferOffset:0
+                                  instanceCount:std::max(1, instances) baseVertex:first - rebase
+                                   baseInstance:baseInstance_];
+-            ctx_.stream().noteDraw();
++            if (countFirstVertices) stream.noteFirstSubmissionVertices(pattern->count, instanceCount);
++            stream.noteDraw();
+             return true;
+         }
+     }
++    uint64_t references = count > 0 ? static_cast<uint32_t>(count) : 0;
+     if (needsIndices || rotate || points || (indexData && !indexBuffer) || offsetIndices) {
+         stats::count(&stats::Frame::cpuIndexDraws);
+         std::vector<uint32_t> in, out;
+@@ -2364,6 +2369,7 @@
+         else if (needsIndices) expandIndices(mode, in, out);
+         else out.swap(in);
+         if (out.empty()) return true;
++        references = out.size();
+         TransientAllocation alloc = transient_.allocate(out.size() * 4, serial, 4);
+         std::memcpy(alloc.data, out.data(), out.size() * 4);
+         [encoder drawIndexedPrimitives:native indexCount:out.size() indexType:MTLIndexTypeUInt32
+@@ -2382,7 +2388,8 @@
+     // counts continue to use the normal draw-budget heuristic.
+     const uint64_t triangles = mode == GL_TRIANGLES && !points && count > 0 && triangleSubmissionBudget()
+                                    ? uint64_t{static_cast<uint32_t>(count / 3)} * std::max(1, instances) : 0;
+-    ctx_.stream().noteDraw(triangles);
++    if (countFirstVertices) stream.noteFirstSubmissionVertices(references, instanceCount);
++    stream.noteDraw(triangles);
+     return true;
+ }
+
+@@ -2585,9 +2592,15 @@
+     // Start the first default-framebuffer submission while the queue has
+     // nothing in flight. Transfer the unused draw budget to the next
+     // submission so early work does not introduce an additional split.
+-    if (earlyDraws >= draws && recorded >= earlyDraws && recorded < continuingLimit &&
+-        (recorded - earlyDraws) % 32 == 0 && !stream.hasDrawSubmissionThisFrame() &&
+-        target && !ctx_.state.drawFramebuffer && ctx_.drawSurface() && stream.continuesPass(*target) &&
++    const bool drawCheck = earlyDraws >= draws && recorded >= earlyDraws &&
++                           (recorded - earlyDraws) % kIdleCommitDraws == 0;
++    const uint64_t vertexBudget = CommandStream::firstSubmissionVertexBudget();
++    const bool vertexCheck = vertexBudget && recorded >= draws &&
++                             (recorded - draws) % kIdleCommitDraws == 0 &&
++                             stream.firstSubmissionVertexReferences() >= vertexBudget;
++    if ((drawCheck || vertexCheck) && recorded < continuingLimit &&
++        !stream.hasDrawSubmissionThisFrame() && target && !ctx_.state.drawFramebuffer &&
++        ctx_.drawSurface() && stream.continuesPass(*target) &&
+         !triangleSubmissionBudget() && stream.queue().idle()) {
+         stream.flushEarlyFrame(continuingLimit - recorded);
+         return;
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -495,7 +495,10 @@
+     for (int frame = 0; frame < 2; ++frame) {
+         clear();
+         glColor4f(frame == 0, 0, frame == 1, 1);
+-        for (int draw = 0; draw < 100; ++draw) glDrawArrays(GL_TRIANGLES, 0, 3);
++        for (int draw = 0; draw < 100; ++draw) {
++            if (frame == 1 && draw < 8) glDrawArraysInstanced(GL_TRIANGLES, 0, 3, 8);
++            else glDrawArrays(GL_TRIANGLES, 0, 3);
++        }
+         CHECK(wmgl_surface_swap(fixture.surface));
+         CHECK(pixel(32, 32, frame == 0 ? kRed : kBlue));
+     }

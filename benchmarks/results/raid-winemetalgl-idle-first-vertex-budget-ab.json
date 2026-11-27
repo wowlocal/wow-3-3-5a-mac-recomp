@@ -1,0 +1,299 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "GPU-completed frames in the original client with the full headless raid fixture.",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_rows_per_launch": 26,
+  "continuing_draw_threshold": 512,
+  "idle_first_draw_threshold": 256,
+  "minimum_candidate_draws": 64,
+  "vertex_check_interval_draws": 32,
+  "triangle_budget": 0,
+  "completed_serial_fast_path": true,
+  "arb_contiguous_segments": true,
+  "i386_general_base_hoist": true,
+  "i386_base_handoff": false,
+  "chosen_vertex_budget": 65000,
+  "budget_selection": "65 percent of the median first-submission references in the control diagnostic, rounded to the nearest thousand.",
+  "vertex_budget_unit": "Number of submitted direct vertices or indices after expansion, times instance count.",
+  "runtime_sha256": "3affc501dd1c276658c4a7fd8178daff370b2ec5f2f8388add97df46f7e0eb8a",
+  "renderer_sha256": "ce6c9dc2f41598740bb3ce74b940a81b83f5b17417be45b7feac7fec5a230750",
+  "process_isolation_verified": true,
+  "runs": [
+    {
+      "run": 1,
+      "first_submission_vertex_budget": 0,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 32007,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7312,
+        "first_sequence": 4470,
+        "last_sequence": 11781,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59995061334,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 121.85,
+        "p99_gpu_completion_gap_ns": 14045625,
+        "min_draws": 702,
+        "max_draws": 987
+      }
+    },
+    {
+      "run": 2,
+      "first_submission_vertex_budget": 65000,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 68236,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7352,
+        "first_sequence": 4471,
+        "last_sequence": 11822,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59997734791,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 122.51666666666667,
+        "p99_gpu_completion_gap_ns": 13598375,
+        "min_draws": 697,
+        "max_draws": 952
+      }
+    },
+    {
+      "run": 3,
+      "first_submission_vertex_budget": 65000,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 6217,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7354,
+        "first_sequence": 4298,
+        "last_sequence": 11651,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59994292500,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 122.55,
+        "p99_gpu_completion_gap_ns": 13997125,
+        "min_draws": 685,
+        "max_draws": 941
+      }
+    },
+    {
+      "run": 4,
+      "first_submission_vertex_budget": 0,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 44966,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7420,
+        "first_sequence": 4380,
+        "last_sequence": 11799,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59995054666,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 123.65,
+        "p99_gpu_completion_gap_ns": 13563209,
+        "min_draws": 692,
+        "max_draws": 952
+      }
+    }
+  ],
+  "medians": {
+    "fixed_draw_threshold": {
+      "average_completed_fps": 122.75,
+      "p99_gpu_completion_gap_ns": 13804417.0
+    },
+    "early_vertex_budget": {
+      "average_completed_fps": 122.53333333333333,
+      "p99_gpu_completion_gap_ns": 13797750.0
+    }
+  },
+  "paired_trial_minus_control": [
+    {
+      "average_completed_fps": 0.6666666666666714,
+      "p99_gpu_completion_gap_ns": -447250
+    },
+    {
+      "average_completed_fps": -1.1000000000000085,
+      "p99_gpu_completion_gap_ns": 433916
+    }
+  ],
+  "selected_for_followup": false,
+  "gpu_tests_per_mode_with_ordinary_draw_policy": 341,
+  "focused_pixel_checks_passed_both_modes": true,
+  "focused_submission_draw_counts": {
+    "control": [
+      [
+        32,
+        68
+      ],
+      [
+        32,
+        68
+      ]
+    ],
+    "trial": [
+      [
+        32,
+        68
+      ],
+      [
+        8,
+        92
+      ]
+    ]
+  },
+  "submission_diagnostics": {
+    "scope": "Separate 20-second instrumented captures. GPU spans include any interruption within a command buffer.",
+    "control": {
+      "window": {
+        "stream": 1,
+        "pid": 70404,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 2464,
+        "first_sequence": 4291,
+        "last_sequence": 6754,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 19999880250,
+        "measurement_duration_ns": 20000000000,
+        "average_completed_fps": 123.15,
+        "p99_gpu_completion_gap_ns": 13561959,
+        "min_draws": 704,
+        "max_draws": 949
+      },
+      "joined_outputs": 2463,
+      "first_submission_draws": {
+        "256": 2335,
+        "288": 4,
+        "320": 7,
+        "352": 7,
+        "384": 5,
+        "416": 4,
+        "448": 3,
+        "480": 8,
+        "512": 90
+      },
+      "draw_submissions_per_output": {
+        "2": 2463
+      },
+      "first_submission_vertex_references": {
+        "minimum": 99969,
+        "median": 100719,
+        "maximum": 299448
+      },
+      "first_gpu_span_ns": {
+        "minimum": 198875,
+        "median": 621416,
+        "maximum": 9792166
+      },
+      "final_gpu_span_ns": {
+        "minimum": 232500,
+        "median": 1166250,
+        "maximum": 8590250
+      },
+      "first_to_final_submit_ns": {
+        "minimum": 1955042,
+        "median": 3645542,
+        "maximum": 11636250
+      }
+    },
+    "trial": {
+      "window": {
+        "stream": 1,
+        "pid": 3984,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 2429,
+        "first_sequence": 4388,
+        "last_sequence": 6816,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 19997439875,
+        "measurement_duration_ns": 20000000000,
+        "average_completed_fps": 121.4,
+        "p99_gpu_completion_gap_ns": 13689834,
+        "min_draws": 725,
+        "max_draws": 949
+      },
+      "joined_outputs": 2428,
+      "first_submission_draws": {
+        "96": 2192,
+        "128": 29,
+        "160": 24,
+        "192": 10,
+        "224": 6,
+        "256": 2,
+        "288": 5,
+        "320": 13,
+        "352": 8,
+        "384": 7,
+        "416": 7,
+        "448": 4,
+        "480": 18,
+        "512": 103
+      },
+      "draw_submissions_per_output": {
+        "2": 2428
+      },
+      "first_submission_vertex_references": {
+        "minimum": 83853,
+        "median": 83853.0,
+        "maximum": 297528
+      },
+      "first_gpu_span_ns": {
+        "minimum": 171959,
+        "median": 531916.0,
+        "maximum": 9479666
+      },
+      "final_gpu_span_ns": {
+        "minimum": 221750,
+        "median": 1321312.5,
+        "maximum": 11872916
+      },
+      "first_to_final_submit_ns": {
+        "minimum": 1899209,
+        "median": 4405604.0,
+        "maximum": 6961417
+      }
+    }
+  }
+}
