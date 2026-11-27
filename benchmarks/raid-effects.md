@@ -796,3 +796,14 @@ A separate run classified plain 32-bit `MOV` loads with one base register and di
 These percentages measure coverage for an address-reuse trial. A working optimization would save only a portion of this time and would need to preserve the i386 address wraparound. The diagnostic launch recorded consecutive GPU completions and zero visible trial windows or activations. All **806** general runtime checks passed. [Static group counts and CPU weights](results/raid-aarchx-headless-same-base-load-profile.json)
 
 Apply `patches/aarchx-m32-same-base-load-profile-trial.patch` after the MOV form profile patch. Use the same profiling flags and add `OCERZ_GUESTPROF_BASE_GROUPS=1`. The log adds `same_base_loads` rows with sample weights in microseconds.
+
+### Draw submission thresholds of 512 and 1,024
+
+Four warmed 60-second headless launches compared `WINEMETALGL_COMMIT_DRAWS` settings 64 and 128 in 64, 128, 128, 64 order. Direct ARB uniform reads stayed enabled and the triangle threshold stayed disabled. Setting 128 raises the draw threshold to 1,024. The viewport, camera, VSync, and caster schedule matched across runs.
+
+| Draw threshold | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| 512 | 97.58 | 14.49 ms |
+| 1,024 | 97.48 | 15.52 ms |
+
+The higher threshold improved both metrics in the second pair and regressed both in the first. The smaller median p99 supports keeping 512 for further trials. The four GPU sequences were consecutive, the four readbacks showed the same camera and overlapping spell effects, and the desktop monitor recorded zero visible trial windows or activations. [Full-raid A/B](results/raid-winemetalgl-headless-draw-threshold-ab.json)
