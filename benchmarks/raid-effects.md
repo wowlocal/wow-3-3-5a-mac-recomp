@@ -831,3 +831,7 @@ With cross-block liveness enabled, four warmed 60-second headless launches compa
 | 6 | 101.30 | 14.08 ms |
 
 Depth 6 increased the p99 gap in both pairs by about 1.2 ms. Depth 3 is the baseline for further trials. Each run checked the saved camera and cast schedule, produced consecutive GPU completions, and recorded zero visible trial windows or activations. The readbacks showed overlapping spell effects at both depths. [Full-raid A/B](results/raid-aarchx-headless-flag-liveness-depth-ab.json)
+
+### Native renderer stacks after enabling flag liveness
+
+A separate 18-second `sample PID 18 1 -file CPU_SAMPLE` capture collected **7,921** main-thread stacks at liveness depth 3. The indexed draw path appeared in **2,324** stacks, uniform binding in **906**, and fixed-function uniform packing in **697**. In **326** of the fixed-function packing stacks, the sampled leaf was byte vector insertion. These are wall-clock stack counts. The capture perturbed frame pacing, so the throughput comparisons use the uninstrumented A/B launches. GPU completions stayed consecutive and the monitor observed zero activations or visible windows. [Native stack counts](results/raid-winemetalgl-headless-main-thread-stacks.json)
