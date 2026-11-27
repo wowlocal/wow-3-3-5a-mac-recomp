@@ -1281,3 +1281,18 @@ Apply `patches/aarchx-m32-bridge-xmm-pairs-trial.patch` after the EBP hoist tria
 | Paired loads and stores | 123.23 | 13.48 ms |
 
 Throughput rose by **2.00 FPS** in the first pair and fell by **0.52 FPS** in the reverse pair. P99 fell by **0.54 and 0.04 ms**, respectively. The option stays experimental. All four warmed 60-second runs used the contiguous shader layout and early first submission with compilation logging off. They verified the camera, 26 cast timing rows, overlapping effects, consecutive GPU completions, and zero visible trial windows or activations. [Live A/B and native-call checks](results/raid-aarchx-headless-bridge-xmm-pairs-ab.json)
+
+### Resolve completed Metal serials before acquiring the queue lock
+
+The trial publishes the prefix before the first reserved or in-flight command buffer. A readiness lookup inside that prefix succeeds via an atomic load. Other lookups use the existing per-serial check so a completed later submission cannot hide an earlier reservation. Completion and abandonment advance the prefix under the queue lock.
+
+Apply `patches/winemetalgl-completed-serial-prefix-trial.patch` and set `WINEMETALGL_COMPLETED_SERIAL_FAST_PATH=1`. The focused GPU test reserves a draw in one shared context, completes a later draw in another, and checks that both buffer readiness results remain correct. Both modes passed that test with early first submission enabled. Both also passed **341** GPU tests with the ordinary submission policy.
+
+The separate in-world counter diagnostic recorded **3,225,925** lock-free hits among **4,390,912** readiness checks between logged checkpoints (**73.47%**). Counter logging was off during the main timing runs.
+
+| Queue readiness lookup | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Per-serial lookup under the lock | 122.64 | 13.59 ms |
+| Completed-prefix fast path | 123.30 | 13.57 ms |
+
+Throughput rose **0.72 and 0.60 FPS** in the two pairs. P99 changed by **+0.04 and −0.09 ms**. Keep the fast path as an option for follow-up throughput comparisons. All four warmed 60-second runs used the same early first-batch policy and verified the camera, cast schedule, visible effects, consecutive GPU completions, and zero trial windows or activations. [Raid A/B and readiness checks](results/raid-winemetalgl-headless-completed-serial-prefix-ab.json)

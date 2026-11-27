@@ -1,0 +1,181 @@
+diff --git a/src/core/metal/queue.h b/src/core/metal/queue.h
+--- a/src/core/metal/queue.h
++++ b/src/core/metal/queue.h
+@@ -8,6 +8,7 @@
+
+ #import <Metal/Metal.h>
+
++#include <atomic>
+ #include <condition_variable>
+ #include <cstdint>
+ #include <mutex>
+@@ -44,10 +45,13 @@
+     uint64_t lastSerial();
+
+ private:
++    void publishCompletedPrefix();  // mutex_ held
++
+     id<MTLCommandQueue> queue_;
+     std::mutex mutex_;
+     std::condition_variable completed_;
+     uint64_t next_ = 1;
++    std::atomic<uint64_t> completedPrefix_{0};
+     std::set<uint64_t> reserved_;   // created, not committed
+     std::set<uint64_t> inflight_;   // committed, not complete
+ };
+diff --git a/src/core/metal/queue.mm b/src/core/metal/queue.mm
+--- a/src/core/metal/queue.mm
++++ b/src/core/metal/queue.mm
+@@ -1,6 +1,10 @@
+ #include "core/metal/queue.h"
+
++#include <algorithm>
+ #include <atomic>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ #include <chrono>
+
+ #include "core/metal/device.h"
+@@ -64,6 +68,26 @@
+
+ }  // namespace
+
++namespace {
++bool completedPrefixEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_COMPLETED_SERIAL_FAST_PATH");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++}  // namespace
++
++// Only advance past serials with neither a reservation nor an in-flight
++// buffer. These sets can contain holes and can retire out of order.
++void Queue::publishCompletedPrefix() {
++    if (!completedPrefixEnabled()) return;
++    uint64_t firstPending = next_;
++    if (!reserved_.empty()) firstPending = std::min(firstPending, *reserved_.begin());
++    if (!inflight_.empty()) firstPending = std::min(firstPending, *inflight_.begin());
++    completedPrefix_.store(firstPending - 1, std::memory_order_release);
++}
++
+ Queue::Queue() {
+     queue_ = [Device::get().mtl() newCommandQueueWithMaxCommandBufferCount:256];
+     queue_.label = @"WineMetalGL";
+@@ -101,6 +125,7 @@
+         // destroy the queue, so nothing may touch it after the unlock.
+         std::lock_guard<std::mutex> lock(mutex_);
+         inflight_.erase(serial);
++        publishCompletedPrefix();
+         completed_.notify_all();
+     }];
+     [buffer commit];
+@@ -109,10 +134,23 @@
+ void Queue::abandon(uint64_t serial) {
+     std::lock_guard<std::mutex> lock(mutex_);
+     reserved_.erase(serial);
++    publishCompletedPrefix();
+     completed_.notify_all();  // fence waiters (waitSignaled) stop waiting for it
+ }
+
+ bool Queue::isComplete(uint64_t serial) {
++    const bool fast = completedPrefixEnabled() && serial <= completedPrefix_.load(std::memory_order_acquire);
++    static const bool report = [] {
++        const char* value = std::getenv("WINEMETALGL_COMPLETED_SERIAL_LOG");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    if (report) {
++        static thread_local unsigned long long queries = 0, hits = 0;
++        hits += fast;
++        if ((++queries & 16383) == 0)
++            std::fprintf(stderr, "winemetalgl: completed prefix queries=%llu hits=%llu\n", queries, hits);
++    }
++    if (fast) return true;
+     std::lock_guard<std::mutex> lock(mutex_);
+     return !inflight_.count(serial) && !reserved_.count(serial);
+ }
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -5,6 +5,7 @@
+ #include <cstring>
+ #include <limits>
+ #include <string>
++#include <thread>
+
+ #include "gpu.h"
+
+@@ -16,7 +17,7 @@
+     X(glProgramStringARB) X(glGetProgramivARB) X(glGetProgramStringARB) X(glProgramEnvParameter4fARB) X(glProgramEnvParameter4dvARB)              \
+     X(glProgramLocalParameter4fARB) X(glProgramEnvParameters4fvEXT) X(glGetProgramEnvParameterfvARB)               \
+     X(glGetProgramLocalParameterfvARB) X(glVertexAttribPointerARB) X(glEnableVertexAttribArrayARB)                 \
+-    X(glDisableVertexAttribArrayARB) X(glPushAttrib) X(glPopAttrib)
++    X(glDisableVertexAttribArrayARB) X(glPushAttrib) X(glPopAttrib) X(glTestObjectAPPLE)
+
+ #define WMGL_ARB_DECLARE(name) static PFN_##name name;
+ WMGL_ARB_FUNCS(WMGL_ARB_DECLARE)
+@@ -504,6 +505,62 @@
+     CHECK_GL();
+ }
+
++TEST(gpu_completed_serial_prefix_stops_at_reserved_draw) {
++    gpu::Fixture fixture(64, 64, false);
++    CHECK(fixture.ok);
++    if (!fixture.ok) return;
++    loadArb();
++    identity();
++    const GLfloat vertices[] = {-1, -1, 1, -1, 0, 1};
++    GLuint first = 0;
++    glGenBuffers(1, &first);
++    glBindBuffer(GL_ARRAY_BUFFER, first);
++    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
++    glVertexPointer(2, GL_FLOAT, 0, nullptr);
++    glEnableClientState(GL_VERTEX_ARRAY);
++    glDrawArrays(GL_TRIANGLES, 0, 3);
++    CHECK_EQ(glTestObjectAPPLE(GL_BUFFER_OBJECT_APPLE, first), GL_FALSE);
++
++    const int attrs[] = {0x2091, 3, 0x2092, 3, 0x9126, 2, 0};
++    int error = 0;
++    wmgl_context* other = wmgl_context_create(fixture.format, fixture.context, attrs, &error);
++    wmgl_surface* surface = wmgl_surface_create_pbuffer(fixture.format, 64, 64);
++    CHECK(other != nullptr && surface != nullptr);
++    if (other && surface) {
++        GLboolean earlier = GL_TRUE, later = GL_FALSE;
++        GLenum workerError = GL_NO_ERROR;
++        bool current = false;
++        std::thread worker([&] {
++            current = wmgl_make_current(other, surface, surface);
++            if (!current) return;
++            GLuint second = 0;
++            glGenBuffers(1, &second);
++            glBindBuffer(GL_ARRAY_BUFFER, second);
++            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
++            glVertexPointer(2, GL_FLOAT, 0, nullptr);
++            glEnableClientState(GL_VERTEX_ARRAY);
++            glDrawArrays(GL_TRIANGLES, 0, 3);
++            glFinish();
++            earlier = glTestObjectAPPLE(GL_BUFFER_OBJECT_APPLE, first);
++            later = glTestObjectAPPLE(GL_BUFFER_OBJECT_APPLE, second);
++            glDeleteBuffers(1, &second);
++            workerError = glGetError();
++            wmgl_make_current(nullptr, nullptr, nullptr);
++        });
++        worker.join();
++        CHECK(current);
++        CHECK_EQ(workerError, static_cast<GLenum>(GL_NO_ERROR));
++        CHECK_EQ(earlier, GL_FALSE);
++        CHECK_EQ(later, GL_TRUE);
++    }
++    glFinish();
++    CHECK_EQ(glTestObjectAPPLE(GL_BUFFER_OBJECT_APPLE, first), GL_TRUE);
++    if (other) wmgl_context_destroy(other);
++    if (surface) wmgl_surface_destroy(surface);
++    glDeleteBuffers(1, &first);
++    CHECK_GL();
++}
++
+ ARB_TEST(arb_program_errors_and_queries) {
+     const char bad[] = "!!ARBfp1.0\nMOV result.color, nowhere;\nEND\n";
+     GLuint id = 0;
