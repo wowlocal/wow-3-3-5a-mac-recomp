@@ -116,6 +116,10 @@ After removing the raid fixture, the original client ran the 120-second movement
 
 All six mouse holds kept rendering. The largest swap gap overlapping a hold was **92.29 ms** during the first camera drag. Native movement keys changed the view and a right click opened Deputy Willem's dialogue. The client averaged 105.63% of one CPU core and reached 977.53 MiB of sampled physical footprint. [Input and resource measurements](results/raid-winemetalgl-draw-cap-live.json)
 
+### Route with direct GL query dispatch
+
+With bridge logging off, fixed-function uniform storage reused, and the byte-valued GL fast path enabled, the 120-second route averaged **177.60 GPU-completed FPS** at **11.84 ms p99**. The GPU log had zero gaps in frame sequence. The swap log showed zero gaps over 250 ms. All six mouse holds kept rendering, with a maximum overlapping swap gap of **23.20 ms**. Native keyboard movement and Deputy Willem's dialogue worked. [Clean route and input results](results/northshire-winemetalgl-clean.json)
+
 The control sample put 281 of 1,585 main-thread samples under the OpenGL state query and 200 under OpenGL flush. The query stack included renderer draw work executing while it drained the queue. An offscreen fixture reproduced the draw and upload output with and without the queries, but the fixture's queries took about 0.1 µs and did not reproduce the in-game wait.
 
 In a separate launch with `OCERZ_GUESTPROF=2000 OCERZ_GUESTPROF_PERIOD=8 OCERZ_GUESTPROF_HOT=1`, the four warmed foreground periods each spent 0–2 ms compiling new blocks. The translated blocks accounted for 63–66% of sampled CPU time on the hottest guest thread. Precompiling the same blocks can remove the small compilation cost in that scene. Lowering the cost of executing them would require changes to the generated code.

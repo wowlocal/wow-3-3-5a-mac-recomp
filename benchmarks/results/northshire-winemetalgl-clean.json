@@ -1,0 +1,95 @@
+{
+  "hardware": "Apple M4 Pro",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "bridge_crossing_diagnostics": false,
+  "raid_fixture_removed": true,
+  "commit_draws": 64,
+  "triangle_budget": 65000,
+  "fixed_function_uniform_storage_reuse": true,
+  "direct_byte_returning_gl_calls": true,
+  "swap_route": {
+    "swaps": 21313,
+    "duration_ns": 120004504000,
+    "average_swap_fps": 177.602,
+    "median_fps": 186.12,
+    "p50_frame_ms": 5.373,
+    "p95_frame_ms": 7.892,
+    "p99_frame_ms": 11.47,
+    "stalls_over_250_ms": 0,
+    "longest_gap_ms": 170.24,
+    "median_inside_swap_ms": 0.02,
+    "p95_inside_swap_ms": 0.05,
+    "median_between_swaps_ms": 5.34,
+    "p95_between_swaps_ms": 7.76,
+    "time_inside_swap_percent": 0.97,
+    "slowest_5pct_time_inside_swap_percent": 3.64,
+    "duration_seconds": 120.005,
+    "average_client_cpu_percent": 105.69,
+    "peak_sampled_client_footprint_mib": 1212.47,
+    "footprint_sample_interval_seconds": 0.5
+  },
+  "gpu_completion_window": {
+    "verified_completed_renders": 21313,
+    "first_sequence": 8156,
+    "last_sequence": 29468,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 119995450916,
+    "measurement_duration_ns": 120000000000,
+    "average_completed_fps": 177.6,
+    "p99_gpu_completion_gap_ns": 11838791,
+    "min_draws": 349,
+    "max_draws": 525
+  },
+  "key_holds_by_key": {
+    "w": 25,
+    "s": 25,
+    "q": 25,
+    "e": 25,
+    "a": 25,
+    "d": 25
+  },
+  "mouse_holds": [
+    {
+      "button": "left",
+      "hold_ns": 1214515000,
+      "swaps_while_held": 213,
+      "max_overlapping_swap_gap_ns": 23199000
+    },
+    {
+      "button": "left",
+      "hold_ns": 1207230000,
+      "swaps_while_held": 214,
+      "max_overlapping_swap_gap_ns": 16493000
+    },
+    {
+      "button": "right",
+      "hold_ns": 1203006000,
+      "swaps_while_held": 229,
+      "max_overlapping_swap_gap_ns": 15053000
+    },
+    {
+      "button": "left",
+      "hold_ns": 1207331000,
+      "swaps_while_held": 220,
+      "max_overlapping_swap_gap_ns": 14511000
+    },
+    {
+      "button": "left",
+      "hold_ns": 1206282000,
+      "swaps_while_held": 222,
+      "max_overlapping_swap_gap_ns": 15433000
+    },
+    {
+      "button": "right",
+      "hold_ns": 1202002000,
+      "swaps_while_held": 231,
+      "max_overlapping_swap_gap_ns": 10842000
+    }
+  ],
+  "native_key_movement_observed": true,
+  "deputy_willem_dialogue_opened": true
+}
