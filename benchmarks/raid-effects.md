@@ -820,3 +820,14 @@ The JIT can analyze successor blocks and keep only the x86 flags they may read. 
 Both pairs improved with liveness analysis enabled. Four warmed 60-second launches matched the camera, checked all 26 cast timing rows, and captured the same scene with overlapping spell effects. Every GPU sequence was consecutive. The window monitor recorded zero visible trial windows or activations. Both settings passed all 806 general runtime checks. This comparison covers the isolated headless client. [Full-raid A/B](results/raid-aarchx-headless-cross-block-flag-liveness-ab.json)
 
 Separate native instruction profiles sampled seven warmed eight-second intervals per arm. Of all CPU samples on the hottest guest thread, the share attributed to `Jcc` writing the deferred flag operands fell from **3.35% to 0.62%** with liveness analysis enabled. The share attributed to reloading the saved floating-point operand fell from **2.05% to 1.43%**. The deferred descriptor load stayed close to **1.02%** in both arms. These percentages describe sampled CPU time. [Native flag traffic profile](results/raid-aarchx-headless-cross-block-liveness-profile.json)
+
+### Flag liveness analysis depth
+
+With cross-block liveness enabled, four warmed 60-second headless launches compared depths 3 and 6 in 3, 6, 6, 3 order. Both arms kept direct ARB uniform reads, a disabled triangle threshold, and a 512-draw threshold.
+
+| Analysis depth | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| 3 | 101.83 | 12.84 ms |
+| 6 | 101.30 | 14.08 ms |
+
+Depth 6 increased the p99 gap in both pairs by about 1.2 ms. Depth 3 is the baseline for further trials. Each run checked the saved camera and cast schedule, produced consecutive GPU completions, and recorded zero visible trial windows or activations. The readbacks showed overlapping spell effects at both depths. [Full-raid A/B](results/raid-aarchx-headless-flag-liveness-depth-ab.json)
