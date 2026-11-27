@@ -1,0 +1,300 @@
+{
+  "hardware": "Apple M4 Pro",
+  "live_background_shader_inventory": {
+    "time_limit_seconds": 7,
+    "additional_instruments": [
+      "Metal GPU Counters",
+      "Metal Performance Overview"
+    ],
+    "viewport": [
+      1365,
+      768
+    ],
+    "shader_records_for_client": {
+      "Vertex": 49,
+      "Fragment": 37
+    },
+    "shader_execution_samples": 0
+  },
+  "scope": "Offscreen fixed-function indexed workload, four directional lights and infinite viewer",
+  "timed_conditions": {
+    "commit_draws": 64,
+    "triangle_budget": 65000
+  },
+  "runs": [
+    {
+      "launch": 1,
+      "arm": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4690,
+      "first_sequence": 128,
+      "last_sequence": 4817,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4999886125,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 937.8,
+      "p99_gpu_completion_gap_ns": 4862916,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7592,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    },
+    {
+      "launch": 2,
+      "arm": "trial",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4717,
+      "first_sequence": 128,
+      "last_sequence": 4844,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4997410000,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 943.2,
+      "p99_gpu_completion_gap_ns": 4868500,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7705,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    },
+    {
+      "launch": 3,
+      "arm": "trial",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4673,
+      "first_sequence": 128,
+      "last_sequence": 4800,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4999927291,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 934.4,
+      "p99_gpu_completion_gap_ns": 4856959,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7458,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    },
+    {
+      "launch": 4,
+      "arm": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4412,
+      "first_sequence": 128,
+      "last_sequence": 4539,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4996021666,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 882.2,
+      "p99_gpu_completion_gap_ns": 5352000,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7201,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    },
+    {
+      "launch": 5,
+      "arm": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4549,
+      "first_sequence": 128,
+      "last_sequence": 4676,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4999406500,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 909.6,
+      "p99_gpu_completion_gap_ns": 5091209,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7446,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    },
+    {
+      "launch": 6,
+      "arm": "trial",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4640,
+      "first_sequence": 128,
+      "last_sequence": 4767,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4998723291,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 927.8,
+      "p99_gpu_completion_gap_ns": 4881416,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7571,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    },
+    {
+      "launch": 7,
+      "arm": "trial",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4669,
+      "first_sequence": 128,
+      "last_sequence": 4796,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4999283000,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 933.6,
+      "p99_gpu_completion_gap_ns": 4858125,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7582,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    },
+    {
+      "launch": 8,
+      "arm": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4548,
+      "first_sequence": 128,
+      "last_sequence": 4675,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4997292250,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 909.4,
+      "p99_gpu_completion_gap_ns": 5030250,
+      "min_draws": 826,
+      "max_draws": 826,
+      "submitted_outputs": 7263,
+      "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+      "colored_pixels": 161327
+    }
+  ],
+  "timed_medians": {
+    "control": {
+      "average_completed_fps": 909.5,
+      "p99_gpu_completion_gap_ns": 5060729.5
+    },
+    "trial": {
+      "average_completed_fps": 934.0,
+      "p99_gpu_completion_gap_ns": 4863312.5
+    }
+  },
+  "render_pass_profiles": {
+    "commit_draws": 256,
+    "triangle_budget": 0,
+    "runs": [
+      {
+        "launch": 1,
+        "arm": "control",
+        "profile_intervals": [
+          {
+            "gpu_ms_per_second": 891.35,
+            "encoders_per_second": 17984.6,
+            "mean_encoder_duration_ns": 49561.84735829543
+          },
+          {
+            "gpu_ms_per_second": 966.23,
+            "encoders_per_second": 16713.3,
+            "mean_encoder_duration_ns": 57812.04190674493
+          }
+        ],
+        "submitted_outputs": 6426,
+        "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+        "colored_pixels": 161327
+      },
+      {
+        "launch": 2,
+        "arm": "trial",
+        "profile_intervals": [
+          {
+            "gpu_ms_per_second": 1070.1,
+            "encoders_per_second": 21317.7,
+            "mean_encoder_duration_ns": 50197.723018899786
+          },
+          {
+            "gpu_ms_per_second": 1095.26,
+            "encoders_per_second": 21401.6,
+            "mean_encoder_duration_ns": 51176.547547846894
+          }
+        ],
+        "submitted_outputs": 7448,
+        "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+        "colored_pixels": 161327
+      },
+      {
+        "launch": 3,
+        "arm": "trial",
+        "profile_intervals": [
+          {
+            "gpu_ms_per_second": 1066.45,
+            "encoders_per_second": 21788.9,
+            "mean_encoder_duration_ns": 48944.64612715649
+          },
+          {
+            "gpu_ms_per_second": 1177.52,
+            "encoders_per_second": 21110.4,
+            "mean_encoder_duration_ns": 55779.14203425799
+          }
+        ],
+        "submitted_outputs": 7548,
+        "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+        "colored_pixels": 161327
+      },
+      {
+        "launch": 4,
+        "arm": "control",
+        "profile_intervals": [
+          {
+            "gpu_ms_per_second": 1079.38,
+            "encoders_per_second": 20631.1,
+            "mean_encoder_duration_ns": 52318.102282476466
+          },
+          {
+            "gpu_ms_per_second": 1135.84,
+            "encoders_per_second": 19840.9,
+            "mean_encoder_duration_ns": 57247.40309159362
+          }
+        ],
+        "submitted_outputs": 7216,
+        "framebuffer_fnv1a_rgba8": "06ce8a8e2533d131",
+        "colored_pixels": 161327
+      }
+    ],
+    "median_of_profile_interval_mean_encoder_duration_ns": {
+      "control": 54782.75268703504,
+      "trial": 50687.13528337334
+    }
+  },
+  "gpu_regression_suite": {
+    "control": {
+      "tests": 336,
+      "failed_checks": 0
+    },
+    "trial": {
+      "tests": 336,
+      "failed_checks": 0
+    }
+  }
+}

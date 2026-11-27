@@ -14,8 +14,9 @@
     X(glBindBuffer) X(glBindProgramARB) X(glBufferData) X(glBufferParameteriAPPLE) X(glBufferSubData) \
     X(glClear) X(glClearColor) X(glClientWaitSync) X(glColor4ub) X(glDeleteSync) X(glDrawRangeElements) \
     X(glEnable) X(glEnableClientState) X(glFenceSync) X(glFlushMappedBufferRangeAPPLE) \
-    X(glGenBuffers) X(glGenProgramsARB) X(glGetError) X(glLoadIdentity) X(glMapBuffer) X(glMatrixMode) \
-    X(glProgramStringARB) X(glReadPixels) X(glTranslatef) X(glUnmapBuffer) X(glVertexPointer) X(glViewport)
+    X(glGenBuffers) X(glGenProgramsARB) X(glGetError) X(glLightfv) X(glLoadIdentity) X(glMapBuffer) \
+    X(glMaterialf) X(glMaterialfv) X(glMatrixMode) X(glNormal3f) X(glProgramStringARB) X(glReadPixels) \
+    X(glTranslatef) X(glUnmapBuffer) X(glVertexPointer) X(glViewport)
 
 #define DECLARE(name) static __typeof__(&name) run_##name;
 FUNCTIONS(DECLARE)
@@ -52,6 +53,7 @@ static void program(GLenum target, const char *source)
 
 static int profile_storage;
 static int select_matrix_mode;
+static int directional_lighting;
 static unsigned allocated, released, startup_allocations, measured;
 static uint64_t storage_nanos[60000];
 
@@ -123,7 +125,13 @@ static void render(unsigned stamp)
         if (select_matrix_mode) run_glMatrixMode(i % 2 ? GL_MODELVIEW : GL_PROJECTION);
         const Draw d = draws[i];
         run_glVertexPointer(2, GL_FLOAT, 0, (const void *)(uintptr_t)d.vertices);
-        run_glColor4ub(227, (GLubyte)(slot + 40), (GLubyte)stamp, 255);
+        if (directional_lighting) {
+            const float normal[][3] = {{0, 0, 1}, {.15f, 0, .98f}, {0, -.16f, .98f}, {-.3f, .1f, .95f}};
+            const float *n = normal[(i + slot) % 4];
+            run_glNormal3f(n[0], n[1], n[2]);
+        } else {
+            run_glColor4ub(227, (GLubyte)(slot + 40), (GLubyte)stamp, 255);
+        }
         run_glDrawRangeElements(GL_TRIANGLES, 0, d.end, d.count, GL_UNSIGNED_SHORT,
                                (const void *)(uintptr_t)d.indices);
     }
@@ -152,6 +160,8 @@ int main(int argc, char **argv)
     if (profile_storage) wmgl_set_optional_buffer_memory(allocate_storage, release_storage);
     const char *matrix_mode = getenv("OCERZ_WMGL_PROBE_MATRIX_MODE");
     select_matrix_mode = matrix_mode && strcmp(matrix_mode, "1") == 0;
+    const char *light_mode = getenv("OCERZ_WMGL_PROBE_DIRECTIONAL_LIGHTS");
+    directional_lighting = light_mode && strcmp(light_mode, "1") == 0;
     load();
     struct wmgl_pixel_format formats[256];
     unsigned available = wmgl_get_pixel_formats(formats, 256, NULL);
@@ -182,7 +192,21 @@ int main(int argc, char **argv)
     run_glViewport(0, 0, WIDTH, HEIGHT);
     run_glClearColor(0.1f, 0.15f, 0.2f, 1.0f);
     run_glEnableClientState(GL_VERTEX_ARRAY);
-    if (!select_matrix_mode) {
+    if (directional_lighting) {
+        const float position[][4] = {{1, .4f, .9f, 0}, {.2f, -.7f, 1, 0}, {0, 0, 1, 0}, {-.7f, .2f, .71f, 0}};
+        const float diffuse[] = {.13f, .17f, .11f, 1}, specular[] = {.66f, .51f, .31f, 1};
+        run_glEnable(GL_LIGHTING);
+        run_glEnable(GL_NORMALIZE);
+        run_glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular);
+        run_glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 13.f);
+        for (unsigned i = 0; i < sizeof(position) / sizeof(position[0]); i++) {
+            GLenum light = GL_LIGHT0 + i;
+            run_glLightfv(light, GL_POSITION, position[i]);
+            run_glLightfv(light, GL_DIFFUSE, diffuse);
+            run_glLightfv(light, GL_SPECULAR, specular);
+            run_glEnable(light);
+        }
+    } else if (!select_matrix_mode) {
         program(GL_VERTEX_PROGRAM_ARB, "!!ARBvp1.0\nMOV result.position, vertex.position;\nMOV result.color, vertex.color;\nEND\n");
         program(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n");
     }
@@ -222,7 +246,12 @@ int main(int argc, char **argv)
     size_t colored = 0;
     for (size_t i = 0; i < WIDTH * HEIGHT * 4; i++) {
         hash = (hash ^ pixels[i]) * UINT64_C(1099511628211);
-        colored += i % 4 == 0 && pixels[i] == 227;
+        if (i % 4 == 0) {
+            // The clear's 0.1 red channel quantizes to 25 or 26.
+            const int draw_pixel = directional_lighting ? pixels[i] != 25 && pixels[i] != 26
+                                                       : pixels[i] == 227;
+            colored += draw_pixel;
+        }
     }
     free(pixels);
     require(run_glGetError() == GL_NO_ERROR && colored > 10000, "representative framebuffer is incomplete");

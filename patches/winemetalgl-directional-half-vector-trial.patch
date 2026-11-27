@@ -1,0 +1,17 @@
+--- a/src/core/compat/fixed_function.mm
++++ b/src/core/compat/fixed_function.mm
+@@ -492,8 +492,12 @@
+             s += "            vec3 vp = normalize(" + L + ".position.xyz);\n";
+         }
+         s += "            float ndl = max(dot(n, vp), 0.0);\n";
+-        s += k.localViewer ? "            vec3 h = normalize(vp + normalize(-eyePos));\n"
+-                           : "            vec3 h = normalize(vp + vec3(0.0, 0.0, 1.0));\n";
++        if (k.localViewer)
++            s += "            vec3 h = normalize(vp + normalize(-eyePos));\n";
++        else if (k.positional & (1u << i))
++            s += "            vec3 h = normalize(vp + vec3(0.0, 0.0, 1.0));\n";
++        else
++            s += "            vec3 h = " + L + ".halfVector.xyz;\n";
+         s += "            c += att * (" + L + ".ambient.rgb * matAmbient.rgb + ndl * " + L + ".diffuse.rgb * matDiffuse.rgb);\n";
+         s += "            if (ndl > 0.0) spec += att * ff_pow(max(dot(n, h), 0.0), " + mat + ".shininess) * " + L +
+              ".specular.rgb * matSpecular.rgb;\n";
