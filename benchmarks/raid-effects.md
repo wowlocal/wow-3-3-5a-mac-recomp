@@ -1573,3 +1573,22 @@ xcrun xctrace export --input cpu.trace \
 python3 benchmarks/summarize-raid-cpu-trace.py l1d-samples.xml "$pid" \
     --mode l1d_miss_sampling --time-profile time-profile.xml
 ```
+
+### Reuse evicted mapped-buffer shadow allocations
+
+The existing AArchX option lets an unmapped shadow slot donate its guest allocation when a different buffer takes the slot. The new buffer starts with no valid mirror, so the fallback path still copies its own bytes. The allocation must fit the request with at most 64 KiB of excess capacity. The renderer-owned guest storage for the large array and unpack buffers remained enabled in both modes.
+
+In the control diagnostic, **1,671,168** post-readback fallback maps made one allocation each. The reuse diagnostic made **11,945** allocations across **1,724,416** maps, about **6.9 allocations per 1,000 maps**. Those intervals span the first and last complete counter rows after the world readback. The incoming copies were all write-only array-buffer maps. They averaged **5.41 KB per fallback map** in control and **5.30 KB** with reuse. The logged runs bound the remaining copy cost and were collected separately from the comparisons.
+
+| Shadow allocation policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Allocate on eviction | 134.75 | 12.71 ms |
+| Reuse a fitting allocation | 137.81 | 12.50 ms |
+
+Throughput rose **2.18 and 3.93 FPS** in the two pairs. P99 fell **0.18 and 0.22 ms**. All four 60-second windows verified the saved camera, effects, 26 timing rows, consecutive GPU completions, and zero test windows or activations. The process guard covered the copied fixture. An older client from another bundle was observed running and its GPU load was unmeasured. Both modes passed **806** general i386 checks and **110** offscreen WineMetalGL storage checks. [Timed runs and allocation counters](results/raid-aarchx-map-shadow-reuse-ab.json)
+
+Set `OCERZ_M32_REUSE_GL_SHADOW_STORAGE=1` for follow-up comparisons and leave it unset for a control. Enable `OCERZ_M32_GL_MAP_STATS=1` only for the separate diagnostic captures. Both switches are enabled by presence. The analyzer expects logged control and reuse captures, followed by the directory containing the timed captures `1-0`, `2-1`, `3-1`, and `4-0`.
+
+```sh
+python3 benchmarks/summarize-raid-shadow-reuse.py LOGGED_CONTROL LOGGED_REUSE TIMED_RUNS
+```
