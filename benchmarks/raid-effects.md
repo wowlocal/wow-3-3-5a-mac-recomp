@@ -807,3 +807,14 @@ Four warmed 60-second headless launches compared `WINEMETALGL_COMMIT_DRAWS` sett
 | 1,024 | 97.48 | 15.52 ms |
 
 The higher threshold improved both metrics in the second pair and regressed both in the first. The smaller median p99 supports keeping 512 for further trials. The four GPU sequences were consecutive, the four readbacks showed the same camera and overlapping spell effects, and the desktop monitor recorded zero visible trial windows or activations. [Full-raid A/B](results/raid-winemetalgl-headless-draw-threshold-ab.json)
+
+### Cross-block x86 flag liveness
+
+The JIT can analyze successor blocks and keep only the x86 flags they may read. The headless throughput trial compared the launcher setting `OCERZ_NO_XLIVE=1` with that variable unset and the normal analysis depth of three. The runtime and renderer binaries were shared by both arms. Direct ARB uniform reads were on, the triangle threshold was disabled, and the draw threshold was 512.
+
+| Cross-block liveness | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Disabled | 98.03 | 13.29 ms |
+| Enabled | 102.14 | 12.73 ms |
+
+Both pairs improved with liveness analysis enabled. Four warmed 60-second launches matched the camera, checked all 26 cast timing rows, and captured the same scene with overlapping spell effects. Every GPU sequence was consecutive. The window monitor recorded zero visible trial windows or activations. Both settings passed all 806 general runtime checks. This comparison covers the isolated headless client. [Full-raid A/B](results/raid-aarchx-headless-cross-block-flag-liveness-ab.json)
