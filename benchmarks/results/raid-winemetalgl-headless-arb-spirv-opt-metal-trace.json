@@ -1,0 +1,165 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate 20-second Metal System Traces of the same live headless 24-caster raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_cast_timing_rows": 26,
+  "continuing_draw_threshold": 512,
+  "triangle_budget": 0,
+  "renderer_sha256": "2122340e8d5954bf06f4591e6c84833071e4b5f21c6d0253753bd5fc2d25a015",
+  "other_trial_instances_detected": 0,
+  "trace_launch_order": [
+    1,
+    0
+  ],
+  "traces": [
+    {
+      "arb_vertex_spirv_optimized": false,
+      "gpu_missing_sequences": 0,
+      "focus_activations": 0,
+      "visible_trial_windows": 0,
+      "visual_readback_verified": true,
+      "clock_match_tolerance_ns": 250,
+      "max_matching_error_ns": 42,
+      "eligible_completions_between_trace_bounds": 2355,
+      "matched_completions": 2355,
+      "consecutive_completion_intervals": 2354,
+      "tail_intervals_at_or_above_p99": 24,
+      "active_rows_by_process_group": {
+        "unspecified": 20,
+        "other_process": 83037,
+        "client": 11876
+      },
+      "other_processes_with_recorded_gpu_activity": 3,
+      "all_interval_stats_ns": {
+        "completion_gap_ns": {
+          "mean": 8704807.986406118,
+          "median": 8652583.0,
+          "p99": 14930125
+        },
+        "client_gpu_active_union_ns": {
+          "mean": 2476860.372982158,
+          "median": 1900521.0,
+          "p99": 8997375
+        },
+        "client_vertex_active_ns": {
+          "mean": 977994.181393373,
+          "median": 611917.0,
+          "p99": 5270667
+        },
+        "client_fragment_active_ns": {
+          "mean": 1537534.587935429,
+          "median": 1173937.0,
+          "p99": 6224709
+        },
+        "client_compute_active_ns": {
+          "mean": 87758.94689889549,
+          "median": 12250.0,
+          "p99": 1594375
+        },
+        "other_process_active_union_ns": {
+          "mean": 2768294.354290569,
+          "median": 2374501.0,
+          "p99": 11477788
+        },
+        "other_process_or_unspecified_only_active_ns": {
+          "mean": 1381655.3228547154,
+          "median": 1036791.5,
+          "p99": 5663916
+        },
+        "no_recorded_activity_ns": {
+          "mean": 4846292.290569244,
+          "median": 5110708.5,
+          "p99": 8543125
+        }
+      },
+      "tail_interval_medians_ns": {
+        "completion_gap_ns": 15844187.5,
+        "client_gpu_active_union_ns": 10082730.0,
+        "client_vertex_active_ns": 4510604.5,
+        "client_fragment_active_ns": 4576291.5,
+        "client_compute_active_ns": 386833.0,
+        "other_process_active_union_ns": 10855103.5,
+        "other_process_or_unspecified_only_active_ns": 2018936.5,
+        "no_recorded_activity_ns": 4891792.0
+      }
+    },
+    {
+      "arb_vertex_spirv_optimized": true,
+      "gpu_missing_sequences": 0,
+      "focus_activations": 0,
+      "visible_trial_windows": 0,
+      "visual_readback_verified": true,
+      "clock_match_tolerance_ns": 250,
+      "max_matching_error_ns": 42,
+      "eligible_completions_between_trace_bounds": 2293,
+      "matched_completions": 2293,
+      "consecutive_completion_intervals": 2292,
+      "tail_intervals_at_or_above_p99": 23,
+      "active_rows_by_process_group": {
+        "unspecified": 10,
+        "other_process": 81373,
+        "client": 11533
+      },
+      "other_processes_with_recorded_gpu_activity": 3,
+      "all_interval_stats_ns": {
+        "completion_gap_ns": {
+          "mean": 8937133.289703315,
+          "median": 8861417.0,
+          "p99": 15149625
+        },
+        "client_gpu_active_union_ns": {
+          "mean": 2675428.8970331587,
+          "median": 2103562.5,
+          "p99": 9359499
+        },
+        "client_vertex_active_ns": {
+          "mean": 1078307.3961605586,
+          "median": 622042.0,
+          "p99": 5817581
+        },
+        "client_fragment_active_ns": {
+          "mean": 1635596.5488656196,
+          "median": 1304062.5,
+          "p99": 6661875
+        },
+        "client_compute_active_ns": {
+          "mean": 96746.69153577661,
+          "median": 12291.0,
+          "p99": 1765292
+        },
+        "other_process_active_union_ns": {
+          "mean": 2983081.6095113438,
+          "median": 2493667.0,
+          "p99": 11768583
+        },
+        "other_process_or_unspecified_only_active_ns": {
+          "mean": 1467727.3952879582,
+          "median": 1055622.0,
+          "p99": 5642333
+        },
+        "no_recorded_activity_ns": {
+          "mean": 4793976.997382199,
+          "median": 5081166.0,
+          "p99": 8680207
+        }
+      },
+      "tail_interval_medians_ns": {
+        "completion_gap_ns": 16171875,
+        "client_gpu_active_union_ns": 9403292,
+        "client_vertex_active_ns": 4521417,
+        "client_fragment_active_ns": 5877626,
+        "client_compute_active_ns": 715708,
+        "other_process_active_union_ns": 11308501,
+        "other_process_or_unspecified_only_active_ns": 2990336,
+        "no_recorded_activity_ns": 3937000
+      }
+    }
+  ]
+}
