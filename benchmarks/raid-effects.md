@@ -474,3 +474,15 @@ With direct publication and the 512-draw split active, three interleaved blocks 
 The warmed 60-second pair favored three frames in flight, at **1,361 FPS and 2.077 ms p99**. Four frames in flight reached **1,340 FPS and 2.103 ms p99**. [Sustained in-flight comparison](results/winemetalgl-split-dispatch.json)
 
 Another three paired short windows tested splitting the draw stream after each 384 draws by setting `WINEMETALGL_COMMIT_DRAWS=48`. The resulting three-pass configuration reached **1,303 FPS and 2.468 ms median p99**. The paired 512-draw split at 64 reached **1,380 FPS and 2.072 ms median p99**, improving both metrics in every pair. [Two- and three-pass results](results/winemetalgl-split-dispatch.json)
+
+### Triangle budget for split rendering
+
+The replay's 512-draw split assigns **71,516** triangles to its first buffer and **39,714** to its second. The triangle-budget trial counts submitted direct triangle-list work and allows it to trigger an earlier split. The existing draw limit still bounds the command buffer, including other topologies and indirect draws. The replay kept its 826 draws and original draw order. [Modeled cut points](results/winemetalgl-triangle-split-ab.json)
+
+Three interleaved six-second blocks compared the draw limit alone with triangle budgets of 56,000 and 65,000. The 65,000 setting improved p99 in every block, moving the median from **2.085 to 1.958 ms**. Median throughput rose from **1,352 to 1,365 GPU-completed FPS**. The nearly even 56,000 split had a median p99 of **2.057 ms**. All runs preserved the reference pixels and consecutive GPU completion sequences. [Short comparisons](results/winemetalgl-triangle-split-ab.json)
+
+The warmed 60-second control reached **1,355 FPS and 2.094 ms p99**. The two runs at 65,000 reached **1,380 FPS and 2.003 ms p99** and **1,350 FPS and 1.990 ms p99**. Both preserved reference pixels and consecutive GPU completion sequences. [Sustained comparison](results/winemetalgl-triangle-split-ab.json)
+
+A separate submission trace verified the 65,000 setting changed the split from **512 + 314** draws to **466 + 360**. On this replay's original draw order, those two buffers contain **65,117** and **46,113** triangles. The pixel-preservation checks and all 336 renderer tests passed. [Submission and validation results](results/winemetalgl-triangle-split-ab.json)
+
+Apply `patches/winemetalgl-triangle-budget-trial.patch` after the submission trace patch. Set `OCERZ_WMGL_COMMIT_TRIANGLES=65000` with `WINEMETALGL_COMMIT_DRAWS=64` for this trial. The triangle count is a submission heuristic. The draw budget still applies and the commands keep their original order. Live raid and input validation are still pending.

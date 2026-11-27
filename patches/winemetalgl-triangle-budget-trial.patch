@@ -1,0 +1,85 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+index e507670..89aeda7 100644
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2218,6 +2218,14 @@ void appendMetalList(GLenum mode, const std::vector<uint32_t>& v, bool rotate, s
+ // A vertex start or base vertex every Metal device draws from
+ // (DeviceCaps::drawOffsets16).
+ bool drawOffsetFits(int64_t v) { return v >= -32768 && v <= 32767; }
++
++uint64_t triangleSubmissionBudget() {
++    static const uint64_t budget = [] {
++        const char* value = std::getenv("OCERZ_WMGL_COMMIT_TRIANGLES");
++        return value && *value ? std::strtoull(value, nullptr, 10) : 0ull;
++    }();
++    return budget;
++}
+ }  // namespace
+ 
+ bool DrawState::issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+@@ -2370,7 +2378,11 @@ void appendMetalList(GLenum mode, const std::vector<uint32_t>& v, bool rotate, s
+                     vertexCount:static_cast<NSUInteger>(count) instanceCount:std::max(1, instances)
+                    baseInstance:baseInstance_];
+     }
+-    ctx_.stream().noteDraw();
++    // Count direct triangle lists. Other topologies and GPU-provided indirect
++    // counts continue to use the normal draw-budget heuristic.
++    const uint64_t triangles = mode == GL_TRIANGLES && !points && count > 0 && triangleSubmissionBudget()
++                                   ? uint64_t{static_cast<uint32_t>(count / 3)} * std::max(1, instances) : 0;
++    ctx_.stream().noteDraw(triangles);
+     return true;
+ }
+ 
+@@ -2574,7 +2586,11 @@ void appendMetalList(GLenum mode, const std::vector<uint32_t>& v, bool rotate, s
+     const bool idle = eager && stream.queue().idle() && stats::nowNanos() - stream.lastCommitNanos() >= eagerNanos;
+     if (!idle && recorded < draws) return;
+     // A continuing draw ends the pass early only when the GPU is idle.
+-    if (target && stream.continuesPass(*target) && recorded < uint64_t{draws} * 8 && !idle) return;
++    if (target && stream.continuesPass(*target) && !idle) {
++        const uint64_t triangleBudget = triangleSubmissionBudget();
++        const bool reachedTriangleBudget = triangleBudget && stream.trianglesSinceCommit() >= triangleBudget;
++        if (!reachedTriangleBudget && recorded < uint64_t{draws} * 8) return;
++    }
+     stream.flush(true);
+ }
+ 
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+index 66bef12..d5b2f0c 100644
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -242,12 +242,14 @@ public:
+ 
+     Queue& queue() { return queue_; }
+     bool hasDraws() const { return drawsInPass_; }
+-    void noteDraw() {
++    void noteDraw(uint64_t triangles = 0) {
+         drawsInPass_ = true;
+         ++drawsSinceCommit_;
++        trianglesSinceCommit_ += triangles;
+     }
+     // Draws recorded in the command buffer being recorded.
+     uint32_t drawsSinceCommit() const { return drawsSinceCommit_; }
++    uint64_t trianglesSinceCommit() const { return trianglesSinceCommit_; }
+     // The CPU waited this frame for indirect commands the GPU wrote: such a
+     // wait drains the GPU, which then idles while the CPU records
+     // (DrawState::commitLargeWork commits sooner). Until the next present.
+@@ -313,6 +315,7 @@ private:
+     PendingClear pending_;
+     bool drawsInPass_ = false;
+     uint32_t drawsSinceCommit_ = 0;
++    uint64_t trianglesSinceCommit_ = 0;
+     uint64_t submissionTraceStream_ = 0;
+     bool indirectWaited_ = false;
+     uint64_t passGeneration_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+index 04738e6..a45a266 100644
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -664,6 +664,7 @@ void traceSubmission(FILE* log, id<MTLCommandBuffer> buffer, const char* kind,
+     lastCommitNanos_ = stats::nowNanos();
+     const uint32_t submittedDraws = drawsSinceCommit_;
+     drawsSinceCommit_ = 0;
++    trianglesSinceCommit_ = 0;
+     if (!profile_.empty()) {
+         std::vector<ProfileEntry> entries = std::move(profile_);
+         profile_.clear();
