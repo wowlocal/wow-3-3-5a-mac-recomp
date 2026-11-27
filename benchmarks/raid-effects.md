@@ -372,3 +372,17 @@ Four interleaved six-second pairs put the offscreen median at **1,438 GPU-comple
 Apply `patches/winemetalgl-presentation-log-trial.patch` after the offscreen completion patch to record display diagnostics. Set `OCERZ_WMGL_PRESENT_LOG` to a fresh file and add `--present-log FILE` to the GPU analysis command. The reader joins presentation callbacks to verified GPU completions by process, stream, and sequence. Apple reports a zero presentation time when a drawable is still unpresented or its frame was dropped. In the background diagnostic, 721 callbacks matched the GPU sample and all reported zero time. This captures mailbox work and leaves actual display cadence unverified. [Apple Metal presentedTime documentation](https://developer.apple.com/documentation/metal/mtldrawable/presentedtime) [Presentation diagnostic](results/winemetalgl-windowed-replay.json)
 
 An experiment changed `Surface::Mailbox::kSlots` from three to five. Across another four paired window runs it moved the median from **1,252 to 1,283 GPU-completed FPS** and from **3.01 to 2.89 ms p99**. In a separate five-slot profile the slot wait was below 0.01 ms at p99, with 21 waits of at least 0.1 ms across 5,195 warmed frames. Both arms preserved the reference pixels. Five slots require two additional frame-size textures and still need an in-world latency check. [Mailbox capacity experiment](results/winemetalgl-windowed-replay.json)
+
+### Mailbox scheduling
+
+The windowed replay compared three changes to when the renderer can reuse a mailbox slot. Each comparison ran four interleaved pairs of six-second windows at 1365 × 768 with VSync off and three slots. Reference pixels matched and the GPU sequences were consecutive in all runs. [Scheduling comparisons](results/winemetalgl-mailbox-scheduling-ab.json)
+
+| Experiment | GPU-completed FPS, control → candidate | p99, control → candidate |
+| --- | ---: | ---: |
+| Publish the ready slot before logging GPU completion | 1,298 → 1,267 | 2.89 → 3.11 ms |
+| Put rendering and presentation on one queue and release slots after submission | 1,296 → 249 | 3.06 → 10.78 ms |
+| Keep two queues and use one Metal event per slot to order reuse | 1,261 → 1,250 | 3.04 → 2.99 ms |
+
+The last experiment signaled each slot's event after the queued presentation read. A later writer could submit its render work and wait on the GPU before copying into that slot. A separate diagnostic verified all 492 queued reads signaled their events. The trial uses separate queues and waits for slot readiness on the CPU. [Apple Metal event synchronization](https://developer.apple.com/documentation/metal/synchronizing-events-within-a-single-device)
+
+A windowed replay sweep varied the harness's fence limit through 1, 2, 3, 4, and 6 frames in flight. The lowest single-window p99 was **2.93 ms** with four frames in flight. One frame in flight averaged **846 FPS** and reached **4.16 ms p99**. [Fence-depth sweep](results/winemetalgl-mailbox-scheduling-ab.json)
