@@ -1,0 +1,52 @@
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -436,6 +436,9 @@
+ static uint64_t g_gp_samples, g_gp_jit;
+ static uint64_t g_gp_opcode_us[OCERZ_OP_COUNT];
+ static uint64_t g_gp_mov_form_us[256];
++static int g_gp_host_words;
++static uint64_t g_gp_host_word_keys[GP_SLOTS];
++static uint32_t g_gp_host_word_counts[GP_SLOTS];
+ static uint64_t g_gf_key[GP_SLOTS];
+ static uint32_t g_gf_cnt[GP_SLOTS];
+
+@@ -629,6 +632,16 @@
+                 (unsigned long long)g_gp_mov_form_us[form]);
+         g_gp_mov_form_us[form] = 0;
+     }
++    if (g_gp_host_words) {
++        for (uint32_t i = 0; i < GP_SLOTS; ++i) {
++            if (!g_gp_host_word_keys[i]) continue;
++            uint64_t key = g_gp_host_word_keys[i];
++            fprintf(stderr, "ocerz: GUESTPROF[%d]   host_word guest=%s arm64=%08x cpu_us=%u\n",
++                    (int)getpid(), ocerz_op_name((unsigned)(key >> 32)), (uint32_t)key, g_gp_host_word_counts[i]);
++            g_gp_host_word_keys[i] = 0;
++            g_gp_host_word_counts[i] = 0;
++        }
++    }
+     memset(g_gf_key, 0, sizeof g_gf_key);
+     memset(g_gf_cnt, 0, sizeof g_gf_cnt);
+     memset(g_gp_key, 0, sizeof g_gp_key);
+@@ -652,6 +665,8 @@
+     int hot_only = getenv("OCERZ_GUESTPROF_HOT") != NULL;
+     const char *instruction_mode = getenv("OCERZ_GUESTPROF_INSTRUCTIONS");
+     const int instructions = instruction_mode && !strcmp(instruction_mode, "1");
++    const char *host_words = getenv("OCERZ_GUESTPROF_HOST_WORDS");
++    g_gp_host_words = instructions && host_words && !strcmp(host_words, "1");
+     mach_port_t hot = MACH_PORT_NULL;
+     uint64_t pstart = start;
+     uint64_t seed = start | 1;
+@@ -713,6 +728,13 @@
+                         g_gp_opcode_us[fi.insn_opcode] += w;
+                     if (fi.mov_form && fi.mov_form < 256)
+                         g_gp_mov_form_us[fi.mov_form] += w;
++                    if (g_gp_host_words && (fi.insn_opcode == OCERZ_OP_MOV ||
++                                            fi.insn_opcode == OCERZ_OP_JCC ||
++                                            fi.insn_opcode == OCERZ_OP_MOVSS)) {
++                        const uint32_t host_word = __atomic_load_n((const uint32_t *)pc, __ATOMIC_RELAXED);
++                        const uint64_t key = (uint64_t)fi.insn_opcode << 32 | host_word;
++                        gp_bump(g_gp_host_word_keys, g_gp_host_word_counts, key, w);
++                    }
+                 }
+                 gp_bump(g_gp_key, g_gp_cnt, guest_pc ? guest_pc : 1, w);
+             } else {

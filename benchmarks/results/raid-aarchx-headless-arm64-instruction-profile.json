@@ -1,0 +1,199 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate native instruction sampling run of the full live headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "caster_count": 24,
+  "camera": "Saved fixture anchor",
+  "direct_arb_uniforms_enabled": true,
+  "focus_activations": 0,
+  "visible_trial_windows": 0,
+  "general_m32_checks_passed": 806,
+  "gpu_sequence_continuous": true,
+  "warm_cpu_periods": 7,
+  "guest_operations": {
+    "jcc": [
+      {
+        "arm_mnemonic": "stp",
+        "cpu_usec": 2246732,
+        "share": 0.34551515657609766
+      },
+      {
+        "arm_mnemonic": "ldr",
+        "cpu_usec": 1840048,
+        "share": 0.28297299047128693
+      },
+      {
+        "arm_mnemonic": "b",
+        "cpu_usec": 839134,
+        "share": 0.1290467734461997
+      },
+      {
+        "arm_mnemonic": "mov",
+        "cpu_usec": 516476,
+        "share": 0.07942660095097974
+      },
+      {
+        "arm_mnemonic": "cmp",
+        "cpu_usec": 393793,
+        "share": 0.06055971520126621
+      },
+      {
+        "arm_mnemonic": "str",
+        "cpu_usec": 239676,
+        "share": 0.036858731111468916
+      },
+      {
+        "arm_mnemonic": "tbz",
+        "cpu_usec": 82275,
+        "share": 0.012652714924298241
+      },
+      {
+        "arm_mnemonic": "cbnz",
+        "cpu_usec": 66178,
+        "share": 0.010177227204621197
+      },
+      {
+        "arm_mnemonic": "cbz",
+        "cpu_usec": 58095,
+        "share": 0.00893417773961843
+      },
+      {
+        "arm_mnemonic": "tbnz",
+        "cpu_usec": 56966,
+        "share": 0.008760553732939212
+      },
+      {
+        "arm_mnemonic": "fcmp",
+        "cpu_usec": 30244,
+        "share": 0.0046510934083315225
+      },
+      {
+        "arm_mnemonic": "b.le",
+        "cpu_usec": 29450,
+        "share": 0.004528987596725411
+      },
+      {
+        "arm_mnemonic": "orr",
+        "cpu_usec": 25728,
+        "share": 0.003956597381614648
+      },
+      {
+        "arm_mnemonic": "cset",
+        "cpu_usec": 23618,
+        "share": 0.0036321096454825386
+      },
+      {
+        "arm_mnemonic": "b.ne",
+        "cpu_usec": 21480,
+        "share": 0.003303315910956259
+      },
+      {
+        "arm_mnemonic": "b.lt",
+        "cpu_usec": 10757,
+        "share": 0.0016542723116460187
+      },
+      {
+        "arm_mnemonic": "b.eq",
+        "cpu_usec": 6249,
+        "share": 0.0009610065701846212
+      },
+      {
+        "arm_mnemonic": "b.hs",
+        "cpu_usec": 4576,
+        "share": 0.0007037231661329536
+      }
+    ],
+    "mov": [
+      {
+        "arm_mnemonic": "add",
+        "cpu_usec": 3701459,
+        "share": 0.5137849694126949
+      },
+      {
+        "arm_mnemonic": "sub",
+        "cpu_usec": 1612328,
+        "share": 0.22380090990153653
+      },
+      {
+        "arm_mnemonic": "mov",
+        "cpu_usec": 1028257,
+        "share": 0.1427283109966609
+      },
+      {
+        "arm_mnemonic": "ldapur",
+        "cpu_usec": 534725,
+        "share": 0.0742230746765541
+      },
+      {
+        "arm_mnemonic": "stlur",
+        "cpu_usec": 271170,
+        "share": 0.037640041441939644
+      },
+      {
+        "arm_mnemonic": "lsl",
+        "cpu_usec": 33771,
+        "share": 0.004687619720233594
+      },
+      {
+        "arm_mnemonic": "lsr",
+        "cpu_usec": 15070,
+        "share": 0.0020918074437807663
+      },
+      {
+        "arm_mnemonic": "stlurh",
+        "cpu_usec": 3109,
+        "share": 0.0004315480652099803
+      },
+      {
+        "arm_mnemonic": "movk",
+        "cpu_usec": 2346,
+        "share": 0.00032563903537555927
+      },
+      {
+        "arm_mnemonic": "stlrb",
+        "cpu_usec": 1580,
+        "share": 0.00021931358733733318
+      },
+      {
+        "arm_mnemonic": "asr",
+        "cpu_usec": 481,
+        "share": 6.67657186767451e-05
+      }
+    ],
+    "movss": [
+      {
+        "arm_mnemonic": "ldr",
+        "cpu_usec": 752744,
+        "share": 0.4430971071753166
+      },
+      {
+        "arm_mnemonic": "add",
+        "cpu_usec": 351129,
+        "share": 0.20668945105555372
+      },
+      {
+        "arm_mnemonic": "str",
+        "cpu_usec": 330281,
+        "share": 0.19441743229434008
+      },
+      {
+        "arm_mnemonic": "mov",
+        "cpu_usec": 153074,
+        "share": 0.09010586146652037
+      },
+      {
+        "arm_mnemonic": "sub",
+        "cpu_usec": 109068,
+        "share": 0.06420205977782277
+      },
+      {
+        "arm_mnemonic": "movk",
+        "cpu_usec": 2528,
+        "share": 0.0014880882304464736
+      }
+    ]
+  }
+}
