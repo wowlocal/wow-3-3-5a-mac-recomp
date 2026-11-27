@@ -1,0 +1,88 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -21528,4 +21528,20 @@
+     return (void *)t->body_code;
+ }
++
++static int has_pending_guarded_ebp(uint64_t key)
++{
++    if (!ENV_ON("OCERZ_M32_BASE_HANDOFF") || !ENV_ON("OCERZ_M32_SHORT_EBP_HANDOFF") ||
++        ENV_ON("OCERZ_NO_HOIST_HANDOFF"))
++        return 0;
++    const uint64_t signature = M32_HOIST_GUARDED | M32_HOIST_PRESERVED | ((uint64_t)OCERZ_RBP << 8);
++    unsigned bucket = (unsigned)(hash_key(key) & PEND_MASK);
++    for (const PendingChain *edge = g_pending[bucket]; edge; edge = edge->next) {
++        if (edge->target_key == key && edge->kind == EDGE_BODY &&
++            edge->pin_class == g_pin_class && edge->src_sig == signature)
++            return 1;
++    }
++    return 0;
++}
++
+ static void pending_drain(uint64_t key, JitBlock *target)
+ {
+@@ -22131,9 +22147,18 @@
+             if (count[reg] > count[best])
+                 best = reg;
+-    if (count[best] < 6)
+-        return 0;
++    const int short_prefix = count[best] < 6;
++    if (short_prefix) {
++        // A compatible branch already paid for the guard. Shorter EBP
++        // prefixes can reuse it through their alternate entry.
++        if (count[OCERZ_RBP] < 2 || !has_pending_guarded_ebp(jit_key(rip, 1)))
++            return 0;
++        best = OCERZ_RBP;
++    }
+
+     int stop = (active & (1u << best)) ? i : end[best];
+     *base = best;
++    if (short_prefix && ENV_ON("OCERZ_M32_BASE_HANDOFF_LOG"))
++        fprintf(stderr, "ocerz: i386 short EBP handoff rip=%#llx accesses=%d prefix=%d\n",
++                (unsigned long long)rip, count[best], stop);
+     if (best == OCERZ_RBP && ENV_ON("OCERZ_M32_EBP_HOIST_LOG"))
+         fprintf(stderr, "ocerz: i386 EBP hoist rip=%#llx accesses=%d prefix=%d\n",
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -113,4 +113,6 @@
+         cpu()->gpr[OCERZ_RCX] = 3;
+         cpu()->gpr[OCERZ_RDI] = M32_DATA + 0x80;
++        if (g_handoff_case >= 4)
++            cpu()->gpr[OCERZ_RBP] = M32_DATA + 0x40;
+     }
+     cpu()->rflags = 0x202;
+@@ -452,5 +454,5 @@
+     const char *handoff_case = getenv("OCERZ_TEST_JIT32_BASE_HANDOFF");
+     if (handoff_case) {
+-        if (handoff_case[0] < '0' || handoff_case[0] > '3' || handoff_case[1]) return 2;
++        if (handoff_case[0] < '0' || handoff_case[0] > '6' || handoff_case[1]) return 2;
+         g_handoff_case = handoff_case[0] - '0';
+         switch (g_handoff_case) {
+@@ -472,8 +474,24 @@
+                  0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24, 0x49, 0x75,0xd2);
+             break;
+-        default:
++        case 3:
+             CASE("EBX and EDI guards need an exact register match", M32_CODE, M32_STACK,
+                  0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24, 0xeb,0,
+                  0x8b,0x47,4, 0x8b,0x47,8, 0x8b,0x47,12, 0x8b,0x47,16, 0x8b,0x47,20, 0x8b,0x47,24, 0x49, 0x75,0xd7);
++            break;
++        case 4:
++            CASE("A guarded branch enters a two-load EBP prefix", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x45,8, 0x8b,0x45,12, 0x8b,0x45,16, 0x8b,0x45,20, 0x8b,0x45,24, 0xeb,0,
++                 0x8b,0x45,0xfc, 0x8b,0x55,8, 0x49, 0x75,0xe3);
++            break;
++        case 5:
++            CASE("A short EBP prefix stops at a rewrite of the frame pointer", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x45,8, 0x8b,0x45,12, 0x8b,0x45,16, 0x8b,0x45,20, 0x8b,0x45,24, 0xeb,0,
++                 0x8b,0x45,0xfc, 0x8b,0x55,8, 0xbd,0x00,0x03,0x50,0x00, 0x8b,0x45,12, 0xeb,0,
++                 0x8b,0x45,4, 0x8b,0x55,8);
++            break;
++        default:
++            CASE("A changed EBP in the predecessor prevents short admission", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x45,8, 0x8b,0x45,12, 0x8b,0x45,16, 0x8b,0x45,20, 0x8b,0x45,24,
++                 0xbd,0x00,0x03,0x50,0x00, 0xeb,0, 0x8b,0x45,4, 0x8b,0x55,8);
+             break;
+         }

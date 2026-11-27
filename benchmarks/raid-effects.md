@@ -1738,3 +1738,25 @@ The largest address band was base-only EBP with near displacements of **−256 t
 python3 benchmarks/summarize-raid-guest-native-stacks.py I386_CLIENT CAPTURE_1 CAPTURE_2 \
     --roots 0x73f8e0 0x97dbc0
 ```
+
+### Carry the guarded EBP address into short blocks
+
+The earlier handoff requires both blocks to qualify for standalone mapped-base reuse. This trial also admits a target with **two to five** eligible EBP operands. Admission requires an already pending direct link from an i386 block that preserves the same guarded EBP address and uses the same pinned register layout. That link enters after the target's setup and guard. Other entry routes use the ordinary guard. An EBP write ends the eligible prefix and prevents the block from forwarding the old address.
+
+Apply `patches/aarchx-m32-short-ebp-handoff-trial.patch` after the original mapped-base handoff patch. Keep general base selection enabled and the translation cache off. The reference leaves handoff unset. The long mode sets `OCERZ_M32_BASE_HANDOFF=1`. The short mode also sets `OCERZ_M32_SHORT_EBP_HANDOFF=1`. Logging and the address witness are enabled only in the diagnostic launches.
+
+All modes passed **806** general i386 checks and seven interpreter comparisons. The focused short-path cases witness an actual linked entry, stop the optimized prefix at an EBP write, and reject short admission after a predecessor changes EBP. All three passed with forced branch veneers.
+
+The diagnostics counted **81** distinct linked target and base pairs in long mode and **340** in short mode. Short mode admitted **245** short blocks and every one had a witnessed linked entry. After the last world readback, the counts were **six** and **17** linked target and base pairs. All 245 short entries matched the original client text. The earlier paired guest and host profiles put **0.37% and 0.34%** of sampled CPU weight in matching immediate ARM64 address arithmetic inside those linked prefixes. Link counts describe compilation and linking. The CPU shares describe coverage in the earlier profiles.
+
+| Mapped address handoff | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Disabled | 133.82 | 12.71 ms |
+| Long blocks | 134.70 | 12.54 ms |
+| Long and eligible short blocks | 134.42 | 12.44 ms |
+
+Short mode lost **0.28 FPS** against long mode in both pairs while p99 fell **0.03 and 0.18 ms**. Against the reference, short mode lost **0.37 FPS** in the first pair and gained **1.57 FPS** in the reverse pair. Its p99 rose **0.06 ms** and fell **0.61 ms**, respectively. Keep handoff disabled in the benchmark baseline. All six 60-second windows verified the saved camera, effects, 26 timing rows, consecutive GPU completions and zero visible trial windows or focus activations. The earlier test was paused during each launch and resumed afterward. [Live comparisons and CPU coverage](results/raid-aarchx-i386-short-ebp-handoff-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-short-ebp.py CAPTURE_ROOT I386_CLIENT PRIOR_STACK_CAPTURE_1 PRIOR_STACK_CAPTURE_2
+```
