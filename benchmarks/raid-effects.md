@@ -1332,3 +1332,18 @@ A separate compile witness selected **400** distinct blocks with a base other th
 | Best eligible base | 123.24 | 13.64 ms |
 
 The four primary warmed 60-second windows used trial, control, control, and trial order with logging off. Throughput rose **1.77 and 0.22 FPS** in the two pairs. P99 fell **0.77 ms** in the first pair and rose **0.35 ms** in the reverse pair. Keep the option for follow-up throughput comparisons. A local disassembly job overlapped the first control, so the first pair remains outside the primary comparison. All six launches verified the saved camera, effects, exact cast timings, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid timing and coverage](results/raid-aarchx-headless-i386-general-base-hoist-ab.json)
+
+### Carry a guarded i386 address across a direct branch
+
+The experiment adds an alternate entry after the address setup and guard. A direct linked branch can use that entry when both blocks use the same base and the source holds it unchanged through the branch. A block with a base write can still receive the address for its eligible prefix. Call continuations and synthesized branches outside the decoded block retain the ordinary entry. An eligible transition skips one mapped-address calculation and four guard instructions.
+
+Apply `patches/aarchx-m32-base-handoff-trial.patch` after the general base trial and set `OCERZ_M32_BASE_HANDOFF=1`. Both arms used general base selection with its six-operand minimum. Both passed **806** general checks and four focused interpreter comparisons. The focused cases cover matching guards, a base reassignment, retirement near 4 GiB, and a change of base register. All four passed with the compiler's forced branch veneers as well.
+
+A separate 25-second in-world diagnostic enabled `OCERZ_M32_BASE_HANDOFF_LOG=1` and `OCERZ_M32_BASE_HANDOFF_VERIFY=1`. The linker logged **81 distinct destination and base pairs** from startup and **8** after the final in-world readback. The alternate entry checked the mapped address and range without changing condition flags. The diagnostic completed with consecutive GPU sequences. The linker counts describe selected entries.
+
+| Linked entry | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Guard each block | 123.28 | 13.81 ms |
+| Reuse the guarded address | 123.63 | 13.88 ms |
+
+The trial lost **1.03 FPS** in the first pair and gained **1.72 FPS** in the reverse pair. P99 rose **0.38 ms** and fell **0.23 ms**, respectively. The setting stays off for follow-up comparisons. All four warmed 60-second launches ran with the diagnostic off and verified the camera, spell effects, 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid A/B and link diagnostics](results/raid-aarchx-headless-i386-base-handoff-ab.json)

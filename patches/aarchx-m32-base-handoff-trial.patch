@@ -1,0 +1,160 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -2044,6 +2044,10 @@
+ }
+ static int ea_cache_reusable(const A64Buf *b, const X86Operand *op);
+ static void ea_cache_set(const A64Buf *b, const X86Operand *op);
++// The regular hoist signature uses bits 0 through 59.
++#define M32_HOIST_GUARDED (1ull << 63)
++#define M32_HOIST_PRESERVED (1ull << 62)
++
+ static int g_mem_hoist_greg2 = -1;
+ static int g_mem_hoist_greg3 = -1;
+ /* The scale counts only beside an index: it is set with one and otherwise still holds an earlier block's. */
+@@ -21510,7 +21514,16 @@
+ static void *body_entry_for(const JitBlock *t, uint64_t src_sig)
+ {
+     static int dis = -1; if (dis < 0) dis = getenv("OCERZ_NO_HOIST_HANDOFF") ? 1 : 0;
+-    if (!dis && src_sig && t->hoist_sig == src_sig && t->body_noreload && ((src_sig >> 24) & 0xff) == 0)
++    if (!dis && t->body_noreload && (src_sig & M32_HOIST_GUARDED) &&
++        (src_sig & M32_HOIST_PRESERVED) &&
++        ((t->hoist_sig ^ src_sig) & ~M32_HOIST_PRESERVED) == 0) {
++        if (ENV_ON("OCERZ_M32_BASE_HANDOFF_LOG"))
++            fprintf(stderr, "ocerz: i386 mapped base handoff target=%#llx base=%u\n",
++                    (unsigned long long)blk_rip(t), (unsigned)((src_sig >> 8) & 0xff));
++        return (void *)t->body_noreload;
++    }
++    if (!dis && src_sig && !(src_sig & M32_HOIST_GUARDED) &&
++        t->hoist_sig == src_sig && t->body_noreload && ((src_sig >> 24) & 0xff) == 0)
+         return (void *)t->body_noreload;
+     return (void *)t->body_code;
+ }
+@@ -26234,6 +26247,12 @@
+     g_m32_base_stop = jit->stop_requested ? 0 : select_m32_base_hoist(blk->insns, n, rip, &m32_base);
+     g_mem_hoist_greg = select_mem_base_hoist(blk->insns, n, rip);
+     if (g_m32_base_stop) g_mem_hoist_greg = m32_base;
++    const int m32_base_handoff = g_m32_base_stop && ENV_ON("OCERZ_M32_BASE_HANDOFF");
++    // The selected prefix stopped at the terminator and left the base unchanged.
++    // CALL continuations receive another block's registers, so only branch tails qualify.
++    int m32_base_preserved = m32_base_handoff && g_m32_base_stop == n - 1 &&
++        (term->op == OCERZ_OP_JMP || term->op == OCERZ_OP_JCC) &&
++        term->ops[0].kind == OCERZ_OPK_IMM;
+     select_low_hoist(blk->insns, n, rip);
+     g_n_llh_bail_tb = g_n_llh_bail_cb = 0;
+
+@@ -26353,6 +26372,25 @@
+         emit_reload_mem_base(&b);
+         body_noreload = g_m32_base_stop ? NULL : a64_label(&b);
+         emit_m32_base_guard(&b);
++        if (m32_base_handoff) {
++            body_noreload = a64_label(&b);
++            if (ENV_ON("OCERZ_M32_BASE_HANDOFF_VERIFY")) {
++                // Only independently linked entries run the witness.
++                uint32_t *normal_entry = a64_label(&b);
++                a64_b(&b, 0);
++                body_noreload = a64_label(&b);
++                const int offset = pin_hreg(pin_slot(m32_base));
++                a64_add_ext_uxtw(&b, JT0, JGB, offset, 0);
++                a64_eor_reg(&b, 1, JT0, JT0, JMEMBASE, 0);
++                a64_sub_imm(&b, 0, JTT, offset, 256);
++                a64_add_imm(&b, 1, JTT, JTT, 512);
++                a64_lsr_imm(&b, 1, JTT, JTT, 32);
++                a64_orr_reg(&b, 1, JT0, JT0, JTT, 0);
++                a64_cbz(&b, 1, JT0, 2);
++                a64_emit32(&b, 0xd4200000u | (0x4d32u << 5));  // BRK: invalid i386 handoff
++                a64_patch_b(normal_entry, a64_label(&b));
++            }
++        }
+         {
+             static int bt = -1;
+             if (bt < 0) bt = getenv("OCERZ_BTRACE") ? 1 : 0;
+@@ -27032,6 +27070,7 @@
+             uint32_t *jcc_label = NULL;
+             if (emit_ifconv_diamond(&b, insn, &blk->insns[i + 1],
+                                     epi_sites, &n_epi, &jcc_label)) {
++                m32_base_preserved = 0;
+                 if (blk->insn_off)
+                     blk->insn_off[i + 1] =
+                         (uint32_t)(jcc_label - entry);
+@@ -27750,6 +27789,11 @@
+     blk->body_code = g_body_entry;
+     blk->body_noreload = body_noreload;
+     blk->hoist_sig = hoist_signature();
++    if (m32_base_handoff) {
++        blk->hoist_sig = M32_HOIST_GUARDED | ((uint64_t)m32_base << 8);
++        if (m32_base_preserved && !g_n_side && !blk->n_slow)
++            blk->hoist_sig |= M32_HOIST_PRESERVED;
++    }
+     blk->ordered_loads = (uint8_t)g_blk_ordered_loads;
+     blk->code_words = (uint32_t)(b.p - entry);
+     if (forward_m32 && g_n_side && ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK_LOG"))
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -71,6 +71,7 @@
+ static int g_fpb_case = -1;
+ static int g_ebp_case = -1;
+ static int g_shared_base_case = -1;
++static int g_handoff_case = -1;
+ static OcerzVM g_vm;
+ static OcerzCPU *cpu(void) { return &g_vm.cpu; }
+
+@@ -108,6 +109,10 @@
+         cpu()->gpr[OCERZ_RBX] = 0xffffffc0u;
+     cpu()->gpr[OCERZ_RSI] = 0x10;
+     cpu()->gpr[OCERZ_RDI] = 0x00000004;
++    if (g_handoff_case >= 0) {
++        cpu()->gpr[OCERZ_RCX] = 3;
++        cpu()->gpr[OCERZ_RDI] = M32_DATA + 0x80;
++    }
+     cpu()->rflags = 0x202;
+     cpu()->mode32 = 1;
+     cpu()->cs_sel = (uint16_t)CS32;
+@@ -251,7 +256,7 @@
+         if (cpu()->rip == DONE)
+             return 1;
+         const int step = ocerz_jit_step(&g_vm, cpu());
+-        if ((g_ebp_case >= 0 || g_shared_base_case >= 0) && step == OCERZ_STEP_PROFILE)
++        if ((g_ebp_case >= 0 || g_shared_base_case >= 0 || g_handoff_case >= 0) && step == OCERZ_STEP_PROFILE)
+             continue;  // The following dispatch handles the guard's retirement.
+         if (step != OCERZ_STEP_OK)
+             return 0;
+@@ -439,6 +444,37 @@
+             CASE("Keep indexed EBX and a short base prefix on the ordinary path", M32_CODE, M32_STACK,
+                  0x8b,0x44,0xb3,4, 0x8b,0x4c,0xb3,8, 0x8b,0x54,0xb3,12,
+                  0x8b,0x43,16, 0x8b,0x4b,20, 0x8b,0x53,24);
++            break;
++        }
++        return g_failures != 0;
++    }
++
++    const char *handoff_case = getenv("OCERZ_TEST_JIT32_BASE_HANDOFF");
++    if (handoff_case) {
++        if (handoff_case[0] < '0' || handoff_case[0] > '3' || handoff_case[1]) return 2;
++        g_handoff_case = handoff_case[0] - '0';
++        switch (g_handoff_case) {
++        case 0:
++            CASE("Two branches carry the same guarded EBX", M32_CODE, M32_STACK,
++                 0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24, 0xeb,0,
++                 0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24, 0x49, 0x75,0xd7);
++            break;
++        case 1:
++            CASE("A changed base goes through the target guard", M32_CODE, M32_STACK,
++                 0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24,
++                 0xbb,0x80,0,0x50,0, 0xeb,0,
++                 0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24, 0x49, 0x75,0xd2);
++            break;
++        case 2:
++            CASE("A changed base near 4 GiB retires the target guard", M32_CODE, M32_STACK,
++                 0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24,
++                 0xbb,0xc0,0xff,0xff,0xff, 0xeb,0,
++                 0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24, 0x49, 0x75,0xd2);
++            break;
++        default:
++            CASE("EBX and EDI guards need an exact register match", M32_CODE, M32_STACK,
++                 0x8b,0x43,4, 0x8b,0x43,8, 0x8b,0x43,12, 0x8b,0x43,16, 0x8b,0x43,20, 0x8b,0x43,24, 0xeb,0,
++                 0x8b,0x47,4, 0x8b,0x47,8, 0x8b,0x47,12, 0x8b,0x47,16, 0x8b,0x47,20, 0x8b,0x47,24, 0x49, 0x75,0xd7);
+             break;
+         }
+         return g_failures != 0;
