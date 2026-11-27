@@ -1,0 +1,70 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Original client headless startup, one executable with two CPU feature switch values",
+  "initial_native_m32_sysctl_observation": {
+    "mmx": {
+      "host_lookup_status": -1
+    },
+    "sse": {
+      "host_lookup_status": -1
+    },
+    "sse2": {
+      "host_lookup_status": -1
+    }
+  },
+  "readback_after_swaps": 239,
+  "workspace_monitor_seconds": 22,
+  "runs": [
+    {
+      "x86_cpu_features_enabled": false,
+      "sse_warning_visible": true,
+      "login_fields_visible": true,
+      "focus_changes_to_trial": 0,
+      "max_visible_trial_windows": 0,
+      "gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7802,
+        "first_sequence": 2000,
+        "last_sequence": 9801,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 9998754500,
+        "measurement_duration_ns": 10000000000,
+        "average_completed_fps": 780.1,
+        "p99_gpu_completion_gap_ns": 4819625,
+        "min_draws": 69,
+        "max_draws": 89
+      }
+    },
+    {
+      "x86_cpu_features_enabled": true,
+      "sse_warning_visible": false,
+      "login_fields_visible": true,
+      "focus_changes_to_trial": 0,
+      "max_visible_trial_windows": 0,
+      "gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7605,
+        "first_sequence": 2000,
+        "last_sequence": 9604,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 9999585541,
+        "measurement_duration_ns": 10000000000,
+        "average_completed_fps": 760.4,
+        "p99_gpu_completion_gap_ns": 5075125,
+        "min_draws": 62,
+        "max_draws": 82
+      }
+    }
+  ],
+  "focused_m32_checks": {
+    "feature_switch_off": 3,
+    "feature_switch_on": 16
+  },
+  "general_m32_checks": 806
+}

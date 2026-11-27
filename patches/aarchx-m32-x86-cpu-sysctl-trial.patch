@@ -1,0 +1,140 @@
+--- a/src/m32_bridge.c
++++ b/src/m32_bridge.c
+@@ -4,6 +4,7 @@
+  * Every import of a system library becomes an export with an id; its address is M32_TRAP(id).  The table is a fixed
+  * array indexed by id, so the trap reads it without a lock; entries are only ever added, under g_lock.
+  */
++#include <errno.h>
+ #include <pthread.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -12,6 +13,7 @@
+ #include <dlfcn.h>
+ #include <mach-o/loader.h>
+ #include <mach/mach.h>
++#include <sys/sysctl.h>
+
+ #include "ocerz/bridge.h"
+ #include "ocerz/interp.h"
+@@ -21,8 +23,30 @@
+ #include "ocerz/m32_objc.h"
+ #include "ocerz/m32.h"
+ #include "ocerz/m32_wmgl.h"
++#include "ocerz/syscall.h"
+ #include "ocerz/types.h"
+ #include "ocerz/vm.h"
++
++static int m32_x86_cpu_sysctlbyname(const char *name, void *old, size_t *oldlen, void *new_value, size_t newlen)
++{
++    const char *string;
++    uint64_t value;
++    unsigned width;
++    if (!name || strncmp(name, "hw.optional.", 12) || !oldlen || new_value || newlen ||
++        !ocerz_sysctl_x86_value(name, &string, &value, &width) || string || width != sizeof(uint32_t))
++        return sysctlbyname(name, old, oldlen, new_value, newlen);
++    if (old && *oldlen < width) {
++        *oldlen = 0;
++        errno = ENOMEM;
++        return -1;
++    }
++    if (old) {
++        const uint32_t feature = (uint32_t)value;
++        memcpy(old, &feature, sizeof(feature));
++    }
++    *oldlen = width;
++    return 0;
++}
+
+ int m32_log_imports;
+
+@@ -347,6 +371,11 @@
+             }
+             e->host_fn = hud_wrap(r.host_symbol, e->host_fn);
+             e->host_fn = m32_carbon_wrap(r.host_symbol, e->host_fn);
++            if (e->host_fn == (void *)sysctlbyname && !strcmp(r.host_symbol, "sysctlbyname")) {
++                const char *cpu_features = getenv("OCERZ_M32_X86_CPU_FEATURES");
++                if (cpu_features && !strcmp(cpu_features, "1"))
++                    e->host_fn = (void *)m32_x86_cpu_sysctlbyname;
++            }
+             char key[128];
+             snprintf(key, sizeof key, "|%s|", r.host_symbol);
+             e->file_ret = !!strstr("|fopen|fdopen|freopen|popen|tmpfile|funopen|fmemopen|open_memstream|", key);
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -30,6 +30,7 @@
+ #include <sys/event.h>
+ #include <sys/mman.h>
+ #include <sys/socket.h>
++#include <sys/sysctl.h>
+ #include <sys/uio.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
+@@ -3279,6 +3280,46 @@
+     call("_NSDeallocateMemoryPages", 2, (uint32_t[]){ pages, 0x5000 });
+ }
+
++static void test_x86_cpu_features(void)
++{
++    const char *library = "/usr/lib/libSystem.B.dylib";
++    const uint32_t name = DATA + 0x4800, value = DATA + 0x4900, length = DATA + 0x4904;
++    uint32_t args[] = { name, value, length, 0, 0 };
++    put_str(name, "hw.optional.sse2");
++    m32_wr(value, 0xa5a5a5a5);
++    m32_wr(length, 4);
++    const char *cpu_features = getenv("OCERZ_M32_X86_CPU_FEATURES");
++    if (!cpu_features || strcmp(cpu_features, "1")) {
++        int host = 0;
++        size_t size = sizeof(host);
++        int rc = sysctlbyname("hw.optional.sse2", &host, &size, NULL, 0);
++        check("the ordinary path keeps native feature discovery",
++              cross(library, "_sysctlbyname", 5, args) == (uint32_t)rc);
++        return;
++    }
++    check("i386 reads SSE2 from the emulated CPU",
++          cross(library, "_sysctlbyname", 5, args) == 0 && m32_rd(value) == 1 && m32_rd(length) == 4);
++    put_str(name, "hw.optional.avx2_0");
++    check("unsupported x86 capabilities keep their emulated value",
++          cross(library, "_sysctlbyname", 5, args) == 0 && m32_rd(value) == 0);
++    put_str(name, "hw.optional.sse");
++    m32_wr(length, 1);
++    m32_wr(value, 0xa5a5a5a5);
++    check("short buffers fail without overwriting the result buffer",
++          cross(library, "_sysctlbyname", 5, args) == UINT32_MAX &&
++          m32_rd(value) == 0xa5a5a5a5 && m32_rd(length) == 0);
++    args[1] = 0;
++    check("a size-only probe returns the 32-bit feature width",
++          cross(library, "_sysctlbyname", 5, args) == 0 && m32_rd(length) == 4);
++    put_str(name, "hw.physicalcpu");
++    args[1] = value;
++    int host = 0;
++    size_t size = sizeof(host);
++    check("get the native physical CPU count", sysctlbyname("hw.physicalcpu", &host, &size, NULL, 0) == 0);
++    check("non-feature lookups delegate to native sysctlbyname",
++          cross(library, "_sysctlbyname", 5, args) == 0 && m32_rd(value) == (uint32_t)host);
++}
++
+ int main(int argc, char **argv)
+ {
+     if (argc == 4 && !strcmp(argv[1], "spawned")) {   /* test_posix_spawn's child: a line to a file or stdout */
+@@ -3306,7 +3347,8 @@
+     ocerz_cpu_reset(cpu());
+     cpu()->mode32 = 1;
+     m32_heap_init();
+-    if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage"))) {
++    if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage") ||
++                     !strcmp(argv[1], "x86-cpu-features"))) {
+         char db[PATH_MAX];
+         if (!realpath("runtime/apis32", db)) {
+             fprintf(stderr, "test_m32: no runtime/apis32 here (make apis32, run from the repository)\n");
+@@ -3316,6 +3358,11 @@
+         char db64[PATH_MAX];
+         if (realpath("runtime/apis", db64))
+             setenv("OCERZ_APIDB", db64, 0);   /* the host side: frameworks the bridge opens by install name */
++        if (!strcmp(argv[1], "x86-cpu-features")) {
++            test_x86_cpu_features();
++            printf("test_m32 x86-cpu-features: %d checks, %d failed\n", g_checks, g_failures);
++            return g_failures != 0;
++        }
+         if (!strcmp(argv[1], "wmgl-storage")) {
+             test_wmgl_storage();
+             printf("test_m32 wmgl-storage: %d checks, %d failed\n", g_checks, g_failures);

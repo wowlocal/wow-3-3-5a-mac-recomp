@@ -673,3 +673,11 @@ Apply `patches/aarchx-wmgl-headless-drawable-trial.patch` after the Carbon windo
 ```sh
 swift benchmarks/wmgl-headless-window-check.swift
 ```
+
+### Report the emulated x86 feature bits to the client
+
+A startup trace found that the original client probes `hw.optional.mmx`, `hw.optional.sse`, and `hw.optional.sse2` through the i386 libc bridge. The native ARM system call returned an error for all three. The opt-in trial answers supported 32-bit x86 feature queries from AArchX's existing emulated feature table. Other names use the standard bridge call.
+
+The same headless executable was launched with the feature switch set to `0` and `1`. The control readback showed the SSE startup warning over the login fields. The trial readback showed the login fields directly. Both captures kept 1365 × 768, consecutive GPU completions, and zero observed trial windows or activations. The ten-second GPU windows documented startup rendering while the two captures showed different UI. All 806 general runtime checks passed. [Readback checks and CPU query evidence](results/winemetalgl-headless-x86-features.json)
+
+Build with `patches/aarchx-m32-x86-cpu-sysctl-trial.patch` and set `OCERZ_M32_X86_CPU_FEATURES=1` for the trial. Run `test_m32 x86-cpu-features` with the flag set to zero and one to verify ordinary lookup, the reported feature values, and output-buffer sizing.
