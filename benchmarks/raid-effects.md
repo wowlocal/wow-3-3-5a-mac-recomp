@@ -1640,6 +1640,8 @@ All three modes passed **806** general i386 checks. The offscreen storage suite 
 
 The index gained **4.88 and 5.40 FPS** against the list and reduced p99 by **0.11 and 0.21 ms**. Against the copied-shadow reference it lost **0.77 and 1.12 FPS** and increased p99 by **0.12 and 0.33 ms**. Keep the copied-shadow reference for follow-up comparisons. All six warmed 60-second windows verified the saved camera, spell effects, 26 timing rows, and consecutive GPU completions at 1365 × 768. The trial recorded zero visible windows or activations. The copied client folder was isolated. A separate legacy client was observed running during the comparisons and its GPU load was unmeasured. [Six timed windows and paired differences](results/raid-aarchx-one-page-address-index-ab.json)
 
+Separate ten-second Time Profiler captures kept one-page storage enabled in both modes. The list capture assigned **305 ms of 10,418 ms** of main-thread running-sample weight to `m32_wmgl_guest_buffer` itself (**2.93%**). The indexed capture assigned zero leaf samples to that function in **10,323 ms** of main-thread running-sample weight. [Lookup profiles](results/raid-aarchx-one-page-address-index-cpu-profile.json)
+
 ```sh
 python3 benchmarks/summarize-raid-shadow-reuse.py TIMED_RUNS --indexed-storage
 ```

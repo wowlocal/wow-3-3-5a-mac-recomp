@@ -1,0 +1,103 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "runtime_sha256": "ec03fb90eda0ab53a3deb6dde01f3f9134c9477c60a96a673ed3ec79725072e0",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "base_commit": "f1cb2bf",
+  "scope": "Separate Time Profiler captures in the live raid with one-page guest storage and shadow reuse in both modes.",
+  "verified_timed_script_rows": 26,
+  "trace_duration_requested_seconds": 10,
+  "process_guard_passed": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "runs": [
+    {
+      "page_index_enabled": false,
+      "concurrent_diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3209,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24998932916,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 128.32,
+        "p99_gpu_completion_gap_ns": 13131000,
+        "min_draws": 701,
+        "max_draws": 1014
+      },
+      "main_thread_running_weight_ns": 10418000000,
+      "functions": {
+        "m32_wmgl_guest_buffer": {
+          "leaf_weight_ns": 305000000,
+          "inclusive_weight_ns": 305000000
+        },
+        "map_common": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 394000000
+        },
+        "sp_glUnmapBuffer": {
+          "leaf_weight_ns": 3000000,
+          "inclusive_weight_ns": 94000000
+        },
+        "_platform_memmove": {
+          "leaf_weight_ns": 287000000,
+          "inclusive_weight_ns": 287000000
+        },
+        "shadow_for": {
+          "leaf_weight_ns": 31000000,
+          "inclusive_weight_ns": 46000000
+        }
+      }
+    },
+    {
+      "page_index_enabled": true,
+      "concurrent_diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3369,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24993720584,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 134.72,
+        "p99_gpu_completion_gap_ns": 12794291,
+        "min_draws": 681,
+        "max_draws": 964
+      },
+      "main_thread_running_weight_ns": 10323000000,
+      "functions": {
+        "m32_wmgl_guest_buffer": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 0
+        },
+        "map_common": {
+          "leaf_weight_ns": 2000000,
+          "inclusive_weight_ns": 119000000
+        },
+        "sp_glUnmapBuffer": {
+          "leaf_weight_ns": 1000000,
+          "inclusive_weight_ns": 94000000
+        },
+        "_platform_memmove": {
+          "leaf_weight_ns": 306000000,
+          "inclusive_weight_ns": 306000000
+        },
+        "shadow_for": {
+          "leaf_weight_ns": 27000000,
+          "inclusive_weight_ns": 46000000
+        }
+      }
+    }
+  ]
+}
