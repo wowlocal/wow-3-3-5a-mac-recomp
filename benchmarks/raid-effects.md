@@ -975,3 +975,9 @@ Four isolated 60-second launches varied only `OCERZ_M32_MOV_BASE_UXTW` with prec
 | Folded into the load | 123.91 | 10.45 ms |
 
 Throughput rose **3.62%** and median p99 fell **0.60 ms**. Both pairs improved on both metrics. All launches verified the cast schedule and GPU completion sequences. The readbacks showed the saved camera and overlapping spells. Both settings passed **806** general checks and six focused interpreter comparisons. The trial emitted the folded load on the negative-displacement and wraparound cases. The process checker and desktop monitor verified isolation. [Full-raid A/B and checks](results/raid-aarchx-headless-mov-base-uxtw-precise-uniform-ab.json)
+
+### GPU activity with precise uniform invalidation and folded loads
+
+An eight-second Metal System Trace matched **988 of 988** in-range GPU completion timestamps within **43 ns**. In 987 consecutive intervals, GPU activity occupied **24.38%** of the joined span. The mean active union was **2.10 ms** per interval. Mean vertex and fragment activity were **0.70 ms** and **1.39 ms**, respectively. The p99 active union was **4.36 ms**.
+
+The ten longest completion gaps had a median duration of **11.96 ms** and **2.53 ms** median total active GPU time. The active union counts time on the captured render and compute channels. The gaps can include idle time and scheduling, and work can overlap output boundaries. This launch used the folded-load and precise-invalidation baseline with zero other trial processes and no window activation. [Aligned GPU activity](results/raid-winemetalgl-headless-precise-uxtw-gpu-work.json)

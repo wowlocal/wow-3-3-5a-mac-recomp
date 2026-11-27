@@ -1,0 +1,67 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate 8-second Metal System Trace on the live 24-caster headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "direct_arb_uniforms_enabled": true,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "flag_liveness_depth": 3,
+  "i386_forward_superblocks": false,
+  "i386_mov_base_uxtw": true,
+  "draw_threshold": 512,
+  "triangle_budget": 0,
+  "gpu_missing_sequences": 0,
+  "focus_activations": 0,
+  "visible_trial_windows": 0,
+  "other_trial_instances_detected": 0,
+  "trace_frame_tags_refer_to_individual_command_buffers": true,
+  "matched_gpu_completions": 988,
+  "eligible_gpu_completions_between_trace_bounds": 988,
+  "first_sequence": 4861,
+  "last_sequence": 5848,
+  "max_clock_alignment_error_ns": 43,
+  "consecutive_completion_intervals": 987,
+  "active_time_within_completion_intervals": {
+    "Vertex": {
+      "mean_ns": 698858.6058763932,
+      "p50_ns": 619000,
+      "p99_ns": 2270125
+    },
+    "Fragment": {
+      "mean_ns": 1391161.8956433637,
+      "p50_ns": 1320041,
+      "p99_ns": 3239209
+    },
+    "Compute": {
+      "mean_ns": 30115.984802431612,
+      "p50_ns": 12125,
+      "p99_ns": 269375
+    },
+    "Union": {
+      "mean_ns": 2097587.4012158057,
+      "p50_ns": 1991333,
+      "p99_ns": 4362500
+    }
+  },
+  "completion_gap_distribution_in_trace_ns": {
+    "mean": 8605402.397163121,
+    "p50": 8600709,
+    "p99": 11237791
+  },
+  "gpu_active_fraction_of_joined_span": 0.2437523899994847,
+  "joined_intervals_with_gpu_active_time_above_2ms": 487,
+  "largest_completion_gaps": {
+    "samples": 10,
+    "median_gap_ns": 11955875.0,
+    "median_active_union_ns": 2528292.5,
+    "median_vertex_active_ns": 676625.0,
+    "median_fragment_active_ns": 1600335.0
+  }
+}
