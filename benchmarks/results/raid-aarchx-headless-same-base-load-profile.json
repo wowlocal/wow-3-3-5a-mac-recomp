@@ -1,0 +1,145 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate CPU profiling launch of the full 24-caster headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "direct_arb_uniforms_enabled": true,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "visible_trial_windows": 0,
+  "focus_activations": 0,
+  "general_m32_checks_passed": 806,
+  "gpu_completed_renders_in_52s": 5023,
+  "gpu_missing_sequences": 0,
+  "address_bits": 32,
+  "load_size_bytes": 4,
+  "displacement_range": [
+    -256,
+    255
+  ],
+  "warmed_periods": 7,
+  "counts_are_static_same_base_loads_before_first_base_write": true,
+  "same_base_groups": [
+    {
+      "static_loads": 1,
+      "weighted_cpu_usec": 1250469,
+      "share_of_mov": 0.16518751592636033
+    },
+    {
+      "static_loads": 2,
+      "weighted_cpu_usec": 438699,
+      "share_of_mov": 0.05795233472351442
+    },
+    {
+      "static_loads": 3,
+      "weighted_cpu_usec": 415051,
+      "share_of_mov": 0.0548284233137741
+    },
+    {
+      "static_loads": 4,
+      "weighted_cpu_usec": 293931,
+      "share_of_mov": 0.03882841697295256
+    },
+    {
+      "static_loads": 5,
+      "weighted_cpu_usec": 99149,
+      "share_of_mov": 0.013097627383471883
+    },
+    {
+      "static_loads": 6,
+      "weighted_cpu_usec": 57940,
+      "share_of_mov": 0.007653899994940553
+    },
+    {
+      "static_loads": 7,
+      "weighted_cpu_usec": 19332,
+      "share_of_mov": 0.002553765873355036
+    },
+    {
+      "static_loads": 8,
+      "weighted_cpu_usec": 1912,
+      "share_of_mov": 0.0002525760578240652
+    },
+    {
+      "static_loads": 9,
+      "weighted_cpu_usec": 17392,
+      "share_of_mov": 0.0022974910029686935
+    },
+    {
+      "static_loads": 12,
+      "weighted_cpu_usec": 7695,
+      "share_of_mov": 0.00101651295238294
+    },
+    {
+      "static_loads": 13,
+      "weighted_cpu_usec": 36753,
+      "share_of_mov": 0.0048550877893346585
+    },
+    {
+      "static_loads": 14,
+      "weighted_cpu_usec": 3679,
+      "share_of_mov": 0.0004859975505934811
+    },
+    {
+      "static_loads": 16,
+      "weighted_cpu_usec": 63621,
+      "share_of_mov": 0.008404362643736847
+    },
+    {
+      "static_loads": 17,
+      "weighted_cpu_usec": 9909,
+      "share_of_mov": 0.001308983345700137
+    },
+    {
+      "static_loads": 19,
+      "weighted_cpu_usec": 4603,
+      "share_of_mov": 0.0006080583651486256
+    },
+    {
+      "static_loads": 32,
+      "weighted_cpu_usec": 22824,
+      "share_of_mov": 0.003015060640050452
+    },
+    {
+      "static_loads": 33,
+      "weighted_cpu_usec": 70753,
+      "share_of_mov": 0.009346503043528286
+    },
+    {
+      "static_loads": 34,
+      "weighted_cpu_usec": 257,
+      "share_of_mov": 3.394981530375772e-05
+    },
+    {
+      "static_loads": 37,
+      "weighted_cpu_usec": 3724,
+      "share_of_mov": 0.000491942070782855
+    }
+  ],
+  "matching_mov_share": 0.3722185094657237,
+  "shares_with_at_least": {
+    "2": {
+      "among_mov": 0.20703099353936336,
+      "among_all_samples": 0.028503273679615887
+    },
+    "3": {
+      "among_mov": 0.14907865881584895,
+      "among_all_samples": 0.020524607158446093
+    },
+    "4": {
+      "among_mov": 0.09425023550207484,
+      "among_all_samples": 0.012976029390368108
+    },
+    "5": {
+      "among_mov": 0.05542181852912227,
+      "among_all_samples": 0.0076302742616033755
+    }
+  }
+}

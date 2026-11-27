@@ -1,0 +1,88 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -23419,11 +23419,47 @@
+     JitInsnRef *ref = (JitInsnRef *)malloc((size_t)n * sizeof *ref);
+     X86Insn *kept = nk ? (X86Insn *)malloc((size_t)nk * sizeof *kept) : NULL;
+     if (!ref || (nk && !kept)) { free(ref); free(kept); return; }
++    static int base_profile = -1;
++    if (base_profile < 0) {
++        const char *value = getenv("OCERZ_GUESTPROF_BASE_GROUPS");
++        base_profile = value && !strcmp(value, "1");
++    }
++    unsigned load_count[16] = {0};
++    int first_write[16];
++    if (base_profile) {
++        for (int reg = 0; reg < 16; ++reg) first_write[reg] = n;
++        for (int i = 0; i < n; ++i) {
++            const X86Insn *in = &blk->insns[i];
++            const X86Operand *mem = &in->ops[1];
++            if (in->mode32 && in->addrsize == 4 && in->seg == OCERZ_SEG_NONE &&
++                in->op == OCERZ_OP_MOV && in->nops == 2 && in->ops[0].kind == OCERZ_OPK_REG &&
++                mem->kind == OCERZ_OPK_MEM && mem->size == 4 && !mem->riprel &&
++                mem->base < 16 && mem->index == OCERZ_REG_NONE &&
++                mem->disp >= -256 && mem->disp <= 255 && first_write[mem->base] == n)
++                ++load_count[mem->base];
++            const int transfer = in->op == OCERZ_OP_CALL || in->op == OCERZ_OP_RET ||
++                                 in->op == OCERZ_OP_SYSCALL || in->op == OCERZ_OP_SYSENTER ||
++                                 in->op == OCERZ_OP_INT || in->op == OCERZ_OP_INT3;
++            for (unsigned reg = 0; reg < 16; ++reg)
++                if (first_write[reg] == n && (transfer || insn_may_write_gpr(in, reg)))
++                    first_write[reg] = i;
++        }
++    }
+     int k = 0;
+     for (int i = 0; i < n; i++) {
+         const X86Insn *in = &blk->insns[i];
+         ref[i].rip = in->rip; ref[i].op = (uint16_t)in->op; ref[i].len = (uint8_t)in->len;
+         ref[i].flags = 0; ref[i].mov_form = mov_profile_form(in); ref[i].keep = 0;
++        if (base_profile && (ref[i].mov_form & 7) == 2) {
++            const X86Operand *mem = &in->ops[1];
++            if (in->mode32 && in->addrsize == 4 && in->seg == OCERZ_SEG_NONE &&
++                mem->size == 4 && mem->base < 16 && mem->index == OCERZ_REG_NONE &&
++                !mem->riprel && mem->disp >= -256 && mem->disp <= 255 &&
++                i <= first_write[mem->base]) {
++                unsigned count = load_count[mem->base];
++                ref[i].mov_form |= (uint16_t)((count < 255 ? count : 255) << 8);
++            }
++        }
+         if (g_keep[i]) { kept[k] = *in; ref[i].keep = (uint16_t)(k + 1); k++; }
+     }
+     blk->iref = ref; blk->kept = kept; blk->n_kept = (uint16_t)nk;
+diff --git a/src/vm.c b/src/vm.c
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -436,6 +436,7 @@
+ static uint64_t g_gp_samples, g_gp_jit;
+ static uint64_t g_gp_opcode_us[OCERZ_OP_COUNT];
+ static uint64_t g_gp_mov_form_us[256];
++static uint64_t g_gp_base_group_us[256];
+ static uint64_t g_gf_key[GP_SLOTS];
+ static uint32_t g_gf_cnt[GP_SLOTS];
+
+@@ -628,6 +629,12 @@
+                 path_names[form & 7], 1u << ((form >> 3) & 3), address_names[form >> 5],
+                 (unsigned long long)g_gp_mov_form_us[form]);
+         g_gp_mov_form_us[form] = 0;
++    }
++    for (unsigned count = 1; count < 256; ++count) {
++        if (!g_gp_base_group_us[count]) continue;
++        fprintf(stderr, "ocerz: GUESTPROF[%d]   same_base_loads=%u cpu_us=%llu\n", (int)getpid(),
++                count, (unsigned long long)g_gp_base_group_us[count]);
++        g_gp_base_group_us[count] = 0;
+     }
+     memset(g_gf_key, 0, sizeof g_gf_key);
+     memset(g_gf_cnt, 0, sizeof g_gf_cnt);
+@@ -711,8 +718,10 @@
+                     guest_pc = fi.insn_rip;
+                     if (fi.insn_opcode > 0 && fi.insn_opcode < OCERZ_OP_COUNT)
+                         g_gp_opcode_us[fi.insn_opcode] += w;
+-                    if (fi.mov_form && fi.mov_form < 256)
+-                        g_gp_mov_form_us[fi.mov_form] += w;
++                    if (fi.mov_form & 255)
++                        g_gp_mov_form_us[fi.mov_form & 255] += w;
++                    if (fi.mov_form >> 8)
++                        g_gp_base_group_us[fi.mov_form >> 8] += w;
+                 }
+                 gp_bump(g_gp_key, g_gp_cnt, guest_pc ? guest_pc : 1, w);
+             } else {

@@ -784,3 +784,11 @@ Four warmed 60-second headless runs alternated the triangle budget in 65,000, 0,
 | Disabled | 99.23 | 13.14 ms |
 
 Both pairs had higher throughput and a shorter p99 gap with the triangle threshold disabled. The second pair differed by 0.27 FPS. The realm verified all 25 actors and 26 timed script rows in every launch. All four GPU sequences were consecutive, and all four readbacks showed the saved camera and overlapping spell effects. The desktop monitor recorded zero activations or visible trial windows. [Full-raid A/B](results/raid-winemetalgl-headless-triangle-budget-ab.json)
+
+### Repeated loads through one i386 register
+
+A separate run classified plain 32-bit `MOV` loads with one base register and displacements from −256 to 255. The profiler counts matching instructions in each decoded block through the first instruction that could change the base. It then weights each group by the CPU samples attributed to those loads. Across seven warmed eight-second periods, groups of at least two loads accounted for **20.70%** of mapped `MOV` time and **2.85%** of all sampled CPU time. Groups of at least three accounted for **14.91%** and **2.05%**, respectively.
+
+These percentages measure coverage for an address-reuse trial. A working optimization would save only a portion of this time and would need to preserve the i386 address wraparound. The diagnostic launch recorded consecutive GPU completions and zero visible trial windows or activations. All **806** general runtime checks passed. [Static group counts and CPU weights](results/raid-aarchx-headless-same-base-load-profile.json)
+
+Apply `patches/aarchx-m32-same-base-load-profile-trial.patch` after the MOV form profile patch. Use the same profiling flags and add `OCERZ_GUESTPROF_BASE_GROUPS=1`. The log adds `same_base_loads` rows with sample weights in microseconds.
