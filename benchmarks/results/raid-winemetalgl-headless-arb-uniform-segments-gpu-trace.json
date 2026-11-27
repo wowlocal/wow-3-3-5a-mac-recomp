@@ -1,0 +1,89 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate Metal System Trace pair on the full live headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "shader_cache_enabled": false,
+  "pipeline_cache_enabled": false,
+  "clock_alignment": "Match terminal fragment endpoints to GPU log timestamps",
+  "activity_grouping": "Clip each process-owned active interval to consecutive GPU completions",
+  "arms": [
+    {
+      "uniform_segments_enabled": false,
+      "matched_renderer_image": true,
+      "trial_visibility_notifications": 0,
+      "max_visible_trial_windows": 0,
+      "trace_recording_limit_seconds": 8,
+      "trace_frame_tags_refer_to_individual_command_buffers": true,
+      "matched_gpu_completions": 765,
+      "eligible_gpu_completions_between_trace_bounds": 765,
+      "first_sequence": 4203,
+      "last_sequence": 4967,
+      "max_clock_alignment_error_ns": 41,
+      "consecutive_completion_intervals": 764,
+      "active_time_within_completion_intervals": {
+        "Vertex": {
+          "mean_ns": 3587721.295811518,
+          "p50_ns": 3538125.0,
+          "p99_ns": 5479167
+        },
+        "Fragment": {
+          "mean_ns": 1699019.667539267,
+          "p50_ns": 1556541.5,
+          "p99_ns": 4360792
+        },
+        "Compute": {
+          "mean_ns": 34479.174083769634,
+          "p50_ns": 11875.0,
+          "p99_ns": 412625
+        },
+        "Union": {
+          "mean_ns": 5265595.191099476,
+          "p50_ns": 5261938.0,
+          "p99_ns": 8074085
+        }
+      }
+    },
+    {
+      "uniform_segments_enabled": true,
+      "matched_renderer_image": true,
+      "trial_visibility_notifications": 0,
+      "max_visible_trial_windows": 0,
+      "trace_recording_limit_seconds": 8,
+      "trace_frame_tags_refer_to_individual_command_buffers": true,
+      "matched_gpu_completions": 811,
+      "eligible_gpu_completions_between_trace_bounds": 811,
+      "first_sequence": 4209,
+      "last_sequence": 5019,
+      "max_clock_alignment_error_ns": 42,
+      "consecutive_completion_intervals": 810,
+      "active_time_within_completion_intervals": {
+        "Vertex": {
+          "mean_ns": 747339.8222222222,
+          "p50_ns": 581479.5,
+          "p99_ns": 2007751
+        },
+        "Fragment": {
+          "mean_ns": 1499550.4234567902,
+          "p50_ns": 1365937.5,
+          "p99_ns": 3604624
+        },
+        "Compute": {
+          "mean_ns": 35172.8,
+          "p50_ns": 12125.0,
+          "p99_ns": 328084
+        },
+        "Union": {
+          "mean_ns": 2269836.035802469,
+          "p50_ns": 2014583.0,
+          "p99_ns": 4750667
+        }
+      }
+    }
+  ]
+}
