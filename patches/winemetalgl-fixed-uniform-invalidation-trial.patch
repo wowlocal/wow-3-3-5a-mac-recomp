@@ -1,0 +1,223 @@
+diff --git a/src/core/api/fixed_state.mm b/src/core/api/fixed_state.mm
+--- a/src/core/api/fixed_state.mm
++++ b/src/core/api/fixed_state.mm
+@@ -4,6 +4,7 @@
+
+ #include <algorithm>
+ #include <cmath>
++#include <cstdlib>
+ #include <cstring>
+
+ #include "core/compat/compat_api.h"
+@@ -84,6 +85,34 @@
+     return ctx.state.fixed;
+ }
+
++bool preciseUniformInvalidation() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_FIXED_UNIFORM_INVALIDATION");
++        return value && !std::strcmp(value, "1");
++    }();
++    return enabled;
++}
++
++// Shader selectors still update FixedState. Only fields read by the uniform
++// packer require a new packed block.
++FixedState& fixedUniformState(Context& ctx) {
++    return preciseUniformInvalidation() ? ctx.state.fixed : fixedState(ctx);
++}
++
++template<typename T>
++void setPackedField(FixedState& state, T& field, T value) {
++    if (preciseUniformInvalidation() && std::memcmp(&field, &value, sizeof(value)) != 0)
++        ++state.version;
++    field = value;
++}
++
++template<size_t N>
++void setPackedFields(FixedState& state, float (&fields)[N], const float* values) {
++    if (preciseUniformInvalidation() && std::memcmp(fields, values, sizeof(fields)) != 0)
++        ++state.version;
++    std::copy_n(values, N, fields);
++}
++
+ bool compatOnly(Context& ctx) {
+     if (ctx.isCompat()) return true;
+     ctx.setError(GL_INVALID_OPERATION);  // removed from the core profile
+@@ -143,7 +172,7 @@
+     if (mode != GL_MODELVIEW && mode != GL_PROJECTION && mode != GL_TEXTURE && mode != GL_COLOR && !programMatrix)
+         return ctx.setError(GL_INVALID_ENUM);
+     if (mode == GL_TEXTURE && ctx.state.activeTexture >= FixedState::kTextureUnits) return ctx.setError(GL_INVALID_OPERATION);
+-    fixedState(ctx).matrixMode = mode;
++    fixedUniformState(ctx).matrixMode = mode;
+ }
+
+ void LoadIdentity(Context& ctx) { load(ctx, Mat4()); }
+@@ -356,9 +385,9 @@
+
+ void setLightModel(Context& ctx, GLenum pname, const float* v) {
+     if (!compatOnly(ctx)) return;
+-    FixedState& f = fixedState(ctx);
++    FixedState& f = fixedUniformState(ctx);
+     switch (pname) {
+-    case GL_LIGHT_MODEL_AMBIENT: std::copy(v, v + 4, f.lightModelAmbient); return;
++    case GL_LIGHT_MODEL_AMBIENT: setPackedFields(f, f.lightModelAmbient, v); return;
+     case GL_LIGHT_MODEL_LOCAL_VIEWER: f.lightModelLocalViewer = v[0] != 0; return;
+     case GL_LIGHT_MODEL_TWO_SIDE: f.lightModelTwoSide = v[0] != 0; return;
+     case GL_LIGHT_MODEL_COLOR_CONTROL:
+@@ -462,7 +491,7 @@
+         (mode != GL_EMISSION && mode != GL_AMBIENT && mode != GL_DIFFUSE && mode != GL_SPECULAR &&
+          mode != GL_AMBIENT_AND_DIFFUSE))
+         return ctx.setError(GL_INVALID_ENUM);
+-    FixedState& f = fixedState(ctx);
++    FixedState& f = fixedUniformState(ctx);
+     f.colorMaterialFace = face;
+     f.colorMaterialMode = mode;
+     trackColorMaterial(ctx);
+@@ -495,7 +524,7 @@
+ void ShadeModel(Context& ctx, GLenum mode) {
+     if (!compatOnly(ctx)) return;
+     if (mode != GL_FLAT && mode != GL_SMOOTH) return ctx.setError(GL_INVALID_ENUM);
+-    fixedState(ctx).shadeModel = mode;
++    fixedUniformState(ctx).shadeModel = mode;
+ }
+
+ // ------------------------------------------------- texture environment
+@@ -508,7 +537,7 @@
+         ctx.setError(GL_INVALID_OPERATION);
+         return nullptr;
+     }
+-    return &fixedState(ctx).texEnv[ctx.state.activeTexture];
++    return &fixedUniformState(ctx).texEnv[ctx.state.activeTexture];
+ }
+
+ bool validCombine(GLenum mode, bool rgb) {
+@@ -542,9 +571,12 @@
+             return ctx.setError(GL_INVALID_ENUM);
+         e->mode = value;
+         return;
+-    case GL_TEXTURE_ENV_COLOR:
+-        for (int i = 0; i < 4; ++i) e->color[i] = fromInt ? v[i] : std::clamp(v[i], 0.0f, 1.0f);
+-        return;
++    case GL_TEXTURE_ENV_COLOR: {
++        float color[4];
++        for (int i = 0; i < 4; ++i) color[i] = fromInt ? v[i] : std::clamp(v[i], 0.0f, 1.0f);
++        setPackedFields(ctx.state.fixed, e->color, color);
++        return;
++    }
+     case GL_COMBINE_RGB:
+         if (!validCombine(value, true)) return ctx.setError(GL_INVALID_ENUM);
+         e->combineRGB = value;
+@@ -642,7 +674,7 @@
+     if (!compatOnly(ctx)) return;
+     if (coord < GL_S || coord > GL_Q) return ctx.setError(GL_INVALID_ENUM);
+     if (ctx.state.activeTexture >= FixedState::kTextureUnits) return ctx.setError(GL_INVALID_OPERATION);
+-    FixedState& f = fixedState(ctx);
++    FixedState& f = fixedUniformState(ctx);
+     FixedState::TexGen& g = f.texGen[ctx.state.activeTexture];
+     const int c = static_cast<int>(coord - GL_S);
+     switch (pname) {
+@@ -655,17 +687,22 @@
+         g.mode[c] = mode;
+         return;
+     }
+-    case GL_OBJECT_PLANE:
+-        for (int i = 0; i < 4; ++i) g.objectPlane[c][i] = static_cast<float>(v[i]);
+-        return;
++    case GL_OBJECT_PLANE: {
++        const float plane[4] = {static_cast<float>(v[0]), static_cast<float>(v[1]),
++                                static_cast<float>(v[2]), static_cast<float>(v[3])};
++        setPackedFields(f, g.objectPlane[c], plane);
++        return;
++    }
+     case GL_EYE_PLANE: {
+         // p' = p * inverse(modelview) (GL 3.3 compatibility section 2.12.4).
+         const Mat4 inv = f.modelview.back().inverse();
++        float plane[4];
+         for (int col = 0; col < 4; ++col) {
+             double sum = 0;
+             for (int k = 0; k < 4; ++k) sum += v[k] * inv.m[col * 4 + k];
+-            g.eyePlane[c][col] = static_cast<float>(sum);
++            plane[col] = static_cast<float>(sum);
+         }
++        setPackedFields(f, g.eyePlane[c], plane);
+         return;
+     }
+     default: ctx.setError(GL_INVALID_ENUM);
+@@ -723,7 +760,7 @@
+
+ void setFog(Context& ctx, GLenum pname, const float* v) {
+     if (!compatOnly(ctx)) return;
+-    FixedState& f = fixedState(ctx);
++    FixedState& f = fixedUniformState(ctx);
+     switch (pname) {
+     case GL_FOG_MODE: {
+         const GLenum mode = static_cast<GLenum>(v[0]);
+@@ -733,11 +770,16 @@
+     }
+     case GL_FOG_DENSITY:
+         if (v[0] < 0) return ctx.setError(GL_INVALID_VALUE);
+-        f.fogDensity = v[0];
+-        return;
+-    case GL_FOG_START: f.fogStart = v[0]; return;
+-    case GL_FOG_END: f.fogEnd = v[0]; return;
+-    case GL_FOG_COLOR: for (int i = 0; i < 4; ++i) f.fogColor[i] = std::clamp(v[i], 0.0f, 1.0f); return;
++        setPackedField(f, f.fogDensity, v[0]);
++        return;
++    case GL_FOG_START: setPackedField(f, f.fogStart, v[0]); return;
++    case GL_FOG_END: setPackedField(f, f.fogEnd, v[0]); return;
++    case GL_FOG_COLOR: {
++        float color[4];
++        for (int i = 0; i < 4; ++i) color[i] = std::clamp(v[i], 0.0f, 1.0f);
++        setPackedFields(f, f.fogColor, color);
++        return;
++    }
+     case GL_FOG_COORD_SRC: {
+         const GLenum src = static_cast<GLenum>(v[0]);
+         if (src != GL_FOG_COORD && src != GL_FRAGMENT_DEPTH) return ctx.setError(GL_INVALID_ENUM);
+@@ -772,9 +814,9 @@
+ void AlphaFunc(Context& ctx, GLenum func, GLfloat ref) {
+     if (!compatOnly(ctx)) return;
+     if (func < GL_NEVER || func > GL_ALWAYS) return ctx.setError(GL_INVALID_ENUM);
+-    FixedState& f = fixedState(ctx);
+-    f.alphaFunc = func;
+-    f.alphaRef = std::clamp(ref, 0.0f, 1.0f);
++    FixedState& f = fixedUniformState(ctx);
++    setPackedField(f, f.alphaFunc, func);
++    setPackedField(f, f.alphaRef, std::clamp(ref, 0.0f, 1.0f));
+ }
+
+ void ClipPlane(Context& ctx, GLenum plane, const GLdouble* equation) {
+@@ -797,7 +839,7 @@
+
+ void LineStipple(Context& ctx, GLint factor, GLushort pattern) {
+     if (!compatOnly(ctx)) return;
+-    FixedState& f = fixedState(ctx);
++    FixedState& f = fixedUniformState(ctx);
+     f.lineStippleFactor = std::clamp(factor, 1, 256);
+     f.lineStipplePattern = pattern;
+ }
+@@ -856,13 +898,12 @@
+ // Compatibility capabilities (called by Enable/Disable/IsEnabled).
+ bool setFixedCapability(Context& ctx, GLenum cap, bool on) {
+     if (!ctx.isCompat()) return false;
+-    FixedState& f = ctx.state.fixed;
++    FixedState& f = fixedUniformState(ctx);
+     const GLuint unit = ctx.state.activeTexture;
+     auto texBit = [&](uint8_t bit) {
+         if (unit >= FixedState::kTextureUnits) return ctx.setError(GL_INVALID_OPERATION);
+         f.textureEnables[unit] = on ? (f.textureEnables[unit] | bit) : (f.textureEnables[unit] & ~bit);
+     };
+-    ++f.version;
+     switch (cap) {
+     case GL_LIGHTING: f.lighting = on; return true;
+     case GL_COLOR_MATERIAL:
+@@ -872,7 +913,7 @@
+     case GL_NORMALIZE: f.normalize = on; return true;
+     case GL_RESCALE_NORMAL: f.rescaleNormal = on; return true;
+     case GL_FOG: f.fog = on; return true;
+-    case GL_ALPHA_TEST: f.alphaTest = on; return true;
++    case GL_ALPHA_TEST: setPackedField(f, f.alphaTest, on); return true;
+     case GL_COLOR_SUM: f.colorSum = on; return true;
+     case GL_POINT_SPRITE: f.pointSprite = on; return true;
+     case GL_POINT_SMOOTH: f.pointSmooth = on; return true;

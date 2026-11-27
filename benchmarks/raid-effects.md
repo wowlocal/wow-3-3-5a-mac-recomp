@@ -869,3 +869,16 @@ The first pair lost throughput and the second gained 1 FPS. The median throughpu
 A separate headless run compared old and new packed tails in 16-byte units and recorded the last OpenGL fixed-state mutation before each repack. Of **2,097,152** in-world repacks between checkpoints, **1,841,620 (87.82%)** left the tail byte-identical. The last tracked call was `setLightModel` for **1,893,492** repacks and `MatrixMode` for **203,660**. Every interval between repacks included more than one version increment, so the recorded call identifies the latest mutation in each interval.
 
 Only five aligned slots changed in the capture. They contained the modelview normal scale, alpha-test parameters, two fog slots, and line parameters. The separately captured throughput comparisons omit these diagnostics. [Invalidation and uniform slot counts](results/raid-winemetalgl-headless-uniform-invalidation-profile.json)
+
+### Invalidate packed uniform data only when its fields change
+
+The trial updates shader selectors independently of the packed block. Its grouped setters invalidate the packed block when the stored field changes at the byte level. Paths that update materials, individual lights, point parameters, or saved attributes still use their existing invalidation. Apply `patches/winemetalgl-fixed-uniform-invalidation-trial.patch` and set `WINEMETALGL_FIXED_UNIFORM_INVALIDATION=1`. The headless comparison used direct fixed-function writes, direct ARB uniform reads, and liveness depth 3 in both arms.
+
+| Uniform invalidation | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing | 104.53 | 17.22 ms |
+| Based on packed fields | 106.88 | 17.14 ms |
+
+The median rose **2.25%**. Throughput improved in both pairs, and p99 moved in opposite directions across the pairs. Four warmed 60-second launches kept the fixed camera, 25 raid actors, exact cast timing, and consecutive GPU completions. Readbacks showed overlapping effects in both arms. Both arms passed **337** GPU tests. The monitor recorded zero visible trial windows or activations.
+
+In separate instrumented launches, a reference writer independently rebuilt and compared the full 6,384-byte block on every uniform binding. All compared blocks matched. Between in-world checkpoints, the share of bindings that fully repacked the block fell from **91.70% to 5.92%**. The share that advanced the packed block generation fell from **91.70% to 37.40%**. The throughput launches omit the reference writer. [Full-raid A/B and byte checks](results/raid-winemetalgl-headless-precise-uniform-invalidation-ab.json)

@@ -1,0 +1,153 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "vertex_shader_uniform_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "precise_fixed_uniform_invalidation": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6296,
+      "first_sequence": 3403,
+      "last_sequence": 9698,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999216625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 104.91666666666667,
+      "p99_gpu_completion_gap_ns": 17211166,
+      "min_draws": 679,
+      "max_draws": 956
+    },
+    {
+      "launch": 2,
+      "precise_fixed_uniform_invalidation": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6435,
+      "first_sequence": 3314,
+      "last_sequence": 9748,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59990305166,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 107.23333333333333,
+      "p99_gpu_completion_gap_ns": 16655625,
+      "min_draws": 682,
+      "max_draws": 956
+    },
+    {
+      "launch": 3,
+      "precise_fixed_uniform_invalidation": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6392,
+      "first_sequence": 3403,
+      "last_sequence": 9794,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994463000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 106.51666666666667,
+      "p99_gpu_completion_gap_ns": 17627666,
+      "min_draws": 702,
+      "max_draws": 955
+    },
+    {
+      "launch": 4,
+      "precise_fixed_uniform_invalidation": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6249,
+      "first_sequence": 3580,
+      "last_sequence": 9828,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993987875,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 104.13333333333334,
+      "p99_gpu_completion_gap_ns": 17234834,
+      "min_draws": 699,
+      "max_draws": 972
+    }
+  ],
+  "medians": {
+    "0": {
+      "average_completed_fps": 104.525,
+      "p99_gpu_completion_gap_ns": 17223000.0
+    },
+    "1": {
+      "average_completed_fps": 106.875,
+      "p99_gpu_completion_gap_ns": 17141645.5
+    }
+  },
+  "visual_readback_checked_per_launch": true,
+  "separate_byte_parity_probe": {
+    "0": {
+      "initialization_and_in_world_verified_blocks_at_least": 3244032,
+      "in_world_verified_bindings_between_checkpoints": 2916352,
+      "initialization_or_full_repacks_between_checkpoints": 2674428,
+      "full_repack_share": 0.9170456789852528,
+      "generation_updates_between_checkpoints": 2674428,
+      "generation_update_share": 0.9170456789852528,
+      "compared_block_size": 6384,
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "focus_activations": 0
+    },
+    "1": {
+      "initialization_and_in_world_verified_blocks_at_least": 3276800,
+      "in_world_verified_bindings_between_checkpoints": 2949120,
+      "initialization_or_full_repacks_between_checkpoints": 174551,
+      "full_repack_share": 0.05918748643663194,
+      "generation_updates_between_checkpoints": 1102900,
+      "generation_update_share": 0.3739759657118056,
+      "compared_block_size": 6384,
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "focus_activations": 0
+    }
+  },
+  "gpu_tests_per_arm": {
+    "0": {
+      "tests": 337,
+      "failed_checks": 0
+    },
+    "1": {
+      "tests": 337,
+      "failed_checks": 0
+    }
+  }
+}
