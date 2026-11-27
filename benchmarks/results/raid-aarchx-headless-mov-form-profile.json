@@ -1,0 +1,180 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Operand form sampling in the full headless 24-caster raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "renderer": "Direct ARB uniform segments enabled",
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "focus_activations": 0,
+  "visible_trial_windows": 0,
+  "gpu_sequence_continuous": true,
+  "general_runtime_checks_passed": 806,
+  "warm_cpu_periods": 7,
+  "mapped_mov_fraction": 1.0,
+  "mov_share_of_all_samples": 0.13638743331573294,
+  "top_forms": [
+    {
+      "path": "load",
+      "bytes": 4,
+      "address": "ebp",
+      "cpu_usec": 2467049,
+      "share_of_mapped_mov": 0.3293435540389707,
+      "share_of_all_samples": 0.044918322014456606
+    },
+    {
+      "path": "load",
+      "bytes": 4,
+      "address": "base_disp",
+      "cpu_usec": 1670262,
+      "share_of_mapped_mov": 0.22297490777695914,
+      "share_of_all_samples": 0.030410975365511718
+    },
+    {
+      "path": "store",
+      "bytes": 4,
+      "address": "base_disp",
+      "cpu_usec": 529538,
+      "share_of_mapped_mov": 0.0706917158591858,
+      "share_of_all_samples": 0.009641461682719444
+    },
+    {
+      "path": "store",
+      "bytes": 4,
+      "address": "ebp",
+      "cpu_usec": 507678,
+      "share_of_mapped_mov": 0.06777347220399618,
+      "share_of_all_samples": 0.009243449920798208
+    },
+    {
+      "path": "load",
+      "bytes": 4,
+      "address": "absolute",
+      "cpu_usec": 422861,
+      "share_of_mapped_mov": 0.056450660122467446,
+      "share_of_all_samples": 0.007699160643082134
+    },
+    {
+      "path": "reg_reg",
+      "bytes": 4,
+      "address": "none",
+      "cpu_usec": 385568,
+      "share_of_mapped_mov": 0.05147215780622835,
+      "share_of_all_samples": 0.007020155490413852
+    },
+    {
+      "path": "store",
+      "bytes": 4,
+      "address": "esp",
+      "cpu_usec": 326898,
+      "share_of_mapped_mov": 0.04363989086890104,
+      "share_of_all_samples": 0.005951932705788103
+    },
+    {
+      "path": "load",
+      "bytes": 4,
+      "address": "index",
+      "cpu_usec": 253368,
+      "share_of_mapped_mov": 0.03382385903147685,
+      "share_of_all_samples": 0.0046131493181363
+    },
+    {
+      "path": "load",
+      "bytes": 4,
+      "address": "base",
+      "cpu_usec": 246426,
+      "share_of_mapped_mov": 0.03289712310035488,
+      "share_of_all_samples": 0.004486754183129108
+    },
+    {
+      "path": "imm_store",
+      "bytes": 4,
+      "address": "esp",
+      "cpu_usec": 195850,
+      "share_of_mapped_mov": 0.026145380597844797,
+      "share_of_all_samples": 0.0035659013528030153
+    },
+    {
+      "path": "imm_store",
+      "bytes": 4,
+      "address": "ebp",
+      "cpu_usec": 95656,
+      "share_of_mapped_mov": 0.012769785685307337,
+      "share_of_all_samples": 0.0017416382936110554
+    },
+    {
+      "path": "store",
+      "bytes": 4,
+      "address": "base",
+      "cpu_usec": 81343,
+      "share_of_mapped_mov": 0.010859043625072706,
+      "share_of_all_samples": 0.0014810370882872386
+    },
+    {
+      "path": "imm_store",
+      "bytes": 4,
+      "address": "base_disp",
+      "cpu_usec": 61961,
+      "share_of_mapped_mov": 0.008271605449185915,
+      "share_of_all_samples": 0.0011281430366148972
+    },
+    {
+      "path": "imm_reg",
+      "bytes": 4,
+      "address": "none",
+      "cpu_usec": 54794,
+      "share_of_mapped_mov": 0.007314832700935961,
+      "share_of_all_samples": 0.0009976512572146459
+    },
+    {
+      "path": "store",
+      "bytes": 4,
+      "address": "index",
+      "cpu_usec": 41376,
+      "share_of_mapped_mov": 0.005523570424388187,
+      "share_of_all_samples": 0.0007533455929209985
+    },
+    {
+      "path": "store",
+      "bytes": 4,
+      "address": "absolute",
+      "cpu_usec": 40214,
+      "share_of_mapped_mov": 0.005368446951042791,
+      "share_of_all_samples": 0.0007321887005443985
+    },
+    {
+      "path": "store",
+      "bytes": 1,
+      "address": "ebp",
+      "cpu_usec": 19344,
+      "share_of_mapped_mov": 0.002582365291216287,
+      "share_of_all_samples": 0.0003522021739526246
+    },
+    {
+      "path": "store",
+      "bytes": 1,
+      "address": "base_disp",
+      "cpu_usec": 17899,
+      "share_of_mapped_mov": 0.0023894621767721422,
+      "share_of_all_samples": 0.0003258926132949766
+    },
+    {
+      "path": "imm_store",
+      "bytes": 1,
+      "address": "base_disp",
+      "cpu_usec": 14374,
+      "share_of_mapped_mov": 0.0019188853751004398,
+      "share_of_all_samples": 0.0002617118511370464
+    },
+    {
+      "path": "load",
+      "bytes": 4,
+      "address": "esp",
+      "cpu_usec": 12288,
+      "share_of_mapped_mov": 0.0016404107060828026,
+      "share_of_all_samples": 0.0002237314057862826
+    }
+  ]
+}

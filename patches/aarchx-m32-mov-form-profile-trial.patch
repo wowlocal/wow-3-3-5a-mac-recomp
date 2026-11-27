@@ -1,0 +1,125 @@
+--- a/include/ocerz/jit.h
++++ b/include/ocerz/jit.h
+@@ -34,6 +34,7 @@
+     uint8_t n_pinned;
+     uint8_t pin_class;
+     uint16_t insn_opcode;
++    uint16_t mov_form;
+ } OcerzJitFaultInfo;
+
+ OcerzJit *ocerz_jit_create(struct OcerzVM *vm);
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -933,13 +933,54 @@
+
+ #define JIT_MAX_EDGES 8
+
++// Path in bits 0..2, width in 3..4, addressing form in 5..7.
++static uint16_t mov_profile_form(const X86Insn *insn)
++{
++    if (insn->op != OCERZ_OP_MOV || insn->nops != 2)
++        return 0;
++    const X86Operand *dst = &insn->ops[0], *src = &insn->ops[1];
++    const X86Operand *memory = NULL;
++    unsigned path = 0;
++    if (dst->kind == OCERZ_OPK_REG) {
++        if (src->kind == OCERZ_OPK_REG) path = 1;
++        else if (src->kind == OCERZ_OPK_MEM) { path = 2; memory = src; }
++        else if (src->kind == OCERZ_OPK_IMM) path = 4;
++    } else if (dst->kind == OCERZ_OPK_MEM) {
++        memory = dst;
++        if (src->kind == OCERZ_OPK_REG) path = 3;
++        else if (src->kind == OCERZ_OPK_IMM) path = 5;
++    }
++    if (!path) return 0;
++
++    const unsigned size = dst->size;
++    unsigned width;
++    switch (size) {
++    case 1: width = 0; break;
++    case 2: width = 1; break;
++    case 4: width = 2; break;
++    case 8: width = 3; break;
++    default: return 0;
++    }
++
++    unsigned address = 0;
++    if (memory) {
++        if (insn->seg != OCERZ_SEG_NONE) address = 7;
++        else if (memory->index != OCERZ_REG_NONE) address = 5;
++        else if (memory->base == OCERZ_RSP) address = 1;
++        else if (memory->base == OCERZ_RBP) address = 2;
++        else if (memory->riprel || memory->base == OCERZ_REG_NONE) address = 6;
++        else address = memory->disp ? 4 : 3;
++    }
++    return (uint16_t)(path | width << 3 | address << 5);
++}
++
+ typedef struct JitInsnRef {
+     uint64_t rip;
+     uint16_t op;
+     uint8_t len;
+     uint8_t flags;
+     uint16_t keep;
+-    uint16_t pad;
++    uint16_t mov_form;
+ } JitInsnRef;
+
+ struct JitLaneRec { uint32_t off; uint16_t dirty; uint8_t l0[16]; uint8_t yc[16]; };
+@@ -23382,7 +23423,7 @@
+     for (int i = 0; i < n; i++) {
+         const X86Insn *in = &blk->insns[i];
+         ref[i].rip = in->rip; ref[i].op = (uint16_t)in->op; ref[i].len = (uint8_t)in->len;
+-        ref[i].flags = 0; ref[i].pad = 0; ref[i].keep = 0;
++        ref[i].flags = 0; ref[i].mov_form = mov_profile_form(in); ref[i].keep = 0;
+         if (g_keep[i]) { kept[k] = *in; ref[i].keep = (uint16_t)(k + 1); k++; }
+     }
+     blk->iref = ref; blk->kept = kept; blk->n_kept = (uint16_t)nk;
+@@ -28378,6 +28419,8 @@
+     if (out->insn_index >= 0) {
+         out->insn_rip = blk_insn_rip(b, out->insn_index);
+         out->insn_opcode = (uint16_t)blk_insn_op(b, out->insn_index);
++        out->mov_form = b->insns ? mov_profile_form(&b->insns[out->insn_index])
++                                 : b->iref[out->insn_index].mov_form;
+     }
+     out->n_pinned = b->n_pinned;
+     out->pin_class = b->pin_class;
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -435,6 +435,7 @@
+ static uint32_t g_gh_cnt[GP_SLOTS];
+ static uint64_t g_gp_samples, g_gp_jit;
+ static uint64_t g_gp_opcode_us[OCERZ_OP_COUNT];
++static uint64_t g_gp_mov_form_us[256];
+ static uint64_t g_gf_key[GP_SLOTS];
+ static uint32_t g_gf_cnt[GP_SLOTS];
+
+@@ -614,6 +615,19 @@
+         fprintf(stderr, "ocerz: GUESTPROF[%d]   opcode %s cpu_us=%llu\n", (int)getpid(),
+                 ocerz_op_name(op), (unsigned long long)g_gp_opcode_us[op]);
+         g_gp_opcode_us[op] = 0;
++    }
++    static const char *const path_names[] = {
++        "none", "reg_reg", "load", "store", "imm_reg", "imm_store", "other", "other"
++    };
++    static const char *const address_names[] = {
++        "none", "esp", "ebp", "base", "base_disp", "index", "absolute", "segment"
++    };
++    for (unsigned form = 1; form < 256; ++form) {
++        if (!g_gp_mov_form_us[form]) continue;
++        fprintf(stderr, "ocerz: GUESTPROF[%d]   mov_form %s bytes=%u address=%s cpu_us=%llu\n", (int)getpid(),
++                path_names[form & 7], 1u << ((form >> 3) & 3), address_names[form >> 5],
++                (unsigned long long)g_gp_mov_form_us[form]);
++        g_gp_mov_form_us[form] = 0;
+     }
+     memset(g_gf_key, 0, sizeof g_gf_key);
+     memset(g_gf_cnt, 0, sizeof g_gf_cnt);
+@@ -697,6 +711,8 @@
+                     guest_pc = fi.insn_rip;
+                     if (fi.insn_opcode > 0 && fi.insn_opcode < OCERZ_OP_COUNT)
+                         g_gp_opcode_us[fi.insn_opcode] += w;
++                    if (fi.mov_form && fi.mov_form < 256)
++                        g_gp_mov_form_us[fi.mov_form] += w;
+                 }
+                 gp_bump(g_gp_key, g_gp_cnt, guest_pc ? guest_pc : 1, w);
+             } else {

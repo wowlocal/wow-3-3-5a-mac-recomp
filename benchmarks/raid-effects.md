@@ -753,3 +753,9 @@ Both settings passed eight focused i386 interpreter comparisons in separate proc
 Four warmed 60-second headless launches with direct ARB uniform reads enabled in both arms had the same median throughput of **94.57 FPS**. Median p99 moved from **14.90 to 14.43 ms**. All four sequences were consecutive, the camera and cast schedule matched, and no trial window appeared or acquired focus. The change remains opt-in. [Live A/B and checks](results/raid-aarchx-headless-comis-ccmp-ab.json)
 
 Apply `patches/aarchx-m32-comis-equality-ccmp-trial.patch` and set `OCERZ_M32_COMIS_EQ_CCMP=1` to test the trial. Leave the switch unset for control. Run `test_jit32` with each case number from `0` through `7` in its own process. `OCERZ_M32_COMIS_EQ_CCMP_LOG` enables the compile witness in a separate run.
+
+### MOV operand forms in the full raid
+
+Seven warmed eight-second periods mapped all sampled `MOV` weight to an operand form. The largest forms were 32-bit loads through `EBP` and 32-bit loads through another base register with a displacement. They accounted for **32.93%** and **22.30%** of mapped `MOV` time and **7.53%** together across all CPU samples. [Operand profile](results/raid-aarchx-headless-mov-form-profile.json)
+
+Apply `patches/aarchx-m32-mov-form-profile-trial.patch` after the guest instruction profile patch. Use the same profiling flags and disable the translation cache so the compact instruction records contain operand metadata. All **806** general runtime checks passed.
