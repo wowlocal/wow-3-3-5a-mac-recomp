@@ -658,7 +658,7 @@ A hidden live trace with Metal GPU Counters and Metal Performance Overview liste
 
 The fixed-function uniform block already supplies a directional light's half vector for the infinite-viewer model. The trial reads that value in the generated vertex shader. The offscreen A/B used four directional lights, variable per-draw normals, the captured 826-draw triangle order, and a 1365 × 768 surface. Four interleaved five-second windows per arm moved the median from **909.5 to 934.0 GPU-completed FPS** and p99 from **5.06 to 4.86 ms**. The sequence stayed consecutive in every window, all framebuffer checksums matched, and both arms passed **336** GPU tests. [Offscreen timings and checks](results/winemetalgl-directional-half-vector-ab.json)
 
-Separate instrumented runs moved the median of the mean render-encoder durations from **54.78 to 50.69 µs**. These timings span vertex and fragment work. The synthetic scene isolates a directional-light workload, and the live raid A/B is pending. [Encoder timing](results/winemetalgl-directional-half-vector-ab.json)
+Separate instrumented runs moved the median of the mean render-encoder durations from **54.78 to 50.69 µs**. These timings span vertex and fragment work. The synthetic scene isolates a directional-light workload. [Encoder timing](results/winemetalgl-directional-half-vector-ab.json)
 
 Apply `patches/winemetalgl-directional-half-vector-trial.patch` to the WineMetalGL trial and rebuild. Run the indexed probe with `OCERZ_WMGL_PROBE_DIRECTIONAL_LIGHTS=1`, `WINEMETALGL_COMMIT_DRAWS=64`, and `OCERZ_WMGL_COMMIT_TRIANGLES=65000`. Supply `benchmarks/fixtures/raid-triangle-order.tsv` and a fresh `OCERZ_WMGL_GPU_LOG` for each launch.
 
@@ -700,3 +700,14 @@ One warmed 60-second run per arm rendered the full 24-caster fixture at 1365 × 
 | Matrix-stack trial | 93.80 | 15.75 ms |
 
 Both GPU sequences were consecutive. The desktop monitor saw zero visible trial windows and zero activations in both runs. This pair measured a smaller p99 gap with the patch and slightly lower average throughput. [Full-raid pair and verification](results/raid-winemetalgl-headless-matrix-mode-ab.json)
+
+### Directional half vectors in the live headless raid
+
+Four warmed 60-second runs used control, trial, trial, and control order in the original client. The full 24-caster workload rendered at 1365 × 768 with VSync and both frame caps disabled. The renderer mapping and all 26 fixture timing rows were checked for every launch. The four captures showed the same camera and overlapping spell effects. GPU sequences were consecutive, and the monitor recorded zero visible trial windows or activations.
+
+| Arm | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Control | 94.87 | 15.69 ms |
+| Directional half-vector trial | 94.89 | 15.95 ms |
+
+Throughput differed by 0.03%, and p99 rose by 0.26 ms. The live benchmark retains the control renderer. [Full-raid A/B](results/raid-winemetalgl-headless-directional-half-vector-ab.json)
