@@ -1149,3 +1149,16 @@ A separate 20-second Metal System Trace at the 512-draw threshold matched **2,33
 Two ARB programs, with 65 and 40 assembly instructions and 223 parameters each, accounted for **42.66%** of all submitted vertex references and **41.71%** in the slowest intervals. The counts use the submitted native vertex or index count and multiplicity. They measure references before any reuse in the GPU vertex cache. Activity is attributed to whole command buffers. The per-program totals describe their contents.
 
 Apply `patches/winemetalgl-submission-vertex-work-trial.patch` on the diagnostic renderer and set `OCERZ_WMGL_VERTEX_WORK_LOG` alongside `OCERZ_WMGL_SUBMISSION_LOG`. The recorder counts issued direct draws after primitive expansion. The renderer passed **338** GPU tests with the diagnostic disabled. The live trace verified the camera, overlapping effects, all 26 cast timing rows, consecutive output completions and zero visible trial windows or activations. [Matched draw counts and GPU timestamps](results/raid-winemetalgl-headless-vertex-work-by-submission.json)
+
+### Select mixed ARB parameters without a shader branch
+
+The trial reads the contiguous uniform segment through a clamped index and uses GLSL's boolean `mix` to select either of up to two remaining elements. The existing index clamp still handles values outside the complete parameter array. The larger mixed arrays use the original selector.
+
+Apply `patches/winemetalgl-arb-branchless-segments-trial.patch` after the direct uniform-segment patch and enable `WINEMETALGL_ARB_BRANCHLESS_SEGMENTS=1` with `WINEMETALGL_ARB_UNIFORM_SEGMENTS=1`. A separate compilation diagnostic confirmed the emitted path on the 40- and 65-instruction shader shapes with 223 parameters. Both modes passed **338** GPU tests after a clean rebuild. The focused test checks both ends of the array and literal selection when the unselected uniform contains NaNs.
+
+| Mixed ARB parameter selection | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Branch and switch | 116.29 | 13.87 ms |
+| Boolean selection | 120.58 | 13.87 ms |
+
+The throughput median rose **3.69%**, with gains of **6.08** and **2.50 FPS** in the two pairs. P99 moved by about **0.13 ms** in opposite directions. Keep this trial enabled for follow-up throughput comparisons. The four warmed 60-second launches kept the same runtime, renderer, camera, spell timing, draw threshold and overlapping effects. All GPU sequences were consecutive, and the monitor recorded zero trial windows or activations. [Live A/B and shape witness](results/raid-winemetalgl-headless-arb-branchless-segments-ab.json)
