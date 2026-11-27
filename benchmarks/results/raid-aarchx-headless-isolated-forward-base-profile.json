@@ -1,0 +1,453 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate CPU-time-weighted profiles of the hottest guest thread in the isolated 24-caster headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows_per_launch": 26,
+  "direct_arb_uniforms_enabled": true,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "flag_liveness_depth": 3,
+  "draw_threshold": 512,
+  "triangle_budget": 0,
+  "other_trial_instances_detected": 0,
+  "arms": {
+    "0": {
+      "forward_superblocks": false,
+      "profile_periods": [
+        {
+          "elapsed_seconds": 24,
+          "sampled_cpu_ms": 7746,
+          "translated_percent": 65.0
+        },
+        {
+          "elapsed_seconds": 32,
+          "sampled_cpu_ms": 7826,
+          "translated_percent": 63.7
+        },
+        {
+          "elapsed_seconds": 40,
+          "sampled_cpu_ms": 7813,
+          "translated_percent": 64.6
+        },
+        {
+          "elapsed_seconds": 48,
+          "sampled_cpu_ms": 7797,
+          "translated_percent": 64.7
+        },
+        {
+          "elapsed_seconds": 56,
+          "sampled_cpu_ms": 7696,
+          "translated_percent": 62.6
+        },
+        {
+          "elapsed_seconds": 64,
+          "sampled_cpu_ms": 7847,
+          "translated_percent": 65.0
+        },
+        {
+          "elapsed_seconds": 72,
+          "sampled_cpu_ms": 7852,
+          "translated_percent": 64.0
+        }
+      ],
+      "total_sampled_cpu_usec": 54577000,
+      "top_guest_opcodes": [
+        {
+          "opcode": "mov",
+          "cpu_usec": 9825066,
+          "share_of_all_sampled_cpu": 0.18002209722044085
+        },
+        {
+          "opcode": "jcc",
+          "cpu_usec": 5432418,
+          "share_of_all_sampled_cpu": 0.09953676457115634
+        },
+        {
+          "opcode": "movss",
+          "cpu_usec": 2054295,
+          "share_of_all_sampled_cpu": 0.03764030635615736
+        },
+        {
+          "opcode": "mulss",
+          "cpu_usec": 1930112,
+          "share_of_all_sampled_cpu": 0.035364933946534255
+        },
+        {
+          "opcode": "push",
+          "cpu_usec": 1596174,
+          "share_of_all_sampled_cpu": 0.029246275903768985
+        },
+        {
+          "opcode": "test",
+          "cpu_usec": 1522346,
+          "share_of_all_sampled_cpu": 0.027893544899866243
+        },
+        {
+          "opcode": "cmp",
+          "cpu_usec": 1480296,
+          "share_of_all_sampled_cpu": 0.0271230738223061
+        },
+        {
+          "opcode": "add",
+          "cpu_usec": 1267237,
+          "share_of_all_sampled_cpu": 0.02321924986716016
+        }
+      ],
+      "warmed_periods": 7,
+      "counts_are_static_same_base_loads_before_first_base_write": true,
+      "same_base_groups": [
+        {
+          "static_loads": 1,
+          "weighted_cpu_usec": 1572376,
+          "share_of_mov": 0.1600371946610842
+        },
+        {
+          "static_loads": 2,
+          "weighted_cpu_usec": 668941,
+          "share_of_mov": 0.06808514059854662
+        },
+        {
+          "static_loads": 3,
+          "weighted_cpu_usec": 605078,
+          "share_of_mov": 0.061585133372132055
+        },
+        {
+          "static_loads": 4,
+          "weighted_cpu_usec": 427365,
+          "share_of_mov": 0.04349741772727023
+        },
+        {
+          "static_loads": 5,
+          "weighted_cpu_usec": 119734,
+          "share_of_mov": 0.01218658480258555
+        },
+        {
+          "static_loads": 6,
+          "weighted_cpu_usec": 63440,
+          "share_of_mov": 0.006456954080512029
+        },
+        {
+          "static_loads": 7,
+          "weighted_cpu_usec": 11455,
+          "share_of_mov": 0.0011658954759184315
+        },
+        {
+          "static_loads": 8,
+          "weighted_cpu_usec": 3415,
+          "share_of_mov": 0.00034758036231003435
+        },
+        {
+          "static_loads": 9,
+          "weighted_cpu_usec": 14109,
+          "share_of_mov": 0.0014360208877986164
+        },
+        {
+          "static_loads": 10,
+          "weighted_cpu_usec": 114,
+          "share_of_mov": 1.1602975491462347e-05
+        },
+        {
+          "static_loads": 12,
+          "weighted_cpu_usec": 13584,
+          "share_of_mov": 0.0013825861322458292
+        },
+        {
+          "static_loads": 13,
+          "weighted_cpu_usec": 204440,
+          "share_of_mov": 0.020808002714689144
+        },
+        {
+          "static_loads": 16,
+          "weighted_cpu_usec": 70649,
+          "share_of_mov": 0.007190689609616872
+        },
+        {
+          "static_loads": 17,
+          "weighted_cpu_usec": 5290,
+          "share_of_mov": 0.0005384187749985598
+        },
+        {
+          "static_loads": 19,
+          "weighted_cpu_usec": 3085,
+          "share_of_mov": 0.0003139928016768539
+        },
+        {
+          "static_loads": 25,
+          "weighted_cpu_usec": 2178,
+          "share_of_mov": 0.00022167790017899117
+        },
+        {
+          "static_loads": 26,
+          "weighted_cpu_usec": 2473,
+          "share_of_mov": 0.00025170314377531916
+        },
+        {
+          "static_loads": 32,
+          "weighted_cpu_usec": 15106,
+          "share_of_mov": 0.0015374960331055283
+        },
+        {
+          "static_loads": 33,
+          "weighted_cpu_usec": 127381,
+          "share_of_mov": 0.012964900184894433
+        },
+        {
+          "static_loads": 37,
+          "weighted_cpu_usec": 5565,
+          "share_of_mov": 0.0005664084088595436
+        }
+      ],
+      "matching_mov_share": 0.4005854006476903,
+      "shares_with_at_least": {
+        "2": {
+          "among_mov": 0.2405482059866061,
+          "among_all_samples": 0.04330399252432343
+        },
+        "3": {
+          "among_mov": 0.17246306538805947,
+          "among_all_samples": 0.03104716272422449
+        },
+        "4": {
+          "among_mov": 0.11087793201592742,
+          "among_all_samples": 0.019960477856972716
+        },
+        "5": {
+          "among_mov": 0.0673805142886572,
+          "among_all_samples": 0.012129981494035949
+        }
+      }
+    },
+    "1": {
+      "forward_superblocks": true,
+      "profile_periods": [
+        {
+          "elapsed_seconds": 24,
+          "sampled_cpu_ms": 7841,
+          "translated_percent": 63.4
+        },
+        {
+          "elapsed_seconds": 32,
+          "sampled_cpu_ms": 7789,
+          "translated_percent": 62.8
+        },
+        {
+          "elapsed_seconds": 40,
+          "sampled_cpu_ms": 6885,
+          "translated_percent": 63.7
+        },
+        {
+          "elapsed_seconds": 48,
+          "sampled_cpu_ms": 7654,
+          "translated_percent": 62.9
+        },
+        {
+          "elapsed_seconds": 56,
+          "sampled_cpu_ms": 7904,
+          "translated_percent": 63.2
+        },
+        {
+          "elapsed_seconds": 64,
+          "sampled_cpu_ms": 7867,
+          "translated_percent": 64.0
+        },
+        {
+          "elapsed_seconds": 72,
+          "sampled_cpu_ms": 7898,
+          "translated_percent": 63.3
+        }
+      ],
+      "total_sampled_cpu_usec": 53838000,
+      "top_guest_opcodes": [
+        {
+          "opcode": "mov",
+          "cpu_usec": 9915939,
+          "share_of_all_sampled_cpu": 0.18418104312938816
+        },
+        {
+          "opcode": "jcc",
+          "cpu_usec": 4935822,
+          "share_of_all_sampled_cpu": 0.09167914855678146
+        },
+        {
+          "opcode": "movss",
+          "cpu_usec": 2356680,
+          "share_of_all_sampled_cpu": 0.04377354285077455
+        },
+        {
+          "opcode": "mulss",
+          "cpu_usec": 1889275,
+          "share_of_all_sampled_cpu": 0.0350918496229429
+        },
+        {
+          "opcode": "push",
+          "cpu_usec": 1648920,
+          "share_of_all_sampled_cpu": 0.030627437869163044
+        },
+        {
+          "opcode": "test",
+          "cpu_usec": 1473509,
+          "share_of_all_sampled_cpu": 0.027369311638619564
+        },
+        {
+          "opcode": "cmp",
+          "cpu_usec": 1194213,
+          "share_of_all_sampled_cpu": 0.022181600356625433
+        },
+        {
+          "opcode": "add",
+          "cpu_usec": 1079307,
+          "share_of_all_sampled_cpu": 0.020047308592444
+        }
+      ],
+      "warmed_periods": 7,
+      "counts_are_static_same_base_loads_before_first_base_write": true,
+      "same_base_groups": [
+        {
+          "static_loads": 1,
+          "weighted_cpu_usec": 1185294,
+          "share_of_mov": 0.11953421657797612
+        },
+        {
+          "static_loads": 2,
+          "weighted_cpu_usec": 597268,
+          "share_of_mov": 0.06023312567775982
+        },
+        {
+          "static_loads": 3,
+          "weighted_cpu_usec": 532727,
+          "share_of_mov": 0.053724311938586955
+        },
+        {
+          "static_loads": 4,
+          "weighted_cpu_usec": 525553,
+          "share_of_mov": 0.05300083027941176
+        },
+        {
+          "static_loads": 5,
+          "weighted_cpu_usec": 140631,
+          "share_of_mov": 0.014182317983198566
+        },
+        {
+          "static_loads": 6,
+          "weighted_cpu_usec": 96480,
+          "share_of_mov": 0.009729789584223944
+        },
+        {
+          "static_loads": 7,
+          "weighted_cpu_usec": 12572,
+          "share_of_mov": 0.0012678577389392976
+        },
+        {
+          "static_loads": 8,
+          "weighted_cpu_usec": 23425,
+          "share_of_mov": 0.0023623582194283363
+        },
+        {
+          "static_loads": 9,
+          "weighted_cpu_usec": 12871,
+          "share_of_mov": 0.0012980112120496102
+        },
+        {
+          "static_loads": 10,
+          "weighted_cpu_usec": 5742,
+          "share_of_mov": 0.0005790677010013877
+        },
+        {
+          "static_loads": 11,
+          "weighted_cpu_usec": 4792,
+          "share_of_mov": 0.0004832623516542407
+        },
+        {
+          "static_loads": 12,
+          "weighted_cpu_usec": 4409,
+          "share_of_mov": 0.0004446376687069172
+        },
+        {
+          "static_loads": 13,
+          "weighted_cpu_usec": 4918,
+          "share_of_mov": 0.000495969166409757
+        },
+        {
+          "static_loads": 14,
+          "weighted_cpu_usec": 5457,
+          "share_of_mov": 0.0005503260961972436
+        },
+        {
+          "static_loads": 15,
+          "weighted_cpu_usec": 171430,
+          "share_of_mov": 0.017288327409033074
+        },
+        {
+          "static_loads": 16,
+          "weighted_cpu_usec": 74934,
+          "share_of_mov": 0.00755692426103065
+        },
+        {
+          "static_loads": 17,
+          "weighted_cpu_usec": 9482,
+          "share_of_mov": 0.0009562382342206824
+        },
+        {
+          "static_loads": 18,
+          "weighted_cpu_usec": 2662,
+          "share_of_mov": 0.0002684566736443215
+        },
+        {
+          "static_loads": 19,
+          "weighted_cpu_usec": 1046,
+          "share_of_mov": 0.00010548673201801665
+        },
+        {
+          "static_loads": 26,
+          "weighted_cpu_usec": 205,
+          "share_of_mov": 2.0673785911752784e-05
+        },
+        {
+          "static_loads": 32,
+          "weighted_cpu_usec": 10006,
+          "share_of_mov": 0.0010090824479658457
+        },
+        {
+          "static_loads": 33,
+          "weighted_cpu_usec": 78389,
+          "share_of_mov": 0.0079053531894458
+        },
+        {
+          "static_loads": 34,
+          "weighted_cpu_usec": 422,
+          "share_of_mov": 4.255774465736427e-05
+        },
+        {
+          "static_loads": 37,
+          "weighted_cpu_usec": 9465,
+          "share_of_mov": 0.0009545238227060493
+        }
+      ],
+      "matching_mov_share": 0.3539937064961775,
+      "shares_with_at_least": {
+        "2": {
+          "among_mov": 0.2344594899182014,
+          "among_all_samples": 0.0431829934247186
+        },
+        "3": {
+          "among_mov": 0.17422636424044158,
+          "among_all_samples": 0.03208919350644526
+        },
+        "4": {
+          "among_mov": 0.12050205230185462,
+          "among_all_samples": 0.022194193692187673
+        },
+        "5": {
+          "among_mov": 0.06750122202244285,
+          "among_all_samples": 0.012432445484601954
+        }
+      }
+    }
+  }
+}

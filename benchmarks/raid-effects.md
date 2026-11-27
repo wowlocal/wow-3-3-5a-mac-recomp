@@ -941,3 +941,9 @@ Four warmed 60-second launches repeated the forward-branch comparison on the dir
 #### Isolated recheck of matrix generation reuse
 
 Four warmed 60-second launches repeated the matrix-generation comparison with precise uniform invalidation on in both arms. The control median was **117.41 FPS** at **13.40 ms p99**. Reusing the generation reached **115.28 FPS** at **13.94 ms p99**. The two pairs disagreed in direction. Every launch verified the camera, spell effects, cast schedule, consecutive GPU completions, and zero visible windows or activations. The process checker verified cleanup between launches. [Isolated throughput recheck](results/raid-winemetalgl-headless-retain-matrix-generation-isolated-recheck.json)
+
+### Same-base load groups with isolated forward-branch profiles
+
+Two isolated diagnostic launches used precise uniform invalidation in both arms and varied forward-branch merging. The same-base classifier weights samples for plain 32-bit guest `MOV` loads using the number of statically matching loads before the first write to that base in the compiled block. A side exit can make the executed group shorter. Both launches supplied seven warmed eight-second periods.
+
+Guest conditional branches accounted for **9.95%** of sampled CPU time with merging off and **9.17%** with merging on. Loads in static groups of at least three accounted for **3.10%** and **3.21%**, respectively. The translated share ranged from **62.6–65.0%** with merging off and **62.8–64.0%** with merging on. Each launch kept consecutive GPU completions and the full scene with zero visible windows or activations. The process checker passed between launches. [Isolated CPU profiles](results/raid-aarchx-headless-isolated-forward-base-profile.json)
