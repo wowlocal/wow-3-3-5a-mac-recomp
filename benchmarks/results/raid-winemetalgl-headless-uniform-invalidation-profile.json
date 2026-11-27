@@ -1,0 +1,65 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate diagnostic capture of the live headless 24-caster raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "method": "Compare previous and newly packed std140 tail in 16-byte units. Attribute each repack to the last tracked fixed-state mutation, which may follow other mutations before the same draw.",
+  "liveness_analysis_depth": 3,
+  "direct_arb_uniforms": true,
+  "direct_fixed_uniform_tail": true,
+  "in_world_repacks_between_checkpoints": 2097152,
+  "repacks_with_unchanged_tail": 1841620,
+  "with_single_version_increment": 0,
+  "repack_reasons": [
+    {
+      "last_mutation": "setLightModel",
+      "parameter": "0x0",
+      "single_version_increment": false,
+      "repacks": 1893492,
+      "unchanged_tail": 1671831
+    },
+    {
+      "last_mutation": "MatrixMode",
+      "parameter": "0x0",
+      "single_version_increment": false,
+      "repacks": 203660,
+      "unchanged_tail": 169789
+    }
+  ],
+  "changed_aligned_slots": [
+    {
+      "byte_offset": 2864,
+      "change_count": 140626,
+      "packed_uniform": "gl_NormalScale"
+    },
+    {
+      "byte_offset": 6224,
+      "change_count": 107677,
+      "packed_uniform": "wmgl_AlphaTest"
+    },
+    {
+      "byte_offset": 6192,
+      "change_count": 33653,
+      "packed_uniform": "gl_Fog.color"
+    },
+    {
+      "byte_offset": 6208,
+      "change_count": 5044,
+      "packed_uniform": "gl_Fog scalar parameters"
+    },
+    {
+      "byte_offset": 6240,
+      "change_count": 5044,
+      "packed_uniform": "wmgl_LineParams"
+    }
+  ],
+  "gpu_missing_sequences": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0
+}

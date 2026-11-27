@@ -863,3 +863,9 @@ Apply `patches/aarchx-m32-forward-superblock-trial.patch` to the AArchX source a
 | Enabled | 105.53 | 14.39 ms |
 
 The first pair lost throughput and the second gained 1 FPS. The median throughput fell **2.55%**. The p99 changes across pairs had opposite signs. Four warmed 60-second launches used direct fixed-function uniform writes, direct ARB uniforms, liveness depth 3, and the same renderer. GPU completions were consecutive. The readbacks showed the fixed camera and overlapping effects, the realm checked all cast timing rows, and the desktop monitor recorded zero visible trial windows or activations. [Full-raid A/B, compile coverage and checks](results/raid-aarchx-headless-i386-forward-superblock-ab.json)
+
+### Fixed-function uniform invalidations and changed fields
+
+A separate headless run compared old and new packed tails in 16-byte units and recorded the last OpenGL fixed-state mutation before each repack. Of **2,097,152** in-world repacks between checkpoints, **1,841,620 (87.82%)** left the tail byte-identical. The last tracked call was `setLightModel` for **1,893,492** repacks and `MatrixMode` for **203,660**. Every interval between repacks included more than one version increment, so the recorded call identifies the latest mutation in each interval.
+
+Only five aligned slots changed in the capture. They contained the modelview normal scale, alpha-test parameters, two fog slots, and line parameters. The separately captured throughput comparisons omit these diagnostics. [Invalidation and uniform slot counts](results/raid-winemetalgl-headless-uniform-invalidation-profile.json)
