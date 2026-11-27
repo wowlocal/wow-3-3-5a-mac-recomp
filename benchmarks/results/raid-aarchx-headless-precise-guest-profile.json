@@ -1,0 +1,235 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate CPU time-weighted profile of the hottest guest thread in the 24-caster headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "direct_arb_uniforms_enabled": true,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "triangle_budget": 0,
+  "draw_threshold": 512,
+  "flag_liveness_depth": 3,
+  "warmed_periods": [
+    {
+      "elapsed_seconds": 24,
+      "sampled_cpu_ms": 7792,
+      "translated_percent": 64.5,
+      "runtime_percent": 35.5
+    },
+    {
+      "elapsed_seconds": 32,
+      "sampled_cpu_ms": 7722,
+      "translated_percent": 65.9,
+      "runtime_percent": 34.1
+    },
+    {
+      "elapsed_seconds": 40,
+      "sampled_cpu_ms": 7769,
+      "translated_percent": 63.2,
+      "runtime_percent": 36.8
+    },
+    {
+      "elapsed_seconds": 48,
+      "sampled_cpu_ms": 7775,
+      "translated_percent": 65.6,
+      "runtime_percent": 34.4
+    },
+    {
+      "elapsed_seconds": 56,
+      "sampled_cpu_ms": 7758,
+      "translated_percent": 65.1,
+      "runtime_percent": 34.9
+    },
+    {
+      "elapsed_seconds": 64,
+      "sampled_cpu_ms": 7754,
+      "translated_percent": 65.4,
+      "runtime_percent": 34.6
+    },
+    {
+      "elapsed_seconds": 72,
+      "sampled_cpu_ms": 7549,
+      "translated_percent": 64.9,
+      "runtime_percent": 35.1
+    }
+  ],
+  "total_sampled_cpu_usec": 54119000,
+  "top_guest_opcodes": [
+    {
+      "opcode": "mov",
+      "cpu_usec": 10062735,
+      "share_of_all_sampled_cpu": 0.1859371939614553
+    },
+    {
+      "opcode": "jcc",
+      "cpu_usec": 5249367,
+      "share_of_all_sampled_cpu": 0.09699674790738927
+    },
+    {
+      "opcode": "movss",
+      "cpu_usec": 2092190,
+      "share_of_all_sampled_cpu": 0.03865906613204235
+    },
+    {
+      "opcode": "mulss",
+      "cpu_usec": 1811823,
+      "share_of_all_sampled_cpu": 0.03347850108095124
+    },
+    {
+      "opcode": "push",
+      "cpu_usec": 1737953,
+      "share_of_all_sampled_cpu": 0.03211354607439162
+    },
+    {
+      "opcode": "test",
+      "cpu_usec": 1567713,
+      "share_of_all_sampled_cpu": 0.028967885585469057
+    },
+    {
+      "opcode": "cmp",
+      "cpu_usec": 1556032,
+      "share_of_all_sampled_cpu": 0.0287520464162309
+    },
+    {
+      "opcode": "add",
+      "cpu_usec": 1261949,
+      "share_of_all_sampled_cpu": 0.02331803987509008
+    },
+    {
+      "opcode": "ret",
+      "cpu_usec": 1037344,
+      "share_of_all_sampled_cpu": 0.01916783384763207
+    },
+    {
+      "opcode": "call",
+      "cpu_usec": 986532,
+      "share_of_all_sampled_cpu": 0.018228939928675695
+    },
+    {
+      "opcode": "addss",
+      "cpu_usec": 964931,
+      "share_of_all_sampled_cpu": 0.017829800994105582
+    },
+    {
+      "opcode": "ucomiss",
+      "cpu_usec": 820716,
+      "share_of_all_sampled_cpu": 0.015165025222195531
+    }
+  ],
+  "sampled_arm64_by_guest_opcode": {
+    "jcc": [
+      {
+        "arm_mnemonic": "b",
+        "cpu_usec": 2284602,
+        "share": 0.43521476017965594
+      },
+      {
+        "arm_mnemonic": "ldr",
+        "cpu_usec": 1640177,
+        "share": 0.3124523394915997
+      },
+      {
+        "arm_mnemonic": "stp",
+        "cpu_usec": 416364,
+        "share": 0.0793169919344561
+      },
+      {
+        "arm_mnemonic": "cmp",
+        "cpu_usec": 382465,
+        "share": 0.07285926093565186
+      },
+      {
+        "arm_mnemonic": "fcmp",
+        "cpu_usec": 79604,
+        "share": 0.015164495071501001
+      },
+      {
+        "arm_mnemonic": "cbnz",
+        "cpu_usec": 68178,
+        "share": 0.012987851678116618
+      }
+    ],
+    "mov": [
+      {
+        "arm_mnemonic": "add",
+        "cpu_usec": 5281927,
+        "share": 0.5248997414718762
+      },
+      {
+        "arm_mnemonic": "sub",
+        "cpu_usec": 2405492,
+        "share": 0.23904952281859754
+      },
+      {
+        "arm_mnemonic": "mov",
+        "cpu_usec": 1377731,
+        "share": 0.13691416896102301
+      },
+      {
+        "arm_mnemonic": "ldapur",
+        "cpu_usec": 659791,
+        "share": 0.06556776065354002
+      },
+      {
+        "arm_mnemonic": "stlur",
+        "cpu_usec": 211489,
+        "share": 0.021017049539712614
+      },
+      {
+        "arm_mnemonic": "lsl",
+        "cpu_usec": 64615,
+        "share": 0.006421216498297928
+      }
+    ],
+    "movss": [
+      {
+        "arm_mnemonic": "ldr",
+        "cpu_usec": 1048085,
+        "share": 0.5009511564437265
+      },
+      {
+        "arm_mnemonic": "add",
+        "cpu_usec": 405476,
+        "share": 0.1938045779780995
+      },
+      {
+        "arm_mnemonic": "str",
+        "cpu_usec": 299129,
+        "share": 0.14297410847007203
+      },
+      {
+        "arm_mnemonic": "sub",
+        "cpu_usec": 174581,
+        "share": 0.08344414226241402
+      },
+      {
+        "arm_mnemonic": "mov",
+        "cpu_usec": 164082,
+        "share": 0.0784259555776483
+      },
+      {
+        "arm_mnemonic": "movk",
+        "cpu_usec": 837,
+        "share": 0.0004000592680397096
+      }
+    ]
+  },
+  "gpu_missing_sequences": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0,
+  "mov_w15_w26_immediate_add_sub": {
+    "arm64_cpu_usec_by_mnemonic": {
+      "sub": 2394171,
+      "add": 1294932
+    },
+    "total_cpu_usec": 3689103,
+    "share_of_all_sampled_cpu": 0.0681665034461095,
+    "full_pinning_guest_register_for_w26": "EBP"
+  }
+}

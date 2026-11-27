@@ -901,3 +901,9 @@ Both median differences were within **0.2%**, and the individual pairs moved in 
 A live 18-second main-thread sample with direct packing and precise invalidation collected **7,842** stacks. The fixed-function block appeared in **26** stacks and uniform binding in **161**. The indexed draw path appeared in **1,682** stacks, including **1,253** in `DrawState::issue`. Direct children of the latter included **271** in state binding, **186** in draw preparation, and **186** in the Metal indexed draw call.
 
 Of the sampled leaves, **4,774** resolved to an unknown binary and **1,044** to WineMetalGL. The unknown bucket records symbol resolution. The instrumented launch kept consecutive GPU completions, with zero visible windows or activations. The throughput comparisons use uninstrumented launches. [Native stack counts](results/raid-winemetalgl-headless-precise-main-thread-stacks.json)
+
+### Translated CPU hotspots after reducing uniform work
+
+A separate CPU-time-weighted capture covered seven warmed eight-second periods on the hottest guest thread with precise uniform invalidation enabled. Already translated instructions accounted for **63.2–65.9%** of sampled CPU time across those periods. Guest `MOV` accounted for **18.59%** of all sampled CPU time, conditional branches for **9.70%**, and `MOVSS` for **3.87%**.
+
+Of the sampled ARM64 instruction weight attributed to guest `MOV`, **52.5%** was on `ADD` and **23.9%** on `SUB`. The largest operand shapes added or subtracted an immediate from `w26` into `w15`. With full pinning, `w26` holds the guest frame pointer EBP. The profiles use the same headless scene, camera, renderer options, cast schedule, and verified GPU completions. [CPU-time and ARM64 instruction distributions](results/raid-aarchx-headless-precise-guest-profile.json)
