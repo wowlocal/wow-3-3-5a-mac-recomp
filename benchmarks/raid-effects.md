@@ -818,3 +818,5 @@ The JIT can analyze successor blocks and keep only the x86 flags they may read. 
 | Enabled | 102.14 | 12.73 ms |
 
 Both pairs improved with liveness analysis enabled. Four warmed 60-second launches matched the camera, checked all 26 cast timing rows, and captured the same scene with overlapping spell effects. Every GPU sequence was consecutive. The window monitor recorded zero visible trial windows or activations. Both settings passed all 806 general runtime checks. This comparison covers the isolated headless client. [Full-raid A/B](results/raid-aarchx-headless-cross-block-flag-liveness-ab.json)
+
+Separate native instruction profiles sampled seven warmed eight-second intervals per arm. Of all CPU samples on the hottest guest thread, the share attributed to `Jcc` writing the deferred flag operands fell from **3.35% to 0.62%** with liveness analysis enabled. The share attributed to reloading the saved floating-point operand fell from **2.05% to 1.43%**. The deferred descriptor load stayed close to **1.02%** in both arms. These percentages describe sampled CPU time. [Native flag traffic profile](results/raid-aarchx-headless-cross-block-liveness-profile.json)

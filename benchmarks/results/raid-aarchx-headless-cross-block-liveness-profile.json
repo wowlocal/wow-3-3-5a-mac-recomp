@@ -1,0 +1,68 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate native instruction sampling launches of the full headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows_per_launch": 26,
+  "vertex_shader_uniform_segments": true,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_depth_when_enabled": 3,
+  "sampling_period_seconds": 8,
+  "sampling_weight": "Per-sample CPU time charged to the hottest guest thread.",
+  "verified_ocerz_cpu_byte_offsets": {
+    "cc_src": 152,
+    "cc_dst": 160,
+    "cc_op": 168,
+    "jit_fcmp_mem": 5176
+  },
+  "runs": {
+    "off": {
+      "warmed_periods": 7,
+      "sampled_cpu_usec": 54999000,
+      "jcc_traffic": {
+        "cc_src_and_dst_write": {
+          "weighted_cpu_usec": 1843173,
+          "share_of_sampled_cpu": 0.03351284568810342
+        },
+        "cc_op_read": {
+          "weighted_cpu_usec": 561995,
+          "share_of_sampled_cpu": 0.010218276695939926
+        },
+        "saved_fcmp_operand_read": {
+          "weighted_cpu_usec": 1128758,
+          "share_of_sampled_cpu": 0.02052324587719777
+        }
+      },
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "gpu_missing_sequences": 0
+    },
+    "on": {
+      "warmed_periods": 7,
+      "sampled_cpu_usec": 55123000,
+      "jcc_traffic": {
+        "cc_src_and_dst_write": {
+          "weighted_cpu_usec": 342552,
+          "share_of_sampled_cpu": 0.006214320700977813
+        },
+        "cc_op_read": {
+          "weighted_cpu_usec": 564710,
+          "share_of_sampled_cpu": 0.010244544019737678
+        },
+        "saved_fcmp_operand_read": {
+          "weighted_cpu_usec": 788041,
+          "share_of_sampled_cpu": 0.014296047022114181
+        }
+      },
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "gpu_missing_sequences": 0
+    }
+  }
+}
