@@ -947,3 +947,14 @@ Four warmed 60-second launches repeated the matrix-generation comparison with pr
 Two isolated diagnostic launches used precise uniform invalidation in both arms and varied forward-branch merging. The same-base classifier weights samples for plain 32-bit guest `MOV` loads using the number of statically matching loads before the first write to that base in the compiled block. A side exit can make the executed group shorter. Both launches supplied seven warmed eight-second periods.
 
 Guest conditional branches accounted for **9.95%** of sampled CPU time with merging off and **9.17%** with merging on. Loads in static groups of at least three accounted for **3.10%** and **3.21%**, respectively. The translated share ranged from **62.6–65.0%** with merging off and **62.8–64.0%** with merging on. Each launch kept consecutive GPU completions and the full scene with zero visible windows or activations. The process checker passed between launches. [Isolated CPU profiles](results/raid-aarchx-headless-isolated-forward-base-profile.json)
+
+### i386 forward branches with precise uniform invalidation
+
+Four isolated 60-second launches kept precise uniform invalidation enabled and varied the forward-branch switch in control, trial, trial, and control order. All launches used the same runtime, renderer, camera, draw threshold, and cast schedule.
+
+| Forward-branch merging | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Disabled | 120.31 | 11.16 ms |
+| Enabled | 114.52 | 13.73 ms |
+
+Throughput fell **4.81%** and median p99 rose **2.57 ms**, with both pairs moving in the same direction. The previous isolated comparison with precise invalidation disabled improved both metrics with forward merging. Test the switches together on the intended baseline. The capture verified consecutive GPU frames, overlapping effects, all cast timing rows, zero visible trial windows or activations, and cleanup between launches. [Combined-baseline A/B](results/raid-aarchx-headless-forward-superblock-precise-uniform-ab.json)
