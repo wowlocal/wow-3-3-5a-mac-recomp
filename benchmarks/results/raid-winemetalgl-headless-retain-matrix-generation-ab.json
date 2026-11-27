@@ -1,0 +1,141 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "vertex_shader_uniform_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "keep_identical_matrix_generation": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6417,
+      "first_sequence": 3761,
+      "last_sequence": 10177,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997716750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 106.93333333333334,
+      "p99_gpu_completion_gap_ns": 16922750,
+      "min_draws": 682,
+      "max_draws": 946
+    },
+    {
+      "launch": 2,
+      "keep_identical_matrix_generation": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6426,
+      "first_sequence": 3671,
+      "last_sequence": 10096,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991735125,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 107.08333333333333,
+      "p99_gpu_completion_gap_ns": 17424291,
+      "min_draws": 695,
+      "max_draws": 943
+    },
+    {
+      "launch": 3,
+      "keep_identical_matrix_generation": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6371,
+      "first_sequence": 3403,
+      "last_sequence": 9773,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993757625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 106.16666666666667,
+      "p99_gpu_completion_gap_ns": 16744834,
+      "min_draws": 714,
+      "max_draws": 960
+    },
+    {
+      "launch": 4,
+      "keep_identical_matrix_generation": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6405,
+      "first_sequence": 3493,
+      "last_sequence": 9897,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59989817916,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 106.73333333333333,
+      "p99_gpu_completion_gap_ns": 17269666,
+      "min_draws": 684,
+      "max_draws": 964
+    }
+  ],
+  "medians": {
+    "0": {
+      "average_completed_fps": 106.83333333333334,
+      "p99_gpu_completion_gap_ns": 17096208.0
+    },
+    "1": {
+      "average_completed_fps": 106.625,
+      "p99_gpu_completion_gap_ns": 17084562.5
+    }
+  },
+  "separate_byte_parity_probe": {
+    "initialization_and_in_world_verified_blocks_at_least": 3276800,
+    "in_world_verified_bindings_between_checkpoints": 2883584,
+    "full_repacks_between_checkpoints": 170448,
+    "matrix_only_invalidations": 908838,
+    "matrix_only_invalidations_where_packed_bytes_stayed_identical": 275222,
+    "matrix_only_invalidations_where_generation_was_retained": 275222,
+    "generation_updates_between_checkpoints": 804064,
+    "compared_block_size": 6384,
+    "gpu_missing_sequences": 0,
+    "visible_trial_windows": 0,
+    "focus_activations": 0
+  },
+  "visual_readback_checked_per_launch": true,
+  "gpu_tests_per_arm": {
+    "0": {
+      "tests": 337,
+      "failed_checks": 0
+    },
+    "1": {
+      "tests": 337,
+      "failed_checks": 0
+    }
+  }
+}

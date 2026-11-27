@@ -882,3 +882,16 @@ The trial updates shader selectors independently of the packed block. Its groupe
 The median rose **2.25%**. Throughput improved in both pairs, and p99 moved in opposite directions across the pairs. Four warmed 60-second launches kept the fixed camera, 25 raid actors, exact cast timing, and consecutive GPU completions. Readbacks showed overlapping effects in both arms. Both arms passed **337** GPU tests. The monitor recorded zero visible trial windows or activations.
 
 In separate instrumented launches, a reference writer independently rebuilt and compared the full 6,384-byte block on every uniform binding. All compared blocks matched. Between in-world checkpoints, the share of bindings that fully repacked the block fell from **91.70% to 5.92%**. The share that advanced the packed block generation fell from **91.70% to 37.40%**. The throughput launches omit the reference writer. [Full-raid A/B and byte checks](results/raid-winemetalgl-headless-precise-uniform-invalidation-ab.json)
+
+### Reuse the packed block generation when matrix bytes match
+
+The trial advances the packed block generation after matrix-only invalidation when a packed matrix changes. It uses the matrix and texture comparisons already performed by the packer. Apply `patches/winemetalgl-fixed-retain-matrix-generation-trial.patch` after the direct uniform writer and set `WINEMETALGL_FIXED_KEEP_MATRIX_GENERATION=1`. Both arms enabled precise uniform invalidation.
+
+A diagnostic rebuilt and compared the 6,384-byte block at every binding. Of **908,838** matrix-only invalidations between in-world checkpoints, **275,222 (30.28%)** had byte-identical output and kept the existing generation. The diagnostic compared at least **3,276,800** complete blocks and found byte parity throughout.
+
+| Matrix-only invalidation | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing generation updates | 106.83 | 17.10 ms |
+| Reuse generation on equal matrices | 106.63 | 17.08 ms |
+
+Both median differences were within **0.2%**, and the individual pairs moved in opposite directions. Each of the four warmed 60-second runs kept the camera, cast schedule, and overlapping effects. All four GPU completion sequences were consecutive. Both arms passed **337** GPU tests, and the desktop monitor observed zero trial activations or visible windows. [Full-raid A/B and byte checks](results/raid-winemetalgl-headless-retain-matrix-generation-ab.json)

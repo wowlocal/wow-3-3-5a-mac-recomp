@@ -1,0 +1,60 @@
+diff --git a/src/core/compat/fixed_function.mm b/src/core/compat/fixed_function.mm
+--- a/src/core/compat/fixed_function.mm
++++ b/src/core/compat/fixed_function.mm
+@@ -99,11 +99,12 @@
+ void putMat4(std::vector<uint8_t>& data, size_t offset, const Mat4& m) { std::memcpy(data.data() + offset, m.m, kMat4); }
+
+ // Recomputes the matrix section for the matrices that changed.
+-void packMatrices(const FixedState& f, Context::FixedFunctionBlockCache& cache) {
++bool packMatrices(const FixedState& f, Context::FixedFunctionBlockCache& cache) {
+     const Mat4& mv = f.modelview.back();
+     const Mat4& proj = f.projection.back();
+     std::vector<uint8_t>& d = cache.data;
+     const bool same = cache.matricesValid;
++    bool changed = false;
+     if (!same || std::memcmp(mv.m, cache.modelview.m, kMat4) || std::memcmp(proj.m, cache.projection.m, kMat4)) {
+         const Mat4 mvp = proj * mv;
+         const Mat4 mvInv = mv.inverse(), projInv = proj.inverse(), mvpInv = mvp.inverse();
+@@ -124,6 +125,7 @@
+         for (int c = 0; c < 3; ++c)
+             for (int r = 0; r < 3; ++r) normal[c * 4 + r] = mvInv.m[r * 4 + c];
+         std::memcpy(d.data() + kNormal, normal, sizeof(normal));
++        changed = true;
+         cache.modelview = mv;
+         cache.projection = proj;
+         cache.modelviewInverse = mvInv;
+@@ -137,8 +139,10 @@
+         putMat4(d, kTexT + u * kMat4, tex.transpose());
+         putMat4(d, kTexIT + u * kMat4, inv.transpose());
+         cache.texture[u] = tex;
++        changed = true;
+     }
+     cache.matricesValid = true;
++    return changed;
+ }
+
+ // gl_NormalScale, the tail's first value: 1 / length of the third row of
+@@ -761,12 +765,18 @@
+         std::copy(st.viewports[0], st.viewports[0] + 4, cache.viewport);
+         cache.generation = ++generations;
+     } else if (cache.matrixVersion != st.fixed.matrixVersion) {
+-        // Only matrices changed: their section and gl_NormalScale.
+-        packMatrices(st.fixed, cache);
+-        const float scale = normalScale(cache.modelviewInverse);
+-        std::memcpy(cache.data.data() + kTailOffset, &scale, sizeof(scale));
++        // A matrix command can leave the packed matrices identical.
++        const bool changed = packMatrices(st.fixed, cache);
+         cache.matrixVersion = st.fixed.matrixVersion;
+-        cache.generation = ++generations;
++        static const bool reuse = [] {
++            const char* value = std::getenv("WINEMETALGL_FIXED_KEEP_MATRIX_GENERATION");
++            return value && !std::strcmp(value, "1");
++        }();
++        if (changed || !reuse) {
++            const float scale = normalScale(cache.modelviewInverse);
++            std::memcpy(cache.data.data() + kTailOffset, &scale, sizeof(scale));
++            cache.generation = ++generations;
++        }
+     }
+     generation = cache.generation;
+     return cache.data;
