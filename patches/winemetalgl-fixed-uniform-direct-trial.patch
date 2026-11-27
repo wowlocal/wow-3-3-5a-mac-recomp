@@ -1,0 +1,99 @@
+diff --git a/src/core/compat/fixed_function.mm b/src/core/compat/fixed_function.mm
+--- a/src/core/compat/fixed_function.mm
++++ b/src/core/compat/fixed_function.mm
+@@ -2,7 +2,9 @@
+
+ #include <algorithm>
+ #include <atomic>
++#include <cassert>
+ #include <cmath>
++#include <cstdlib>
+ #include <cstring>
+ #include <string_view>
+ #include <type_traits>
+@@ -21,10 +23,20 @@
+
+ // Appends values with std140 alignment, in the declaration order of
+ // wmgl_FixedFunction (shader/glsl_upgrade.cpp).
++template<bool InPlace>
+ class Std140 {
+ public:
+-    explicit Std140(std::vector<uint8_t>& bytes) : data(bytes) {}
+-    void align(size_t a) { data.resize((data.size() + a - 1) / a * a, 0); }
++    explicit Std140(std::vector<uint8_t>& bytes, size_t start) : data(bytes), cursor(start) {}
++    void align(size_t a) {
++        if constexpr (InPlace)
++            cursor = (cursor + a - 1) & ~(a - 1);
++        else
++            data.resize((data.size() + a - 1) / a * a, 0);
++    }
++    void finish() {
++        align(16);
++        if constexpr (InPlace) assert(cursor == data.size());
++    }
+     void scalar(float v) {
+         align(4);
+         append(&v, 4);
+@@ -55,9 +67,16 @@
+
+ private:
+     std::vector<uint8_t>& data;
++    size_t cursor;
+     void append(const void* p, size_t n) {
+-        const auto* b = static_cast<const uint8_t*>(p);
+-        data.insert(data.end(), b, b + n);
++        if constexpr (InPlace) {
++            assert(cursor <= data.size() && n <= data.size() - cursor);
++            std::memcpy(data.data() + cursor, p, n);
++            cursor += n;
++        } else {
++            const auto* b = static_cast<const uint8_t*>(p);
++            data.insert(data.end(), b, b + n);
++        }
+     }
+ };
+
+@@ -129,12 +148,14 @@
+     return row > 0.0f ? 1.0f / row : 1.0f;
+ }
+
+-// The block from gl_NormalScale on.
++// The block from gl_NormalScale on. The first pack sizes the vector and zeros
++// its padding. The layout is fixed, so subsequent packs can skip over padding
++// and overwrite the fields that occupy the same offsets.
++template<bool InPlace>
+ void packTail(const ContextState& st, const Mat4& mvInv, std::vector<uint8_t>& data) {
+     const FixedState& f = st.fixed;
+-    // Retain capacity and the aligned matrix prefix while replacing the tail.
+-    data.resize(kTailOffset);
+-    Std140 b(data);
++    if constexpr (!InPlace) data.resize(kTailOffset);
++    Std140<InPlace> b(data, kTailOffset);
+     b.scalar(normalScale(mvInv));
+     for (const auto& plane : f.clipPlanes) b.vec4(plane);
+     b.beginStruct();  // gl_Point
+@@ -221,7 +242,7 @@
+         std::memcpy(row, &f.stipple[static_cast<size_t>(i)], 16);
+         b.vec4(row);
+     }
+-    b.align(16);
++    b.finish();
+ }
+
+ // ------------------------------------------------------------ state key
+@@ -724,7 +745,14 @@
+         !std::equal(st.viewports[0], st.viewports[0] + 4, cache.viewport)) {
+         if (cache.data.size() < kTailOffset) cache.data.assign(kTailOffset, 0);
+         packMatrices(st.fixed, cache);
+-        packTail(st, cache.modelviewInverse, cache.data);
++        static const bool inPlace = [] {
++            const char* value = std::getenv("WINEMETALGL_FIXED_UNIFORM_DIRECT");
++            return value && !std::strcmp(value, "1");
++        }();
++        if (inPlace && cache.data.size() > kTailOffset)
++            packTail<true>(st, cache.modelviewInverse, cache.data);
++        else
++            packTail<false>(st, cache.modelviewInverse, cache.data);
+         cache.version = st.fixed.version;
+         cache.matrixVersion = st.fixed.matrixVersion;
+         cache.pointSize = st.pointSize;

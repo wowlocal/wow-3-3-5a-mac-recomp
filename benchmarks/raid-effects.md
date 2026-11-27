@@ -835,3 +835,16 @@ Depth 6 increased the p99 gap in both pairs by about 1.2 ms. Depth 3 is the base
 ### Native renderer stacks after enabling flag liveness
 
 A separate 18-second `sample PID 18 1 -file CPU_SAMPLE` capture collected **7,921** main-thread stacks at liveness depth 3. The indexed draw path appeared in **2,324** stacks, uniform binding in **906**, and fixed-function uniform packing in **697**. In **326** of the fixed-function packing stacks, the sampled leaf was byte vector insertion. These are wall-clock stack counts. The capture perturbed frame pacing, so the throughput comparisons use the uninstrumented A/B launches. GPU completions stayed consecutive and the monitor observed zero activations or visible windows. [Native stack counts](results/raid-winemetalgl-headless-main-thread-stacks.json)
+
+### Write the fixed-function uniform tail directly
+
+The first pack sizes the existing per-context vector and initializes the std140 padding. Later packs overwrite the same fields at their aligned offsets. This removes byte vector insertion and resize calls from the hot path. The shader layout, matrix prefix, and generation tracking stay intact. Apply `patches/winemetalgl-fixed-uniform-direct-trial.patch` after the fixed uniform tail trial and set `WINEMETALGL_FIXED_UNIFORM_DIRECT=1` to select the direct writer.
+
+Four warmed 60-second headless launches used the same runtime and renderer in control, trial, trial, and control order. Direct ARB uniforms were enabled, cross-block flag liveness used depth 3, and the triangle and draw thresholds were 0 and 512. All four launches kept the fixed camera and verified the 25 raid actors and exact cast schedule.
+
+| Tail writer | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Vector insertions | 103.23 | 16.06 ms |
+| Direct writes | 112.66 | 14.27 ms |
+
+Throughput rose **9.14%** and the median p99 fell **1.80 ms**, with both metrics improving in both pairs. Each readback showed the scene and overlapping effects. GPU completion sequences stayed consecutive and the monitor observed zero trial windows or activations. Both arms passed **337** GPU tests. [Full-raid A/B and GPU checks](results/raid-winemetalgl-headless-direct-uniform-tail-ab.json)
