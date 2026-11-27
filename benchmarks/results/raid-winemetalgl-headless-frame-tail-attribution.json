@@ -1,0 +1,331 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Two live headless raid frame-tail diagnostics with Metal submission logging",
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "verified_cast_timing_rows": 26,
+  "vsync": false,
+  "commit_draw_setting": 64,
+  "continuing_draw_threshold": 512,
+  "triangle_budget": 0,
+  "other_trial_instances_detected": 0,
+  "gpu_tests_with_optional_swap_cpu_log_disabled": 338,
+  "captures": [
+    {
+      "window_size": [
+        1365,
+        768
+      ],
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 118.3,
+      "verified_output_count": 7099,
+      "render_thread_cpu_samples_joined": false,
+      "completion_intervals": 7098,
+      "most_common_draw_splits": [
+        {
+          "draws_per_submission": [
+            512,
+            311
+          ],
+          "count": 96
+        },
+        {
+          "draws_per_submission": [
+            512,
+            315
+          ],
+          "count": 88
+        },
+        {
+          "draws_per_submission": [
+            512,
+            325
+          ],
+          "count": 85
+        },
+        {
+          "draws_per_submission": [
+            512,
+            317
+          ],
+          "count": 84
+        },
+        {
+          "draws_per_submission": [
+            512,
+            337
+          ],
+          "count": 84
+        },
+        {
+          "draws_per_submission": [
+            512,
+            304
+          ],
+          "count": 84
+        },
+        {
+          "draws_per_submission": [
+            512,
+            301
+          ],
+          "count": 83
+        },
+        {
+          "draws_per_submission": [
+            512,
+            319
+          ],
+          "count": 81
+        }
+      ],
+      "metrics": {
+        "completion_gap_ns": {
+          "mean": 8453062.640884757,
+          "median": 8214562.5,
+          "p99": 19621334
+        },
+        "final_submit_interval_ns": {
+          "mean": 8453075.027049873,
+          "median": 8332708.5,
+          "p99": 14045375
+        },
+        "final_submit_to_gpu_start_ns": {
+          "mean": 464201.8143138912,
+          "median": 178292.0,
+          "p99": 8231083
+        },
+        "final_gpu_span_ns": {
+          "mean": 1033245.8400958016,
+          "median": 609125.0,
+          "p99": 8209416
+        },
+        "final_dispatch_wait_outside_recorded_render_spans_ns": {
+          "mean": 221072.62158354465,
+          "median": 171709.0,
+          "p99": 522375
+        },
+        "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": {
+          "mean": 243129.19273034658,
+          "median": 0.0,
+          "p99": 8188875
+        },
+        "completion_gap_outside_recorded_render_spans_ns": {
+          "mean": 6154043.092983939,
+          "median": 6499604.5,
+          "p99": 8889375
+        },
+        "earlier_submissions_gpu_spans_ns": {
+          "mean": 1456201.1799098337,
+          "median": 942333.0,
+          "p99": 12603875
+        },
+        "render_submissions": {
+          "mean": 2,
+          "median": 2.0,
+          "p99": 2
+        },
+        "first_to_final_submit_ns": {
+          "mean": 2649125.331360947,
+          "median": 2551146.0,
+          "p99": 7313000
+        }
+      },
+      "tail_intervals_at_or_above_p99": 71,
+      "all_interval_component_medians_ns": {
+        "final_submit_interval_ns": 8332708.5,
+        "final_submit_to_gpu_start_change_ns": -834.0,
+        "final_gpu_span_change_ns": 1584.0
+      },
+      "tail_component_medians_ns": {
+        "final_submit_interval_ns": 8684750,
+        "final_submit_to_gpu_start_change_ns": 9376416,
+        "final_gpu_span_change_ns": 3402500
+      },
+      "largest_component_increase_above_its_baseline_median": {
+        "final_submit_to_gpu_start_change_ns": 43,
+        "final_gpu_span_change_ns": 26,
+        "final_submit_interval_ns": 2
+      },
+      "tail_medians": {
+        "completion_gap_ns": 21626625,
+        "final_submit_interval_ns": 8684750,
+        "final_submit_to_gpu_start_ns": 9530833,
+        "final_gpu_span_ns": 4552625,
+        "final_dispatch_wait_outside_recorded_render_spans_ns": 0,
+        "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": 9121084,
+        "completion_gap_outside_recorded_render_spans_ns": 5277709,
+        "earlier_submissions_gpu_spans_ns": 13707584,
+        "render_submissions": 2,
+        "first_to_final_submit_ns": 2731417
+      },
+      "capture": "submission-only",
+      "renderer_sha256": "fc43585da664dab8b31e5cb7e98de47314cf120aca77d2f8ec272023055abeeb",
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "activation_notifications": 0,
+      "visual_readback_checked": true
+    },
+    {
+      "window_size": [
+        1365,
+        768
+      ],
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 123.65,
+      "verified_output_count": 7420,
+      "render_thread_cpu_samples_joined": true,
+      "completion_intervals": 7419,
+      "most_common_draw_splits": [
+        {
+          "draws_per_submission": [
+            512,
+            322
+          ],
+          "count": 99
+        },
+        {
+          "draws_per_submission": [
+            512,
+            323
+          ],
+          "count": 97
+        },
+        {
+          "draws_per_submission": [
+            512,
+            307
+          ],
+          "count": 96
+        },
+        {
+          "draws_per_submission": [
+            512,
+            276
+          ],
+          "count": 95
+        },
+        {
+          "draws_per_submission": [
+            512,
+            286
+          ],
+          "count": 89
+        },
+        {
+          "draws_per_submission": [
+            512,
+            303
+          ],
+          "count": 88
+        },
+        {
+          "draws_per_submission": [
+            512,
+            302
+          ],
+          "count": 87
+        },
+        {
+          "draws_per_submission": [
+            512,
+            271
+          ],
+          "count": 87
+        }
+      ],
+      "metrics": {
+        "completion_gap_ns": {
+          "mean": 8086443.293031406,
+          "median": 7978375,
+          "p99": 15329959
+        },
+        "final_submit_interval_ns": {
+          "mean": 8086820.545221728,
+          "median": 8024000,
+          "p99": 10637167
+        },
+        "final_submit_to_gpu_start_ns": {
+          "mean": 303257.1048658849,
+          "median": 166500,
+          "p99": 3418792
+        },
+        "final_gpu_span_ns": {
+          "mean": 1020601.87302871,
+          "median": 672791,
+          "p99": 6119791
+        },
+        "final_dispatch_wait_outside_recorded_render_spans_ns": {
+          "mean": 182556.45019544414,
+          "median": 162916,
+          "p99": 512667
+        },
+        "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": {
+          "mean": 120700.65467044077,
+          "median": 0,
+          "p99": 3279500
+        },
+        "completion_gap_outside_recorded_render_spans_ns": {
+          "mean": 5764344.232915487,
+          "median": 5926291,
+          "p99": 8404791
+        },
+        "earlier_submissions_gpu_spans_ns": {
+          "mean": 1437649.513950667,
+          "median": 1074584,
+          "p99": 6943875
+        },
+        "render_submissions": {
+          "mean": 2.000134789055129,
+          "median": 2,
+          "p99": 2
+        },
+        "first_to_final_submit_ns": {
+          "mean": 2403614.4039627984,
+          "median": 2369250,
+          "p99": 3460833
+        }
+      },
+      "tail_intervals_at_or_above_p99": 75,
+      "all_interval_component_medians_ns": {
+        "calling_thread_cpu_ns": 7991208,
+        "calling_thread_wall_minus_cpu_ns": 17333,
+        "swap_to_final_submit_change_ns": 0,
+        "final_submit_to_gpu_start_change_ns": -167,
+        "final_gpu_span_change_ns": 1209
+      },
+      "tail_component_medians_ns": {
+        "calling_thread_cpu_ns": 8263459,
+        "calling_thread_wall_minus_cpu_ns": 20042,
+        "swap_to_final_submit_change_ns": 750,
+        "final_submit_to_gpu_start_change_ns": 2738375,
+        "final_gpu_span_change_ns": 5856834
+      },
+      "largest_component_increase_above_its_baseline_median": {
+        "calling_thread_cpu_ns": 2,
+        "final_gpu_span_change_ns": 38,
+        "final_submit_to_gpu_start_change_ns": 33,
+        "calling_thread_wall_minus_cpu_ns": 2
+      },
+      "tail_medians": {
+        "completion_gap_ns": 18263625,
+        "final_submit_interval_ns": 8344083,
+        "final_submit_to_gpu_start_ns": 3158250,
+        "final_gpu_span_ns": 6200750,
+        "final_dispatch_wait_outside_recorded_render_spans_ns": 0,
+        "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": 1761167,
+        "completion_gap_outside_recorded_render_spans_ns": 5619459,
+        "earlier_submissions_gpu_spans_ns": 7972709,
+        "render_submissions": 2,
+        "first_to_final_submit_ns": 2558666
+      },
+      "capture": "with-cpu",
+      "renderer_sha256": "d7a97a9c40278f45cffa6eda92e59224f6af542b690c120058e1c4cbfc3310b4",
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "activation_notifications": 0,
+      "visual_readback_checked": true
+    }
+  ]
+}

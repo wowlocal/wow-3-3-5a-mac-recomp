@@ -1106,3 +1106,17 @@ Both modes passed **806** general checks. Three address cases matched the interp
 | Wrapped offset in the memory instruction | 120.18 | 17.57 ms |
 
 The four warmed 60-second launches ran with emission logging off. The pairs moved in opposite directions on throughput, and p99 increased in both. The trial stays off. Each launch verified the camera, overlapping effects, all cast timing rows, consecutive GPU completions, no visible trial window or activation, and process cleanup. [Full-raid A/B and instruction coverage](results/raid-aarchx-headless-i386-sse-wrapped-offsets.json)
+
+### Attribute slow frames to CPU work and Metal submissions
+
+Two warmed 60-second diagnostic launches at the 512-draw threshold matched **7,099** and **7,420** completed outputs to the final command buffer's exact GPU end timestamp. Every interval contained two render submissions whose draws summed to the output's recorded draw count. A CPU timing row per output in the second launch identified one render thread across the whole window.
+
+In the first capture, the largest increase above the corresponding component's median came from the final submission's GPU dispatch wait or GPU span in **69 of 71** intervals at or above p99. The second capture attributed **71 of 75** to those two GPU components. Median calling-thread CPU time in the second run was **7.99 ms** across the window and **8.26 ms** in its slowest intervals. The median wall time minus thread CPU time was **0.017 ms** across the window and **0.020 ms** in those intervals.
+
+The median GPU span of the first submission increased from **0.94 to 13.71 ms** in the first capture's tail and from **1.07 to 7.97 ms** in the second. These spans use Metal's GPU start and end timestamps and include any interruption within the span. The final command buffer's dispatch wait was largely covered by the first submission of that output. Both launches verified the saved camera, effects, 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Frame-tail decomposition](results/raid-winemetalgl-headless-frame-tail-attribution.json)
+
+Set `OCERZ_WMGL_SUBMISSION_LOG` to the capture's `submissions.ns`. For thread CPU timing, also apply `patches/winemetalgl-headless-swap-cpu-timing-trial.patch` and set `OCERZ_WMGL_HEADLESS_SWAP_LOG` to `cpu-swaps.ns`. With all diagnostic switches off, the patched renderer passed **338** GPU tests. Use the same verified `window.json` and `gpu.ns` as the performance recorder.
+
+```sh
+python3 benchmarks/summarize-raid-frame-tail.py CAPTURE_DIR
+```

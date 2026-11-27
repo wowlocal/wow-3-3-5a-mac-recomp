@@ -11,6 +11,8 @@ from collections import Counter, defaultdict, namedtuple
 from pathlib import Path
 from statistics import median
 
+from metal_submission_log import interval_coverage, read_submissions
+
 
 def trace_rows(path, run, schema, category=None):
     predicate = f'@schema="{schema}"'
@@ -443,7 +445,6 @@ def presentation_report(path, pid, stream, completed_sequences):
 
 
 FrameTiming = namedtuple("FrameTiming", "slot_begin slot_end submit gpu_start gpu_end callback ready")
-Submission = namedtuple("Submission", "stream serial draws submit start end kernel_start kernel_end callback")
 
 
 def timing_stats(values):
@@ -500,46 +501,13 @@ def pass_timing_report(path, pid, timings, gpu_dominant_indices):
     }
 
 
-def interval_coverage(intervals):
-    merged = []
-    for start, end in sorted(intervals):
-        if merged and start <= merged[-1][1]:
-            first, last = merged[-1]
-            merged[-1] = first, max(last, end)
-        else:
-            merged.append((start, end))
-    ends = [end for _, end in merged]
-
-    def covered(start, end):
-        total = 0
-        for i in range(bisect_right(ends, start), len(merged)):
-            first, last = merged[i]
-            if first >= end:
-                break
-            total += min(end, last) - max(start, first)
-        return total
-
-    return covered
-
-
 def submission_report(path, pid, stream, frames, timings, dispatch_dominant_indices):
     render, present = [], []
-    with path.open() as log:
-        for line in log:
-            if not line.endswith("\n"):
-                break
-            process, kind, *fields = line.split()
-            if int(process) != pid:
-                continue
-            if kind not in ("render", "present") or len(fields) != len(Submission._fields):
-                raise ValueError("Invalid command-buffer submission record")
-            entry = Submission(*map(int, fields))
-            if not 0 < entry.submit <= entry.start <= entry.end <= entry.callback:
-                raise ValueError(f"Unordered timestamps for {kind} submission {entry.serial}")
-            if kind == "render":
-                render.append(entry)
-            elif entry.stream == stream:
-                present.append(entry)
+    for kind, entry in read_submissions(path, pid):
+        if kind == "render":
+            render.append(entry)
+        elif entry.stream == stream:
+            present.append(entry)
 
     expected = {(t.gpu_start, t.gpu_end) for t in timings}
     finals = [entry for entry in render if (entry.start, entry.end) in expected]

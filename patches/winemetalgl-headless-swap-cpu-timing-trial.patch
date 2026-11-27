@@ -1,0 +1,62 @@
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -3,6 +3,8 @@
+ #import <MetalFX/MetalFX.h>
+ #include <dlfcn.h>
+ #include <mach/mach_time.h>
++#include <pthread.h>
++#include <time.h>
+ #include <unistd.h>
+ #include <os/signpost.h>
+
+@@ -28,6 +30,26 @@
+ uint64_t newCompletionStream() {
+     static std::atomic<uint64_t> next{1};
+     return next.fetch_add(1, std::memory_order_relaxed);
++}
++
++FILE* headlessSwapTimingLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_HEADLESS_SWAP_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL headless swap timing log");
++        return file;
++    }();
++    return log;
++}
++
++uint64_t headlessSwapThread() {
++    static thread_local const uint64_t id = [] {
++        uint64_t thread = 0;
++        pthread_threadid_np(nullptr, &thread);
++        return thread;
++    }();
++    return id;
+ }
+
+ FILE* presentationLog() {
+@@ -608,6 +630,9 @@
+ }
+
+ bool Surface::swap(CommandStream& stream) {
++    FILE* timingLog = layer_ ? nullptr : headlessSwapTimingLog();
++    const uint64_t entry = timingLog ? stats::nowNanos() : 0;
++    const uint64_t threadCpu = timingLog ? clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID) : 0;
+     stats::Timer presentTimer(&stats::Frame::presentNanos);
+     const uint64_t draws = stats::g_recordMailboxDraws ? stats::takeMailboxDraws() : 0;
+     resolveForRead(stream);
+@@ -618,6 +643,12 @@
+                 offscreenRecordingStream_ = newCompletionStream();
+             const uint64_t recordingStream = offscreenRecordingStream_;
+             const uint64_t sequence = ++offscreenSequence_;
++            if (timingLog) {
++                std::fprintf(timingLog, "%d %llu %llu %llu %llu %llu\n", getpid(),
++                    (unsigned long long)recordingStream, (unsigned long long)sequence,
++                    (unsigned long long)headlessSwapThread(), (unsigned long long)entry,
++                    (unsigned long long)threadCpu);
++            }
+             const uint64_t dimensions = (uint64_t(width_) << 32) | uint64_t(height_);
+             // The caller switches buffers at its render boundary. The GPU
+             // callback runs after that output's work on this command queue.
