@@ -124,14 +124,75 @@ def summarize(control, trial, ab, small_storage=False):
     }
 
 
+def summarize_indexed(ab):
+    settings = {
+        "reference": (0, 1),
+        "list": (1, 0),
+        "indexed": (1, 1),
+    }
+    order = ("reference", "list", "indexed", "indexed", "list", "reference")
+    runs = []
+    for number, label in enumerate(order, 1):
+        folder = ab / f"{number}-{label}"
+        storage, index = settings[label]
+        verify_small_mode(folder, storage)
+        if (folder / "map-shadow-mode.txt").read_text().split() != ["1", "0"]:
+            raise ValueError(f"Wrong shadow settings in {folder}")
+        if (folder / "page-index-mode.txt").read_text().strip() != str(index):
+            raise ValueError(f"Wrong page-index setting in {folder}")
+        log = (folder / "client.log").read_text()
+        if ("trial WineMetalGL one-page address index enabled" in log) != bool(storage and index):
+            raise ValueError(f"Unexpected page-index witness in {folder}")
+        if "ocerz: GL maps=" in log:
+            raise ValueError(f"Counter logging during timed comparison in {folder}")
+        runs.append({
+            "order": number,
+            "mode": label,
+            "small_guest_storage": bool(storage),
+            "page_index_requested": bool(index),
+            "post_window_resident_kib": int((folder / "post-window-rss-kib.txt").read_text()),
+            **read_window(folder, 60),
+        })
+
+    comparison = {}
+    for label in settings:
+        active = [run for run in runs if run["mode"] == label]
+        comparison[label] = {
+            "median_completed_fps": median(run["average_completed_fps"] for run in active),
+            "median_p99_gap_ns": median(run["p99_gpu_completion_gap_ns"] for run in active),
+            "median_post_window_resident_kib": median(run["post_window_resident_kib"] for run in active),
+        }
+
+    pairs = {}
+    for label, indices in (("list", ((1, 2), (4, 3))), ("reference", ((0, 2), (5, 3)))):
+        pairs[f"indexed_minus_{label}"] = [
+            {
+                "completed_fps": runs[trial]["average_completed_fps"] - runs[control]["average_completed_fps"],
+                "p99_gap_ns": runs[trial]["p99_gpu_completion_gap_ns"] - runs[control]["p99_gpu_completion_gap_ns"],
+            }
+            for control, trial in indices
+        ]
+    return {"timed_runs": runs, "comparison": comparison, "pairs": pairs}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("logged_control", type=Path)
-    parser.add_argument("logged_reuse", type=Path)
+    parser.add_argument("logged_control", type=Path, nargs="?")
+    parser.add_argument("logged_reuse", type=Path, nargs="?")
     parser.add_argument("ab", type=Path)
-    parser.add_argument("--small-storage", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--small-storage", action="store_true")
+    mode.add_argument("--indexed-storage", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(summarize(args.logged_control, args.logged_reuse, args.ab, args.small_storage), indent=2))
+    if args.indexed_storage:
+        if args.logged_control or args.logged_reuse:
+            parser.error("indexed-storage requires only the timed capture directory")
+        report = summarize_indexed(args.ab)
+    else:
+        if args.logged_control is None or args.logged_reuse is None:
+            parser.error("both logged capture directories are required")
+        report = summarize(args.logged_control, args.logged_reuse, args.ab, args.small_storage)
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

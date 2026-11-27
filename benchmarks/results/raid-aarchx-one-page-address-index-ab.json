@@ -1,0 +1,200 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "host_page_bytes": 16384,
+  "base_commit": "9ba368c",
+  "scope": "Six matched 60-second live raid launches on the same address-index trial runtime.",
+  "runtime_sha256": "ec03fb90eda0ab53a3deb6dde01f3f9134c9477c60a96a673ed3ec79725072e0",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "verified_timed_script_rows": 26,
+  "visual_readbacks_verified": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "copied_client_process_guard_passed": true,
+  "separate_legacy_client_observed_during_comparisons": true,
+  "separate_legacy_client_gpu_load_measured": false,
+  "shadow_reuse_all_modes": true,
+  "runtime_checks_per_mode": {
+    "reference": {
+      "m32": 806,
+      "wmgl-storage": 128
+    },
+    "list": {
+      "m32": 806,
+      "wmgl-storage": 143
+    },
+    "indexed": {
+      "m32": 806,
+      "wmgl-storage": 143
+    }
+  },
+  "storage_checks_indexed_small_only": 128,
+  "page_index_alignment_bytes": 65536,
+  "page_index_table_bytes": 57344,
+  "opt_in_environment_variable": "OCERZ_WMGL_GUEST_SMALL_PAGE_INDEX",
+  "timed_runs": [
+    {
+      "order": 1,
+      "mode": "reference",
+      "small_guest_storage": false,
+      "page_index_requested": true,
+      "post_window_resident_kib": 390336,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8215,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999568250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 136.9,
+      "p99_gpu_completion_gap_ns": 12709500,
+      "min_draws": 681,
+      "max_draws": 960
+    },
+    {
+      "order": 2,
+      "mode": "list",
+      "small_guest_storage": true,
+      "page_index_requested": false,
+      "post_window_resident_kib": 470032,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7876,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993566166,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 131.25,
+      "p99_gpu_completion_gap_ns": 12940625,
+      "min_draws": 685,
+      "max_draws": 979
+    },
+    {
+      "order": 3,
+      "mode": "indexed",
+      "small_guest_storage": true,
+      "page_index_requested": true,
+      "post_window_resident_kib": 401152,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8169,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996931250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 136.13333333333333,
+      "p99_gpu_completion_gap_ns": 12831625,
+      "min_draws": 691,
+      "max_draws": 962
+    },
+    {
+      "order": 4,
+      "mode": "indexed",
+      "small_guest_storage": true,
+      "page_index_requested": true,
+      "post_window_resident_kib": 463504,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8228,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59992013584,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 137.11666666666667,
+      "p99_gpu_completion_gap_ns": 12733750,
+      "min_draws": 687,
+      "max_draws": 941
+    },
+    {
+      "order": 5,
+      "mode": "list",
+      "small_guest_storage": true,
+      "page_index_requested": false,
+      "post_window_resident_kib": 423088,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7904,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999969625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 131.71666666666667,
+      "p99_gpu_completion_gap_ns": 12941500,
+      "min_draws": 698,
+      "max_draws": 960
+    },
+    {
+      "order": 6,
+      "mode": "reference",
+      "small_guest_storage": false,
+      "page_index_requested": true,
+      "post_window_resident_kib": 445664,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8295,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993799584,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 138.23333333333332,
+      "p99_gpu_completion_gap_ns": 12407500,
+      "min_draws": 677,
+      "max_draws": 957
+    }
+  ],
+  "comparison": {
+    "reference": {
+      "median_completed_fps": 137.56666666666666,
+      "median_p99_gap_ns": 12558500.0,
+      "median_post_window_resident_kib": 418000.0
+    },
+    "list": {
+      "median_completed_fps": 131.48333333333335,
+      "median_p99_gap_ns": 12941062.5,
+      "median_post_window_resident_kib": 446560.0
+    },
+    "indexed": {
+      "median_completed_fps": 136.625,
+      "median_p99_gap_ns": 12782687.5,
+      "median_post_window_resident_kib": 432328.0
+    }
+  },
+  "pairs": {
+    "indexed_minus_list": [
+      {
+        "completed_fps": 4.883333333333326,
+        "p99_gap_ns": -109000
+      },
+      {
+        "completed_fps": 5.400000000000006,
+        "p99_gap_ns": -207750
+      }
+    ],
+    "indexed_minus_reference": [
+      {
+        "completed_fps": -0.7666666666666799,
+        "p99_gap_ns": 122125
+      },
+      {
+        "completed_fps": -1.1166666666666458,
+        "p99_gap_ns": 326250
+      }
+    ]
+  },
+  "indexed_vs_list_median_fps_change_percent": 3.9105083026999443,
+  "indexed_vs_reference_median_fps_change_percent": -0.6845165980130852
+}

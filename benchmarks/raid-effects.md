@@ -1623,3 +1623,23 @@ For the CPU profile, attach with the Time Profiler template and export its `time
 python3 benchmarks/summarize-raid-cpu-trace.py time-profile.xml "$pid" --mode functions \
     --symbol m32_wmgl_guest_buffer --symbol _platform_memmove
 ```
+
+### Index one-page guest buffer storage by address
+
+The trial keeps one registration byte for each possible 64 KiB-aligned guest address below the i386 handle area. An eligible map checks the requested extent within the host page and reads its registration byte. The release callback clears that byte before freeing the storage. The existing list still covers larger allocations and allocations outside the address index's alignment requirements.
+
+Apply `patches/aarchx-wmgl-small-page-index-trial.patch` after the one-page guest-storage trial. Set `OCERZ_WMGL_GUEST_SMALL_PAGE_INDEX=1` with `OCERZ_WMGL_GUEST_SMALL_STORAGE=1` to select the index. The list arm keeps the same storage policy and sets the index flag to zero. The copied-shadow reference sets the storage flag to zero and keeps the index flag at one. The two large-storage options and shadow-allocation reuse are enabled in every arm.
+
+All three modes passed **806** general i386 checks. The offscreen storage suite passed **128** checks in the reference and **143** each with the list and index. The latter cases check the last byte, a request crossing the page boundary, and removal after the renderer releases a buffer with no pending GPU references. Running the index with the two larger-storage flags cleared passed **128** storage checks.
+
+| Buffer policy | Median GPU-completed FPS | Median p99 completion gap | Median sampled RSS |
+| --- | ---: | ---: | ---: |
+| Copied shadow | 137.57 | 12.56 ms | 408.20 MiB |
+| One-page guest storage, list lookup | 131.48 | 12.94 ms | 436.09 MiB |
+| One-page guest storage, address index | 136.63 | 12.78 ms | 422.20 MiB |
+
+The index gained **4.88 and 5.40 FPS** against the list and reduced p99 by **0.11 and 0.21 ms**. Against the copied-shadow reference it lost **0.77 and 1.12 FPS** and increased p99 by **0.12 and 0.33 ms**. Keep the copied-shadow reference for follow-up comparisons. All six warmed 60-second windows verified the saved camera, spell effects, 26 timing rows, and consecutive GPU completions at 1365 × 768. The trial recorded zero visible windows or activations. The copied client folder was isolated. A separate legacy client was observed running during the comparisons and its GPU load was unmeasured. [Six timed windows and paired differences](results/raid-aarchx-one-page-address-index-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-shadow-reuse.py TIMED_RUNS --indexed-storage
+```
