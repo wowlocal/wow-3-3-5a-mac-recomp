@@ -681,3 +681,22 @@ A startup trace found that the original client probes `hw.optional.mmx`, `hw.opt
 The same headless executable was launched with the feature switch set to `0` and `1`. The control readback showed the SSE startup warning over the login fields. The trial readback showed the login fields directly. Both captures kept 1365 × 768, consecutive GPU completions, and zero observed trial windows or activations. The ten-second GPU windows documented startup rendering while the two captures showed different UI. All 806 general runtime checks passed. [Readback checks and CPU query evidence](results/winemetalgl-headless-x86-features.json)
 
 Build with `patches/aarchx-m32-x86-cpu-sysctl-trial.patch` and set `OCERZ_M32_X86_CPU_FEATURES=1` for the trial. Run `test_m32 x86-cpu-features` with the flag set to zero and one to verify ordinary lookup, the reported feature values, and output-buffer sizing.
+
+### Enter the local realm in the headless client
+
+The opt-in realm trial posts Carbon events inside the isolated process. The text event carries the original key event as `typeEventRef` and sends the complete field as Unicode. App-local Tab transfers input to the password field. A synthetic-credential run confirmed the account field and password mask. The headless runtime exits before opening a native Carbon alert.
+
+Apply `patches/aarchx-wmgl-headless-realm-trial.patch` after the headless drawable and emulated CPU feature patches. Place the test launcher bundle beside `Data` in the copied client. Check both realm addresses point to `127.0.0.1`, and launch with `open -g -j -n --stdin` pointing at the existing private fixture login file. The file must be owned by the launching user with no group or other permissions. It supplies `Username:` and `Password:` fields for the local fixture. Set `OCERZ_HEADLESS_REALM_LOGIN` to enable the login sequence.
+
+Set `OCERZ_HEADLESS_CHARACTER_READBACK` to a fresh capture path. Create the file at `OCERZ_HEADLESS_CHARACTER_REQUEST` after the local realm confirms authentication or the trial connects to its world socket. Verify the fixture character in that readback before creating the file at `OCERZ_HEADLESS_ENTER_REQUEST`. Use `OCERZ_HEADLESS_WORLD_READBACK` for the in-world frame. Pass the expected total run time in seconds to `wmgl-headless-window-check.swift` to watch the entire capture.
+
+### First full-raid A/B with the headless client
+
+One warmed 60-second run per arm rendered the full 24-caster fixture at 1365 × 768. The two launches used the same client and fixed camera, both FPS limits set to zero, VSync off, and separate WineMetalGL libraries that differed by the matrix-stack change. The realm confirmed local authentication, all 25 actors, and the exact 26 fixture scripts in both launches. The two world readbacks showed the same camera, actors, and overlapping spell effects.
+
+| Arm | GPU-completed FPS | p99 completion gap |
+| --- | ---: | ---: |
+| Control | 94.37 | 16.31 ms |
+| Matrix-stack trial | 93.80 | 15.75 ms |
+
+Both GPU sequences were consecutive. The desktop monitor saw zero visible trial windows and zero activations in both runs. This pair measured a smaller p99 gap with the patch and slightly lower average throughput. [Full-raid pair and verification](results/raid-winemetalgl-headless-matrix-mode-ab.json)

@@ -1,0 +1,337 @@
+--- a/src/m32_carbon.c
++++ b/src/m32_carbon.c
+@@ -49,17 +49,22 @@
+
+ #define M32_kWindowCompositingAttribute (1u << 19)
+
++static void *headless_front;
+ static int32_t (*g_create_new_window)(uint32_t, uint32_t, const void *, void **);
+
+ static int32_t create_new_window(uint32_t window_class, uint32_t attributes, const void *bounds, void **out)
+ {
+-    return g_create_new_window(window_class, attributes | M32_kWindowCompositingAttribute, bounds, out);
++    const int32_t status = g_create_new_window(window_class, attributes | M32_kWindowCompositingAttribute, bounds, out);
++    if (!status && m32_headless_trial)
++        headless_front = *out;
++    return status;
+ }
+
+ static void (*g_dispose_window)(void *);
+
+ static void dispose_window(void *window)
+ {
++    if (headless_front == window) headless_front = NULL;
+     m32_qd_window_gone(window);
+     g_dispose_window(window);
+ }
+@@ -637,11 +642,19 @@
+ static void headless_show_hide(void *window, unsigned char show) { (void)window; (void)show; }
+ static int32_t headless_transform(const void *psn, uint32_t type) { (void)psn; (void)type; return 0; }
+
++static void *headless_front_window(void) { return headless_front; }
++static unsigned char headless_is_active(void *window) { return window && window == headless_front; }
++
+ void *m32_carbon_wrap(const char *symbol, void *fn)
+ {
+     if (!fn || getenv("OCERZ_NO_M32_CARBON_WRAP"))
+         return fn;
+     if (m32_headless_trial) {
++        if (!strcmp(symbol, "FrontWindow") || !strcmp(symbol, "ActiveNonFloatingWindow") ||
++            !strcmp(symbol, "GetUserFocusWindow"))
++            return (void *)headless_front_window;
++        if (!strcmp(symbol, "IsWindowActive") || !strcmp(symbol, "IsWindowVisible"))
++            return (void *)headless_is_active;
+         if (!strcmp(symbol, "ShowWindow") || !strcmp(symbol, "SelectWindow") || !strcmp(symbol, "BringToFront"))
+             return (void *)headless_window;
+         if (!strcmp(symbol, "ShowHide"))
+--- a/src/m32_cross.c
++++ b/src/m32_cross.c
+@@ -23,6 +23,7 @@
+ #include <string.h>
+
+ #include "ocerz/abi.h"
++#include "ocerz/vm.h"
+ #include "ocerz/bridge.h"
+ #include "ocerz/interp.h"
+ #include "ocerz/m32.h"
+@@ -1110,6 +1111,14 @@
+         }
+         fputc('\n', stderr);
+     }
++    if (m32_headless_trial && (!strcmp(e->name, "_CreateStandardAlert") ||
++                               !strcmp(e->name, "_CreateStandardSheet") ||
++                               !strcmp(e->name, "_RunStandardAlert") ||
++                               !strcmp(e->name, "_StandardAlert"))) {
++        fprintf(stderr, "ocerz: stopping the offscreen trial before a native alert\n");
++        ocerz_vm_request_exit(vm, 65);
++        return OCERZ_STEP_EXIT;
++    }
+     static int log_calls = -1, log_files = -1;
+     if (log_calls < 0)
+         log_calls = getenv("OCERZ_M32LOG") && strstr(getenv("OCERZ_M32LOG"), "calls");
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -1,5 +1,6 @@
+ #import <AppKit/AppKit.h>
+ #import <QuartzCore/CAMetalLayer.h>
++#import <Carbon/Carbon.h>
+ #include <dispatch/dispatch.h>
+ #include <dlfcn.h>
+ #include <pthread.h>
+@@ -9,6 +10,9 @@
+ #include <string.h>
+ #include <math.h>
+ #include <sys/mman.h>
++#include <sys/stat.h>
++#include <ctype.h>
++#include <time.h>
+ #include <unistd.h>
+
+ #include "ocerz/m32_wmgl.h"
+@@ -629,6 +633,237 @@
+     free(pixels);
+ }
+
++static struct {
++    __typeof__(&CreateEvent) CreateEvent;
++    __typeof__(&GetCurrentEventTime) GetCurrentEventTime;
++    __typeof__(&SetEventParameter) SetEventParameter;
++    __typeof__(&PostEventToQueue) PostEventToQueue;
++    __typeof__(&GetMainEventQueue) GetMainEventQueue;
++    __typeof__(&ReleaseEvent) ReleaseEvent;
++    __typeof__(&SendEventToEventTarget) SendEventToEventTarget;
++    __typeof__(&GetApplicationEventTarget) GetApplicationEventTarget;
++} trialEvents;
++
++static int trial_load_events(void)
++{
++    void *carbon = dlopen("/System/Library/Frameworks/Carbon.framework/Frameworks/HIToolbox.framework/HIToolbox",
++                          RTLD_LAZY | RTLD_LOCAL);
++    if (!carbon) return 0;
++#define LOAD_EVENT(name) do { \
++    trialEvents.name = dlsym(carbon, #name); \
++    if (!trialEvents.name) return 0; \
++} while (0)
++    LOAD_EVENT(CreateEvent);
++    LOAD_EVENT(GetCurrentEventTime);
++    LOAD_EVENT(SetEventParameter);
++    LOAD_EVENT(PostEventToQueue);
++    LOAD_EVENT(GetMainEventQueue);
++    LOAD_EVENT(ReleaseEvent);
++    LOAD_EVENT(SendEventToEventTarget);
++    LOAD_EVENT(GetApplicationEventTarget);
++#undef LOAD_EVENT
++    return 1;
++}
++
++typedef struct {
++    unsigned char bytes[64];
++    size_t length;
++} TrialField;
++
++static void trial_wipe(void *buffer, size_t size)
++{
++    volatile unsigned char *bytes = buffer;
++    while (size--)
++        *bytes++ = 0;
++}
++
++static int trial_read_login(TrialField *account, TrialField *password)
++{
++    struct stat info;
++    char input[512];
++    if (fstat(STDIN_FILENO, &info) || !S_ISREG(info.st_mode) || info.st_uid != geteuid() ||
++        (info.st_mode & 077) || info.st_size <= 0 || info.st_size >= (off_t)sizeof(input))
++        return 0;
++    ssize_t length = pread(STDIN_FILENO, input, (size_t)info.st_size, 0);
++    if (length != info.st_size) {
++        trial_wipe(input, sizeof input);
++        return 0;
++    }
++    input[length] = 0;
++    char *position = NULL;
++    for (char *line = strtok_r(input, "\r\n", &position); line; line = strtok_r(NULL, "\r\n", &position)) {
++        char *value = strchr(line, ':');
++        if (!value) continue;
++        *value++ = 0;
++        TrialField *field = !strcasecmp(line, "username") ? account :
++                            !strcasecmp(line, "password") ? password : NULL;
++        if (!field) continue;
++        while (*value == ' ' || *value == '\t') ++value;
++        size_t n = strlen(value);
++        while (n && (value[n - 1] == ' ' || value[n - 1] == '\t')) --n;
++        if (!n || n > sizeof field->bytes) continue;
++        size_t i = 0;
++        for (; i < n; ++i)
++            if (!isascii((unsigned char)value[i]) || !isalnum((unsigned char)value[i])) break;
++        if (i != n) continue;
++        memcpy(field->bytes, value, n);
++        field->length = n;
++    }
++    trial_wipe(input, sizeof input);
++    return account->length && password->length;
++}
++
++static void trial_click(Sidecar *ctx, double vertical)
++{
++    CarbonRect bounds;
++    if (windowHost.bounds(ctx->carbon, CarbonContentRegion, &bounds)) return;
++    const HIPoint local = { (bounds.right - bounds.left) * 0.5, (bounds.bottom - bounds.top) * vertical };
++    const HIPoint global = { bounds.left + local.x, bounds.top + local.y };
++    const EventMouseButton button = kEventMouseButtonPrimary;
++    const UInt32 clicks = 1;
++    WindowRef window = ctx->carbon;
++    EventTargetRef target = windowHost.target(window);
++    if (!target) return;
++    const UInt32 kinds[] = { kEventMouseDown, kEventMouseUp };
++    for (size_t i = 0; i < sizeof kinds / sizeof kinds[0]; ++i) {
++        EventRef event = NULL;
++        if (trialEvents.CreateEvent(NULL, kEventClassMouse, kinds[i], trialEvents.GetCurrentEventTime(), kEventAttributeUserEvent, &event))
++            continue;
++        if (!trialEvents.SetEventParameter(event, kEventParamMouseLocation, typeHIPoint, sizeof global, &global) &&
++            !trialEvents.SetEventParameter(event, kEventParamWindowMouseLocation, typeHIPoint, sizeof local, &local) &&
++            !trialEvents.SetEventParameter(event, kEventParamMouseButton, typeMouseButton, sizeof button, &button) &&
++            !trialEvents.SetEventParameter(event, kEventParamClickCount, typeUInt32, sizeof clicks, &clicks) &&
++            !trialEvents.SetEventParameter(event, kEventParamWindowRef, typeWindowRef, sizeof window, &window) &&
++            !trialEvents.SetEventParameter(event, kEventParamPostTarget, typeEventTargetRef, sizeof target, &target))
++            trialEvents.PostEventToQueue(trialEvents.GetMainEventQueue(), event, kEventPriorityStandard);
++        trialEvents.ReleaseEvent(event);
++    }
++}
++
++static OSStatus trial_deliver(EventRef event, EventTargetRef target)
++{
++    const OSStatus status = trialEvents.SendEventToEventTarget(event, target);
++    return status == eventNotHandledErr ? trialEvents.SendEventToEventTarget(event, trialEvents.GetApplicationEventTarget()) : status;
++}
++
++static void trial_type(void *window, TrialField field, UInt32 virtual_key)
++{
++    const EventTargetRef target = windowHost.target(window);
++    if (!target) {
++        trial_wipe(&field, sizeof field);
++        return;
++    }
++    dispatch_async(dispatch_get_main_queue(), ^{
++        TrialField copy = field;
++        UniChar text[sizeof copy.bytes] = {0};
++        for (size_t i = 0; i < copy.length; ++i) text[i] = copy.bytes[i];
++        const UInt32 modifiers = 0;
++        const UInt32 kinds[] = { kEventRawKeyDown, kEventRawKeyUp };
++        for (size_t i = 0; i < sizeof kinds / sizeof kinds[0]; ++i) {
++            EventRef key = NULL;
++            if (trialEvents.CreateEvent(NULL, kEventClassKeyboard, kinds[i], trialEvents.GetCurrentEventTime(), kEventAttributeUserEvent, &key))
++                continue;
++            OSStatus status = trialEvents.SetEventParameter(key, kEventParamKeyCode, typeUInt32, sizeof virtual_key, &virtual_key);
++            status |= trialEvents.SetEventParameter(key, kEventParamKeyModifiers, typeUInt32, sizeof modifiers, &modifiers);
++            if (copy.length)
++                status |= trialEvents.SetEventParameter(key, kEventParamKeyUnicodes, typeUnicodeText, sizeof text[0], text);
++            if (!status) {
++                trial_deliver(key, target);
++                if (i == 0 && copy.length) {
++                    EventRef typing = NULL;
++                    if (!trialEvents.CreateEvent(NULL, kEventClassTextInput, kEventTextInputUnicodeForKeyEvent,
++                                     trialEvents.GetCurrentEventTime(), kEventAttributeUserEvent, &typing)) {
++                        if (!trialEvents.SetEventParameter(typing, kEventParamTextInputSendKeyboardEvent, typeEventRef,
++                                               sizeof key, &key) &&
++                            !trialEvents.SetEventParameter(typing, kEventParamTextInputSendText, typeUnicodeText,
++                                               copy.length * sizeof text[0], text))
++                            trial_deliver(typing, target);
++                        trialEvents.ReleaseEvent(typing);
++                    }
++                }
++            }
++            trialEvents.ReleaseEvent(key);
++        }
++        trial_wipe(text, sizeof text);
++        trial_wipe(&copy, sizeof copy);
++    });
++    trial_wipe(&field, sizeof field);
++}
++
++static void trial_realm_login(Sidecar *ctx)
++{
++    enum { READ, CLICK_ACCOUNT, TYPE_ACCOUNT, CLICK_PASSWORD, TYPE_PASSWORD, SUBMIT,
++           CHARACTER_READBACK, WAIT_FOR_ENTER, WORLD_READBACK, FINISHED };
++    static unsigned stage;
++    static uint64_t next;
++    static TrialField account, password;
++    if (stage == FINISHED || !ctx->carbon || ctx->swaps < 240)
++        return;
++    const uint64_t now = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++    if (now < next) return;
++    next = now + 280000000ull;
++    switch (stage) {
++    case READ:
++        if (!trial_load_events() || !trial_read_login(&account, &password)) {
++            trial_wipe(&account, sizeof account);
++            trial_wipe(&password, sizeof password);
++            fprintf(stderr, "ocerz: could not read private trial login input from stdin\n");
++            stage = FINISHED;
++            return;
++        }
++        break;
++    case CLICK_ACCOUNT: trial_click(ctx, 0.522); break;
++    case TYPE_ACCOUNT:
++        trial_type(ctx->carbon, account, kVK_ANSI_A);
++        trial_wipe(&account, sizeof account);
++        break;
++    case CLICK_PASSWORD: {
++        TrialField empty = {0};
++        trial_type(ctx->carbon, empty, kVK_Tab);
++        break;
++    }
++    case TYPE_PASSWORD:
++        trial_type(ctx->carbon, password, kVK_ANSI_A);
++        trial_wipe(&password, sizeof password);
++        break;
++    case SUBMIT:
++        if (getenv("OCERZ_HEADLESS_FIELDS_ONLY")) {
++            const char *readback = getenv("OCERZ_HEADLESS_CHARACTER_READBACK");
++            if (readback && *readback) capture_frame(ctx, readback);
++            stage = FINISHED;
++            return;
++        }
++        TrialField submit = { .bytes = {'\r'}, .length = 1 };
++        trial_type(ctx->carbon, submit, kVK_Return);
++        fprintf(stderr, "ocerz: submitted the private trial realm login\n");
++        next = now + 3500000000ull;
++        break;
++    case CHARACTER_READBACK: {
++        const char *request = getenv("OCERZ_HEADLESS_CHARACTER_REQUEST");
++        if (!request || access(request, F_OK)) return;
++        const char *character = getenv("OCERZ_HEADLESS_CHARACTER_READBACK");
++        if (character && *character) capture_frame(ctx, character);
++        break;
++    }
++    case WAIT_FOR_ENTER: {
++        const char *request = getenv("OCERZ_HEADLESS_ENTER_REQUEST");
++        if (!request || access(request, F_OK)) return;
++        TrialField empty = {0};
++        trial_type(ctx->carbon, empty, kVK_Return);
++        fprintf(stderr, "ocerz: dispatched return to the trial character screen\n");
++        next = now + 4000000000ull;
++        break;
++    }
++    case WORLD_READBACK: {
++        const char *world = getenv("OCERZ_HEADLESS_WORLD_READBACK");
++        if (world && *world) capture_frame(ctx, world);
++        break;
++    }
++    default: return;
++    }
++    ++stage;
++}
++
+ int m32_wmgl_swap(void *agl)
+ {
+     Sidecar *ctx = find(agl);
+@@ -640,6 +875,8 @@
+         if (path && *path)
+             capture_frame(ctx, path);
+     }
++    if (m32_headless_trial && getenv("OCERZ_HEADLESS_REALM_LOGIN"))
++        trial_realm_login(ctx);
+     int presented = driver.swap(ctx->surface);
+     if (has_drawable)
+         ++ctx->swaps;

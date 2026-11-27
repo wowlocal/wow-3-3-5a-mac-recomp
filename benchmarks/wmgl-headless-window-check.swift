@@ -9,7 +9,12 @@ guard session?["CGSSessionScreenIsLocked"] as? Bool != true else {
 }
 let workspace = NSWorkspace.shared
 let identifier = "org.local.wrath-trial.headless"
-let cutoff = Date().addingTimeInterval(22)
+let duration = CommandLine.arguments.count == 1 ? 22 : Double(CommandLine.arguments[1])
+guard CommandLine.arguments.count <= 2, let duration, duration.isFinite, duration > 0 else {
+    fputs("Supply a positive monitor duration in seconds.\n", stderr)
+    exit(2)
+}
+let cutoff = Date().addingTimeInterval(duration)
 var seen = Set<pid_t>()
 var activationCount = 0
 var maximumWindowCount = 0
@@ -33,7 +38,8 @@ while Date() < cutoff {
         if count > 0 || activationCount > 0 || workspace.frontmostApplication?.processIdentifier == app.processIdentifier {
             // The monitor targets the isolated trial instance only.
             app.hide()
-            let result = ["trial": Int(app.processIdentifier), "foregroundViolation": 1, "visibleWindows": count]
+            let result = ["trial": Int(app.processIdentifier), "activationNotifications": activationCount,
+                          "visibleWindows": count]
             print(String(data: try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]), encoding: .utf8)!)
             exit(1)
         }

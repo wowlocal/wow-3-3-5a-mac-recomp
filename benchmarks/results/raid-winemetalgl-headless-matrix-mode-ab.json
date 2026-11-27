@@ -1,0 +1,65 @@
+{
+  "hardware": "Apple M4 Pro",
+  "workload": "Live WoW 3.3.5a in the full 24-caster Northshire raid with an offscreen drawable",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "x86_cpu_features_enabled": true,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_fixture_script_rows_per_arm": 26,
+  "monitor_seconds_per_launch": 95,
+  "renderer_change": "Select the fixed-function matrix stack without rebuilding the packed uniforms",
+  "runs": [
+    {
+      "arm": "control",
+      "renderer_mapping_checked": true,
+      "local_realm_authentication_verified": true,
+      "in_world_readback_checked": true,
+      "max_visible_trial_windows": 0,
+      "trial_activation_notifications": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 5663,
+      "first_sequence": 4650,
+      "last_sequence": 10312,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998876375,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 94.36666666666666,
+      "p99_gpu_completion_gap_ns": 16314709,
+      "min_draws": 680,
+      "max_draws": 940
+    },
+    {
+      "arm": "trial",
+      "renderer_mapping_checked": true,
+      "local_realm_authentication_verified": true,
+      "in_world_readback_checked": true,
+      "max_visible_trial_windows": 0,
+      "trial_activation_notifications": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 5629,
+      "first_sequence": 4562,
+      "last_sequence": 10190,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996825125,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 93.8,
+      "p99_gpu_completion_gap_ns": 15750709,
+      "min_draws": 713,
+      "max_draws": 936
+    }
+  ],
+  "general_m32_checks_passed": 806
+}
