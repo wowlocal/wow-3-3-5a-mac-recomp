@@ -1317,3 +1317,18 @@ Apply `patches/aarchx-m32-guest-stack-profile-trial.patch` and set `OCERZ_GUESTP
 python3 benchmarks/summarize-i386-unwind-hotspots.py CAPTURE_DIR LOCAL_I386_EXECUTABLE \
     --stacks --compare-entries 0x73f8e0 0x97dbc0
 ```
+
+### Reuse a guarded i386 address base from more registers
+
+The hot stack samples put **11.05%** of total CPU time in `MOVL` instructions beneath the two selected entries. The existing translator reuses a guarded mapped EBP base in eligible prefixes. This trial allows any pinned i386 integer register except ESP. It picks the base with the most compatible MOV or SSE operands before the first instruction that can change it, with a minimum of six operands. EBP wins ties. Each selected block guards the same −256 to 255 displacement range. A failed guard retires the specialized block and falls back to wrapped 32-bit address generation.
+
+Apply `patches/aarchx-m32-general-base-hoist-trial.patch` after the EBP hoist trial. Set `OCERZ_M32_GENERAL_BASE_HOIST=1` for the trial and leave it unset for control. Both arms enabled `OCERZ_M32_EBP_HOIST=1` and disabled the translation cache. Both passed **806** general runtime checks, eight existing EBP comparisons, and six new interpreter comparisons. The new cases cover a dirty upper register half, base reassignment, both address bounds, mixed scalar and SSE operations, and indexed operands.
+
+A separate compile witness selected **400** distinct blocks with a base other than EBP. Disassembly matched **385** of those blocks to the original client. Matching compatible operands in those prefixes to the earlier stack profiles covered **0.89% and 0.62%** of sampled CPU time. This is address coverage. Use `OCERZ_M32_GENERAL_BASE_HOIST_LOG=1` in a separate diagnostic launch to record selections.
+
+| Guarded base selection | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| EBP | 122.25 | 13.85 ms |
+| Best eligible base | 123.24 | 13.64 ms |
+
+The four primary warmed 60-second windows used trial, control, control, and trial order with logging off. Throughput rose **1.77 and 0.22 FPS** in the two pairs. P99 fell **0.77 ms** in the first pair and rose **0.35 ms** in the reverse pair. Keep the option for follow-up throughput comparisons. A local disassembly job overlapped the first control, so the first pair remains outside the primary comparison. All six launches verified the saved camera, effects, exact cast timings, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid timing and coverage](results/raid-aarchx-headless-i386-general-base-hoist-ab.json)
