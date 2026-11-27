@@ -1,0 +1,185 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -20610,6 +20610,27 @@
+     (*n_epi)++;
+ }
+
++static unsigned emit_m32_bridge_xmms(A64Buf *b, int store)
++{
++    unsigned pairs = 0;
++    for (unsigned r = 0; r < 8; ++r) {
++        if (!xmm_is_pinned(r)) continue;
++        const unsigned off = XMM_BASE_OFF + r * 16;
++        const int first = xmm_vreg(r);
++        if (ENV_ON("OCERZ_M32_BRIDGE_XMM_PAIRS") && r + 1 < 8 && xmm_is_pinned(r + 1) && off <= 1008) {
++            const int second = xmm_vreg(++r);
++            if (store) a64_stp_q_off(b, first, second, 20, (int)off);
++            else a64_ldp_q_off(b, first, second, 20, (int)off);
++            ++pairs;
++        } else if (store) {
++            a64_str_v(b, 16, first, 20, off);
++        } else {
++            a64_ldr_v(b, 16, first, 20, off);
++        }
++    }
++    return pairs;
++}
++
+ static int emit_bridge_fastcall32_body(A64Buf *b, const X86Insn *insns, int i, uint32_t **epi_sites, int *n_epi);
+
+ static void emit_bridge_fastcall32(A64Buf *b, const X86Insn *insns, int i,
+@@ -20685,10 +20706,11 @@
+         if (!leaf->fn) {
+             a64_dmb_ish(b);
+         } else {
+-            if (leaf->simd)
+-                for (unsigned r = 0; r < 8; r++)
+-                    if (xmm_is_pinned(r))
+-                        a64_str_v(b, 16, xmm_vreg(r), 20, XMM_BASE_OFF + r * 16);
++            if (leaf->simd) {
++                const unsigned pairs = emit_m32_bridge_xmms(b, 1);
++                if (pairs && ENV_ON("OCERZ_M32_BRIDGE_XMM_PAIRS_LOG"))
++                    fprintf(stderr, "ocerz: i386 paired XMM bridge leaf=%s pairs=%u\n", leaf->name, pairs);
++            }
+             if (leaf->tramp)
+                 a64_mov_imm64(b, 0, (uint64_t)(uintptr_t)leaf);
+             else if (leaf->nargs)
+@@ -20699,9 +20721,7 @@
+             g_callout_seq++;
+             a64_mov_reg(b, 1, JT0, 0);
+             if (leaf->simd) {
+-                for (unsigned r = 0; r < 8; r++)
+-                    if (xmm_is_pinned(r))
+-                        a64_ldr_v(b, 16, xmm_vreg(r), 20, XMM_BASE_OFF + r * 16);
++                emit_m32_bridge_xmms(b, 0);
+                 emit_pk_consts_load(b);
+             }
+             emit_reload_jgb(b);
+@@ -20747,9 +20767,9 @@
+     uint32_t *to_deep = a64_label(b); a64_bcond(b, A64_HI, 0);
+
+     g_ymmh_zero = 0;
+-    for (unsigned r = 0; r < 8; r++)
+-        if (xmm_is_pinned(r))
+-            a64_str_v(b, 16, xmm_vreg(r), 20, XMM_BASE_OFF + r * 16);
++    const unsigned pairs = emit_m32_bridge_xmms(b, 1);
++    if (pairs && ENV_ON("OCERZ_M32_BRIDGE_XMM_PAIRS_LOG"))
++        fprintf(stderr, "ocerz: i386 paired XMM bridge generic trap=%#x pairs=%u\n", trap, pairs);
+     emit_spill_pinned(b);
+     a64_mov_reg(b, 1, 0, 19);
+     a64_mov_reg(b, 1, 1, 20);
+@@ -20761,9 +20781,7 @@
+     a64_mov_reg(b, 0, JT0, 0);
+     emit_fill_pinned(b);
+     uint32_t *to_leave = a64_label(b); a64_cbnz(b, 0, JT0, 0);
+-    for (unsigned r = 0; r < 8; r++)
+-        if (xmm_is_pinned(r))
+-            a64_ldr_v(b, 16, xmm_vreg(r), 20, XMM_BASE_OFF + r * 16);
++    emit_m32_bridge_xmms(b, 0);
+     emit_pk_consts_load(b);
+     yc_reload_all(b);
+     emit_reload_jgb(b);
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -3118,6 +3118,77 @@
+     call("_NSDeallocateMemoryPages", 2, (uint32_t[]){ pages, 0x5000 });
+ }
+
++static int bridge_xmm_arguments_seen;
++
++static uint64_t bridge_xmm_mock(uint64_t a, uint64_t b, uint64_t c, uint64_t d,
++                                uint64_t unused0, uint64_t unused1, uint64_t unused2)
++{
++    (void)unused0; (void)unused1; (void)unused2;
++    bridge_xmm_arguments_seen = (a == 1 && b == 2 && c == 3 && d == 4);
++    __asm__ volatile(
++        "movi v16.16b, #0xaa\n"
++        "movi v17.16b, #0xaa\n"
++        "movi v18.16b, #0xaa\n"
++        "movi v19.16b, #0xaa\n"
++        "movi v20.16b, #0xaa\n"
++        "movi v21.16b, #0xaa\n"
++        "movi v22.16b, #0xaa\n"
++        "movi v23.16b, #0xaa\n"
++        ::: "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23");
++    return 0;
++}
++
++static void test_bridge_xmm(void)
++{
++    const uint32_t trap = m32_export_hostfn((void *)bridge_xmm_mock, "v(uuuu)", "v(uuuu)");
++    M32Export* exported = m32_export_by_id(trap - OCERZ_DYLDAPI_LO);
++    check("a native probe has a guest call address", exported != NULL);
++    if (!exported) return;
++    free(exported->name);
++    exported->name = strdup("_glXmmBridgeProbe");
++    const M32Leaf* leaf = m32_leaf_for(trap);
++    check("the probe uses an i386 SIMD-preserving GL leaf", leaf && leaf->simd && leaf->nargs == 4);
++    if (!leaf || !leaf->simd) return;
++
++    const uint32_t start = CODE, source = DATA + 0x7000, target = source + 0x80;
++    uint8_t code[8 * 7 + 8 + 5 + 3 + 8 * 7 + 3];
++    size_t n = 0;
++    for (int r = 0; r < 8; ++r) {
++        code[n++] = 0x0f; code[n++] = 0x10; /* movups xmmN, [abs32] */
++        code[n++] = 0x05 | (r << 3);
++        uint32_t at = source + (uint32_t)r * 16;
++        memcpy(code + n, &at, 4);
++        n += 4;
++    }
++    for (int a = 4; a > 0; --a) {
++        code[n++] = 0x6a; code[n++] = (uint8_t)a;  /* push four cdecl arguments */
++    }
++    code[n++] = 0xe8;
++    const uint32_t displacement = trap - (start + (uint32_t)n + 4);
++    memcpy(code + n, &displacement, 4);
++    n += 4;
++    code[n++] = 0x83; code[n++] = 0xc4; code[n++] = 16;  /* add esp, 16 */
++    for (int r = 0; r < 8; ++r) {
++        code[n++] = 0x0f; code[n++] = 0x11; /* movups [abs32], xmmN */
++        code[n++] = 0x05 | (r << 3);
++        uint32_t at = target + (uint32_t)r * 16;
++        memcpy(code + n, &at, 4);
++        n += 4;
++    }
++    code[n++] = 0x31; code[n++] = 0xc0; code[n++] = 0xc3; /* xor eax, eax; ret */
++    for (int i = 0; i < 128; ++i) ((uint8_t *)m32_h(source))[i] = (uint8_t)(i * 73 + 9);
++    memset(m32_h(target), 0, 128);
++    memcpy(m32_h(start), code, n);
++    ocerz_vm_install_handlers(&g_vm);
++    m32_active = 1;
++    g_vm.jit_enabled = 1;
++    cpu()->gpr[OCERZ_RSP] = STACK;
++    check("the leaf call returns through the translated guest caller", m32_call(&g_vm, start, NULL, 0, NULL, NULL) == 0);
++    check("the native probe received all four arguments", bridge_xmm_arguments_seen);
++    check("all 128 bytes of xmm0 through xmm7 survive the native call", !memcmp(m32_h(source), m32_h(target), 128));
++    m32_active = 0;
++}
++
+ int main(int argc, char **argv)
+ {
+     if (argc == 4 && !strcmp(argv[1], "spawned")) {   /* test_posix_spawn's child: a line to a file or stdout */
+@@ -3145,7 +3216,8 @@
+     ocerz_cpu_reset(cpu());
+     cpu()->mode32 = 1;
+     m32_heap_init();
+-    if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage"))) {
++    if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage") ||
++                     !strcmp(argv[1], "bridge-xmm"))) {
+         char db[PATH_MAX];
+         if (!realpath("runtime/apis32", db)) {
+             fprintf(stderr, "test_m32: no runtime/apis32 here (make apis32, run from the repository)\n");
+@@ -3155,6 +3227,11 @@
+         char db64[PATH_MAX];
+         if (realpath("runtime/apis", db64))
+             setenv("OCERZ_APIDB", db64, 0);   /* the host side: frameworks the bridge opens by install name */
++        if (!strcmp(argv[1], "bridge-xmm")) {
++            test_bridge_xmm();
++            printf("test_m32 bridge-xmm: %d checks, %d failed\n", g_checks, g_failures);
++            return g_failures != 0;
++        }
+         if (!strcmp(argv[1], "wmgl-storage")) {
+             test_wmgl_storage();
+             printf("test_m32 wmgl-storage: %d checks, %d failed\n", g_checks, g_failures);

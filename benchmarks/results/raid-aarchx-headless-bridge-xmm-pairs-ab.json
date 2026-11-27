@@ -1,0 +1,503 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "explicit_headless_interactive_qos": false,
+  "i386_forward_superblocks": false,
+  "i386_mov_base_uxtw": true,
+  "i386_fp_batch_v2": true,
+  "i386_ebp_hoist": true,
+  "vertex_shader_uniform_segments": true,
+  "arb_branchless_segments": true,
+  "arb_contiguous_segments": true,
+  "idle_first_draw_threshold": 256,
+  "verified_script_rows_per_launch": 26,
+  "process_isolation": {
+    "other_trial_instances_detected": 0,
+    "guard_checkpoints": "Before the first launch and after each of four launches"
+  },
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "mode": "separate_xmm_operations",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7327,
+      "first_sequence": 4387,
+      "last_sequence": 11713,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995465750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 122.1,
+      "p99_gpu_completion_gap_ns": 13974416,
+      "min_draws": 674,
+      "max_draws": 979
+    },
+    {
+      "launch": 2,
+      "mode": "paired_xmm_operations",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7447,
+      "first_sequence": 4470,
+      "last_sequence": 11916,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996385750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 124.1,
+      "p99_gpu_completion_gap_ns": 13436875,
+      "min_draws": 691,
+      "max_draws": 967
+    },
+    {
+      "launch": 3,
+      "mode": "paired_xmm_operations",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7343,
+      "first_sequence": 4380,
+      "last_sequence": 11722,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993311875,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 122.36666666666666,
+      "p99_gpu_completion_gap_ns": 13515625,
+      "min_draws": 683,
+      "max_draws": 963
+    },
+    {
+      "launch": 4,
+      "mode": "separate_xmm_operations",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7374,
+      "first_sequence": 4292,
+      "last_sequence": 11665,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993321750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 122.88333333333334,
+      "p99_gpu_completion_gap_ns": 13557500,
+      "min_draws": 699,
+      "max_draws": 965
+    }
+  ],
+  "medians": {
+    "separate_xmm_operations": {
+      "average_completed_fps": 122.49166666666667,
+      "p99_gpu_completion_gap_ns": 13765958.0
+    },
+    "paired_xmm_operations": {
+      "average_completed_fps": 123.23333333333332,
+      "p99_gpu_completion_gap_ns": 13476250.0
+    }
+  },
+  "runtime_sha256": "e6de4ad25b0c6f0456cb24c53b8c147fd2138a8efae3450fba829a94e96d86c6",
+  "renderer_sha256": "891e4780c2578612d3e7f32f31f193f1276d83c0eff5f9e0aa74d5b2cfc6588c",
+  "visual_readback_checked_per_launch": true,
+  "diagnostic_submission_log_off_in_timed_runs": true,
+  "compile_witness_diagnostic": {
+    "distinct_open_gl_leaf_names": 68,
+    "leaf_emissions": [
+      {
+        "name": "_CGLGetCurrentContext",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glActiveTextureARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glBeginQueryARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glBindBufferARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glBindFramebufferEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glBindProgramARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glBindRenderbufferEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glBindTexture",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glBlendFunc",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glCheckFramebufferStatusEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glClear",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glClientActiveTextureARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glColor4fv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glColorMask",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glColorMaterial",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glColorPointer",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glCullFace",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDeleteFramebuffersEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDeleteRenderbuffersEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDeleteTextures",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDepthFunc",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDepthMask",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDisable",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDisableClientState",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDisableVertexAttribArrayARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glDrawRangeElementsEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glEnable",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glEnableClientState",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glEnableVertexAttribArrayARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glEndQueryARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glFinishObjectAPPLE",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glFogfv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glFogi",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glFramebufferRenderbufferEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glFramebufferTexture2DEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glFrontFace",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGenBuffersARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGenFramebuffersEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGenQueriesARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGenRenderbuffersEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGenTextures",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGetError",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGetFloatv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGetIntegerv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGetProgramivARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glGetQueryObjectuivARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glLightModelfv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glLightModeli",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glLoadIdentity",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glLoadMatrixf",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glMaterialfv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glMatrixMode",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glNormalPointer",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glPixelStorei",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glPointParameterfvARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glProgramEnvParameters4fvEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glProgramStringARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glReadPixels",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glRenderbufferStorageEXT",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glScissor",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glTexCoordPointer",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glTexEnvfv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glTexEnvi",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glTexGenfv",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glTexGeni",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glTexParameteri",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glVertexAttribPointerARB",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glVertexPointer",
+        "pairs": 4,
+        "count": 1
+      },
+      {
+        "name": "_glViewport",
+        "pairs": 4,
+        "count": 1
+      }
+    ],
+    "generic_emissions_by_pair_count": {
+      "4": 325
+    },
+    "gpu_missing_sequences": 0,
+    "activation_notifications": 0,
+    "visible_trial_windows": 0
+  },
+  "paired_trial_minus_control": [
+    {
+      "average_completed_fps": 2.0,
+      "p99_gpu_completion_gap_ns": -537541
+    },
+    {
+      "average_completed_fps": -0.5166666666666799,
+      "p99_gpu_completion_gap_ns": -41875
+    }
+  ],
+  "general_runtime_checks_per_arm": 806,
+  "focused_native_gl_leaf_checks_per_arm": 5,
+  "all_xmm0_xmm7_bytes_preserved_in_focused_test": true,
+  "selected_for_followup": false
+}

@@ -1268,3 +1268,16 @@ Apply `patches/winemetalgl-idle-first-submission-trial.patch` to the renderer. S
 | Early threshold when the queue is empty | 123.03 | 13.88 ms |
 
 P99 shortened by **0.56 and 0.46 ms** in the two pairs. The median throughput difference was **0.13 FPS**. Keep this as an optional baseline for tail-latency comparisons. All four warmed 60-second timings had submission logging off and verified the camera, cast schedule, overlapping effects, consecutive GPU completions and zero trial windows or activations. [Live A/B and command-buffer diagnostics](results/raid-winemetalgl-headless-idle-first-submission-ab.json)
+
+### Pair SIMD saves across i386 bridge calls
+
+The trial uses ARM64 paired loads and stores for adjacent pinned XMM slots around an i386 native bridge call. It applies to typed leaves and the generic fast-call path. With eight pinned registers, the generated code uses four save instructions and four restore instructions. Individual operations handle unpaired slots.
+
+Apply `patches/aarchx-m32-bridge-xmm-pairs-trial.patch` after the EBP hoist trial and set `OCERZ_M32_BRIDGE_XMM_PAIRS=1`. Unset it for control. Both modes passed **806** general checks. The focused `test_m32 bridge-xmm` case passes four arguments to a native mock leaf, deliberately overwrites the host vector registers, and checks all **128 bytes** of guest XMM0–XMM7 after returning. The compile witness confirmed four pairs in the test. A separate live diagnostic recorded paired emissions for **68 distinct OpenGL leaf names** and the generic bridge path.
+
+| i386 bridge XMM operations | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Separate loads and stores | 122.49 | 13.77 ms |
+| Paired loads and stores | 123.23 | 13.48 ms |
+
+Throughput rose by **2.00 FPS** in the first pair and fell by **0.52 FPS** in the reverse pair. P99 fell by **0.54 and 0.04 ms**, respectively. The option stays experimental. All four warmed 60-second runs used the contiguous shader layout and early first submission with compilation logging off. They verified the camera, 26 cast timing rows, overlapping effects, consecutive GPU completions, and zero visible trial windows or activations. [Live A/B and native-call checks](results/raid-aarchx-headless-bridge-xmm-pairs-ab.json)
