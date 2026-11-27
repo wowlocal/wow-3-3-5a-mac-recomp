@@ -156,6 +156,14 @@ xcrun swiftc -O -framework Metal benchmarks/metal-raid-stream.swift -o /tmp/wrat
 
 The opt-in AArchX sidecar rendered the original WoW login screen at **1365 × 768**. The Carbon window retains its input role, and a borderless Metal window presents over its content rectangle. The experiment uses a fixed window size and requires the Carbon window to be foreground for the input checks.
 
+### Metal window synchronization
+
+Apply `patches/aarchx-wmgl-carbon-window-sync-trial.patch` after the AArchX Metal trial patches and rebuild AArchX. The bridge follows Carbon window events to keep the Metal image over the game content as the window moves. The Metal window stays out of the window cycle and hides on app switch, minimize, or close. It returns over the Carbon content when the player brings WoW back. The Carbon window receives mouse and keyboard input. [Window integration checks](results/winemetalgl-carbon-window-sync.json)
+
+The native harness passed **22 checks** with the real WineMetalGL library, including moving the window, reading a GPU pixel after the move, switching away and back, minimizing, restoring, hiding, and closing. A separate plain Carbon test aborted when it changed the window size. Use a fixed-size window for the benchmark. [Window integration results](results/winemetalgl-carbon-window-sync.json)
+
+`benchmarks/wmgl-carbon-window-check.m` builds against the patched `src/m32_wmgl.m` with `-DOCERZ_WMGL_TRIAL` and the AArchX and WineMetalGL include paths. Link AppKit, CoreGraphics, and QuartzCore. Launch it in a temporary app bundle with `OCERZ_WMGL_LIBRARY` set to the trial library and `OVERLAY_PRIOR_PID` set to the foreground app before launch. The test prints `FOCUS` for any phase that needs the bundle brought forward again. It restores the previous foreground app on exit.
+
 The WineMetalGL patch implements the Apple buffer-object synchronization and mapped-write options that this client calls. The native test observed a buffer busy before finishing it, verified its completion afterward, and checked that a flushed range preserved the neighboring bytes. All **336** upstream GPU tests passed with the patch. A clean AArchX build with the experimental backend disabled passed **806 general checks** and **4,296 Carbon checks**.
 
 Use dedicated source checkouts at AArchX `96754ec605d2cf57e2a05d0cf0f6d2e1c8177741` and WineMetalGL `fac2219f37bbbe132f7d67a530a035ae033aa437`. Apply the existing Wrath patch before the experimental AArchX patch. Build into a separate copy of the trial app. [WineMetalGL driver ABI](https://github.com/metalsharp/WineMetalGL/blob/fac2219f37bbbe132f7d67a530a035ae033aa437/include/winemetalgl/driver.h)

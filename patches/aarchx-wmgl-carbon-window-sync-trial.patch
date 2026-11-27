@@ -1,0 +1,327 @@
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -1,5 +1,6 @@
+ #import <AppKit/AppKit.h>
+ #import <QuartzCore/CAMetalLayer.h>
++#include <dispatch/dispatch.h>
+ #include <dlfcn.h>
+ #include <pthread.h>
+ #include <objc/runtime.h>
+@@ -123,7 +124,7 @@
+     CAMetalLayer *layer;
+     NSWindow *overlay;
+     void *carbon;
+-    uint32_t window_number;
++    void *window_handler;
+     int width, height;
+     unsigned long swaps;
+ } Sidecar;
+@@ -274,6 +275,8 @@
+     return 1;
+ }
+
++static void remove_overlay(Sidecar *ctx);
++
+ void m32_wmgl_destroy(void *agl)
+ {
+     Sidecar *ctx = find(agl);
+@@ -281,45 +284,203 @@
+         return;
+     if (current == ctx)
+         m32_wmgl_set_current(NULL);
++    remove_overlay(ctx);
+     driver.destroy(ctx->context);
+     driver.release(ctx->surface);
+-    [ctx->layer removeFromSuperlayer];
+-    [ctx->layer release];
+-    [ctx->overlay close];
+-    [ctx->overlay release];
+     memset(ctx, 0, sizeof(*ctx));
+ }
++typedef struct { int16_t top, left, bottom, right; } CarbonRect;
++typedef struct { uint32_t event, kind; } CarbonEventType;
++typedef int32_t (*CarbonWindowHandler)(void *, void *, void *);
+
+-static NSWindow *overlay_window(void *window, uint32_t *number, int *width, int *height)
++static struct {
++    int32_t (*bounds)(void *, uint16_t, CarbonRect *);
++    unsigned char (*visible)(void *);
++    unsigned char (*collapsed)(void *);
++    void *(*front)(void);
++    void *(*target)(void *);
++    uint32_t (*event_kind)(void *);
++    int32_t (*install)(void *, CarbonWindowHandler, uint32_t, const CarbonEventType *, void *, void **);
++    int32_t (*remove)(void *);
++} windowHost;
++
++enum {
++    CarbonWindowEvent = 0x77696e64,  /* 'wind' */
++    CarbonWindowActivated = 5,
++    CarbonWindowDeactivated = 6,
++    CarbonWindowShown = 24,
++    CarbonWindowHidden = 25,
++    CarbonWindowBoundsChanged = 27,
++    CarbonWindowCollapsed = 67,
++    CarbonWindowExpanded = 70,
++    CarbonWindowClosed = 73,
++    CarbonContentRegion = 33,
++    CarbonEventNotHandled = -9874
++};
++
++static int load_window_host(void)
+ {
+-    typedef struct { int16_t top, left, bottom, right; } CarbonRect;
+-    void *carbon = dlopen("/System/Library/Frameworks/Carbon.framework/Frameworks/HIToolbox.framework/HIToolbox",
+-                         RTLD_LAZY | RTLD_LOCAL);
+-    uint32_t (*window_id)(void *) = carbon ? (uint32_t (*)(void *))dlsym(carbon, "HIWindowGetCGWindowID") : NULL;
+-    int32_t (*window_bounds)(void *, uint16_t, CarbonRect *) =
+-        carbon ? (int32_t (*)(void *, uint16_t, CarbonRect *))dlsym(carbon, "GetWindowBounds") : NULL;
++    static int initialized, available;
++    if (initialized)
++        return available;
++    initialized = 1;
++    void *lib = dlopen("/System/Library/Frameworks/Carbon.framework/Frameworks/HIToolbox.framework/HIToolbox",
++                       RTLD_LAZY | RTLD_LOCAL);
++    if (!lib)
++        return 0;
++#define WINDOW_HOST(member, symbol) do { \
++    windowHost.member = (__typeof__(windowHost.member))dlsym(lib, symbol); \
++    if (!windowHost.member) return 0; \
++} while (0)
++    WINDOW_HOST(bounds, "GetWindowBounds");
++    WINDOW_HOST(visible, "IsWindowVisible");
++    WINDOW_HOST(collapsed, "IsWindowCollapsed");
++    WINDOW_HOST(front, "FrontWindow");
++    WINDOW_HOST(target, "GetWindowEventTarget");
++    WINDOW_HOST(event_kind, "GetEventKind");
++    WINDOW_HOST(install, "InstallEventHandler");
++    WINDOW_HOST(remove, "RemoveEventHandler");
++#undef WINDOW_HOST
++    return available = 1;
++}
++
++static int window_frame(void *window, NSRect *frame)
++{
+     CarbonRect bounds;
+-    if (!window_id || !window_bounds || window_bounds(window, 33 /* kWindowContentRgn */, &bounds))
+-        return nil;
++    if (windowHost.bounds(window, CarbonContentRegion, &bounds))
++        return 0;
+     NSArray *screens = [(id)objc_getClass("NSScreen") screens];
+     NSScreen *primary = [screens count] ? [screens objectAtIndex:0] : nil;
+-    if (!primary)
+-        return nil;
+-    *number = window_id(window);
+-    *width = bounds.right - bounds.left;
+-    *height = bounds.bottom - bounds.top;
+-    if (!*number || *width <= 0 || *height <= 0)
+-        return nil;
+-    NSRect rect = NSMakeRect(bounds.left, NSMaxY(primary.frame) - bounds.bottom, *width, *height);
+-    NSWindow *overlay = [[(id)objc_getClass("NSWindow") alloc] initWithContentRect:rect
++    if (!primary || bounds.right <= bounds.left || bounds.bottom <= bounds.top)
++        return 0;
++    *frame = NSMakeRect(bounds.left, NSMaxY(primary.frame) - bounds.bottom,
++                        bounds.right - bounds.left, bounds.bottom - bounds.top);
++    return 1;
++}
++
++static void sync_window(Sidecar *ctx, BOOL reorder)
++{
++    if (!ctx->overlay || !ctx->carbon)
++        return;
++    NSApplication *app = [(id)objc_getClass("NSApplication") sharedApplication];
++    NSRect frame;
++    if (!app.active || app.hidden || windowHost.front() != ctx->carbon ||
++        !windowHost.visible(ctx->carbon) || windowHost.collapsed(ctx->carbon) ||
++        !window_frame(ctx->carbon, &frame)) {
++        [ctx->overlay orderOut:nil];
++        return;
++    }
++    NSRect previous = ctx->overlay.frame;
++    if (frame.origin.x != previous.origin.x || frame.origin.y != previous.origin.y ||
++        frame.size.width != previous.size.width || frame.size.height != previous.size.height)
++        [ctx->overlay setFrame:frame display:NO];
++    const int width = (int)frame.size.width, height = (int)frame.size.height;
++    if (width != ctx->width || height != ctx->height) {
++        driver.flush(ctx->surface, WMGL_FLUSH_UPDATED, width, height, 0);
++        ctx->width = width;
++        ctx->height = height;
++    }
++    if (reorder || !ctx->overlay.visible)
++        [ctx->overlay orderFront:nil];
++}
++
++static void order_overlay(void *opaque)
++{
++    sync_window(opaque, YES);
++}
++
++static void update_overlay_bounds(void *opaque)
++{
++    sync_window(opaque, NO);
++}
++
++static int32_t window_event(void *next, void *event, void *opaque)
++{
++    (void)next;
++    Sidecar *ctx = opaque;
++    const uint32_t kind = windowHost.event_kind(event);
++    if (kind == CarbonWindowClosed) {
++        // Carbon destroys this window's event target after the close notification.
++        ctx->window_handler = NULL;
++        ctx->carbon = NULL;
++        [ctx->overlay orderOut:nil];
++    } else if (kind == CarbonWindowHidden || kind == CarbonWindowCollapsed) {
++        [ctx->overlay orderOut:nil];
++    } else if (kind == CarbonWindowBoundsChanged) {
++        dispatch_async_f(dispatch_get_main_queue(), ctx, update_overlay_bounds);
++    } else {
++        // Complete Carbon's activation or show before ordering against it.
++        dispatch_async_f(dispatch_get_main_queue(), ctx, order_overlay);
++    }
++    return CarbonEventNotHandled;
++}
++
++static int watch_window(void *window, Sidecar *ctx, void **handler)
++{
++    static const CarbonEventType events[] = {
++        {CarbonWindowEvent, CarbonWindowActivated}, {CarbonWindowEvent, CarbonWindowDeactivated},
++        {CarbonWindowEvent, CarbonWindowShown},     {CarbonWindowEvent, CarbonWindowHidden},
++        {CarbonWindowEvent, CarbonWindowBoundsChanged},
++        {CarbonWindowEvent, CarbonWindowCollapsed}, {CarbonWindowEvent, CarbonWindowExpanded},
++        {CarbonWindowEvent, CarbonWindowClosed}
++    };
++    void *target = windowHost.target(window);
++    if (!target || windowHost.install(target, window_event, sizeof events / sizeof events[0], events, ctx, handler))
++        return 0;
++
++    static int observing_application;
++    if (!observing_application) {
++        observing_application = 1;
++        id center = [(id)objc_getClass("NSNotificationCenter") defaultCenter];
++        NSApplication *app = [(id)objc_getClass("NSApplication") sharedApplication];
++        const char *notifications[] = {
++            "NSApplicationDidBecomeActiveNotification", "NSApplicationDidResignActiveNotification",
++            "NSApplicationDidHideNotification", "NSApplicationDidUnhideNotification"
++        };
++        for (size_t i = 0; i < sizeof notifications / sizeof notifications[0]; i++) {
++            id name = [(id)objc_getClass("NSString") stringWithUTF8String:notifications[i]];
++            [center addObserverForName:name object:app queue:nil usingBlock:^(NSNotification *note) {
++                (void)note;
++                for (size_t j = 0; j < sizeof contexts / sizeof contexts[0]; j++)
++                    if (contexts[j].overlay)
++                        dispatch_async_f(dispatch_get_main_queue(), &contexts[j], order_overlay);
++            }];
++        }
++    }
++    return 1;
++}
++
++static NSWindow *overlay_window(NSRect frame)
++{
++    NSWindow *overlay = [[(id)objc_getClass("NSWindow") alloc] initWithContentRect:frame
+                         styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
+     overlay.releasedWhenClosed = NO;
+     overlay.ignoresMouseEvents = YES;
++    overlay.hidesOnDeactivate = YES;
++    // Carbon and AppKit use different ordering groups within the normal layer.
++    overlay.level = NSNormalWindowLevel + 1;
++    overlay.excludedFromWindowsMenu = YES;
++    overlay.collectionBehavior = NSWindowCollectionBehaviorIgnoresCycle;
+     overlay.hasShadow = NO;
+     overlay.title = [(id)objc_getClass("NSString") stringWithUTF8String:"WoW Metal Trial Output"];
+     return overlay;
+ }
+
++static void remove_overlay(Sidecar *ctx)
++{
++    if (ctx->window_handler)
++        windowHost.remove(ctx->window_handler);
++    ctx->window_handler = NULL;
++    ctx->carbon = NULL;
++    [ctx->layer removeFromSuperlayer];
++    [ctx->layer release];
++    [ctx->overlay close];
++    [ctx->overlay release];
++    ctx->layer = nil;
++    ctx->overlay = nil;
++}
++
++
+ int m32_wmgl_drawable(void *agl, void *window)
+ {
+     if (!m32_wmgl_enabled())
+@@ -327,20 +488,26 @@
+     Sidecar *ctx = find(agl);
+     if (!ctx || !pthread_main_np())
+         return 0;
+-    if (ctx->carbon == window && (ctx->overlay || !window))
++    if (ctx->carbon == window && (window ? ctx->overlay != nil : ctx->overlay == nil))
+         return 1;
+     int width = 1, height = 1;
+-    uint32_t number = 0;
++    void *handler = NULL;
+     NSWindow *overlay = nil;
+     CAMetalLayer *layer = nil;
+     if (window) {
+-        overlay = overlay_window(window, &number, &width, &height);
++        NSRect frame;
++        if (load_window_host() && window_frame(window, &frame)) {
++            width = (int)frame.size.width;
++            height = (int)frame.size.height;
++            overlay = overlay_window(frame);
++        }
+         if (!overlay) {
+             fprintf(stderr, "ocerz: could not position Metal output inside Carbon window bounds\n");
+             return 0;
+         }
+         layer = [[(id)objc_getClass("CAMetalLayer") alloc] init];
+-        if (!layer) {
++        if (!layer || !watch_window(window, ctx, &handler)) {
++            [layer release];
+             [overlay release];
+             return 0;
+         }
+@@ -353,20 +520,19 @@
+     if (!surface || (current == ctx && !driver.current(ctx->context, surface, surface))) {
+         if (surface)
+             driver.release(surface);
++        if (handler)
++            windowHost.remove(handler);
+         [layer release];
+         [overlay release];
+         return 0;
+     }
+-    [ctx->layer removeFromSuperlayer];
+-    [ctx->layer release];
+-    [ctx->overlay close];
+-    [ctx->overlay release];
++    remove_overlay(ctx);
+     driver.release(ctx->surface);
+     ctx->layer = layer;
+     ctx->overlay = overlay;
+     ctx->surface = surface;
+     ctx->carbon = window;
+-    ctx->window_number = number;
++    ctx->window_handler = handler;
+     ctx->width = width;
+     ctx->height = height;
+     ctx->swaps = 0;
+@@ -374,7 +540,7 @@
+         overlay.contentView.wantsLayer = YES;
+         [overlay.contentView.layer addSublayer:layer];
+         driver.flush(surface, WMGL_FLUSH_INTERVAL, width, height, 0);
+-        [overlay orderWindow:NSWindowAbove relativeTo:number];
++        sync_window(ctx, YES);
+         fprintf(stderr, "ocerz: trial WineMetalGL aligned with Carbon window %dx%d\n", width, height);
+     }
+     return 1;
+@@ -441,7 +607,7 @@
+     }
+     int presented = driver.swap(ctx->surface);
+     if (ctx->layer && ++ctx->swaps == 1) {
+-        [ctx->overlay orderWindow:NSWindowAbove relativeTo:ctx->window_number];
++        sync_window(ctx, YES);
+         fprintf(stderr, "ocerz: trial WineMetalGL first window swap (presented=%d)\n", presented);
+     }
+     return 1;

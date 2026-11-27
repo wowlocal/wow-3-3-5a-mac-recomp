@@ -1,0 +1,31 @@
+{
+  "hardware": "Apple M4 Pro",
+  "test": "Native Carbon window and the real WineMetalGL sidecar",
+  "checks": [
+    "host Carbon window API",
+    "create a compositing Carbon window",
+    "Carbon window has no AppKit window object",
+    "bind Metal to the Carbon window",
+    "initial overlay stays hidden and leaves input with Carbon",
+    "activate the disposable test window",
+    "show overlays exactly the parent content",
+    "Metal appears just above its Carbon backing window",
+    "move Carbon content",
+    "parent movement repositions Metal output",
+    "load real renderer entry points",
+    "render and read inside the moved GPU surface",
+    "switching away removes Metal from the visible window stack",
+    "returning to the app restores aligned Metal output",
+    "hiding Carbon removes the Metal window",
+    "show restores aligned Metal output",
+    "request Carbon minimization",
+    "minimization hides the Metal output",
+    "restore the Carbon window",
+    "restore puts Metal output back in the window",
+    "closing Carbon leaves no orphan overlay",
+    "detach the closed window to a pbuffer"
+  ],
+  "failed": 0,
+  "plain_carbon_resize": "The separate unmodified Carbon probe aborted on a size change.",
+  "native_window_bridge": "Child ordering was unreliable across Carbon and AppKit. A layer attached directly to the Carbon view registered but did not appear in the window capture."
+}
