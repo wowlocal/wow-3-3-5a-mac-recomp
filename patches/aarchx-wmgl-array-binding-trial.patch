@@ -1,0 +1,73 @@
+diff --git a/include/ocerz/m32_wmgl.h b/include/ocerz/m32_wmgl.h
+index e79f1e8..5213943 100644
+--- a/include/ocerz/m32_wmgl.h
++++ b/include/ocerz/m32_wmgl.h
+@@ -16,6 +16,7 @@ int m32_wmgl_drawable(void *agl, void *window);
+ int m32_wmgl_swap(void *agl);
+ uint32_t m32_wmgl_guest_buffer(const void *host, size_t size);
+ int m32_wmgl_guest_storage_enabled(void);
++int m32_wmgl_array_buffer_binding(uint32_t *name);
+ #else
+ static inline int m32_wmgl_symbol(const char *name, void **address) { return 0; }
+ static inline int m32_wmgl_create(void *agl, void *share) { return 1; }
+@@ -25,6 +26,7 @@ static inline int m32_wmgl_drawable(void *agl, void *window) { return 1; }
+ static inline int m32_wmgl_swap(void *agl) { return 0; }
+ static inline uint32_t m32_wmgl_guest_buffer(const void *host, size_t size) { return 0; }
+ static inline int m32_wmgl_guest_storage_enabled(void) { return 0; }
++static inline int m32_wmgl_array_buffer_binding(uint32_t *name) { return 0; }
+ #endif
+ 
+ #endif
+diff --git a/src/m32_gl.c b/src/m32_gl.c
+index 7030771..e5a47de 100644
+--- a/src/m32_gl.c
++++ b/src/m32_gl.c
+@@ -364,7 +364,13 @@ static uint32_t bound(unsigned target)
+ {
+     unsigned q;
+     switch (target) {
+-    case 0x8892: q = 0x8894; break;   /* GL_ARRAY_BUFFER */
++    case 0x8892: {                   /* GL_ARRAY_BUFFER */
++        uint32_t name;
++        if (m32_wmgl_array_buffer_binding(&name))
++            return name;
++        q = 0x8894;
++        break;
++    }
+     case 0x8893: q = 0x8895; break;   /* GL_ELEMENT_ARRAY_BUFFER */
+     case 0x88EB: q = 0x88ED; break;   /* GL_PIXEL_PACK_BUFFER */
+     case 0x88EC: q = 0x88EF; break;   /* GL_PIXEL_UNPACK_BUFFER */
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+index 90da1ec..e2ce5ac 100644
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -27,6 +27,7 @@
+     int (*swap)(wmgl_surface *);
+     void (*flush)(wmgl_surface *, unsigned, int, int, int);
+     void *(*proc)(const char *);
++    int (*array_buffer_binding)(unsigned *);
+ } driver;
+ static int format;
+ static int guestBufferStorage;
+@@ -129,6 +130,11 @@ uint32_t m32_wmgl_guest_buffer(const void *host, size_t size)
+ static Sidecar contexts[64];
+ static __thread Sidecar *current;
+ 
++int m32_wmgl_array_buffer_binding(uint32_t *name)
++{
++    return current && driver.array_buffer_binding && driver.array_buffer_binding(name);
++}
++
+ static void initialize(void)
+ {
+     const char *name = getenv("OCERZ_WMGL_LIBRARY");
+@@ -155,6 +161,9 @@ static void initialize(void)
+     LOAD(flush, "wmgl_surface_flush");
+     LOAD(proc, "wmgl_get_proc_address");
+ #undef LOAD
++    const char *directBinding = getenv("OCERZ_WMGL_ARRAY_BINDING");
++    if (directBinding && !strcmp(directBinding, "1"))
++        driver.array_buffer_binding = (__typeof__(driver.array_buffer_binding))dlsym(handle, "wmgl_array_buffer_binding");
+     struct wmgl_pixel_format formats[128];
+     unsigned window_count = 0;
+     if (driver.initialize(WMGL_DRIVER_ABI_VERSION) == 0) {

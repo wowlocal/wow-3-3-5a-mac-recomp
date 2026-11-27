@@ -1,0 +1,43 @@
+diff --git a/include/winemetalgl/driver.h b/include/winemetalgl/driver.h
+index 1d12c2b..f8798c0 100644
+--- a/include/winemetalgl/driver.h
++++ b/include/winemetalgl/driver.h
+@@ -82,6 +82,9 @@ void wmgl_context_destroy(wmgl_context *context);
+ int wmgl_make_current(wmgl_context *context, wmgl_surface *draw, wmgl_surface *read);
+ 
+ void *wmgl_get_proc_address(const char *name);
++/* Try to read the current GL_ARRAY_BUFFER binding, including a zero name.
++ * On failure the caller must use the normal GL query. */
++int wmgl_array_buffer_binding(unsigned int *name);
+ 
+ /* Renderer information for WGL_WINE_query_renderer. */
+ const char *wmgl_renderer_string(void);
+diff --git a/src/core/driver.mm b/src/core/driver.mm
+index 0e0243c..6bc4990 100644
+--- a/src/core/driver.mm
++++ b/src/core/driver.mm
+@@ -11,6 +11,7 @@
+ #include <mutex>
+ #include <string>
+ 
++#include "core/compat/immediate.h"
+ #include "core/context.h"
+ #include "core/metal/device.h"
+ #include "core/util/settings.h"
+@@ -379,6 +380,16 @@ WMGL_EXPORT int wmgl_make_current(wmgl_context* handle, wmgl_surface* draw, wmgl
+ 
+ WMGL_EXPORT void* wmgl_get_proc_address(const char* name) { return lookupProc(name); }
+ 
++WMGL_EXPORT int wmgl_array_buffer_binding(unsigned int* name) {
++    Context* ctx = currentContext();
++    if (!ctx || !name || g_traceCalls || g_captureCalls || stats::g_enabled) return 0;
++    ShareLock lock(*ctx);
++    if (ctx->immediate && ctx->immediate->active) return 0;
++    const auto& binding = ctx->state.arrayBuffer;
++    *name = binding ? binding->name : 0;
++    return 1;
++}
++
+ namespace {
+ thread_local void* t_batchPool = nullptr;
+ }  // namespace

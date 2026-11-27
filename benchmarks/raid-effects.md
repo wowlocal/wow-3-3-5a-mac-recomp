@@ -295,3 +295,13 @@ wait "$probe_pid" &&
 python3 "$TRIAL_REPO/benchmarks/trace-frames.py" "$METAL_TRIAL_GPU_LOG" "$probe_pid" 1365 768 \
     --wmgl-log --start-sequence 128 --seconds 5
 ```
+
+## Vertex storage reuse and array binding lookup
+
+The saved raid call trace recorded one null-data allocation of the 2 MiB vertex store in 71 of 114 swap intervals and zero in the other 43. With three frames in flight, the native indexed probe allocated three stores during warmup and then reused them across **13,437** replacements. Its `glBufferData` p99 was **584 ns**. At depths of six and eight, the probe needed **299** and **406** additional allocations, and replacement p99 rose to **137 µs** and **141 µs**, respectively. Reproduce the storage counts by adding `OCERZ_WMGL_PROBE_STORAGE=1` to the native indexed probe. It supplies aligned host allocations and times the `glBufferData` call separately. [Storage depth measurements](results/winemetalgl-array-binding-ab.json)
+
+The opt-in array binding path lets AArchX read the current WineMetalGL context's `GL_ARRAY_BUFFER` binding directly while locating mapped guest storage. It falls back to the standard GL query when the optional entry point or current context is unavailable, during Begin/End, and during GL tracing or profiling. It uses the renderer's binding under its existing share-group lock, including an unbound result and distinct bindings in shared contexts.
+
+In six interleaved pairs of 40,000 mapped writes, the median fell from **285 to 239 ns per write**. In four interleaved pairs of 6,000 draw-stream frames, the median fell from **0.783 to 0.764 ms/frame**, with improvement in three of the four pairs. The tests used the AArchX mapping bridge, 826 indexed draws per frame, and synthetic ARB programs. Each arm passed the mapping checks and produced the same framebuffer checksum. A focused test also verified binding changes, separate bindings on shared contexts, unbind, and the Begin/End fallback. [Array binding A/B](results/winemetalgl-array-binding-ab.json)
+
+Apply `patches/winemetalgl-array-binding-trial.patch` after the optional buffer-memory patch. Apply `patches/aarchx-wmgl-array-binding-trial.patch` after the AArchX unpack storage patch and rebuild AArchX and WineMetalGL. Use `OCERZ_NO_ARM_EXEC=1` and set `OCERZ_WMGL_LIBRARY` to the rebuilt library. To reproduce the long draw runs via `tests/unit/bin/test_m32 wmgl-storage`, enable `OCERZ_WMGL_GUEST_STORAGE=1`, `OCERZ_WMGL_APPLE_SUBDATA=1`, and `OCERZ_WMGL_INDEXED_BENCH=1`. Set `OCERZ_WMGL_BENCH_FRAMES=6000`, `OCERZ_WMGL_ARB_BENCH=2`, and `OCERZ_WMGL_BATCH_BENCH=0` while alternating `OCERZ_WMGL_ARRAY_BINDING=0` and `1`. Set `OCERZ_WMGL_MAP_BENCH=1` to measure the separate mapped-write loop.

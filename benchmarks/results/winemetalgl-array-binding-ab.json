@@ -1,0 +1,223 @@
+{
+  "hardware": "Apple M4 Pro",
+  "vertex_storage": {
+    "raid_apple_gl_trace": {
+      "intervals": 114,
+      "null_data_2mib_array_allocations_per_swap": {
+        "0": 43,
+        "1": 71
+      }
+    },
+    "offscreen": {
+      "fixture": "winemetalgl-indexed-geometry-gpu-ab.json",
+      "allocator": "native 64 KiB-aligned mmap, only for 2 MiB vertex storage",
+      "warmup_frames": 120,
+      "checksum": "199a81aba2d36749",
+      "depth_samples": [
+        {
+          "in_flight_limit": 3,
+          "warmed_replacements": 13437,
+          "warmup_allocations": 3,
+          "allocations_after_warmup": 0,
+          "released": 0,
+          "p50_buffer_data_ns": 125,
+          "p99_buffer_data_ns": 584,
+          "max_buffer_data_ns": 10291,
+          "gpu_window_ns": 5000000000,
+          "gpu_sequence_gaps": 0,
+          "gpu_completed_fps": 1669.0,
+          "p99_gpu_completion_gap_ns": 1963416
+        },
+        {
+          "in_flight_limit": 6,
+          "warmed_replacements": 14107,
+          "warmup_allocations": 7,
+          "allocations_after_warmup": 299,
+          "released": 300,
+          "p50_buffer_data_ns": 166,
+          "p99_buffer_data_ns": 136917,
+          "max_buffer_data_ns": 207250,
+          "gpu_window_ns": 5000000000,
+          "gpu_sequence_gaps": 0,
+          "gpu_completed_fps": 1758.2,
+          "p99_gpu_completion_gap_ns": 1865041
+        },
+        {
+          "in_flight_limit": 8,
+          "warmed_replacements": 13949,
+          "warmup_allocations": 10,
+          "allocations_after_warmup": 406,
+          "released": 410,
+          "p50_buffer_data_ns": 125,
+          "p99_buffer_data_ns": 140500,
+          "max_buffer_data_ns": 212041,
+          "gpu_window_ns": 5000000000,
+          "gpu_sequence_gaps": 0,
+          "gpu_completed_fps": 1732.4,
+          "p99_gpu_completion_gap_ns": 1926625
+        }
+      ]
+    }
+  },
+  "array_binding_ab": {
+    "candidate_option": "OCERZ_WMGL_ARRAY_BINDING=1",
+    "map_loop_and_short_draw_stream": {
+      "draw_frames_per_run": 120,
+      "reference_checksum": "33851ee23055494c",
+      "assertions_per_run": 252227,
+      "runs": [
+        {
+          "order": 1,
+          "direct_binding": false,
+          "draw_stream_total_ns": 97981125,
+          "map_loop_total_ns": 11741875
+        },
+        {
+          "order": 2,
+          "direct_binding": true,
+          "draw_stream_total_ns": 95636500,
+          "map_loop_total_ns": 9539125
+        },
+        {
+          "order": 3,
+          "direct_binding": true,
+          "draw_stream_total_ns": 92679375,
+          "map_loop_total_ns": 9533833
+        },
+        {
+          "order": 4,
+          "direct_binding": false,
+          "draw_stream_total_ns": 94881917,
+          "map_loop_total_ns": 11417125
+        },
+        {
+          "order": 5,
+          "direct_binding": false,
+          "draw_stream_total_ns": 93756750,
+          "map_loop_total_ns": 12121584
+        },
+        {
+          "order": 6,
+          "direct_binding": true,
+          "draw_stream_total_ns": 90569708,
+          "map_loop_total_ns": 9595500
+        },
+        {
+          "order": 7,
+          "direct_binding": true,
+          "draw_stream_total_ns": 90574250,
+          "map_loop_total_ns": 9659209
+        },
+        {
+          "order": 8,
+          "direct_binding": false,
+          "draw_stream_total_ns": 93705542,
+          "map_loop_total_ns": 11153209
+        },
+        {
+          "order": 9,
+          "direct_binding": false,
+          "draw_stream_total_ns": 100838375,
+          "map_loop_total_ns": 11319542
+        },
+        {
+          "order": 10,
+          "direct_binding": true,
+          "draw_stream_total_ns": 94824041,
+          "map_loop_total_ns": 9747250
+        },
+        {
+          "order": 11,
+          "direct_binding": true,
+          "draw_stream_total_ns": 96899292,
+          "map_loop_total_ns": 9497041
+        },
+        {
+          "order": 12,
+          "direct_binding": false,
+          "draw_stream_total_ns": 93321583,
+          "map_loop_total_ns": 11416292
+        }
+      ],
+      "medians": [
+        {
+          "direct_binding": false,
+          "draw_stream_ns_per_frame": 785994.4458333333,
+          "map_loop_ns_per_write": 285.4177125
+        },
+        {
+          "direct_binding": true,
+          "draw_stream_ns_per_frame": 781264.2333333333,
+          "map_loop_ns_per_write": 239.1828125
+        }
+      ]
+    },
+    "long_draw_stream": {
+      "draw_frames_per_run": 6000,
+      "reference_checksum": "28ddf2ce502070dc",
+      "assertions_per_run": 217,
+      "runs": [
+        {
+          "order": 1,
+          "direct_binding": false,
+          "draw_stream_total_ns": 4656012375
+        },
+        {
+          "order": 2,
+          "direct_binding": true,
+          "draw_stream_total_ns": 4665229792
+        },
+        {
+          "order": 3,
+          "direct_binding": true,
+          "draw_stream_total_ns": 4571826917
+        },
+        {
+          "order": 4,
+          "direct_binding": false,
+          "draw_stream_total_ns": 4713681209
+        },
+        {
+          "order": 5,
+          "direct_binding": false,
+          "draw_stream_total_ns": 4684851291
+        },
+        {
+          "order": 6,
+          "direct_binding": true,
+          "draw_stream_total_ns": 4591911000
+        },
+        {
+          "order": 7,
+          "direct_binding": true,
+          "draw_stream_total_ns": 4559702709
+        },
+        {
+          "order": 8,
+          "direct_binding": false,
+          "draw_stream_total_ns": 4773641958
+        }
+      ],
+      "medians": [
+        {
+          "direct_binding": false,
+          "draw_stream_ns_per_frame": 783211.0416666666
+        },
+        {
+          "direct_binding": true,
+          "draw_stream_ns_per_frame": 763644.8264166666
+        }
+      ]
+    },
+    "verification": {
+      "wine_metal_gl_gpu_tests_passed": 336,
+      "wine_metal_gl_gpu_tests_failed_checks": 0,
+      "focused_binding_cases": [
+        "no current context",
+        "distinct bindings in shared contexts",
+        "unbind",
+        "Begin/End query fallback"
+      ]
+    }
+  }
+}

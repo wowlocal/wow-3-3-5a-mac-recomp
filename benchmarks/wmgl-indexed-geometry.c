@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/mman.h>
 
 enum {
     WIDTH = 1365, HEIGHT = 768, DRAWS = 826, WRITES = 363, STORE = 2 * 1024 * 1024,
@@ -129,10 +130,51 @@ static void program(GLenum target, const char *source)
     require(run_glGetError() == GL_NO_ERROR, "could not load the synthetic ARB program");
 }
 
+static int profile_storage;
+static unsigned allocated, released, startup_allocations, measured;
+static uint64_t storage_nanos[60000];
+
+static void *allocate_storage(size_t bytes)
+{
+    if (bytes != STORE) return NULL;
+    const size_t alignment = 65536;
+    void *mapped = mmap(NULL, bytes + alignment, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+    require(mapped != MAP_FAILED, "could not allocate probe vertex storage");
+    const uintptr_t start = (uintptr_t)mapped;
+    const uintptr_t aligned = (start + alignment - 1) & ~(alignment - 1);
+    const size_t prefix = aligned - start;
+    if (prefix)
+        require(munmap(mapped, prefix) == 0, "could not trim the start of vertex storage");
+    require(munmap((void *)(aligned + bytes), alignment - prefix) == 0,
+            "could not trim the end of vertex storage");
+    ++allocated;
+    return (void *)aligned;
+}
+
+static void release_storage(void *storage, size_t bytes)
+{
+    require(munmap(storage, bytes) == 0, "could not release vertex storage");
+    ++released;
+}
+
+static int compare_nanos(const void *left, const void *right)
+{
+    uint64_t a = *(const uint64_t *)left, b = *(const uint64_t *)right;
+    return (a > b) - (a < b);
+}
+
+static uint64_t time_ns(void) { return clock_gettime_nsec_np(CLOCK_UPTIME_RAW); }
+
 static void render(unsigned stamp)
 {
     run_glClear(GL_COLOR_BUFFER_BIT);
+    const int sample_storage = profile_storage && stamp >= WARMUP;
+    const uint64_t before = sample_storage ? time_ns() : 0;
     run_glBufferData(GL_ARRAY_BUFFER, STORE, NULL, GL_DYNAMIC_DRAW);
+    if (sample_storage) {
+        require(measured < sizeof(storage_nanos) / sizeof(storage_nanos[0]), "too many storage timing samples");
+        storage_nanos[measured++] = time_ns() - before;
+    }
     unsigned previous = WRITES;
     for (unsigned i = 0; i < DRAWS; i++) {
         unsigned slot = i * WRITES / DRAWS;
@@ -165,8 +207,6 @@ static void wait_frame(GLsync fence)
     run_glDeleteSync(fence);
 }
 
-static uint64_t time_ns(void) { return clock_gettime_nsec_np(CLOCK_UPTIME_RAW); }
-
 int main(int argc, char **argv)
 {
     require(argc == 2 || argc == 3, "usage: wmgl-indexed-geometry TRIANGLE_HISTOGRAM [IN_FLIGHT]");
@@ -178,6 +218,9 @@ int main(int argc, char **argv)
         flight = (unsigned)value;
     }
     require(wmgl_initialize(WMGL_DRIVER_ABI_VERSION) == 0, "could not initialize WineMetalGL");
+    const char *record_storage = getenv("OCERZ_WMGL_PROBE_STORAGE");
+    profile_storage = record_storage && strcmp(record_storage, "1") == 0;
+    if (profile_storage) wmgl_set_optional_buffer_memory(allocate_storage, release_storage);
     load();
     struct wmgl_pixel_format formats[256];
     unsigned available = wmgl_get_pixel_formats(formats, 256, NULL);
@@ -216,7 +259,10 @@ int main(int argc, char **argv)
     while (!start || time_ns() - start < UINT64_C(8000000000)) {
         unsigned slot = frames % flight;
         if (fences[slot]) wait_frame(fences[slot]);
-        if (frames == WARMUP) start = time_ns();
+        if (frames == WARMUP) {
+            startup_allocations = allocated;
+            start = time_ns();
+        }
         render(frames);
         fences[slot] = run_glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
         require(fences[slot] && wmgl_surface_swap(surface), "could not submit an offscreen output");
@@ -224,6 +270,15 @@ int main(int argc, char **argv)
     }
     for (unsigned slot = 0; slot < flight; slot++) wait_frame(fences[slot]);
     require(run_glGetError() == GL_NO_ERROR, "the measured draw stream incurred a GL error");
+
+    if (profile_storage) {
+        require(measured > 0, "could not time storage replacement");
+        qsort(storage_nanos, measured, sizeof(storage_nanos[0]), compare_nanos);
+        printf("storage %u measured replacements, %u startup allocations, %u further allocations, %u released; median %" PRIu64
+               " ns, p99 %" PRIu64 " ns, max %" PRIu64 " ns\n", measured, startup_allocations,
+               allocated - startup_allocations, released, storage_nanos[measured / 2],
+               storage_nanos[(measured * 99 + 99) / 100 - 1], storage_nanos[measured - 1]);
+    }
 
     render(83);
     unsigned char *pixels = malloc(WIDTH * HEIGHT * 4);
