@@ -1694,3 +1694,24 @@ Use the Metal System Trace template and the same submission log for each state. 
 ```sh
 python3 benchmarks/summarize-raid-legacy-load.py TIMED_CAPTURES
 ```
+
+### Reuse the mapped address of deep i386 frame slots
+
+The trial can keep a second mapped EBP address, biased by **−512 bytes**, through a stable block prefix. It brings guest displacements **−768 to −257** into the same signed-immediate range as near accesses. Near accesses keep the original address. A selected block needs at least two deep operands and six eligible operands in total. The widened guard checks that all covered starting addresses stay within 32 bits and uses the existing retirement path on failure.
+
+Apply `patches/aarchx-m32-deep-ebp-hoist-trial.patch` after the i386 general base hoist patch. Set `OCERZ_M32_DEEP_EBP_HOIST=1` for the candidate, with the existing general base selection enabled and the translation cache disabled. Add `OCERZ_M32_DEEP_EBP_HOIST_LOG=1` for the separate compile witness. In Wine's register layout, the register reserved for the Wine address-limit check keeps that role.
+
+Both modes passed **806** general i386 checks, **14** earlier address cases, and five new focused interpreter comparisons. The new comparisons cover the deepest and nearest signed offsets, a dirty upper EBP half, both 32-bit address bounds, writes to EBP, and SSE batching. Both boundary cases recorded one guard exit in the candidate and reached the same final state as the interpreter. The candidate passed all five cases with forced branch veneers. The forced replay check passed with a recorded eight-instruction FP batch.
+
+A separate in-world launch logged **412** distinct selected prefixes, including **five** emitted after the last world readback. All prefix entries matched the original i386 text. The deep displacement shape represented **1.83%** of the CPU weight in the two earlier stack captures. The shape inside the newly selected static prefixes represented **1.00%**. These numbers describe sampled instruction coverage across different launches.
+
+| Guarded address policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing guard and mapped base | 134.85 | 12.87 ms |
+| Additional biased address for deep EBP slots | 133.88 | 12.74 ms |
+
+The trial lost **1.62 and 0.32 FPS**. P99 fell **0.26 ms** in the first pair and rose **0.01 ms** in the reverse pair. The benchmark keeps the existing guard and mapped base. The older trial was suspended during all four 60-second launches and the logging run and resumed between launches. All runs verified the saved camera, spell effects, 26 timing rows, consecutive GPU completions, and zero visible trial windows or focus activations. [Full-raid measurements and coverage](results/raid-aarchx-headless-i386-deep-ebp-hoist-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-deep-ebp.py CAPTURE_ROOT I386_CLIENT EARLIER_STACK_RUN_1 EARLIER_STACK_RUN_2
+```
