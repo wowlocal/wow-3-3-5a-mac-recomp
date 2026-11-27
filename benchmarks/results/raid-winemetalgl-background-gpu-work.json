@@ -1,0 +1,123 @@
+{
+  "hardware": "Apple M4 Pro",
+  "renderer": "WineMetalGL trial with reused fixed-function uniform storage and GL byte-return leaf",
+  "workload": "Live hidden WoW client with the full fixed-camera 24-caster Northshire raid",
+  "foreground": false,
+  "visible_game_windows": 0,
+  "foreground_frame_limit": 0,
+  "vsync": false,
+  "commit_draws": 64,
+  "triangle_budget": 65000,
+  "bridge_crossing_diagnostics": false,
+  "fixture": {
+    "caster_count": 24,
+    "boss_count": 1,
+    "matched_server_scripts": 26,
+    "saved_raid_anchor": true
+  },
+  "clock_alignment": {
+    "output_buffer": "Command Buffer 3",
+    "trace_frame": 282,
+    "mailbox_sequence": 84314
+  },
+  "gpu_work": {
+    "trace_frame_groups": 314,
+    "matched_outputs": 309,
+    "unmatched_trace_groups": {
+      "missing_output_fragment_interval": 5
+    },
+    "first_sequence": 84038,
+    "last_sequence": 84346,
+    "unmatched_sequences_within_range": 0,
+    "max_absolute_clock_error_ns": 42,
+    "min_draws": 762,
+    "max_draws": 885,
+    "active_time_per_output": {
+      "Compute": {
+        "outputs": 309,
+        "mean_ns": 123232.86731391586,
+        "p50_ns": 34792,
+        "p99_ns": 1209583,
+        "max_ns": 1607042
+      },
+      "Fragment": {
+        "outputs": 309,
+        "mean_ns": 2871642.2491909387,
+        "p50_ns": 2159958,
+        "p99_ns": 10379583,
+        "max_ns": 12263250
+      },
+      "Vertex": {
+        "outputs": 309,
+        "mean_ns": 5286980.611650486,
+        "p50_ns": 5346792,
+        "p99_ns": 11078750,
+        "max_ns": 11814792
+      },
+      "all_gpu": {
+        "outputs": 309,
+        "mean_ns": 7571149.595469256,
+        "p50_ns": 7229000,
+        "p99_ns": 17122334,
+        "max_ns": 18457167
+      },
+      "through_render_completion": {
+        "outputs": 309,
+        "mean_ns": 6902763.669902912,
+        "p50_ns": 6821041,
+        "p99_ns": 13966293,
+        "max_ns": 16992708
+      }
+    },
+    "total_active_time_by_buffer_and_stage": {
+      "Command Buffer 0": {
+        "Fragment": 271745298,
+        "Vertex": 774578248
+      },
+      "Command Buffer 2": {
+        "Fragment": 377730207,
+        "Vertex": 693149679
+      },
+      "Command Buffer 3": {
+        "Fragment": 79113078,
+        "Vertex": 118196286
+      },
+      "Command Buffer 4": {
+        "Fragment": 158681247,
+        "Vertex": 47752796
+      },
+      "WineMetalGL prelude (uploads)": {
+        "Compute": 38078956,
+        "Fragment": 67625
+      }
+    }
+  },
+  "timed_background_window": {
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 297,
+    "first_sequence": 84038,
+    "last_sequence": 84334,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 9989313125,
+    "measurement_duration_ns": 10000000000,
+    "average_completed_fps": 29.6,
+    "p99_gpu_completion_gap_ns": 41140041,
+    "min_draws": 762,
+    "max_draws": 885
+  },
+  "separate_cpu_profile": {
+    "sample_duration_s": 6,
+    "requested_sample_interval_ms": 2,
+    "main_thread_samples": 1673,
+    "winemetalgl_on_stack": 565,
+    "gl_draw_range_elements_ext_on_stack": 465,
+    "bind_uniforms_on_stack": 187,
+    "uniform_block_buffer_on_stack": 171,
+    "fixed_function_block_on_stack": 151,
+    "std140_on_stack": 32,
+    "pack_matrices_on_stack": 7
+  }
+}
