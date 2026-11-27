@@ -1,0 +1,245 @@
+#include "winemetalgl/driver.h"
+
+#include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+enum {
+    WIDTH = 1365, HEIGHT = 768, DRAWS = 826, WRITES = 363, STORE = 2 * 1024 * 1024,
+    MAX_SUBDIVISIONS = 32, MAX_IN_FLIGHT = 8, DEFAULT_IN_FLIGHT = 3, WARMUP = 120
+};
+
+#define FUNCTIONS(X) \
+    X(glBindBuffer) X(glBindProgramARB) X(glBufferData) X(glBufferParameteriAPPLE) X(glBufferSubData) \
+    X(glClear) X(glClearColor) X(glClientWaitSync) X(glColor4ub) X(glDeleteSync) X(glDrawRangeElements) \
+    X(glEnable) X(glEnableClientState) X(glFenceSync) X(glFlushMappedBufferRangeAPPLE) \
+    X(glGenBuffers) X(glGenProgramsARB) X(glGetError) X(glMapBuffer) X(glProgramStringARB) X(glReadPixels) \
+    X(glUnmapBuffer) X(glVertexPointer) X(glViewport)
+
+#define DECLARE(name) static __typeof__(&name) run_##name;
+FUNCTIONS(DECLARE)
+#undef DECLARE
+
+static void require(int condition, const char *description)
+{
+    if (!condition) {
+        fprintf(stderr, "%s\n", description);
+        exit(1);
+    }
+}
+
+static void load(void)
+{
+#define RESOLVE(name) \
+    run_##name = (__typeof__(run_##name))wmgl_get_proc_address(#name); \
+    require(run_##name != NULL, "missing " #name);
+    FUNCTIONS(RESOLVE)
+#undef RESOLVE
+}
+
+typedef struct { GLsizei count; GLintptr vertices, indices; GLuint end; } Draw;
+typedef struct { GLintptr from, to; } Upload;
+static Draw draws[DRAWS];
+static Upload uploads[WRITES];
+static unsigned char vertex_bytes[STORE];
+
+static unsigned subdivision(unsigned triangles)
+{
+    for (unsigned n = 1; n <= MAX_SUBDIVISIONS; n++)
+        if (n * n >= triangles) return n;
+    return 0;
+}
+
+static void build_geometry(const char *histogram)
+{
+    FILE *file = fopen(histogram, "r");
+    require(file != NULL, "could not open the triangle histogram");
+    unsigned counts[DRAWS];
+    unsigned used = 0, triangles = 0, count, copies;
+    while (fscanf(file, "%u%u", &count, &copies) == 2) {
+        require(count && subdivision(count) && copies <= DRAWS - used, "invalid triangle histogram entry");
+        for (unsigned i = 0; i < copies; i++) counts[used++] = count;
+        triangles += count * copies;
+    }
+    require(feof(file) && used == DRAWS, "the triangle histogram must cover all draws");
+    fclose(file);
+
+    // One index template per subdivision. Draws use just the required prefix.
+    uint16_t indices[3 * MAX_SUBDIVISIONS * (MAX_SUBDIVISIONS + 1) * (2 * MAX_SUBDIVISIONS + 1) / 6];
+    unsigned index_count = 0, index_start[MAX_SUBDIVISIONS + 1];
+    for (unsigned n = 1; n <= MAX_SUBDIVISIONS; n++) {
+        index_start[n] = index_count;
+        unsigned row = 0;
+        for (unsigned y = 0; y < n; y++) {
+            const unsigned next = row + n - y + 1;
+            for (unsigned x = 0; x < n - y; x++) {
+                indices[index_count++] = (uint16_t)(row + x);
+                indices[index_count++] = (uint16_t)(row + x + 1);
+                indices[index_count++] = (uint16_t)(next + x);
+                if (x + y + 1 < n) {
+                    indices[index_count++] = (uint16_t)(row + x + 1);
+                    indices[index_count++] = (uint16_t)(next + x + 1);
+                    indices[index_count++] = (uint16_t)(next + x);
+                }
+            }
+            row = next;
+        }
+        require(index_count - index_start[n] == 3 * n * n, "broken mesh template");
+    }
+    run_glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(indices[0]), indices, GL_STATIC_DRAW);
+
+    size_t offset = 0;
+    for (unsigned i = 0; i < DRAWS; i++) {
+        const unsigned slot = i * WRITES / DRAWS;
+        if (!i || (i - 1) * WRITES / DRAWS != slot)
+            uploads[slot].from = (GLintptr)offset;
+        // This permutation distributes large draws without using game meshes.
+        const unsigned triangle_count = counts[(i * 593) % DRAWS];
+        const unsigned n = subdivision(triangle_count);
+        const unsigned vertices = (n + 1) * (n + 2) / 2;
+        draws[i] = (Draw){ (GLsizei)(triangle_count * 3), (GLintptr)offset,
+                          (GLintptr)(index_start[n] * sizeof(indices[0])), vertices - 1 };
+        const float cx = ((slot % 8) - 3.5f) * 0.24f, cy = ((slot / 8 % 6) - 2.5f) * 0.30f;
+        for (unsigned y = 0; y <= n; y++) {
+            for (unsigned x = 0; x <= n - y; x++) {
+                const float position[] = {cx - 0.08f + 0.16f * x / n + 0.08f * y / n,
+                                          cy - 0.08f + 0.16f * y / n};
+                require(offset + sizeof position <= STORE, "vertex stream exceeds the 2 MiB store");
+                memcpy(vertex_bytes + offset, position, sizeof position);
+                offset += sizeof position;
+            }
+        }
+        uploads[slot].to = (GLintptr)offset;
+    }
+    printf("shape %u draws, %u triangles, %u uploads, %zu vertex bytes\n", DRAWS, triangles, WRITES, offset);
+}
+
+static void program(GLenum target, const char *source)
+{
+    GLuint name;
+    run_glGenProgramsARB(1, &name);
+    run_glBindProgramARB(target, name);
+    run_glProgramStringARB(target, GL_PROGRAM_FORMAT_ASCII_ARB, (GLsizei)strlen(source), source);
+    run_glEnable(target);
+    require(run_glGetError() == GL_NO_ERROR, "could not load the synthetic ARB program");
+}
+
+static void render(unsigned stamp)
+{
+    run_glClear(GL_COLOR_BUFFER_BIT);
+    run_glBufferData(GL_ARRAY_BUFFER, STORE, NULL, GL_DYNAMIC_DRAW);
+    unsigned previous = WRITES;
+    for (unsigned i = 0; i < DRAWS; i++) {
+        unsigned slot = i * WRITES / DRAWS;
+        if (slot != previous) {
+            const Upload upload = uploads[slot];
+            const GLsizeiptr size = upload.to - upload.from;
+            if (slot % 16 == 0) {
+                run_glBufferSubData(GL_ARRAY_BUFFER, upload.from, size, vertex_bytes + upload.from);
+            } else {
+                unsigned char *base = run_glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+                require(base != NULL, "could not map a vertex range");
+                memcpy(base + upload.from, vertex_bytes + upload.from, (size_t)size);
+                run_glFlushMappedBufferRangeAPPLE(GL_ARRAY_BUFFER, upload.from, size);
+                require(run_glUnmapBuffer(GL_ARRAY_BUFFER), "could not unmap a vertex range");
+            }
+            previous = slot;
+        }
+        const Draw d = draws[i];
+        run_glVertexPointer(2, GL_FLOAT, 0, (const void *)(uintptr_t)d.vertices);
+        run_glColor4ub(227, (GLubyte)(slot + 40), (GLubyte)stamp, 255);
+        run_glDrawRangeElements(GL_TRIANGLES, 0, d.end, d.count, GL_UNSIGNED_SHORT,
+                               (const void *)(uintptr_t)d.indices);
+    }
+}
+
+static void wait_frame(GLsync fence)
+{
+    GLenum status = run_glClientWaitSync(fence, 0, UINT64_C(2000000000));
+    require(status == GL_ALREADY_SIGNALED || status == GL_CONDITION_SATISFIED, "GPU output did not complete");
+    run_glDeleteSync(fence);
+}
+
+static uint64_t time_ns(void) { return clock_gettime_nsec_np(CLOCK_UPTIME_RAW); }
+
+int main(int argc, char **argv)
+{
+    require(argc == 2 || argc == 3, "usage: wmgl-indexed-geometry TRIANGLE_HISTOGRAM [IN_FLIGHT]");
+    unsigned flight = DEFAULT_IN_FLIGHT;
+    if (argc == 3) {
+        char *end = NULL;
+        unsigned long value = strtoul(argv[2], &end, 10);
+        require(end && !*end && value > 0 && value <= MAX_IN_FLIGHT, "in-flight limit must be 1 to 8");
+        flight = (unsigned)value;
+    }
+    require(wmgl_initialize(WMGL_DRIVER_ABI_VERSION) == 0, "could not initialize WineMetalGL");
+    load();
+    struct wmgl_pixel_format formats[256];
+    unsigned available = wmgl_get_pixel_formats(formats, 256, NULL);
+    int format = 0;
+    for (unsigned i = 0; i < available && i < 256; i++) {
+        const struct wmgl_pixel_format choice = formats[i];
+        if (choice.draw_to_pbuffer && choice.red_bits == 8 && choice.alpha_bits == 8 &&
+            choice.depth_bits == 24 && choice.stencil_bits == 8 && choice.samples <= 1 &&
+            !choice.srgb_capable && !choice.float_components) {
+            format = (int)i + 1;
+            break;
+        }
+    }
+    const int attributes[] = { 0x2091, 2, 0x2092, 1, 0 };
+    int error = 0;
+    wmgl_context *context = format ? wmgl_context_create(format, NULL, attributes, &error) : NULL;
+    wmgl_surface *surface = context ? wmgl_surface_create_pbuffer(format, WIDTH, HEIGHT) : NULL;
+    require(context && surface && wmgl_make_current(context, surface, surface), "could not make the pbuffer current");
+
+    GLuint ids[2];
+    run_glGenBuffers(2, ids);
+    run_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ids[1]);
+    build_geometry(argv[1]);
+    run_glBindBuffer(GL_ARRAY_BUFFER, ids[0]);
+    run_glBufferParameteriAPPLE(GL_ARRAY_BUFFER, GL_BUFFER_FLUSHING_UNMAP_APPLE, GL_FALSE);
+    run_glBufferParameteriAPPLE(GL_ARRAY_BUFFER, GL_BUFFER_SERIALIZED_MODIFY_APPLE, GL_FALSE);
+    run_glViewport(0, 0, WIDTH, HEIGHT);
+    run_glClearColor(0.1f, 0.15f, 0.2f, 1.0f);
+    run_glEnableClientState(GL_VERTEX_ARRAY);
+    program(GL_VERTEX_PROGRAM_ARB, "!!ARBvp1.0\nMOV result.position, vertex.position;\nMOV result.color, vertex.color;\nEND\n");
+    program(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n");
+
+    GLsync fences[MAX_IN_FLIGHT] = {0};
+    uint64_t start = 0;
+    unsigned frames = 0;
+    while (!start || time_ns() - start < UINT64_C(8000000000)) {
+        unsigned slot = frames % flight;
+        if (fences[slot]) wait_frame(fences[slot]);
+        if (frames == WARMUP) start = time_ns();
+        render(frames);
+        fences[slot] = run_glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        require(fences[slot] && wmgl_surface_swap(surface), "could not submit an offscreen output");
+        frames++;
+    }
+    for (unsigned slot = 0; slot < flight; slot++) wait_frame(fences[slot]);
+    require(run_glGetError() == GL_NO_ERROR, "the measured draw stream incurred a GL error");
+
+    render(83);
+    unsigned char *pixels = malloc(WIDTH * HEIGHT * 4);
+    require(pixels != NULL, "could not allocate framebuffer readback memory");
+    run_glReadPixels(0, 0, WIDTH, HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    uint64_t hash = UINT64_C(14695981039346656037);
+    size_t colored = 0;
+    for (size_t i = 0; i < WIDTH * HEIGHT * 4; i++) {
+        hash = (hash ^ pixels[i]) * UINT64_C(1099511628211);
+        colored += i % 4 == 0 && pixels[i] == 227;
+    }
+    free(pixels);
+    require(run_glGetError() == GL_NO_ERROR && colored > 10000, "representative framebuffer is incomplete");
+    printf("outputs %u, RGBA %016" PRIx64 ", colored %zu\n", frames, hash, colored);
+    wmgl_make_current(NULL, NULL, NULL);
+    wmgl_surface_destroy(surface);
+    wmgl_context_destroy(context);
+    return 0;
+}

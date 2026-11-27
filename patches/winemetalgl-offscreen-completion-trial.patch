@@ -1,0 +1,136 @@
+diff --git a/src/core/surface.h b/src/core/surface.h
+index a430206..01a8884 100644
+--- a/src/core/surface.h
++++ b/src/core/surface.h
+@@ -96,6 +96,7 @@ private:
+     // WINEMETALGL_MAX_FRAME_RATE: waits until the next frame's time (see surface.mm).
+     void limitFrameRate();
+     uint64_t nextFrameTime_ = 0;  // mach_absolute_time units; 0 before the first frame
++    uint64_t offscreenRecordingStream_ = 0, offscreenSequence_ = 0;
+     void ensurePresentPipeline();
+     // Encodes the full-screen copy of `source` into `drawable`.
+     void encodePresent(id<MTLCommandBuffer> commandBuffer, id<MTLTexture> source, id<CAMetalDrawable> drawable);
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+index 48bf8b3..ac6db94 100644
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -25,6 +25,44 @@
+ 
+ namespace {
+ 
++uint64_t newCompletionStream() {
++    static std::atomic<uint64_t> next{1};
++    return next.fetch_add(1, std::memory_order_relaxed);
++}
++
++void recordCompletedRender(id<MTLCommandBuffer> finished, uint64_t recordingStream, uint64_t sequence,
++                           uint64_t draws, uint64_t dimensions) {
++    if (!draws || finished.status != MTLCommandBufferStatusCompleted || finished.GPUEndTime <= 0.0)
++        return;
++    static os_log_t completionTrace = []() -> os_log_t {
++        const char* enabled = std::getenv("OCERZ_WMGL_TRACE_COMPLETIONS");
++        return enabled && enabled[0] == '1' && !enabled[1] ?
++            os_log_create("org.local.wrath-trial", OS_LOG_CATEGORY_POINTS_OF_INTEREST) : nullptr;
++    }();
++    // Keep the log for the lifetime of the process and refuse to overwrite a previous run.
++    static FILE* completionFile = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_GPU_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL completion log");
++        return file;
++    }();
++    const uint64_t end = uint64_t(finished.GPUEndTime * 1e9);
++    if (completionTrace) {
++        os_signpost_event_emit(completionTrace, OS_SIGNPOST_ID_EXCLUSIVE, "WMGL Rendered Output",
++            "sequence=%{public}llu gpu_end_ns=%{public}llu draws=%{public}llu dimensions=%{public}llu",
++            (unsigned long long)sequence, (unsigned long long)end,
++            (unsigned long long)draws, (unsigned long long)dimensions);
++    }
++    if (completionFile) {
++        static const pid_t process = getpid();
++        std::fprintf(completionFile, "%d %llu %llu %llu %llu %llu\n", process,
++            (unsigned long long)recordingStream, (unsigned long long)sequence,
++            (unsigned long long)end, (unsigned long long)draws, (unsigned long long)dimensions);
++    }
++}
++
++
+ std::string readFile(const char* path) {
+     std::string text;
+     if (FILE* f = std::fopen(path, "rb")) {
+@@ -499,6 +537,18 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     resolveForRead(stream);
+     dumpFrame(stream, resolvedColor(), width_, height_);
+     if (!layer_) {
++        if (draws) {
++            if (!offscreenRecordingStream_)
++                offscreenRecordingStream_ = newCompletionStream();
++            const uint64_t recordingStream = offscreenRecordingStream_;
++            const uint64_t sequence = ++offscreenSequence_;
++            const uint64_t dimensions = (uint64_t(width_) << 32) | uint64_t(height_);
++            // The caller switches buffers at its render boundary. The GPU
++            // callback runs after that output's work on this command queue.
++            [stream.commandBuffer() addCompletedHandler:^(id<MTLCommandBuffer> finished) {
++                recordCompletedRender(finished, recordingStream, sequence, draws, dimensions);
++            }];
++        }
+         stream.flush();
+         return true;
+     }
+@@ -567,10 +617,8 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+     if (!mailbox_) {
+         mailbox_ = std::make_unique<Mailbox>();
+         Mailbox* box = mailbox_.get();
+-        if (stats::g_recordMailboxDraws) {
+-            static std::atomic<uint64_t> nextStream{1};
+-            box->recordingStream = nextStream.fetch_add(1, std::memory_order_relaxed);
+-        }
++        if (stats::g_recordMailboxDraws)
++            box->recordingStream = newCompletionStream();
+         MTLTextureDescriptor* desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:source.pixelFormat
+                                                                                          width:source.width
+                                                                                         height:source.height
+@@ -641,19 +689,6 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+         sequence = box->nextSequence++;
+         box->sequence[slot] = sequence;
+     }
+-    static os_log_t completionTrace = []() -> os_log_t {
+-        const char* enabled = std::getenv("OCERZ_WMGL_TRACE_COMPLETIONS");
+-        return enabled && enabled[0] == '1' && !enabled[1] ?
+-            os_log_create("org.local.wrath-trial", OS_LOG_CATEGORY_POINTS_OF_INTEREST) : nullptr;
+-    }();
+-    // Keep the log for the lifetime of the process and refuse to overwrite a previous run.
+-    static FILE* completionFile = []() -> FILE* {
+-        const char* path = std::getenv("OCERZ_WMGL_GPU_LOG");
+-        if (!path || !*path) return nullptr;
+-        FILE* file = std::fopen(path, "wx");
+-        if (!file) std::perror("cannot create WineMetalGL completion log");
+-        return file;
+-    }();
+     const uint64_t dimensions = (uint64_t(source.width) << 32) | uint64_t(source.height);
+     const uint64_t recordingStream = box->recordingStream;
+     id<MTLBlitCommandEncoder> blit = stream.blit();
+@@ -662,21 +697,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+          destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+     stream.endEncoder();
+     [stream.commandBuffer() addCompletedHandler:^(id<MTLCommandBuffer> finished) {
+-        if (draws && finished.status == MTLCommandBufferStatusCompleted && finished.GPUEndTime > 0.0) {
+-            const uint64_t end = uint64_t(finished.GPUEndTime * 1e9);
+-            if (completionTrace) {
+-                os_signpost_event_emit(completionTrace, OS_SIGNPOST_ID_EXCLUSIVE, "WMGL Rendered Output",
+-                    "sequence=%{public}llu gpu_end_ns=%{public}llu draws=%{public}llu dimensions=%{public}llu",
+-                    (unsigned long long)sequence, (unsigned long long)end,
+-                    (unsigned long long)draws, (unsigned long long)dimensions);
+-            }
+-            if (completionFile) {
+-                static const pid_t process = getpid();
+-                std::fprintf(completionFile, "%d %llu %llu %llu %llu %llu\n", process,
+-                    (unsigned long long)recordingStream, (unsigned long long)sequence,
+-                    (unsigned long long)end, (unsigned long long)draws, (unsigned long long)dimensions);
+-            }
+-        }
++        recordCompletedRender(finished, recordingStream, sequence, draws, dimensions);
+         // Notify under the lock (see the present handler).
+         std::lock_guard<std::mutex> lock(box->mutex);
+         box->state[slot] = Mailbox::Ready;

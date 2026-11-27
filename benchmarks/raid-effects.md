@@ -260,3 +260,29 @@ Four interleaved headless runs per mode measured 512 mapped 4 KiB writes each. T
 The original login screen used this path. Over the first 128 unpack maps, the copy control copied **1 GiB** into the guest and recorded **14.70 ms** in those copies. The candidate logged 128 direct 8 MiB mappings, rendered the login screen at 1365 × 768, and recorded a consecutive five-second GPU smoke window. This evidence covers startup and texture uploads. The live raid still needs its own performance and visual verification. [Unpack storage measurements](results/winemetalgl-unpack-storage-ab.json)
 
 Apply `patches/aarchx-wmgl-unpack-storage-trial.patch` after the vertex storage patch and rebuild AArchX. Use `OCERZ_WMGL_GUEST_UNPACK_STORAGE=1` on launch. For the headless comparison, use the updated AArchX draw benchmark patch and run `tests/unit/bin/test_m32 wmgl-storage` with `OCERZ_WMGL_UNPACK_BENCH=1` while alternating the unpack storage flag.
+
+## GPU completion timing at the captured triangle count
+
+This offscreen WineMetalGL probe uses the triangle-count histogram from one recorded raid frame. It submits **826 indexed draws and 111,230 triangles** at 1365 × 768, with 340 mapped uploads and 23 ordinary uploads per frame. It builds synthetic tessellated geometry and uses simple ARB shaders. It calls the native core directly, so the test isolates renderer and scheduling cost from guest translation and game logic.
+
+The offscreen-completion patch records the GPU timestamp at the submitted pbuffer boundary using the existing completion log. Each measured window starts after 120 warmup frames, covers five seconds of GPU completions, and checks for gaps in the sequence. Each run also reads back the same final reference frame.
+
+Across four interleaved pairs at an in-flight limit of three frames, direct uploads raised median throughput from **1,199 to 1,635 GPU-completed frames/s** and lowered median p99 from **3.52 to 2.05 ms**. With direct uploads enabled in both arms, raising the probe's in-flight limit from three to six moved the median from **1,664 to 1,754 frames/s** and from **1.88 to 1.64 ms p99**. One six-in-flight sample still exceeded 2 ms p99. All 16 windows had consecutive sequences, and all reference frames matched. The 336 renderer tests passed. Queue depth was varied only in the probe. The live raid still needs GPU and input verification. [GPU completion measurements](results/winemetalgl-indexed-geometry-gpu-ab.json)
+
+Apply the offscreen-completion patch to the Metal trial tree with the frame-completion and application-synchronized upload patches already applied. Build the benchmark against the resulting WineMetalGL core. Use a fresh log path per run. Alternate `OCERZ_WMGL_APPLE_SUBDATA=0` and `1` for the upload comparison. Use `3` and `6` in the last argument for the depth comparison.
+
+```sh
+git -C "$METAL_TRIAL_WMGL" apply "$TRIAL_REPO/patches/winemetalgl-offscreen-completion-trial.patch"
+cmake --build "$METAL_TRIAL_BUILD" --target winemetalgl_core
+xcrun clang -O2 -Wall -Wextra -Werror -Wno-deprecated-declarations -I "$METAL_TRIAL_WMGL/include" \
+    "$TRIAL_REPO/benchmarks/wmgl-indexed-geometry.c" -L "$METAL_TRIAL_BUILD" -lwinemetalgl \
+    -Wl,-rpath,"$METAL_TRIAL_BUILD" -o /tmp/wmgl-indexed-geometry
+OCERZ_WMGL_APPLE_SUBDATA=1 OCERZ_WMGL_GPU_LOG="$METAL_TRIAL_GPU_LOG" \
+    WINEMETALGL_SETTINGS=0 WINEMETALGL_SHADER_CACHE=0 WINEMETALGL_PIPELINE_CACHE=0 \
+    WINEMETALGL_CRASH_HANDLER=0 WINEMETALGL_STATS=0 WINEMETALGL_LOG=0 \
+    /tmp/wmgl-indexed-geometry "$TRIAL_REPO/benchmarks/fixtures/raid-triangle-counts.tsv" 3 &
+probe_pid=$!
+wait "$probe_pid" &&
+python3 "$TRIAL_REPO/benchmarks/trace-frames.py" "$METAL_TRIAL_GPU_LOG" "$probe_pid" 1365 768 \
+    --wmgl-log --start-sequence 128 --seconds 5
+```
