@@ -1,0 +1,238 @@
+diff --git a/src/core/compat/arb_program.h b/src/core/compat/arb_program.h
+--- a/src/core/compat/arb_program.h
++++ b/src/core/compat/arb_program.h
+@@ -124,7 +124,16 @@
+
+ UniformPadding uniformPadding(const Parsed& program);
+
++struct VertexVaryings {
++    std::array<bool, 4> colors{};
++    uint32_t textureCoordinates = 0;
++    bool fog = false;
++};
++
++VertexVaryings consumedVertexVaryings(const std::string& fragmentSource);
++
+ // GLSL of a parsed program (ok == true).
+-std::string emit(const Parsed& program, const EmitOptions& options, const UniformPadding* padding = nullptr);
++std::string emit(const Parsed& program, const EmitOptions& options, const UniformPadding* padding = nullptr,
++                 const VertexVaryings* varyings = nullptr);
+
+ }  // namespace wmgl::compat::arb
+diff --git a/src/core/compat/arb_program.cpp b/src/core/compat/arb_program.cpp
+--- a/src/core/compat/arb_program.cpp
++++ b/src/core/compat/arb_program.cpp
+@@ -1171,6 +1171,7 @@
+ // ------------------------------------------------------------ GLSL
+
+ const char kComp[] = "xyzw";
++const char* const kColorVaryings[] = {"ff_front", "ff_frontSecondary", "ff_back", "ff_backSecondary"};
+
+ std::string maskSuffix(uint8_t mask) {
+     std::string s;
+@@ -1204,8 +1205,8 @@
+
+ class Emitter {
+ public:
+-    Emitter(const Parsed& p, const EmitOptions& o, const UniformPadding* padding)
+-        : p_(p), o_(o), b_(*p.body), padding_(padding) {}
++    Emitter(const Parsed& p, const EmitOptions& o, const UniformPadding* padding, const VertexVaryings* varyings)
++        : p_(p), o_(o), b_(*p.body), padding_(padding), varyings_(varyings) {}
+
+     bool usesUniformSegment(const ArrayDecl& array) const {
+         return uniformSegmentEligible(p_, array);
+@@ -1225,9 +1226,11 @@
+         if (p_.programMatrices) s += "uniform mat4 arb_pm[8];\n";
+         if (p_.programMatrixInverses) s += "uniform mat4 arb_pmInv[8];\n";
+         if (vs) {
+-            for (const char* v : {"ff_front", "ff_frontSecondary", "ff_back", "ff_backSecondary"}) s += colorOut + " vec4 " + v + ";\n";
+-            for (int i = 0; i < Limits::kTexCoords; ++i) s += "out vec4 ff_tc" + std::to_string(i) + ";\n";
+-            s += "out float ff_fogCoord;\n";
++            for (int i = 0; i < 4; ++i)
++                if (usesColor(i)) s += colorOut + " vec4 " + kColorVaryings[i] + ";\n";
++            for (int i = 0; i < Limits::kTexCoords; ++i)
++                if (usesTextureCoordinate(i)) s += "out vec4 ff_tc" + std::to_string(i) + ";\n";
++            if (usesFog()) s += "out float ff_fogCoord;\n";
+             for (int n = 1; n < Limits::kVertexAttribs; ++n)
+                 if (genericUsed(n)) s += "in vec4 arb_attrib" + std::to_string(n) + ";\n";
+         } else {
+@@ -1325,10 +1328,11 @@
+             s += ");\n";
+         }
+         if (vs) {
+-            s += "    ff_front = vec4(0.0);\n    ff_frontSecondary = vec4(0.0);\n";
+-            s += "    ff_back = vec4(0.0);\n    ff_backSecondary = vec4(0.0);\n";
+-            for (int i = 0; i < Limits::kTexCoords; ++i) s += "    ff_tc" + std::to_string(i) + " = vec4(0.0, 0.0, 0.0, 1.0);\n";
+-            s += "    ff_fogCoord = 0.0;\n";
++            for (int i = 0; i < 4; ++i)
++                if (usesColor(i)) s += std::string("    ") + kColorVaryings[i] + " = vec4(0.0);\n";
++            for (int i = 0; i < Limits::kTexCoords; ++i)
++                if (usesTextureCoordinate(i)) s += "    ff_tc" + std::to_string(i) + " = vec4(0.0, 0.0, 0.0, 1.0);\n";
++            if (usesFog()) s += "    ff_fogCoord = 0.0;\n";
+             if (p_.positionInvariant) {
+                 s += "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;\n";
+                 if (o_.clipPlanes) s += "    vec4 arb_eye = gl_ModelViewMatrix * gl_Vertex;\n";
+@@ -1337,11 +1341,27 @@
+                         s += "    gl_ClipDistance[" + std::to_string(i) + "] = dot(arb_eye, gl_ClipPlane[" + std::to_string(i) + "]);\n";
+             }
+         }
+-        for (const Instruction& in : b_.code) s += instruction(in);
++        int skipped = 0;
++        for (const Instruction& in : b_.code) {
++            if (vs && in.dst.base == Dest::Out && !usesOutput(in.dst)) ++skipped;
++            else s += instruction(in);
++        }
+         if (vs) {
+             // Back colours the program does not write are its front colours.
+-            if (!p_.colorWritten[2]) s += "    ff_back = ff_front;\n";
+-            if (!p_.colorWritten[3]) s += "    ff_backSecondary = ff_frontSecondary;\n";
++            if (usesColor(2) && !p_.colorWritten[2]) s += "    ff_back = ff_front;\n";
++            if (usesColor(3) && !p_.colorWritten[3]) s += "    ff_backSecondary = ff_frontSecondary;\n";
++            if (varyings_) {
++                static const bool report = [] {
++                    const char* value = std::getenv("WINEMETALGL_ARB_TRIM_VARYINGS_LOG");
++                    return value && std::strcmp(value, "1") == 0;
++                }();
++                if (report) {
++                    int colors = 0;
++                    for (int i = 0; i < 4; ++i) colors += usesColor(i);
++                    std::fprintf(stderr, "winemetalgl: trimmed ARB vertex ins=%d params=%d colors=%d tex=%u fog=%d skipped=%d\n",
++                                 p_.instructions, p_.parameters, colors, varyings_->textureCoordinates, usesFog(), skipped);
++                }
++            }
+         } else if (p_.fog) {
+             std::string f;
+             switch (p_.fog) {
+@@ -1357,6 +1377,26 @@
+     }
+
+ private:
++    bool usesColor(int i) const {
++        if (!varyings_ || varyings_->colors[i]) return true;
++        return i < 2 && varyings_->colors[i + 2] && !p_.colorWritten[i + 2];
++    }
++    bool usesTextureCoordinate(int i) const {
++        return !varyings_ || (varyings_->textureCoordinates & (1u << i));
++    }
++    bool usesFog() const { return !varyings_ || varyings_->fog; }
++    bool usesOutput(const Dest& d) const {
++        switch (d.output) {
++        case Output::FrontColor: return usesColor(0);
++        case Output::FrontSecondary: return usesColor(1);
++        case Output::BackColor: return usesColor(2);
++        case Output::BackSecondary: return usesColor(3);
++        case Output::TexCoord: return usesTextureCoordinate(d.index);
++        case Output::FogCoord: return usesFog();
++        default: return true;
++        }
++    }
++
+     static const char* samplerType(TexTarget t) {
+         switch (t) {
+         case TexTarget::T1D: return "sampler1D";
+@@ -1579,6 +1619,7 @@
+     const EmitOptions& o_;
+     const Body& b_;
+     const UniformPadding* padding_;
++    const VertexVaryings* varyings_;
+ };
+
+ }  // namespace
+@@ -1677,9 +1718,23 @@
+     return padding;
+ }
+
+-std::string emit(const Parsed& p, const EmitOptions& o, const UniformPadding* padding) {
++VertexVaryings consumedVertexVaryings(const std::string& fragmentSource) {
++    const auto consumes = [&](const std::string& name, const char* type) {
++        const std::string declaration = std::string("in ") + type + " " + name + ";";
++        return fragmentSource.find("\n" + declaration) != std::string::npos ||
++               fragmentSource.find("\nflat " + declaration) != std::string::npos;
++    };
++    VertexVaryings used;
++    for (int i = 0; i < 4; ++i) used.colors[i] = consumes(kColorVaryings[i], "vec4");
++    for (int i = 0; i < Limits::kTexCoords; ++i)
++        if (consumes("ff_tc" + std::to_string(i), "vec4")) used.textureCoordinates |= 1u << i;
++    used.fog = consumes("ff_fogCoord", "float");
++    return used;
++}
++
++std::string emit(const Parsed& p, const EmitOptions& o, const UniformPadding* padding, const VertexVaryings* varyings) {
+     if (!p.ok || !p.body) return {};
+-    Emitter emitter(p, o, padding);
++    Emitter emitter(p, o, padding, varyings);
+     if (p.kind == Kind::Vertex && std::getenv("WINEMETALGL_PROFILE_RAID_LIGHTING")) {
+         size_t largest = 0, segment = 0, dynamicReads = 0;
+         bool fast = false;
+diff --git a/src/core/compat/arb_programs.mm b/src/core/compat/arb_programs.mm
+--- a/src/core/compat/arb_programs.mm
++++ b/src/core/compat/arb_programs.mm
+@@ -160,10 +160,16 @@
+         if (cache.size() >= 1024) cache.clear();
+         std::string vs, fs;
+         arb::UniformPadding padding = vp ? arb::uniformPadding(*vp) : arb::UniformPadding{};
+-        if (vp) vs = arb::emit(*vp, vo, &padding);
+-        else fixedFunctionStage(ctx, mode, true, needs, nullptr, &vs);
+         if (fp) fs = arb::emit(*fp, fo);
+         else fixedFunctionStage(ctx, mode, false, needs, nullptr, &fs);
++        static const bool trimVaryings = [] {
++            const char* value = std::getenv("WINEMETALGL_ARB_TRIM_VARYINGS");
++            return value && std::strcmp(value, "1") == 0;
++        }();
++        // The linked cache key already includes the paired fragment stage.
++        const auto varyings = trimVaryings && vp ? arb::consumedVertexVaryings(fs) : arb::VertexVaryings{};
++        if (vp) vs = arb::emit(*vp, vo, &padding, trimVaryings ? &varyings : nullptr);
++        else fixedFunctionStage(ctx, mode, true, needs, nullptr, &vs);
+         std::map<std::string, GLuint> bindings;
+         for (int n = 1; vp && n < arb::Limits::kVertexAttribs; ++n)
+             if (vp->genericRead >> n & 1u) bindings["arb_attrib" + std::to_string(n)] = static_cast<GLuint>(n);
+@@ -177,7 +183,7 @@
+                 uniformOffset(*linked.program, std::string(arb::kPackedVertexParameters) + "[0]", 16, count) : -1;
+             if (offset < 0 || count != packed.size) {
+                 padding = {};
+-                vs = arb::emit(*vp, vo, &padding);
++                vs = arb::emit(*vp, vo, &padding, trimVaryings ? &varyings : nullptr);
+                 log.clear();
+                 linked.program = linkInternalProgram(vs, fs, "ff_tex", log, bindings);
+             } else {
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -472,6 +472,37 @@
+     CHECK_GL();
+ }
+
++ARB_TEST(arb_vertex_varyings_follow_fragment_stage) {
++    identity();
++    load(GL_VERTEX_PROGRAM_ARB,
++         "!!ARBvp1.0\n"
++         "PARAM red = {1,0,0,1};\n"
++         "PARAM blue = {0,0,1,1};\n"
++         "MOV result.position, vertex.position;\n"
++         "MOV result.color, red;\n"
++         "MOV result.texcoord[3], blue;\n"
++         "END\n");
++    const GLuint color = load(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n");
++    const GLuint tex = load(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, fragment.texcoord[3];\nEND\n");
++    glEnable(GL_VERTEX_PROGRAM_ARB);
++    glEnable(GL_FRAGMENT_PROGRAM_ARB);
++    clear();
++    glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, color);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kRed));
++    glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, tex);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kBlue));
++    glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, color);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kRed));
++    glDisable(GL_FRAGMENT_PROGRAM_ARB);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kRed));
++    glDisable(GL_VERTEX_PROGRAM_ARB);
++    CHECK_GL();
++}
++
+ ARB_TEST(arb_program_errors_and_queries) {
+     const char bad[] = "!!ARBfp1.0\nMOV result.color, nowhere;\nEND\n";
+     GLuint id = 0;

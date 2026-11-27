@@ -1190,3 +1190,18 @@ In separate 20-second diagnostic launches, median time in OpenGL calls on the ca
 | Contiguous uniform | 121.98 | 10.92 ms |
 
 Throughput rose **1.83%** in the median and increased in both pairs. P99 shortened by **0.15 ms** in the first pair and **4.68 ms** in the reverse pair. Keep this option enabled for follow-up comparisons. Every warmed 60-second launch verified the camera, overlapping effects, 26 cast timing rows, consecutive GPU completions, and zero visible windows or activations. [Live A/B and phase diagnostics](results/raid-winemetalgl-headless-arb-contiguous-segments-ab.json)
+
+### Limit ARB vertex varyings to the linked fragment stage
+
+The trial emits only the ARB vertex outputs declared by the generated fragment stage. It skips writes and default initialization for the omitted outputs. Position, clipping and point size retain their ordinary generation. Unwritten back colors can still take their front-color values. The linked-program cache key includes the paired fragment stage.
+
+Apply `patches/winemetalgl-arb-trim-vertex-varyings-trial.patch` after the contiguous segment trial and set `WINEMETALGL_ARB_TRIM_VARYINGS=1`. Both modes passed **340** GPU tests. A focused test switches one vertex program between ARB fragment programs that read color or texture coordinates, switches back to its cached pair, and exercises the fixed-function fragment path.
+
+A separate compilation log showed **5–11** omitted interface variables over **39** live emissions. All explicit output writes in those programs were required by their paired stages. The optimization removed declarations and default writes in that capture.
+
+| ARB vertex outputs | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Full interface | 111.50 | 13.54 ms |
+| Fragment-consumed interface | 110.21 | 15.49 ms |
+
+Throughput fell in both pairs, and p99 moved in opposite directions. The baseline keeps the contiguous uniform layout with the full interface. All four warmed 60-second launches verified the camera, spell schedule, overlapping effects, consecutive GPU completions and zero visible windows or activations. [Live A/B and compile witness](results/raid-winemetalgl-headless-arb-trim-varyings-ab.json)

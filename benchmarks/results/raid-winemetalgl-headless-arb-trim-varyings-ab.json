@@ -1,0 +1,402 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "explicit_headless_interactive_qos": false,
+  "i386_forward_superblocks": false,
+  "i386_mov_base_uxtw": true,
+  "i386_fp_batch_v2": true,
+  "i386_ebp_hoist": true,
+  "vertex_shader_uniform_segments": true,
+  "arb_branchless_segments": true,
+  "arb_contiguous_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "process_isolation": {
+    "other_trial_instances_detected": 0,
+    "guard_checkpoints": "Before the first launch and after each of four launches"
+  },
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "mode": "all_vertex_varyings",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6622,
+      "first_sequence": 4827,
+      "last_sequence": 11448,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997223250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 110.35,
+      "p99_gpu_completion_gap_ns": 12256375,
+      "min_draws": 684,
+      "max_draws": 976
+    },
+    {
+      "launch": 2,
+      "mode": "fragment_consumed_varyings",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6514,
+      "first_sequence": 4844,
+      "last_sequence": 11357,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994350666,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 108.55,
+      "p99_gpu_completion_gap_ns": 16414375,
+      "min_draws": 690,
+      "max_draws": 953
+    },
+    {
+      "launch": 3,
+      "mode": "fragment_consumed_varyings",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6713,
+      "first_sequence": 4826,
+      "last_sequence": 11538,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994572375,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 111.86666666666666,
+      "p99_gpu_completion_gap_ns": 14567125,
+      "min_draws": 688,
+      "max_draws": 958
+    },
+    {
+      "launch": 4,
+      "mode": "all_vertex_varyings",
+      "renderer_map_verified": true,
+      "activation_notifications": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6760,
+      "first_sequence": 4827,
+      "last_sequence": 11586,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993415625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 112.65,
+      "p99_gpu_completion_gap_ns": 14825875,
+      "min_draws": 690,
+      "max_draws": 943
+    }
+  ],
+  "medians": {
+    "all_vertex_varyings": {
+      "average_completed_fps": 111.5,
+      "p99_gpu_completion_gap_ns": 13541125.0
+    },
+    "fragment_consumed_varyings": {
+      "average_completed_fps": 110.20833333333333,
+      "p99_gpu_completion_gap_ns": 15490750.0
+    }
+  },
+  "runtime_sha256": "a93d0024b82f7ff3e7383346f16403e10e07f542603b426390823f7991d86f89",
+  "renderer_sha256": "1f51ea0035bd77b96ecb90648f7cd81e7bc836303f6a5686067316f46171a4e5",
+  "visual_readback_checked_per_launch": true,
+  "diagnostic_arb_compile_log_off_in_timed_runs": true,
+  "compile_witness_diagnostic": {
+    "compiled_shape_counts": [
+      {
+        "instructions": 7,
+        "parameters": 5,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": false,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 11,
+        "emissions": 2
+      },
+      {
+        "instructions": 17,
+        "parameters": 34,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 1
+      },
+      {
+        "instructions": 20,
+        "parameters": 34,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 3
+      },
+      {
+        "instructions": 21,
+        "parameters": 34,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 3,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 9,
+        "emissions": 1
+      },
+      {
+        "instructions": 26,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 2
+      },
+      {
+        "instructions": 29,
+        "parameters": 24,
+        "color_outputs": 2,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 9,
+        "emissions": 1
+      },
+      {
+        "instructions": 31,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 3,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 9,
+        "emissions": 2
+      },
+      {
+        "instructions": 33,
+        "parameters": 34,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 2
+      },
+      {
+        "instructions": 36,
+        "parameters": 34,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 1
+      },
+      {
+        "instructions": 40,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 3
+      },
+      {
+        "instructions": 44,
+        "parameters": 38,
+        "color_outputs": 2,
+        "texture_coordinate_mask": 15,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 6,
+        "emissions": 1
+      },
+      {
+        "instructions": 45,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 3,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 9,
+        "emissions": 1
+      },
+      {
+        "instructions": 46,
+        "parameters": 38,
+        "color_outputs": 2,
+        "texture_coordinate_mask": 31,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 5,
+        "emissions": 1
+      },
+      {
+        "instructions": 47,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 1
+      },
+      {
+        "instructions": 52,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 3,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 9,
+        "emissions": 2
+      },
+      {
+        "instructions": 53,
+        "parameters": 34,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 1
+      },
+      {
+        "instructions": 53,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 2
+      },
+      {
+        "instructions": 60,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 2
+      },
+      {
+        "instructions": 65,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 2
+      },
+      {
+        "instructions": 65,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 3,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 9,
+        "emissions": 1
+      },
+      {
+        "instructions": 77,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 3,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 9,
+        "emissions": 1
+      },
+      {
+        "instructions": 78,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 2
+      },
+      {
+        "instructions": 85,
+        "parameters": 223,
+        "color_outputs": 1,
+        "texture_coordinate_mask": 1,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 10,
+        "emissions": 2
+      },
+      {
+        "instructions": 98,
+        "parameters": 38,
+        "color_outputs": 2,
+        "texture_coordinate_mask": 15,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 6,
+        "emissions": 1
+      },
+      {
+        "instructions": 100,
+        "parameters": 38,
+        "color_outputs": 2,
+        "texture_coordinate_mask": 31,
+        "fog_output": true,
+        "explicit_instructions_skipped": 0,
+        "vertex_outputs_omitted": 5,
+        "emissions": 1
+      }
+    ],
+    "gpu_missing_sequences": 0,
+    "activation_notifications": 0,
+    "visible_trial_windows": 0
+  },
+  "paired_trial_minus_control": [
+    {
+      "average_completed_fps": -1.7999999999999972,
+      "p99_gpu_completion_gap_ns": 4158000
+    },
+    {
+      "average_completed_fps": -0.7833333333333456,
+      "p99_gpu_completion_gap_ns": -258750
+    }
+  ],
+  "gpu_tests_per_arm": 340,
+  "fragment_program_switch_and_fixed_stage_test_passed_per_arm": true,
+  "selected_for_followup": false
+}
