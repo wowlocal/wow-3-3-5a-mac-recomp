@@ -1,0 +1,111 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate symbolized main-thread stack sample of the live headless 24-caster raid",
+  "sampling_duration_seconds": 18,
+  "configured_sampling_interval_ms": 1,
+  "sampling_weight": "Wall-clock main-thread stack counts with no CPU time weighting.",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "direct_arb_uniforms_enabled": true,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "triangle_budget": 0,
+  "draw_threshold": 512,
+  "flag_liveness_depth": 3,
+  "gpu_missing_sequences": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0,
+  "main_thread_wall_stack_samples": 7842,
+  "exclusive_module_samples": {
+    "<unknown binary>": 4774,
+    "libwinemetalgl.dylib": 1044,
+    "ocerz": 536,
+    "libsystem_platform.dylib": 318,
+    "AGXMetalG16X": 256,
+    "libobjc.A.dylib": 207,
+    "libsystem_pthread.dylib": 167,
+    "libsystem_kernel.dylib": 155,
+    "libsystem_malloc.dylib": 94,
+    "IOGPU": 48,
+    "libsystem_c.dylib": 42,
+    "libdyld.dylib": 41,
+    "Metal": 39,
+    "libobjcMsgSend2.dylib": 18,
+    "libobjcMsgSend.dylib": 17,
+    "libc++.1.dylib": 17,
+    "libsystem_m.dylib": 14,
+    "IOKit": 11,
+    "libc++abi.dylib": 7,
+    "GLEngine": 6
+  },
+  "inclusive_selected_stack_samples": {
+    "render_draw_elements": 1682,
+    "render_draw_issue": 1253,
+    "render_prepare": 186,
+    "render_draw_state": 271,
+    "render_plan_vertex_inputs": 43,
+    "render_bind_vertex_inputs": 82,
+    "render_bind_uniforms": 161,
+    "render_uniform_block": 71,
+    "render_fixed_function_block": 26,
+    "render_command_commit": 0
+  },
+  "draw_issue_direct_children": [
+    {
+      "module": "libwinemetalgl.dylib",
+      "function": "wmgl::DrawState::bindDrawState",
+      "stack_samples": 271
+    },
+    {
+      "module": "libwinemetalgl.dylib",
+      "function": "wmgl::DrawState::prepare",
+      "stack_samples": 186
+    },
+    {
+      "module": "AGXMetalG16X",
+      "function": "-[AGXG16XFamilyRenderContext drawIndexedPrimitives:indexCount:indexType:indexBuffer:indexBufferOffset:instanceCount:baseVertex:baseInstance:]",
+      "stack_samples": 186
+    },
+    {
+      "module": "libwinemetalgl.dylib",
+      "function": "wmgl::DrawState::prepareSamplerStorage",
+      "stack_samples": 96
+    },
+    {
+      "module": "libwinemetalgl.dylib",
+      "function": "wmgl::DrawState::bindVertexInputs",
+      "stack_samples": 82
+    },
+    {
+      "module": "libwinemetalgl.dylib",
+      "function": "wmgl::DrawState::waitForCpuVertexReads",
+      "stack_samples": 46
+    },
+    {
+      "module": "AGXMetalG16X",
+      "function": "-[AGXG16XFamilyRenderContext setRenderPipelineState:]",
+      "stack_samples": 32
+    },
+    {
+      "module": "libsystem_platform.dylib",
+      "function": "_platform_memmove",
+      "stack_samples": 19
+    },
+    {
+      "module": "libc++abi.dylib",
+      "function": "operator new",
+      "stack_samples": 17
+    },
+    {
+      "module": "libwinemetalgl.dylib",
+      "function": "wmgl::TransientAllocator::allocate",
+      "stack_samples": 15
+    }
+  ]
+}

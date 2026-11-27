@@ -895,3 +895,9 @@ A diagnostic rebuilt and compared the 6,384-byte block at every binding. Of **90
 | Reuse generation on equal matrices | 106.63 | 17.08 ms |
 
 Both median differences were within **0.2%**, and the individual pairs moved in opposite directions. Each of the four warmed 60-second runs kept the camera, cast schedule, and overlapping effects. All four GPU completion sequences were consecutive. Both arms passed **337** GPU tests, and the desktop monitor observed zero trial activations or visible windows. [Full-raid A/B and byte checks](results/raid-winemetalgl-headless-retain-matrix-generation-ab.json)
+
+### Native render stacks after precise uniform invalidation
+
+A live 18-second main-thread sample with direct packing and precise invalidation collected **7,842** stacks. The fixed-function block appeared in **26** stacks and uniform binding in **161**. The indexed draw path appeared in **1,682** stacks, including **1,253** in `DrawState::issue`. Direct children of the latter included **271** in state binding, **186** in draw preparation, and **186** in the Metal indexed draw call.
+
+Of the sampled leaves, **4,774** resolved to an unknown binary and **1,044** to WineMetalGL. The unknown bucket records symbol resolution. The instrumented launch kept consecutive GPU completions, with zero visible windows or activations. The throughput comparisons use uninstrumented launches. [Native stack counts](results/raid-winemetalgl-headless-precise-main-thread-stacks.json)
