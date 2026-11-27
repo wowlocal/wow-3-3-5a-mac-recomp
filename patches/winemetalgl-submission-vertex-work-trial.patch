@@ -1,0 +1,136 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2321,6 +2321,19 @@
+         }
+         return true;
+     }
++    static const bool profileVertices = CommandStream::vertexWorkProfileEnabled();
++    const auto noteVertexWork = [&](uint64_t references) {
++        if (!profileVertices || !references) return;
++        uint64_t key = 0;
++        uint32_t instructions = 0, parameters = 0;
++        if (compat::arbVertexProgramActive(ctx_)) {
++            const auto& vertex = compat::arbBound(ctx_, 0);
++            key = vertex.serial;
++            instructions = vertex.parsed->instructions;
++            parameters = vertex.parsed->parameters;
++        }
++        ctx_.stream().noteVertexWork(key, instructions, parameters, references * std::max(1, instances));
++    };
+     // Metal on some virtual GPUs (DeviceCaps::drawOffsets16) keeps only 16
+     // bits of the vertex start and base vertex: such a draw goes through
+     // indices that hold the vertex numbers themselves, with no offset.
+@@ -2348,10 +2361,12 @@
+                                    indexBuffer:pattern->buffer indexBufferOffset:0
+                                  instanceCount:std::max(1, instances) baseVertex:first - rebase
+                                   baseInstance:baseInstance_];
++            noteVertexWork(pattern->count);
+             ctx_.stream().noteDraw();
+             return true;
+         }
+     }
++    uint64_t references = static_cast<uint32_t>(count);
+     if (needsIndices || rotate || points || (indexData && !indexBuffer) || offsetIndices) {
+         stats::count(&stats::Frame::cpuIndexDraws);
+         std::vector<uint32_t> in, out;
+@@ -2364,6 +2379,7 @@
+         else if (needsIndices) expandIndices(mode, in, out);
+         else out.swap(in);
+         if (out.empty()) return true;
++        references = out.size();
+         TransientAllocation alloc = transient_.allocate(out.size() * 4, serial, 4);
+         std::memcpy(alloc.data, out.data(), out.size() * 4);
+         [encoder drawIndexedPrimitives:native indexCount:out.size() indexType:MTLIndexTypeUInt32
+@@ -2382,6 +2398,7 @@
+     // counts continue to use the normal draw-budget heuristic.
+     const uint64_t triangles = mode == GL_TRIANGLES && !points && count > 0 && triangleSubmissionBudget()
+                                    ? uint64_t{static_cast<uint32_t>(count / 3)} * std::max(1, instances) : 0;
++    noteVertexWork(references);
+     ctx_.stream().noteDraw(triangles);
+     return true;
+ }
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -250,6 +250,8 @@
+     // Draws recorded in the command buffer being recorded.
+     uint32_t drawsSinceCommit() const { return drawsSinceCommit_; }
+     uint64_t trianglesSinceCommit() const { return trianglesSinceCommit_; }
++    static bool vertexWorkProfileEnabled();
++    void noteVertexWork(uint64_t program, uint32_t instructions, uint32_t parameters, uint64_t references);
+     // The CPU waited this frame for indirect commands the GPU wrote: such a
+     // wait drains the GPU, which then idles while the CPU records
+     // (DrawState::commitLargeWork commits sooner). Until the next present.
+@@ -314,6 +316,13 @@
+     RenderTargetDesc pendingTarget_;
+     PendingClear pending_;
+     bool drawsInPass_ = false;
++    struct VertexWork {
++        uint64_t program;
++        uint32_t instructions, parameters;
++        uint64_t draws, references;
++    };
++    std::vector<VertexWork> vertexWork_;
++
+     uint32_t drawsSinceCommit_ = 0;
+     uint64_t trianglesSinceCommit_ = 0;
+     uint64_t submissionTraceStream_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -28,6 +28,17 @@
+         if (!path || !*path) return nullptr;
+         FILE* file = std::fopen(path, "wx");
+         if (!file) std::perror("cannot create WineMetalGL submission log");
++        return file;
++    }();
++    return log;
++}
++
++FILE* vertexWorkLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_VERTEX_WORK_LOG");
++        if (!path || !*path || !submissionLog()) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL vertex work log");
+         return file;
+     }();
+     return log;
+@@ -653,6 +664,21 @@
+     lastPrelude_ = nil;
+ }
+
++bool CommandStream::vertexWorkProfileEnabled() {
++    return vertexWorkLog() != nullptr;
++}
++
++void CommandStream::noteVertexWork(uint64_t program, uint32_t instructions, uint32_t parameters,
++                                   uint64_t references) {
++    for (VertexWork& work : vertexWork_) {
++        if (work.program != program) continue;
++        ++work.draws;
++        work.references += references;
++        return;
++    }
++    vertexWork_.push_back({program, instructions, parameters, 1, references});
++}
++
+ uint64_t CommandStream::flush(bool keepPendingClear) {
+     flushDeferred_ = false;
+     if (__builtin_expect(deferred_ != nullptr, 0)) runDeferred();
+@@ -677,6 +703,14 @@
+         if (!submissionTraceStream_)
+             submissionTraceStream_ = nextTraceStream.fetch_add(1, std::memory_order_relaxed);
+         traceSubmission(log, buffer_, "render", submissionTraceStream_, serial_, submittedDraws);
++        if (FILE* workLog = vertexWorkLog()) {
++            for (const VertexWork& work : vertexWork_)
++                std::fprintf(workLog, "%d %llu %llu %llu %u %u %llu %llu\n", getpid(),
++                    (unsigned long long)submissionTraceStream_, (unsigned long long)serial_,
++                    (unsigned long long)work.program, work.instructions, work.parameters,
++                    (unsigned long long)work.draws, (unsigned long long)work.references);
++            vertexWork_.clear();
++        }
+     }
+     queue_.commit(buffer_, serial_);
+     lastCommitted_ = serial_;

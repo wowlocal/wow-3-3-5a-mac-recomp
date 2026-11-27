@@ -1,0 +1,314 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate Metal System Trace and vertex submission diagnostic in the live 24-caster raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "continuing_draw_threshold": 512,
+  "triangle_budget": 0,
+  "vsync": false,
+  "other_trial_instances_detected": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0,
+  "missing_gpu_sequences": 0,
+  "visual_readback_verified": true,
+  "gpu_tests_with_diagnostic_off": 338,
+  "raw_trace_capture_seconds": 20,
+  "renderer_sha256": "afee5773cfb954576f283b0151e0437a2247279d1c96d5a786f44c0e288eb272",
+  "clock_match_tolerance_ns": 250,
+  "max_matching_error_ns": 42,
+  "eligible_completions_between_trace_bounds": 2332,
+  "matched_completions": 2332,
+  "consecutive_completion_intervals": 2331,
+  "tail_intervals_at_or_above_p99": 24,
+  "active_rows_by_process_group": {
+    "unspecified": 12,
+    "client": 11704,
+    "other_process": 71995
+  },
+  "other_processes_with_recorded_gpu_activity": 4,
+  "all_interval_stats_ns": {
+    "completion_gap_ns": {
+      "mean": 8739159.283998284,
+      "median": 8600875,
+      "p99": 15068166
+    },
+    "client_gpu_active_union_ns": {
+      "mean": 2341204.4114114116,
+      "median": 2017749,
+      "p99": 8312957
+    },
+    "client_vertex_active_ns": {
+      "mean": 895760.9652509652,
+      "median": 619708,
+      "p99": 5876250
+    },
+    "client_fragment_active_ns": {
+      "mean": 1455779.703989704,
+      "median": 1293251,
+      "p99": 4059041
+    },
+    "client_compute_active_ns": {
+      "mean": 52832.01372801373,
+      "median": 12625,
+      "p99": 737458
+    },
+    "other_process_active_union_ns": {
+      "mean": 2135004.3504933505,
+      "median": 1745666,
+      "p99": 9946290
+    },
+    "other_process_or_unspecified_only_active_ns": {
+      "mean": 1160627.6752466753,
+      "median": 910249,
+      "p99": 4966665
+    },
+    "no_recorded_activity_ns": {
+      "mean": 5237327.197340197,
+      "median": 5348916,
+      "p99": 9103416
+    }
+  },
+  "tail_interval_medians_ns": {
+    "completion_gap_ns": 15834584.0,
+    "client_gpu_active_union_ns": 5339021.0,
+    "client_vertex_active_ns": 2982021.0,
+    "client_fragment_active_ns": 2004895.0,
+    "client_compute_active_ns": 17187.5,
+    "other_process_active_union_ns": 7005729.0,
+    "other_process_or_unspecified_only_active_ns": 2093897.0,
+    "no_recorded_activity_ns": 7551271.0
+  },
+  "draw_work": {
+    "matched_intervals": 2331,
+    "excluded_intervals": {},
+    "all_intervals": {
+      "intervals": 2331,
+      "median_submitted_references": 330882,
+      "median_submitted_arb_references": 304885,
+      "median_by_field": {
+        "output_gap_ns": 8600875,
+        "draws": 820,
+        "first_gpu_vertex_ns": 475667,
+        "final_gpu_vertex_ns": 128875,
+        "total_buffer_gpu_vertex_ns": 620833
+      },
+      "programs": [
+        {
+          "arb_serial": 14,
+          "assembly_instructions": 65,
+          "declared_parameters": 223,
+          "total_references": 248836389,
+          "median_references_per_output": 106653,
+          "share_of_submitted_references": 0.3213190698721814
+        },
+        {
+          "arb_serial": 17,
+          "assembly_instructions": 40,
+          "declared_parameters": 223,
+          "total_references": 81517401,
+          "median_references_per_output": 34971,
+          "share_of_submitted_references": 0.10526231944202354
+        },
+        {
+          "arb_serial": 0,
+          "assembly_instructions": 0,
+          "declared_parameters": 0,
+          "total_references": 60547908,
+          "median_references_per_output": 25977,
+          "share_of_submitted_references": 0.07818469621525657
+        },
+        {
+          "arb_serial": 64,
+          "assembly_instructions": 29,
+          "declared_parameters": 24,
+          "total_references": 52713234,
+          "median_references_per_output": 22614,
+          "share_of_submitted_references": 0.06806788744565269
+        },
+        {
+          "arb_serial": 43,
+          "assembly_instructions": 46,
+          "declared_parameters": 38,
+          "total_references": 51916032,
+          "median_references_per_output": 22272,
+          "share_of_submitted_references": 0.06703847126512677
+        },
+        {
+          "arb_serial": 24,
+          "assembly_instructions": 20,
+          "declared_parameters": 34,
+          "total_references": 40076594,
+          "median_references_per_output": 17340,
+          "share_of_submitted_references": 0.05175036480586867
+        },
+        {
+          "arb_serial": 16,
+          "assembly_instructions": 26,
+          "declared_parameters": 223,
+          "total_references": 37350186,
+          "median_references_per_output": 14370,
+          "share_of_submitted_references": 0.04822979096145368
+        },
+        {
+          "arb_serial": 26,
+          "assembly_instructions": 78,
+          "declared_parameters": 223,
+          "total_references": 34173492,
+          "median_references_per_output": 14754,
+          "share_of_submitted_references": 0.04412776888401331
+        },
+        {
+          "arb_serial": 42,
+          "assembly_instructions": 100,
+          "declared_parameters": 38,
+          "total_references": 26853120,
+          "median_references_per_output": 11520,
+          "share_of_submitted_references": 0.03467507134403108
+        },
+        {
+          "arb_serial": 56,
+          "assembly_instructions": 33,
+          "declared_parameters": 34,
+          "total_references": 23048928,
+          "median_references_per_output": 9888,
+          "share_of_submitted_references": 0.02976276957029335
+        },
+        {
+          "arb_serial": 23,
+          "assembly_instructions": 36,
+          "declared_parameters": 34,
+          "total_references": 20340816,
+          "median_references_per_output": 6528,
+          "share_of_submitted_references": 0.026265821103685867
+        },
+        {
+          "arb_serial": 41,
+          "assembly_instructions": 44,
+          "declared_parameters": 38,
+          "total_references": 17902080,
+          "median_references_per_output": 7680,
+          "share_of_submitted_references": 0.023116714229354057
+        }
+      ]
+    },
+    "slowest_intervals": {
+      "intervals": 24,
+      "median_submitted_references": 336310.5,
+      "median_submitted_arb_references": 310291.5,
+      "median_by_field": {
+        "output_gap_ns": 15834584.0,
+        "draws": 838.0,
+        "first_gpu_vertex_ns": 533625.5,
+        "final_gpu_vertex_ns": 178000.0,
+        "total_buffer_gpu_vertex_ns": 2202375.0
+      },
+      "programs": [
+        {
+          "arb_serial": 14,
+          "assembly_instructions": 65,
+          "declared_parameters": 223,
+          "total_references": 2545674,
+          "median_references_per_output": 105495.0,
+          "share_of_submitted_references": 0.31370820390391213
+        },
+        {
+          "arb_serial": 17,
+          "assembly_instructions": 40,
+          "declared_parameters": 223,
+          "total_references": 839304,
+          "median_references_per_output": 34971.0,
+          "share_of_submitted_references": 0.10342901344373595
+        },
+        {
+          "arb_serial": 0,
+          "assembly_instructions": 0,
+          "declared_parameters": 0,
+          "total_references": 623445,
+          "median_references_per_output": 25974.0,
+          "share_of_submitted_references": 0.07682830212465325
+        },
+        {
+          "arb_serial": 64,
+          "assembly_instructions": 29,
+          "declared_parameters": 24,
+          "total_references": 542736,
+          "median_references_per_output": 22614.0,
+          "share_of_submitted_references": 0.06688237997245275
+        },
+        {
+          "arb_serial": 43,
+          "assembly_instructions": 46,
+          "declared_parameters": 38,
+          "total_references": 534528,
+          "median_references_per_output": 22272.0,
+          "share_of_submitted_references": 0.06587089266589137
+        },
+        {
+          "arb_serial": 24,
+          "assembly_instructions": 20,
+          "declared_parameters": 34,
+          "total_references": 468248,
+          "median_references_per_output": 19569.0,
+          "share_of_submitted_references": 0.057703083372654576
+        },
+        {
+          "arb_serial": 16,
+          "assembly_instructions": 26,
+          "declared_parameters": 223,
+          "total_references": 415392,
+          "median_references_per_output": 16953.0,
+          "share_of_submitted_references": 0.05118953889463218
+        },
+        {
+          "arb_serial": 26,
+          "assembly_instructions": 78,
+          "declared_parameters": 223,
+          "total_references": 357654,
+          "median_references_per_output": 15246.0,
+          "share_of_submitted_references": 0.044074376357322184
+        },
+        {
+          "arb_serial": 42,
+          "assembly_instructions": 100,
+          "declared_parameters": 38,
+          "total_references": 276480,
+          "median_references_per_output": 11520.0,
+          "share_of_submitted_references": 0.03407115137890933
+        },
+        {
+          "arb_serial": 56,
+          "assembly_instructions": 33,
+          "declared_parameters": 34,
+          "total_references": 237312,
+          "median_references_per_output": 9888.0,
+          "share_of_submitted_references": 0.029244404933563842
+        },
+        {
+          "arb_serial": 23,
+          "assembly_instructions": 36,
+          "declared_parameters": 34,
+          "total_references": 256764,
+          "median_references_per_output": 11607.0,
+          "share_of_submitted_references": 0.03164151154750534
+        },
+        {
+          "arb_serial": 41,
+          "assembly_instructions": 44,
+          "declared_parameters": 38,
+          "total_references": 184320,
+          "median_references_per_output": 7680.0,
+          "share_of_submitted_references": 0.022714100919272888
+        }
+      ]
+    },
+    "arb_serial_zero_groups_all_other_direct_draws": true,
+    "vertex_references_do_not_measure_shader_invocations": true,
+    "gpu_vertex_time_summed_over_matching_command_buffers": true
+  }
+}

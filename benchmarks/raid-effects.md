@@ -1141,3 +1141,11 @@ Other processes also recorded activity. Their intervals can overlap the client's
 In the longer submission log from this diagnostic launch, every matched output interval's first buffer had **448 draws**. The 6,394 intervals used two, three, and four render submissions in **5,705**, **688**, and **one** cases, respectively. The launcher verified all 26 timing rows and no visible window or activation. The standalone 60-second comparisons use the hardware and CPU timing instrumentation disabled.
 
 The frame-tail summarizer includes the completion gap that crosses the measurement cutoff in p99, matching the performance recorder's definition. This adds one joined command buffer beyond the in-window frame count when the last output falls before the cutoff.
+
+### Join vertex work to its submitted Metal buffer
+
+A separate 20-second Metal System Trace at the 512-draw threshold matched **2,332** outputs within **42 ns**. All **2,331** consecutive intervals matched the corresponding render submissions and direct draw counts. The median output contained **330,882 submitted vertex references**, compared with **336,311** in the slowest one percent. Median vertex activity summed over the output's matching command buffers increased from **0.62 to 2.20 ms**.
+
+Two ARB programs, with 65 and 40 assembly instructions and 223 parameters each, accounted for **42.66%** of all submitted vertex references and **41.71%** in the slowest intervals. The counts use the submitted native vertex or index count and multiplicity. They measure references before any reuse in the GPU vertex cache. Activity is attributed to whole command buffers. The per-program totals describe their contents.
+
+Apply `patches/winemetalgl-submission-vertex-work-trial.patch` on the diagnostic renderer and set `OCERZ_WMGL_VERTEX_WORK_LOG` alongside `OCERZ_WMGL_SUBMISSION_LOG`. The recorder counts issued direct draws after primitive expansion. The renderer passed **338** GPU tests with the diagnostic disabled. The live trace verified the camera, overlapping effects, all 26 cast timing rows, consecutive output completions and zero visible trial windows or activations. [Matched draw counts and GPU timestamps](results/raid-winemetalgl-headless-vertex-work-by-submission.json)
