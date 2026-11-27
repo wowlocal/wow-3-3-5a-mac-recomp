@@ -1,0 +1,64 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -6862,6 +6862,25 @@
+             return 1;
+         if (ds >= 0 && emit_plain_mem_fast(b, insn, s, d->size, rd, 0, 0))
+             return 1;
++        if (ds >= 0 && d->size == 4 && insn->mode32 && insn->addrsize == 4 &&
++            insn->seg == OCERZ_SEG_NONE && !s->riprel && s->index == OCERZ_REG_NONE &&
++            s->base != OCERZ_REG_NONE && s->base != OCERZ_RSP && pin_slot(s->base) >= 0 &&
++            s->disp >= -4095 && s->disp <= 4095 && gbase && mem_fast_forms_ok() &&
++            mem_plain_access_ok(s) && ENV_ON("OCERZ_M32_MOV_BASE_UXTW")) {
++            // Form the wrapped i386 offset in a W register. The load's
++            // register-offset form adds the host mapping base.
++            int offset = pin_hreg(pin_slot(s->base));
++            if (s->disp) {
++                if (s->disp > 0) a64_add_imm(b, 0, JTA, offset, (uint32_t)s->disp);
++                else a64_sub_imm(b, 0, JTA, offset, (uint32_t)-s->disp);
++                ea_cache_reset();
++                offset = JTA;
++            }
++            a64_ldr_regoff_uxtw(b, 4, rd, JGB, offset);
++            if (ENV_ON("OCERZ_M32_MOV_BASE_UXTW_LOG"))
++                fprintf(stderr, "ocerz: emitted MOV UXTW at %#llx\n", (unsigned long long)insn->rip);
++            return 1;
++        }
+         if (!emit_mem_ea(b, insn, s, JTA))
+             return 0;
+         uint32_t *skip = emit_commpage_guard(b, insn, JTA, exit_sites, n_exits);
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -259,7 +259,7 @@
+     run_case(name, (at), (esp), _b, sizeof _b); \
+ } while (0)
+
+-int main(void)
++int main(int argc, char **argv)
+ {
+     if (ocerz_mem_init(0x10000ull, 0x900000000ull) != OCERZ_OK) {
+         fprintf(stderr, "mem_init failed\n");
+@@ -279,6 +279,24 @@
+     }
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++
++    if (argc == 2 && argv[1][0] >= '0' && argv[1][0] <= '5' && argv[1][1] == 0) {
++        const unsigned index = argv[1][0] - '0';
++        const uint32_t bases[] = { M32_DATA + 0x40, M32_DATA + 0x40, M32_DATA + 0x40,
++                                   4, M32_DATA + 0x40, M32_DATA + 0x40 };
++        const uint8_t displacements[] = { 8, 0xf8, 0, 0xf8, 8, 0xf8 };
++        // EBP for four cases, EDI for two, including wrapped negative offsets.
++        uint8_t bytes[] = {
++            index < 4 ? 0xbd : 0xbf,
++            0, 0, 0, 0,
++            0x8b, index < 4 ? 0x45 : 0x47, displacements[index],
++        };
++        memcpy(bytes + 1, &bases[index], sizeof bases[index]);
++        char label[64];
++        snprintf(label, sizeof label, "mov base plus displacement (case %u)", index);
++        run_case(label, M32_CODE, M32_STACK, bytes, sizeof bytes);
++        return g_failures != 0;
++    }
+
+     static const uint8_t carry_chain[] = {
+         0xb8, 0xff, 0xff, 0xff, 0xff,

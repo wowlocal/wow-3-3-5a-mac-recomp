@@ -759,3 +759,11 @@ Apply `patches/aarchx-m32-comis-equality-ccmp-trial.patch` and set `OCERZ_M32_CO
 Seven warmed eight-second periods mapped all sampled `MOV` weight to an operand form. The largest forms were 32-bit loads through `EBP` and 32-bit loads through another base register with a displacement. They accounted for **32.93%** and **22.30%** of mapped `MOV` time and **7.53%** together across all CPU samples. [Operand profile](results/raid-aarchx-headless-mov-form-profile.json)
 
 Apply `patches/aarchx-m32-mov-form-profile-trial.patch` after the guest instruction profile patch. Use the same profiling flags and disable the translation cache so the compact instruction records contain operand metadata. All **806** general runtime checks passed.
+
+### Fold the host mapping base into 32-bit MOV loads
+
+The trial forms the wrapped guest offset in a W register and adds the host mapping base in the AArch64 word load’s register-offset addressing mode. It applies after the existing fast paths, to plain-order loads with a pinned base and destination, no index or segment override, and a displacement that fits an immediate. A diagnostic raid launch recorded **27,675 distinct emitted sites**.
+
+Six isolated interpreter comparisons passed per arm. The negative-displacement and wraparound cases emitted the trial load. Apply `patches/aarchx-m32-mov-base-uxtw-trial.patch` and set `OCERZ_M32_MOV_BASE_UXTW=1` for the trial. Leave the switch unset for control. Run `test_jit32` with each case number from `0` through `5` in a separate process. The compile witness uses `OCERZ_M32_MOV_BASE_UXTW_LOG` in a separate diagnostic launch.
+
+Four warmed 60-second headless runs moved median throughput from **94.47 to 97.93 GPU-completed FPS**. Median p99 rose from **14.21 to 15.33 ms**. Both pairs showed the same throughput and tail-latency tradeoff. The camera, spell effects, and fixture timing were checked in each launch. GPU sequences were consecutive and the trials recorded zero visible windows or activations. The change stays opt-in. [Live raid A/B and input cases](results/raid-aarchx-headless-mov-base-uxtw-ab.json)
