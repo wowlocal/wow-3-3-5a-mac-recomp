@@ -10,11 +10,6 @@
 #include <time.h>
 #include <sys/mman.h>
 
-enum {
-    WIDTH = 1365, HEIGHT = 768, DRAWS = 826, WRITES = 363, STORE = 2 * 1024 * 1024,
-    MAX_SUBDIVISIONS = 32, MAX_IN_FLIGHT = 8, DEFAULT_IN_FLIGHT = 3, WARMUP = 120
-};
-
 #define FUNCTIONS(X) \
     X(glBindBuffer) X(glBindProgramARB) X(glBufferData) X(glBufferParameteriAPPLE) X(glBufferSubData) \
     X(glClear) X(glClearColor) X(glClientWaitSync) X(glColor4ub) X(glDeleteSync) X(glDrawRangeElements) \
@@ -43,82 +38,7 @@ static void load(void)
 #undef RESOLVE
 }
 
-typedef struct { GLsizei count; GLintptr vertices, indices; GLuint end; } Draw;
-typedef struct { GLintptr from, to; } Upload;
-static Draw draws[DRAWS];
-static Upload uploads[WRITES];
-static unsigned char vertex_bytes[STORE];
-
-static unsigned subdivision(unsigned triangles)
-{
-    for (unsigned n = 1; n <= MAX_SUBDIVISIONS; n++)
-        if (n * n >= triangles) return n;
-    return 0;
-}
-
-static void build_geometry(const char *histogram)
-{
-    FILE *file = fopen(histogram, "r");
-    require(file != NULL, "could not open the triangle histogram");
-    unsigned counts[DRAWS];
-    unsigned used = 0, triangles = 0, count, copies;
-    while (fscanf(file, "%u%u", &count, &copies) == 2) {
-        require(count && subdivision(count) && copies <= DRAWS - used, "invalid triangle histogram entry");
-        for (unsigned i = 0; i < copies; i++) counts[used++] = count;
-        triangles += count * copies;
-    }
-    require(feof(file) && used == DRAWS, "the triangle histogram must cover all draws");
-    fclose(file);
-
-    // One index template per subdivision. Draws use just the required prefix.
-    uint16_t indices[3 * MAX_SUBDIVISIONS * (MAX_SUBDIVISIONS + 1) * (2 * MAX_SUBDIVISIONS + 1) / 6];
-    unsigned index_count = 0, index_start[MAX_SUBDIVISIONS + 1];
-    for (unsigned n = 1; n <= MAX_SUBDIVISIONS; n++) {
-        index_start[n] = index_count;
-        unsigned row = 0;
-        for (unsigned y = 0; y < n; y++) {
-            const unsigned next = row + n - y + 1;
-            for (unsigned x = 0; x < n - y; x++) {
-                indices[index_count++] = (uint16_t)(row + x);
-                indices[index_count++] = (uint16_t)(row + x + 1);
-                indices[index_count++] = (uint16_t)(next + x);
-                if (x + y + 1 < n) {
-                    indices[index_count++] = (uint16_t)(row + x + 1);
-                    indices[index_count++] = (uint16_t)(next + x + 1);
-                    indices[index_count++] = (uint16_t)(next + x);
-                }
-            }
-            row = next;
-        }
-        require(index_count - index_start[n] == 3 * n * n, "broken mesh template");
-    }
-    run_glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(indices[0]), indices, GL_STATIC_DRAW);
-
-    size_t offset = 0;
-    for (unsigned i = 0; i < DRAWS; i++) {
-        const unsigned slot = i * WRITES / DRAWS;
-        if (!i || (i - 1) * WRITES / DRAWS != slot)
-            uploads[slot].from = (GLintptr)offset;
-        // This permutation distributes large draws without using game meshes.
-        const unsigned triangle_count = counts[(i * 593) % DRAWS];
-        const unsigned n = subdivision(triangle_count);
-        const unsigned vertices = (n + 1) * (n + 2) / 2;
-        draws[i] = (Draw){ (GLsizei)(triangle_count * 3), (GLintptr)offset,
-                          (GLintptr)(index_start[n] * sizeof(indices[0])), vertices - 1 };
-        const float cx = ((slot % 8) - 3.5f) * 0.24f, cy = ((slot / 8 % 6) - 2.5f) * 0.30f;
-        for (unsigned y = 0; y <= n; y++) {
-            for (unsigned x = 0; x <= n - y; x++) {
-                const float position[] = {cx - 0.08f + 0.16f * x / n + 0.08f * y / n,
-                                          cy - 0.08f + 0.16f * y / n};
-                require(offset + sizeof position <= STORE, "vertex stream exceeds the 2 MiB store");
-                memcpy(vertex_bytes + offset, position, sizeof position);
-                offset += sizeof position;
-            }
-        }
-        uploads[slot].to = (GLintptr)offset;
-    }
-    printf("shape %u draws, %u triangles, %u uploads, %zu vertex bytes\n", DRAWS, triangles, WRITES, offset);
-}
+#include "wmgl-indexed-shape.h"
 
 static void program(GLenum target, const char *source)
 {
@@ -244,6 +164,7 @@ int main(int argc, char **argv)
     run_glGenBuffers(2, ids);
     run_glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ids[1]);
     build_geometry(argv[1]);
+    run_glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_bytes, indices, GL_STATIC_DRAW);
     run_glBindBuffer(GL_ARRAY_BUFFER, ids[0]);
     run_glBufferParameteriAPPLE(GL_ARRAY_BUFFER, GL_BUFFER_FLUSHING_UNMAP_APPLE, GL_FALSE);
     run_glBufferParameteriAPPLE(GL_ARRAY_BUFFER, GL_BUFFER_SERIALIZED_MODIFY_APPLE, GL_FALSE);

@@ -1,0 +1,82 @@
+diff --git a/Makefile b/Makefile
+index f5993ed..5d65770 100644
+--- a/Makefile
++++ b/Makefile
+@@ -100,6 +100,8 @@ tests/unit/bin/%: tests/unit/%.c $(CORE_OBJS)
+ 	@mkdir -p tests/unit/bin
+ 	$(CC) $(CFLAGS) -Wl,-S -o $@ $< $(CORE_OBJS) $(LDLIBS)
+ 
++tests/unit/bin/test_m32: $(wildcard tests/unit/wmgl-i386-*.h tests/unit/wmgl-indexed-shape.h)
++
+ unit: $(UNIT_BINS)
+ 	@for t in $(UNIT_BINS); do echo "== $$t"; OCERZ_NO_ARM_EXEC=1 $$t || exit 1; done
+ 
+diff --git a/include/ocerz/m32_wmgl.h b/include/ocerz/m32_wmgl.h
+index 5213943..34304c6 100644
+--- a/include/ocerz/m32_wmgl.h
++++ b/include/ocerz/m32_wmgl.h
+@@ -17,6 +17,7 @@ int m32_wmgl_swap(void *agl);
+ uint32_t m32_wmgl_guest_buffer(const void *host, size_t size);
+ int m32_wmgl_guest_storage_enabled(void);
+ int m32_wmgl_array_buffer_binding(uint32_t *name);
++int m32_wmgl_resize_pbuffer(int width, int height);
+ #else
+ static inline int m32_wmgl_symbol(const char *name, void **address) { return 0; }
+ static inline int m32_wmgl_create(void *agl, void *share) { return 1; }
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+index e2ce5ac..1cb9bcf 100644
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -130,6 +130,16 @@ uint32_t m32_wmgl_guest_buffer(const void *host, size_t size)
+ static Sidecar contexts[64];
+ static __thread Sidecar *current;
+ 
++int m32_wmgl_resize_pbuffer(int width, int height)
++{
++    if (!current || current->layer || width <= 0 || height <= 0)
++        return 0;
++    driver.flush(current->surface, WMGL_FLUSH_UPDATED, width, height, 0);
++    current->width = width;
++    current->height = height;
++    return 1;
++}
++
+ int m32_wmgl_array_buffer_binding(uint32_t *name)
+ {
+     return current && driver.array_buffer_binding && driver.array_buffer_binding(name);
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+index cb726ce..2dea317 100644
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -832,6 +832,11 @@ static uint32_t bench_gl_call(uint32_t trap, int argc, const uint32_t *args)
+     return (uint32_t)cpu()->gpr[OCERZ_RAX];
+ }
+ 
++#if defined(OCERZ_WMGL_TRIAL) && __has_include("wmgl-i386-harness.h")
++#include "wmgl-i386-harness.h"
++#define HAVE_WMGL_I386_REPLAY 1
++#endif
++
+ static void bench_wmgl_draw_batch(const char *gl, unsigned target)
+ {
+     enum { WIDTH = 1365, HEIGHT = 768, SIZE = 2 * 1024 * 1024, STRIDE = 2048,
+@@ -1140,6 +1145,19 @@ static void test_wmgl_storage(void)
+     check("make the offscreen WineMetalGL context current",
+           call("_aglSetCurrentContext", 1, (uint32_t[]){ ctx }) == 1);
+ 
++#ifdef HAVE_WMGL_I386_REPLAY
++    const char *replay = getenv("OCERZ_WMGL_I386_REPLAY");
++    if (replay) {
++        const char *fixture = getenv("OCERZ_WMGL_TRIANGLE_HISTOGRAM");
++        require(fixture && !g_failures, "replay setup failed");
++        bench_wmgl_i386(gl, ctx, fixture, replay);
++        check("release translated replay context", call("_aglSetCurrentContext", 1, (uint32_t[]){ 0 }) == 1);
++        check("destroy translated replay context", call("_aglDestroyContext", 1, (uint32_t[]){ ctx }) == 1);
++        call("_aglDestroyPixelFormat", 1, (uint32_t[]){ pf });
++        return;
++    }
++#endif
++
+     cross(gl, "_glGenBuffers", 2, (uint32_t[]){ 2, DATA + 0xc30 });
+     uint32_t large = m32_rd(DATA + 0xc30);
+     uint32_t small = m32_rd(DATA + 0xc34);

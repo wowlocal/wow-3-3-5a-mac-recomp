@@ -305,3 +305,42 @@ The opt-in array binding path lets AArchX read the current WineMetalGL context's
 In six interleaved pairs of 40,000 mapped writes, the median fell from **285 to 239 ns per write**. In four interleaved pairs of 6,000 draw-stream frames, the median fell from **0.783 to 0.764 ms/frame**, with improvement in three of the four pairs. The tests used the AArchX mapping bridge, 826 indexed draws per frame, and synthetic ARB programs. Each arm passed the mapping checks and produced the same framebuffer checksum. A focused test also verified binding changes, separate bindings on shared contexts, unbind, and the Begin/End fallback. [Array binding A/B](results/winemetalgl-array-binding-ab.json)
 
 Apply `patches/winemetalgl-array-binding-trial.patch` after the optional buffer-memory patch. Apply `patches/aarchx-wmgl-array-binding-trial.patch` after the AArchX unpack storage patch and rebuild AArchX and WineMetalGL. Use `OCERZ_NO_ARM_EXEC=1` and set `OCERZ_WMGL_LIBRARY` to the rebuilt library. To reproduce the long draw runs via `tests/unit/bin/test_m32 wmgl-storage`, enable `OCERZ_WMGL_GUEST_STORAGE=1`, `OCERZ_WMGL_APPLE_SUBDATA=1`, and `OCERZ_WMGL_INDEXED_BENCH=1`. Set `OCERZ_WMGL_BENCH_FRAMES=6000`, `OCERZ_WMGL_ARB_BENCH=2`, and `OCERZ_WMGL_BATCH_BENCH=0` while alternating `OCERZ_WMGL_ARRAY_BINDING=0` and `1`. Set `OCERZ_WMGL_MAP_BENCH=1` to measure the separate mapped-write loop.
+
+## GPU completion through translated i386
+
+The offscreen replay uses the same indexed geometry generator as the native probe. Each frame runs as compiled i386 code through the AArchX JIT. The guest function calls the GL imports, inserts a fence, and calls AGL SwapBuffers. The harness caps the number of frames in flight at three. WineMetalGL records successful GPU completions for the 1365 × 768 pbuffer. Each arm must produce the same reference pixels as the native probe. The geometry, shaders, and frame loop are synthetic.
+
+Four interleaved pairs of warmed five-second windows kept guest-backed storage and direct array binding enabled. Direct uploads moved the median from **1,012 to 1,356 GPU-completed FPS**, and p99 from **3.79 to 1.93 ms**. Every window had consecutive GPU completion sequences and 826 draws per output. The render used 111,230 triangles and 363 vertex uploads per frame. [Translated timing results](results/winemetalgl-i386-indexed-gpu-ab.json)
+
+A separate 60-second direct-upload window contained **82,428** consecutive GPU completion records, including the starting marker. It averaged **1,374 completed FPS** with **1.96 ms p99**. The process reported 36 translated blocks, passed 59 bridge checks, and matched the native reference pixels. The live raid still needs its own sustained captures, effects checks, and input validation. [Sustained replay results](results/winemetalgl-i386-indexed-gpu-ab.json)
+
+Apply the replay patch to the AArchX trial checkout after the draw benchmark, unpack storage, and array binding patches. Build WineMetalGL with the offscreen completion and array binding patches. Run the benchmark from the AArchX checkout so it can find `runtime/apis32`.
+
+```sh
+git -C "$METAL_TRIAL_AARCHX" apply "$TRIAL_REPO/patches/aarchx-wmgl-i386-replay.patch"
+cp "$TRIAL_REPO"/benchmarks/wmgl-i386-*.h "$TRIAL_REPO/benchmarks/wmgl-indexed-shape.h" "$METAL_TRIAL_AARCHX/tests/unit/"
+make -C "$METAL_TRIAL_AARCHX" WMGL_INCLUDE="$METAL_TRIAL_WMGL/include" tests/unit/bin/test_m32
+
+replay_dir=$(mktemp -d)
+xcrun clang -arch i386 -mmacosx-version-min=10.8 -O2 -ffreestanding -fno-pic \
+    -fno-stack-protector -fno-unwind-tables -mno-sse -mno-sse2 -Wall -Wextra -Werror \
+    -c "$TRIAL_REPO/benchmarks/wmgl-i386-frame.c" -o "$replay_dir/frame.o"
+test "$(xcrun nm -p "$replay_dir/frame.o")" = '00000000 T _render_frame' || exit 1
+if xcrun otool -rv "$replay_dir/frame.o" | grep -q 'Relocation information'; then exit 1; fi
+xcrun llvm-objcopy --dump-section "__TEXT,__text=$replay_dir/frame.bin" "$replay_dir/frame.o"
+
+(cd "$METAL_TRIAL_AARCHX" && exec env -u OCERZ_NO_ARM_EXEC \
+    OCERZ_WMGL_LIBRARY="$METAL_TRIAL_BUILD/libwinemetalgl.dylib" \
+    OCERZ_WMGL_GUEST_STORAGE=1 OCERZ_WMGL_ARRAY_BINDING=1 OCERZ_WMGL_APPLE_SUBDATA=1 \
+    OCERZ_WMGL_I386_REPLAY="$replay_dir/frame.bin" \
+    OCERZ_WMGL_TRIANGLE_HISTOGRAM="$TRIAL_REPO/benchmarks/fixtures/raid-triangle-counts.tsv" \
+    OCERZ_WMGL_GPU_LOG="$replay_dir/gpu.ns" WINEMETALGL_SETTINGS=0 WINEMETALGL_SHADER_CACHE=0 \
+    WINEMETALGL_PIPELINE_CACHE=0 WINEMETALGL_CRASH_HANDLER=0 WINEMETALGL_STATS=0 WINEMETALGL_LOG=0 \
+    tests/unit/bin/test_m32 wmgl-storage) &
+probe_pid=$!
+wait "$probe_pid" &&
+python3 "$TRIAL_REPO/benchmarks/trace-frames.py" "$replay_dir/gpu.ns" "$probe_pid" 1365 768 \
+    --wmgl-log --start-sequence 128 --seconds 5
+```
+
+Alternate `OCERZ_WMGL_APPLE_SUBDATA=0` and `1` for the paired runs and use a fresh log each time. To collect a 60-second window, set `OCERZ_WMGL_I386_SECONDS=63` and analyze with `--seconds 60`.
