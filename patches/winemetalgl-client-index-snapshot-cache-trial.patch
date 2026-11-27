@@ -1,0 +1,250 @@
+diff --git a/src/core/draw.h b/src/core/draw.h
+--- a/src/core/draw.h
++++ b/src/core/draw.h
+@@ -6,6 +6,7 @@
+ #include <array>
+ #include <memory>
+ #include <cstdint>
++#include <memory>
+ #include <unordered_map>
+ #include <unordered_set>
+ #include <vector>
+@@ -163,15 +164,33 @@
+         NSUInteger offset;
+         NSUInteger count = 1, stride = 0;
+     };
++    static constexpr size_t kClientIndexSlots = 2048;
++    static constexpr size_t kClientIndexSlotBytes = 4096;
++    struct ClientIndexSlot {
++        const uint8_t* source = nullptr;
++        uint64_t lastUseSerial = 0;
++        uint32_t bytes = 0, width = 0;
++        uint32_t minIndex = 0, maxIndex = 0;
++    };
++    struct ClientIndexCache {
++        id<MTLBuffer> buffer = nil;
++        std::array<ClientIndexSlot, kClientIndexSlots> slots;
++    };
++    struct ClientIndexUpload {
++        const uint8_t* bytes;
++        ClientIndexSlot* slot = nullptr;
++        uint32_t minIndex = 0, maxIndex = 0;
++        bool matched = false;
++    };
+     // Encodes one draw. indexData (CPU, uint32) or indexBuffer select indexed drawing.
+-    // clientIndexBytes is an immediate snapshot source with the native index type.
++    // clientIndices supplies an immediate snapshot source with the native index type.
+     // minVertex/vertexSpan is the vertex range attribute conversion must cover.
+     // With `indirect`, the GPU reads the command (count, instances, first and
+     // base vertex) from it instead (draws indirectCpuReason allows).
+     bool issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+                GLint minVertex, GLsizei vertexSpan, bool listed = false, const IndirectSource* indirect = nullptr,
+-               const uint8_t* clientIndexBytes = nullptr);
++               const ClientIndexUpload* clientIndices = nullptr);
+     // Why a draw of `mode` (`type`: of indices, or GL_NONE) with the current
+     // state cannot take its command from the GPU: something needs the
+     // command's values on the CPU (vertex ranges to convert, indices to
+@@ -409,6 +428,7 @@
+
+     Context& ctx_;
+     TransientAllocator transient_;
++    std::unique_ptr<ClientIndexCache> clientIndexCache_;
+     uint64_t lastPassGeneration_ = 0;
+     GLuint baseInstance_ = 0;
+     GLint glBaseVertex_ = 0;  // the command's base vertex (gl_BaseVertex), 0 for array draws
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2242,6 +2242,32 @@
+                      (unsigned long long)shortDraws, (unsigned long long)intDraws, (unsigned long long)copiedBytes);
+ }
+
++bool clientIndexCacheEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_CLIENT_INDEX_CACHE");
++        return value && !std::strcmp(value, "1");
++    }();
++    return enabled;
++}
++
++enum class IndexCacheUse { Hit, Fill, Busy, Bypass };
++
++void recordClientIndexCache(IndexCacheUse use, size_t bytes) {
++    static const unsigned interval = [] {
++        const char* value = std::getenv("WINEMETALGL_CLIENT_INDEX_CACHE_LOG");
++        return value && *value ? static_cast<unsigned>(std::strtoul(value, nullptr, 10)) : 0u;
++    }();
++    if (!interval) return;
++    static thread_local uint64_t counts[4] = {}, total = 0, hitBytes = 0;
++    ++counts[static_cast<unsigned>(use)];
++    if (use == IndexCacheUse::Hit) hitBytes += bytes;
++    if (++total % interval == 0)
++        std::fprintf(stderr, "wmgl client index cache hit=%llu fill=%llu busy=%llu bypass=%llu hit_bytes=%llu\n",
++                     (unsigned long long)counts[0], (unsigned long long)counts[1],
++                     (unsigned long long)counts[2], (unsigned long long)counts[3],
++                     (unsigned long long)hitBytes);
++}
++
+ uint64_t triangleSubmissionBudget() {
+     static const uint64_t budget = [] {
+         const char* value = std::getenv("OCERZ_WMGL_COMMIT_TRIANGLES");
+@@ -2254,7 +2280,7 @@
+ bool DrawState::issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                       id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+                       GLint minVertex, GLsizei vertexSpan, bool listed, const IndirectSource* indirect,
+-                      const uint8_t* clientIndexBytes) {
++                      const ClientIndexUpload* clientIndices) {
+     queriesCountPrimitives(ctx_, mode, count, instances);
+     stats::count(&stats::Frame::draws);
+     LinkedProgram* current = executable();
+@@ -2351,24 +2377,48 @@
+     const int64_t arrayStart = int64_t{first} - rebase, indexedBase = int64_t{baseVertex} - rebase;
+     const bool limited = Device::get().caps().drawOffsets16;
+     std::vector<uint32_t> readIndices;
+-    if (clientIndexBytes) {
++    if (clientIndices) {
+         const size_t width = indexType == MTLIndexTypeUInt16 ? 2 : 4;
+         if (!needsIndices && !rotate && !points && (!limited || drawOffsetFits(indexedBase))) {
+             const size_t bytes = static_cast<size_t>(count) * width;
+-            TransientAllocation allocation = transient_.allocate(bytes, serial, width);
+-            if (!allocation.data) {
+-                ctx_.setError(GL_OUT_OF_MEMORY);
+-                return false;
++            ClientIndexSlot* slot = clientIndices->slot;
++            const bool canStore = slot && (clientIndices->matched || !slot->lastUseSerial ||
++                                           ctx_.stream().queue().isComplete(slot->lastUseSerial));
++            if (canStore) {
++                indexBuffer = clientIndexCache_->buffer;
++                indexOffset = static_cast<size_t>(slot - clientIndexCache_->slots.data()) * kClientIndexSlotBytes;
++                if (clientIndices->matched) {
++                    recordClientIndexCache(IndexCacheUse::Hit, bytes);
++                } else {
++                    auto* destination = static_cast<uint8_t*>(indexBuffer.contents) + indexOffset;
++                    std::memcpy(destination, clientIndices->bytes, bytes);
++                    slot->source = clientIndices->bytes;
++                    slot->width = static_cast<uint32_t>(width);
++                    slot->bytes = static_cast<uint32_t>(bytes);
++                    slot->minIndex = clientIndices->minIndex;
++                    slot->maxIndex = clientIndices->maxIndex;
++                    recordClientIndexCache(IndexCacheUse::Fill, bytes);
++                    recordClientIndexUpload(width, bytes);
++                }
++                slot->lastUseSerial = serial;
++            } else {
++                TransientAllocation allocation = transient_.allocate(bytes, serial, width);
++                if (!allocation.data) {
++                    ctx_.setError(GL_OUT_OF_MEMORY);
++                    return false;
++                }
++                std::memcpy(allocation.data, clientIndices->bytes, bytes);
++                indexBuffer = allocation.buffer;
++                indexOffset = allocation.offset;
++                if (clientIndexCacheEnabled())
++                    recordClientIndexCache(slot ? IndexCacheUse::Busy : IndexCacheUse::Bypass, bytes);
++                recordClientIndexUpload(width, bytes);
+             }
+-            std::memcpy(allocation.data, clientIndexBytes, bytes);
+-            indexBuffer = allocation.buffer;
+-            indexOffset = allocation.offset;
+-            recordClientIndexUpload(width, bytes);
+         } else {
+             readIndices.resize(static_cast<size_t>(count));
+             for (size_t i = 0; i < readIndices.size(); ++i) {
+                 uint32_t value = 0;
+-                std::memcpy(&value, clientIndexBytes + i * width, width);
++                std::memcpy(&value, clientIndices->bytes + i * width, width);
+                 readIndices[i] = value;
+             }
+             indexData = readIndices.data();
+@@ -4486,6 +4536,26 @@
+     stats::Timer indexTimer(&stats::Frame::drawIndexNanos);  // the used range: kept, or scanned
+     uint32_t minIndex = UINT32_MAX, maxIndex = 0;
+     bool hasRestart = false;
++    ClientIndexUpload upload{source};
++    const size_t clientBytes = static_cast<size_t>(count) * indexSize;
++    if (!elementBuffer && !restart && indexSize != 1 && clientBytes <= kClientIndexSlotBytes &&
++        !st.debugOutput && directClientIndexUploads() && clientIndexCacheEnabled()) {
++        if (!clientIndexCache_) {
++            clientIndexCache_ = std::make_unique<ClientIndexCache>();
++            clientIndexCache_->buffer = [Device::get().mtl() newBufferWithLength:kClientIndexSlots * kClientIndexSlotBytes
++                                                                        options:MTLResourceStorageModeShared];
++        }
++        if (clientIndexCache_->buffer) {
++            const size_t key = (offset >> 2) ^ (offset >> 16) ^ (clientBytes << 1) ^ indexSize;
++            const size_t slotIndex = key % kClientIndexSlots;
++            ClientIndexSlot& slot = clientIndexCache_->slots[slotIndex];
++            const auto* previous = static_cast<const uint8_t*>(clientIndexCache_->buffer.contents) +
++                                   slotIndex * kClientIndexSlotBytes;
++            upload.slot = &slot;
++            upload.matched = slot.source == source && slot.width == indexSize && slot.bytes == clientBytes &&
++                             std::memcmp(previous, source, clientBytes) == 0;
++        }
++    }
+     const Buffer::IndexRange range{offset, static_cast<uint64_t>(count), type, restart ? restartIndex : ~0ull};
+     const Buffer::IndexScan* cached = nullptr;
+     if (elementBuffer && !elementBuffer->mapped) {
+@@ -4496,7 +4566,10 @@
+         auto it = elementBuffer->indexScans.find(range);
+         if (it != elementBuffer->indexScans.end()) cached = &it->second;
+     }
+-    if (cached) {
++    if (upload.matched) {
++        minIndex = upload.slot->minIndex;
++        maxIndex = upload.slot->maxIndex;
++    } else if (cached) {
+         minIndex = cached->minIndex;
+         maxIndex = cached->maxIndex;
+         hasRestart = cached->hasRestart;
+@@ -4676,9 +4749,11 @@
+         return;
+     }
+     if (!elementBuffer && nativeIndices && !pointPolygons(mode) && !st.debugOutput && directClientIndexUploads()) {
++        upload.minIndex = minIndex;
++        upload.maxIndex = maxIndex;
+         issue(mode, 0, count, instances, nullptr, nil, 0,
+               indexSize == 2 ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32,
+-              baseVertex, spanFirst, span, false, nullptr, source);
++              baseVertex, spanFirst, span, false, nullptr, &upload);
+         return;
+     }
+     issue(mode, 0, count, instances, cpuIndices().data(), nil, 0, MTLIndexTypeUInt32, baseVertex, spanFirst, span);
+diff --git a/tests/gpu/compat_tests.cpp b/tests/gpu/compat_tests.cpp
+--- a/tests/gpu/compat_tests.cpp
++++ b/tests/gpu/compat_tests.cpp
+@@ -473,6 +473,35 @@
+     const GLushort largest[] = {0, 1, 65535};
+     glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, largest);
+     CHECK(pixel(16, 16, kBlue));
++    glDisableClientState(GL_VERTEX_ARRAY);
++    CHECK_GL();
++}
++
++COMPAT_TEST(compat_client_index_cache_changed_bytes) {
++    clear();
++    pixelProjection();
++    const GLfloat positions[] = {0, 0, 32, 0, 32, 64, 0, 64, 32, 0, 64, 0, 64, 64, 32, 64};
++    glBindBuffer(GL_ARRAY_BUFFER, 0);
++    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
++    glVertexPointer(2, GL_FLOAT, 0, positions);
++    glEnableClientState(GL_VERTEX_ARRAY);
++    GLushort indices[] = {0, 1, 2, 0, 2, 3};
++    glColor3f(1, 0, 0);
++    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
++    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
++    for (auto& index : indices) index += 4;
++    glColor3f(0, 1, 0);
++    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
++    CHECK(pixel(16, 32, kRed));
++    CHECK(pixel(48, 32, kGreen));
++
++    // After the earlier draw completes, the same slot can take the new list.
++    clear();
++    glColor3f(0, 0, 1);
++    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
++    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
++    CHECK(pixel(16, 32, kBlack));
++    CHECK(pixel(48, 32, kBlue));
+     glDisableClientState(GL_VERTEX_ARRAY);
+     CHECK_GL();
+ }

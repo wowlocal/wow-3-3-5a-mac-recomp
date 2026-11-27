@@ -1447,3 +1447,18 @@ In a separate in-world diagnostic, `WINEMETALGL_DIRECT_CLIENT_INDICES_LOG=1` rec
 | Snapshot at native width | 131.83 | 12.96 ms |
 
 Throughput increased **6.30 and 9.23 FPS** across the two pairs. P99 rose **0.02 ms** in the first and fell **0.97 ms** in the reverse pair. Use the native-width option for follow-up comparisons. The four warmed 60-second launches ran without copy logging and verified the camera, spell effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid A/B and copy counts](results/raid-winemetalgl-direct-client-index-upload-ab.json)
+
+### Reuse byte-identical client index snapshots
+
+The experiment stores snapshots and their scanned vertex ranges in a shared Metal buffer. A candidate matches the source address, byte count, and native index width. The renderer compares every byte before reusing the snapshot or its range. Each draw context can allocate **2,048 slots** of **4,096 bytes**. A miss on a slot still in use by the GPU falls back to the native-width transient upload. Larger lists and draws with primitive restart enabled use the ordinary path.
+
+Apply `patches/winemetalgl-client-index-snapshot-cache-trial.patch` after the direct client-index upload trial. Keep `WINEMETALGL_DIRECT_CLIENT_INDICES=1` in both arms and set `WINEMETALGL_CLIENT_INDEX_CACHE=1` for the trial. Both modes passed **343** GPU tests. The focused test verified a hit on unchanged bytes, a safe upload when the caller changed the same array during an outstanding draw, and replacement after GPU completion. It checked output pixels in both modes.
+
+The separate logged launch recorded **2,312,356 hits** across **3,145,728** tracked direct draws after the world readback. The **73.51%** hit rate reused **1.27 GB** of indices. Busy slots caused **598,982** transient uploads, or **19.04%** of those draws. Set `WINEMETALGL_CLIENT_INDEX_CACHE_LOG=4096` to log cumulative counts every 4,096 direct draws. The verified 20-second GPU window and the interval between complete logged counters have separate bounds.
+
+| Client index policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Native-width transient uploads | 131.63 | 13.13 ms |
+| Byte-checked snapshot cache | 130.31 | 13.11 ms |
+
+The cache lost **1.57 and 1.07 FPS** in the two pairs. P99 rose **0.13 ms** in the first pair and fell **0.17 ms** in the reverse pair. Keep native-width transient uploads as the performance baseline. The four warmed 60-second launches had cache logging off and verified the saved camera, spell effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Live A/B, correctness tests, and cache counts](results/raid-winemetalgl-client-index-snapshot-cache-ab.json)
