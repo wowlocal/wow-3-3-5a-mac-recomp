@@ -337,7 +337,55 @@ def timing_stats(values):
             "max_ns": ordered[-1]}
 
 
-def frame_timing_report(path, pid, stream, frames):
+def pass_timing_report(path, pid, timings, gpu_dominant_indices):
+    expected = {timing.gpu_end for timing in timings}
+    intervals = defaultdict(lambda: defaultdict(list))
+    kinds = ("render", "blit", "other")
+    with path.open() as log:
+        for line in log:
+            if not line.endswith("\n"):
+                break
+            process, gpu_end, kind, start, end = line.split()
+            gpu_end = int(gpu_end)
+            if int(process) != pid or gpu_end not in expected:
+                continue
+            start, end = int(start), int(end)
+            if kind not in kinds or start < 0 or end < start:
+                raise ValueError(f"Invalid pass interval for GPU completion {gpu_end}")
+            intervals[gpu_end][kind].append((start, end))
+    if len(intervals) != len(expected):
+        raise ValueError("The pass timing log does not cover every GPU completion in the sample")
+
+    spans = []
+    render_to_copy = []
+    overlapping = 0
+    for timing in timings:
+        encoders = intervals[timing.gpu_end]
+        durations = {kind: active_duration(encoders.get(kind, [])) for kind in kinds}
+        sampled = sum(durations.values())
+        overlapping += sampled != active_duration([pair for passes in encoders.values() for pair in passes])
+        durations["remainder"] = timing.gpu_end - timing.gpu_start - sampled
+        spans.append(durations)
+        if len(encoders.get("render", [])) == 1 and len(encoders.get("blit", [])) == 1 and "other" not in encoders:
+            render_to_copy.append(encoders["blit"][0][0] - encoders["render"][0][1])
+
+    dominant = Counter()
+    for index in gpu_dominant_indices:
+        previous, current = spans[index - 1:index + 1]
+        phase = max(current, key=lambda name: current[name] - previous[name])
+        dominant[phase] += 1
+    return {
+        "matched_command_buffers": len(spans),
+        "pass_spans": {name: timing_stats(s[name] for s in spans) for name in (*kinds, "remainder")},
+        "overlapping_stage_buffers": overlapping,
+        "sampled_time_exceeds_buffer": sum(s["remainder"] < 0 for s in spans),
+        "render_to_copy_samples": len(render_to_copy),
+        **({"render_to_copy": timing_stats(render_to_copy)} if render_to_copy else {}),
+        "gpu_dominated_long_gap_largest_pass_changes": dict(dominant),
+    }
+
+
+def frame_timing_report(path, pid, stream, frames, pass_log=None):
     expected = {seq: end for seq, end, _ in frames}
     by_sequence = {}
     with path.open() as log:
@@ -359,6 +407,7 @@ def frame_timing_report(path, pid, stream, frames):
 
     long_components = defaultdict(list)
     dominant = Counter()
+    gpu_dominant = []
     unattributed = 0
     over_budget = 0
     budget_ns = 2_000_000
@@ -381,8 +430,11 @@ def frame_timing_report(path, pid, stream, frames):
         }
         for name, length in components.items():
             long_components[name].append(length)
-        dominant[max(components, key=components.get)] += 1
-    return {
+        largest = max(components, key=components.get)
+        dominant[largest] += 1
+        if pass_log is not None and largest == "gpu_duration_change":
+            gpu_dominant.append(index + 1)
+    report = {
         "matched_frames": len(timings),
         "frame_phases": {
             "slot_acquire": timing_stats(t.slot_end - t.slot_begin for t in timings),
@@ -398,9 +450,13 @@ def frame_timing_report(path, pid, stream, frames):
         "long_gap_median_components_ns": {name: median(values) for name, values in long_components.items()},
         "long_gap_largest_component_counts": dict(dominant),
     }
+    if pass_log is not None:
+        report["pass_timing"] = pass_timing_report(pass_log, pid, timings, gpu_dominant)
+    return report
 
 
-def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None, timing_log=None):
+def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None, timing_log=None,
+                pass_log=None):
     streams = defaultdict(list)
     dimensions = (width << 32) | height
     with path.open() as log:
@@ -428,7 +484,7 @@ def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, prese
         report["presentation"] = presentation_report(present_log, pid, stream, completed)
     if timing_log is not None:
         _, gap_end, _ = mailbox_sample([end for _, end, _ in frames], seconds)
-        report["frame_timing"] = frame_timing_report(timing_log, pid, stream, frames[:gap_end])
+        report["frame_timing"] = frame_timing_report(timing_log, pid, stream, frames[:gap_end], pass_log)
     return {"stream": stream, **report}
 
 
@@ -447,6 +503,7 @@ def main():
     parser.add_argument("--stream", type=int, help="mailbox generation to select from a GPU completion log")
     parser.add_argument("--present-log", type=Path, help="join Metal drawable presentations by render sequence")
     parser.add_argument("--timing-log", type=Path, help="attribute windowed GPU completion gaps to host and GPU phases")
+    parser.add_argument("--pass-log", type=Path, help="join sampled GPU encoder intervals to frame timings")
     parser.add_argument("--start-sequence", type=int, help="first completed frame in the measurement")
     parser.add_argument("--seconds", type=int, help="require this many seconds of completed GPU work")
     options = parser.parse_args()
@@ -457,6 +514,8 @@ def main():
     log_options = (options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log)
     if not options.wmgl_log and any(value is not None for value in log_options):
         parser.error("--stream, --start-sequence, --seconds, --present-log, and --timing-log require --wmgl-log")
+    if options.pass_log is not None and options.timing_log is None:
+        parser.error("--pass-log requires --timing-log")
     if any(value is not None and value <= 0 for value in (options.stream, options.start_sequence, options.seconds)):
         parser.error("Stream, starting sequence, and duration must be positive")
     try:
@@ -464,6 +523,7 @@ def main():
             report = mailbox_log(
                 options.trace, options.pid, options.width, options.height,
                 options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log,
+                options.pass_log,
             )
             print(json.dumps(report, indent=2))
             return

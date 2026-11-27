@@ -1,0 +1,76 @@
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+index 293d369..65310ec 100644
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -276,7 +276,7 @@ private:
+     };
+     std::vector<ProfileEntry> profile_;  // this command buffer's encoders (passProfile)
+     void profileOpen(std::string label, uint32_t start, uint32_t end);
+-    static void profileCollect(const std::vector<ProfileEntry>& entries);
++    static void profileCollect(const std::vector<ProfileEntry>& entries, uint64_t gpuEnd);
+     uint32_t nextSample_ = 0;
+     // The two sample indices for a new encoder, or false (not timing).
+     bool takeSamples(uint32_t& start, uint32_t& end);
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+index 68686ec..4ee90e7 100644
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -5,10 +5,12 @@
+ #import <QuartzCore/CAMetalLayer.h>
+ 
+ #include <algorithm>
++#include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+ #include <mutex>
+ #include <time.h>
++#include <unistd.h>
+ #include <unordered_map>
+ 
+ #include "core/metal/device.h"
+@@ -373,7 +375,7 @@
+     else label += item;
+ }
+ 
+-void CommandStream::profileCollect(const std::vector<ProfileEntry>& entries) {
++void CommandStream::profileCollect(const std::vector<ProfileEntry>& entries, uint64_t gpuEnd) {
+     struct Total {
+         double nanos = 0;
+         uint64_t count = 0;
+@@ -381,6 +383,13 @@
+     static std::mutex mutex;
+     static std::unordered_map<std::string, Total> totals;
+     static uint64_t since = 0;
++    static FILE* passLog = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_PASS_TIMING_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL pass timing log");
++        return file;
++    }();
+     std::lock_guard<std::mutex> lock(mutex);
+     const double perTick = nanosPerGpuTick();
+     for (const ProfileEntry& e : entries) {
+@@ -389,6 +398,11 @@
+         const auto* r = static_cast<const MTLCounterResultTimestamp*>(data.bytes);
+         if (r[0].timestamp == MTLCounterErrorValue || r[1].timestamp == MTLCounterErrorValue || r[1].timestamp < r[0].timestamp)
+             continue;
++        if (passLog && gpuEnd) {
++            const char* kind = e.label.compare(0, 5, "pass ") == 0 ? "render" : e.label == "blit" ? "blit" : "other";
++            std::fprintf(passLog, "%d %llu %s %llu %llu\n", getpid(), (unsigned long long)gpuEnd, kind,
++                         (unsigned long long)(r[0].timestamp * perTick), (unsigned long long)(r[1].timestamp * perTick));
++        }
+         Total& t = totals[e.label];
+         t.nanos += static_cast<double>(r[1].timestamp - r[0].timestamp) * perTick;
+         ++t.count;
+@@ -620,7 +634,9 @@
+     if (!profile_.empty()) {
+         std::vector<ProfileEntry> entries = std::move(profile_);
+         profile_.clear();
+-        [buffer_ addCompletedHandler:^(id<MTLCommandBuffer>) { profileCollect(entries); }];
++        [buffer_ addCompletedHandler:^(id<MTLCommandBuffer> finished) {
++            profileCollect(entries, uint64_t(finished.GPUEndTime * 1e9));
++        }];
+     }
+     queue_.commit(buffer_, serial_);
+     lastCommitted_ = serial_;
