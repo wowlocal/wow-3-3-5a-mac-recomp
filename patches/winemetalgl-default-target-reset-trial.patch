@@ -1,0 +1,30 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+index b12c1df..c206e40 100644
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -159,12 +159,15 @@ void warnUndrawable(const Framebuffer& fb, const char* point, const Attachment*
+ }  // namespace
+ 
+ bool DrawState::drawTarget(RenderTargetDesc& target, TargetFormats& formats, bool reportErrors) {
+-    target = RenderTargetDesc();
+     formats = TargetFormats();
+     Framebuffer* fb = ctx_.state.drawFramebuffer.get();
+     if (!fb) {
+         Surface* surface = ctx_.drawSurface();
+-        if (!surface) return false;
++        if (!surface) {
++            target = RenderTargetDesc();
++            return false;
++        }
++        // describe() resets the descriptor before installing the surface attachments.
+         surface->describe(target);
+         const bool srgb = ctx_.state.framebufferSRGB && ctx_.windowSrgb();
+         if (!srgb) target.color[0].texture = surface->linearColor();
+@@ -182,6 +185,7 @@ void warnUndrawable(const Framebuffer& fb, const char* point, const Attachment*
+         }
+         return true;
+     }
++    target = RenderTargetDesc();
+     uint32_t width = UINT32_MAX, height = UINT32_MAX, samples = 0, layers = UINT32_MAX;
+     bool any = false;
+     for (int i = 0; i < Framebuffer::kMaxColor; ++i) {
