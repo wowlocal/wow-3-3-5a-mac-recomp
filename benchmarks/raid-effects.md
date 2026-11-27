@@ -1057,3 +1057,15 @@ A separate in-world diagnostic skipped **994,162 of 3,096,576** comparisons betw
 | Reuse by version | 121.10 | 12.23 ms |
 
 Throughput fell **1.21%** and declined in both pairs. P99 moved in opposite directions across the pairs. The trial stays off. Four isolated 60-second launches verified the camera, overlapping effects, the full cast schedule, consecutive GPU completions, zero visible trial windows or activations, and process cleanup. [Full-raid A/B and reuse counts](results/raid-winemetalgl-headless-arb-env-versions-ab.json)
+
+### Attribute guest CPU samples to i386 unwind ranges
+
+The original client exposes two text symbols and 24,397 non-overlapping unwind ranges. Grouping the seven warmed periods of the isolated folded-load capture by those ranges attributed **65.32% of translated CPU time**. The 823 ranges with samples covered **40.69% of all sampled CPU time**.
+
+The largest matched range, starting at `0x880c70`, accounted for **4.85%** of all sampled CPU time. The four largest accounted for **9.42%**, and the largest 16 for **17.23%**. These are exclusive instruction samples. About a third of the translated CPU time fell outside the unwind ranges. The coverage and the spread of samples favor optimizing instruction patterns shared across routines. [Unwind attribution](results/raid-aarchx-headless-i386-unwind-hotspots.json)
+
+Run the analysis on the original 32-bit Mach-O file and the full guest-PC capture, with Xcode's `llvm-dwarfdump` available.
+
+```sh
+python3 benchmarks/summarize-i386-unwind-hotspots.py CAPTURE_DIR LOCAL_I386_EXECUTABLE
+```

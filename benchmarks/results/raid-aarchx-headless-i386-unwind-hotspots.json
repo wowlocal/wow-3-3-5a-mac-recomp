@@ -1,0 +1,133 @@
+{
+  "hardware": "Apple M4 Pro",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "gpu_missing_sequences": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0,
+  "other_trial_instances_detected": 0,
+  "scope": "Exclusive attribution of the folded-load raid CPU capture to i386 Mach-O unwind ranges",
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "source_profile": "raid-aarchx-headless-precise-uxtw-guest-regions.json",
+  "warm_periods": 7,
+  "total_sampled_cpu_usec": 55001000,
+  "translated_cpu_usec": 34265308,
+  "distinct_guest_pcs": 9125,
+  "unwind_ranges": 24397,
+  "sampled_unwind_ranges": 823,
+  "matched_translated_cpu_usec": 22380561,
+  "matched_fraction_of_translated_cpu": 0.6531551095352769,
+  "unmatched_translated_cpu_usec": 11884747,
+  "cumulative_share_of_all_sampled_cpu": {
+    "1": 0.04854015381538517,
+    "4": 0.09417705132633952,
+    "8": 0.12685469355102635,
+    "16": 0.1722546680969437,
+    "32": 0.21986545699169105,
+    "64": 0.2697519499645461
+  },
+  "hottest_matched_ranges": [
+    {
+      "start": "0x880c70",
+      "end_exclusive": "0x882c7f",
+      "cpu_usec": 2669757,
+      "share_of_all_sampled_cpu": 0.04854015381538517
+    },
+    {
+      "start": "0x964ca0",
+      "end_exclusive": "0x9677be",
+      "cpu_usec": 1079133,
+      "share_of_all_sampled_cpu": 0.01962024326830421
+    },
+    {
+      "start": "0x6e29c0",
+      "end_exclusive": "0x6e2bfa",
+      "cpu_usec": 871581,
+      "share_of_all_sampled_cpu": 0.015846639152015417
+    },
+    {
+      "start": "0x979130",
+      "end_exclusive": "0x979669",
+      "cpu_usec": 559361,
+      "share_of_all_sampled_cpu": 0.010170015090634716
+    },
+    {
+      "start": "0x2856a0",
+      "end_exclusive": "0x2863bb",
+      "cpu_usec": 514244,
+      "share_of_all_sampled_cpu": 0.009349720914165197
+    },
+    {
+      "start": "0x9763b0",
+      "end_exclusive": "0x97662c",
+      "cpu_usec": 477742,
+      "share_of_all_sampled_cpu": 0.008686060253449937
+    },
+    {
+      "start": "0x8e7230",
+      "end_exclusive": "0x8e77cf",
+      "cpu_usec": 437243,
+      "share_of_all_sampled_cpu": 0.00794972818676024
+    },
+    {
+      "start": "0x957790",
+      "end_exclusive": "0x9579ed",
+      "cpu_usec": 368074,
+      "share_of_all_sampled_cpu": 0.006692132870311449
+    },
+    {
+      "start": "0x8f98a0",
+      "end_exclusive": "0x8f9ef7",
+      "cpu_usec": 356603,
+      "share_of_all_sampled_cpu": 0.0064835730259449826
+    },
+    {
+      "start": "0x8d9710",
+      "end_exclusive": "0x8d9877",
+      "cpu_usec": 351348,
+      "share_of_all_sampled_cpu": 0.006388029308558026
+    },
+    {
+      "start": "0x8f8a10",
+      "end_exclusive": "0x8f9347",
+      "cpu_usec": 348553,
+      "share_of_all_sampled_cpu": 0.006337212050689988
+    },
+    {
+      "start": "0x2aab20",
+      "end_exclusive": "0x2aae5f",
+      "cpu_usec": 336140,
+      "share_of_all_sampled_cpu": 0.006111525244995545
+    },
+    {
+      "start": "0x97e390",
+      "end_exclusive": "0x980b2a",
+      "cpu_usec": 304687,
+      "share_of_all_sampled_cpu": 0.005539662915219724
+    },
+    {
+      "start": "0x80bf10",
+      "end_exclusive": "0x80d14c",
+      "cpu_usec": 288080,
+      "share_of_all_sampled_cpu": 0.00523772295049181
+    },
+    {
+      "start": "0x8d7580",
+      "end_exclusive": "0x8d7917",
+      "cpu_usec": 261525,
+      "share_of_all_sampled_cpu": 0.004754913547026418
+    },
+    {
+      "start": "0x95f7c0",
+      "end_exclusive": "0x95fdec",
+      "cpu_usec": 250108,
+      "share_of_all_sampled_cpu": 0.004547335502990855
+    }
+  ]
+}

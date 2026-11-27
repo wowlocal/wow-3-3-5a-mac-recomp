@@ -5,20 +5,11 @@ import re
 import subprocess
 import sys
 
+from i386_guest_profile import read_guest_pc_periods
+
 capture=Path(sys.argv[1])
 binary=Path(sys.argv[2])
-log = (capture / 'client.log').read_text().rsplit('saved Metal trial backbuffer readback', 1)[-1]
-periods = []
-for line in log.splitlines():
-    header = re.search(r'\] \d+s cpu_ms=(\d+) translated=', line)
-    if header:
-        periods.append((int(header[1]) * 1000, Counter()))
-    elif periods:
-        match = re.search(r'\] +translated_pc=(0x[0-9a-f]+) cpu_us=(\d+)', line)
-        if match:
-            periods[-1][1][int(match[1], 16)] += int(match[2])
-periods = periods[1:-1]
-assert len(periods) >= 4 and all(pcs for _, pcs in periods)
+periods = read_guest_pc_periods(capture)
 total = sum(cpu_usec for cpu_usec, _ in periods)
 weights = Counter()
 for _, pcs in periods:
