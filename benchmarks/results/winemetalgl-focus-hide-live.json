@@ -1,0 +1,17 @@
+{
+  "hardware": "Apple M4 Pro",
+  "client": "Original WoW 3.3.5a in the isolated AArchX trial",
+  "scene": "Actual login screen",
+  "viewport": [
+    1365,
+    768
+  ],
+  "initial_carbon_and_metal_aligned": true,
+  "switches_to_previous_app_visible_wow_windows": [
+    0,
+    0
+  ],
+  "return_to_wow_restored_aligned_windows": true,
+  "window_left_hidden": true,
+  "title_bar_drag_limitation": "Dragging the live Carbon backing window can still collapse its WindowServer rectangle. The fixed-window raid setup remains required."
+}

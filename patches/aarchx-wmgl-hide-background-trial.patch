@@ -1,0 +1,47 @@
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -9,6 +9,7 @@
+ #include <string.h>
+ #include <math.h>
+ #include <sys/mman.h>
++#include <unistd.h>
+
+ #include "ocerz/m32_wmgl.h"
+ #include "ocerz/m32.h"
+@@ -413,6 +414,23 @@
+         dispatch_async_f(dispatch_get_main_queue(), ctx, order_overlay);
+     }
+     return CarbonEventNotHandled;
++}
++
++static void hide_inactive_trial(void *unused)
++{
++    (void)unused;
++    NSApplication *app = [(id)objc_getClass("NSApplication") sharedApplication];
++    NSWorkspace *workspace = [(id)objc_getClass("NSWorkspace") sharedWorkspace];
++    NSRunningApplication *foreground = workspace.frontmostApplication;
++    if (app.hidden || !foreground || foreground.processIdentifier == getpid())
++        return;
++    for (size_t i = 0; i < sizeof contexts / sizeof contexts[0]; i++) {
++        if (contexts[i].carbon && contexts[i].overlay) {
++            // Hide the Carbon backing window along with the Metal image.
++            [app hide:nil];
++            return;
++        }
++    }
+ }
+
+ static int watch_window(void *window, Sidecar *ctx, void **handler)
+@@ -446,6 +464,12 @@
+                         dispatch_async_f(dispatch_get_main_queue(), &contexts[j], order_overlay);
+             }];
+         }
++        NSWorkspace *workspace = [(id)objc_getClass("NSWorkspace") sharedWorkspace];
++        id activation = [(id)objc_getClass("NSString") stringWithUTF8String:"NSWorkspaceDidActivateApplicationNotification"];
++        [workspace.notificationCenter addObserverForName:activation object:nil queue:nil usingBlock:^(NSNotification *note) {
++            (void)note;
++            dispatch_async_f(dispatch_get_main_queue(), NULL, hide_inactive_trial);
++        }];
+     }
+     return 1;
+ }
