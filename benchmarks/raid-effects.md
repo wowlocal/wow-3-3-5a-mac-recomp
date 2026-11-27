@@ -213,6 +213,8 @@ With GL statistics disabled, **193** calibration records from the direct file ma
 
 For live acceptance on the M4 Pro, use the fixed camera with all 24 casters at 1365 × 768, VSync off, and `maxFPS=0`. The stock client applies a 200 FPS foreground cap. Preserve the spell effects and cast schedule. Collect three warmed 60-second windows and one warmed 600-second window from the GPU completion log. Each window must average at least 500 newly rendered frames per second, with p99 completion gaps of 2.0 ms or less. Check sequence continuity, confirm the visible spell effects and combat timing, and run the movement and input checks separately in Northshire. [Northshire route and cap verification](northshire.md)
 
+The first complete uncapped reference run kept the 24-caster fixture at 1365 × 768 with the saved camera and VSync off. One warmed 60-second window averaged **89.13 GPU-completed FPS** at **18.29 ms p99**, with zero gaps in the GPU completion sequence. The image showed the active casters and overlapping spell effects. [Uncapped live reference](results/raid-winemetalgl-uncapped-live.json)
+
 ## Guest-backed Metal vertex storage
 
 The optional path places the rolling **2 MiB** allocation in the 32-bit guest address space and gives Metal the same pages. The driver supplies its usual storage for other sizes. AArchX tracks the borrowed mapping in its existing lookup table, so an explicit range flush can use the pages the guest already wrote. The driver retains and releases the backing according to the Metal resource lifetime.

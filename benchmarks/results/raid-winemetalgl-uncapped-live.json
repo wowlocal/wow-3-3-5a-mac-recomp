@@ -1,0 +1,38 @@
+{
+  "hardware": "Apple M4 Pro",
+  "workload": "Live WoW 3.3.5a fixed-camera 24-caster raid fixture",
+  "caster_count": 24,
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_maxfps": 0,
+  "foreground_guard_seconds": 5,
+  "bridge_crossing_diagnostics": false,
+  "renderer": "WineMetalGL with fixed-function uniform storage reuse",
+  "gl_byte_leaf": true,
+  "window_patches": [
+    "Carbon window synchronization",
+    "hide both windows on switching apps"
+  ],
+  "window_disposition_after_capture": "Hidden with zero visible WoW windows",
+  "runs": [
+    {
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 5349,
+      "first_sequence": 31514,
+      "last_sequence": 36862,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995179000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 89.13333333333334,
+      "p99_gpu_completion_gap_ns": 18291875,
+      "min_draws": 737,
+      "max_draws": 883
+    }
+  ]
+}
