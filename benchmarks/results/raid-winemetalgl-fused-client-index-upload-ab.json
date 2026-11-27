@@ -1,0 +1,190 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "GPU-completed outputs from the original client and the full offscreen raid fixture.",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_rows_per_launch": 26,
+  "continuing_draw_threshold": 512,
+  "idle_first_draw_threshold": 256,
+  "completed_serial_fast_path": true,
+  "borrow_guest_autorelease_pool": true,
+  "arb_contiguous_segments": true,
+  "i386_general_base_hoist": true,
+  "direct_client_index_uploads_both_arms": true,
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256": "2e2cd78ab0ac2722873d6d4792294ef138447a4198987b72e0030ff1f0bc6848",
+  "process_isolation_verified": true,
+  "selected_for_followup": false,
+  "runs": [
+    {
+      "run": 1,
+      "fused_client_indices": false,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 30548,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7910,
+        "first_sequence": 4915,
+        "last_sequence": 12824,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59994879250,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 131.81666666666666,
+        "p99_gpu_completion_gap_ns": 12526959,
+        "min_draws": 672,
+        "max_draws": 946
+      }
+    },
+    {
+      "run": 2,
+      "fused_client_indices": true,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 70621,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 8002,
+        "first_sequence": 4558,
+        "last_sequence": 12559,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59999832250,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 133.35,
+        "p99_gpu_completion_gap_ns": 12919250,
+        "min_draws": 688,
+        "max_draws": 960
+      }
+    },
+    {
+      "run": 3,
+      "fused_client_indices": true,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 9575,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7891,
+        "first_sequence": 4568,
+        "last_sequence": 12458,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59998423625,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 131.5,
+        "p99_gpu_completion_gap_ns": 13002250,
+        "min_draws": 695,
+        "max_draws": 983
+      }
+    },
+    {
+      "run": 4,
+      "fused_client_indices": false,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 46024,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7947,
+        "first_sequence": 4380,
+        "last_sequence": 12326,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59999147500,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 132.43333333333334,
+        "p99_gpu_completion_gap_ns": 12730916,
+        "min_draws": 694,
+        "max_draws": 952
+      }
+    }
+  ],
+  "medians": {
+    "scan_then_copy": {
+      "average_completed_fps": 132.125,
+      "p99_gpu_completion_gap_ns": 12628937.5
+    },
+    "fused_scan_and_copy": {
+      "average_completed_fps": 132.425,
+      "p99_gpu_completion_gap_ns": 12960750.0
+    }
+  },
+  "paired_trial_minus_control": [
+    {
+      "average_completed_fps": 1.5333333333333314,
+      "p99_gpu_completion_gap_ns": 392291
+    },
+    {
+      "average_completed_fps": -0.9333333333333371,
+      "p99_gpu_completion_gap_ns": 271334
+    }
+  ],
+  "verification": {
+    "gpu_tests_per_mode_with_ordinary_draw_policy": 342,
+    "focused_early_submit_pixel_check_passed_both_modes": true,
+    "focused_draw_batches_per_frame": [
+      32,
+      68
+    ],
+    "focused_early_submission_precedes_reservation": true,
+    "focused_allocator_probe_passed": true,
+    "allocator_probe_scope": "Real Metal storage and simulated queue completion. The probe fills other chunks while a reservation is open, attaches it to an incomplete serial, and verifies reuse after completion."
+  },
+  "fused_copy_diagnostic": {
+    "window": {
+      "stream": 1,
+      "pid": 12720,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 2669,
+      "first_sequence": 4737,
+      "last_sequence": 7405,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 19993930834,
+      "measurement_duration_ns": 20000000000,
+      "average_completed_fps": 133.4,
+      "p99_gpu_completion_gap_ns": 12806041,
+      "min_draws": 691,
+      "max_draws": 941
+    },
+    "visible_windows": 0,
+    "focus_activations": 0,
+    "counter_rows_after_world_readback": 752,
+    "fused_draws_between_counter_rows": 3076096,
+    "fused_draws_crossing_a_commit_between_counter_rows": 0,
+    "copied_native_bytes_between_counter_rows": 2560603758,
+    "scope": "The counters span complete samples after the world readback. The independently verified GPU window lasts 20 seconds."
+  }
+}

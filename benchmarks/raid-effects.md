@@ -1462,3 +1462,22 @@ The separate logged launch recorded **2,312,356 hits** across **3,145,728** trac
 | Byte-checked snapshot cache | 130.31 | 13.11 ms |
 
 The cache lost **1.57 and 1.07 FPS** in the two pairs. P99 rose **0.13 ms** in the first pair and fell **0.17 ms** in the reverse pair. Keep native-width transient uploads as the performance baseline. The four warmed 60-second launches had cache logging off and verified the saved camera, spell effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Live A/B, correctness tests, and cache counts](results/raid-winemetalgl-client-index-snapshot-cache-ab.json)
+
+### Combine the client index scan and upload
+
+The trial computes the minimum and maximum while copying eligible client indices into transient Metal storage. It covers desktop triangle lists with 16- or 32-bit indices and retains the existing paths for restart, provoking-vertex rotation, geometry emulation, transform feedback, and debug callbacks. The early allocation pins its chunk against recycling during preparation. Once the draw has its command buffer, the reservation attaches that serial to the chunk's lifetime.
+
+Apply `patches/winemetalgl-fused-client-index-upload-trial.patch` after the direct client-index upload trial. Keep `WINEMETALGL_DIRECT_CLIENT_INDICES=1` in both arms and set `WINEMETALGL_FUSED_CLIENT_INDICES=1` for the fused loop. The focused early-submission test produced **32 + 68** draws in each frame and matched the reference pixels in both modes. That test's early submission occurs in validation before the reservation. A separate allocator probe uses real Metal storage with simulated queue completion to verify that a held chunk survives pressure, binds to a later serial, and recycles after that serial completes.
+
+```sh
+python3 benchmarks/test-transient-reservation.py PATCHED_WINEMETALGL_CHECKOUT
+```
+
+The separate 20-second diagnostic verified consecutive GPU completions. Counters enabled with `WINEMETALGL_FUSED_CLIENT_INDICES_LOG=4096` recorded **3,076,096** fused draws and **2.56 GB** of copied indices between post-readback log rows. Zero draws in that logged interval crossed a commit between reservation and use.
+
+| Client index staging | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Scan, then copy | 132.13 | 12.63 ms |
+| Fused scan and copy | 132.43 | 12.96 ms |
+
+The first pair gained **1.53 FPS** and the reverse pair lost **0.93 FPS**. P99 rose **0.39 and 0.27 ms** in the two pairs. Keep the separate scan and native-width copy as the performance baseline. The four warmed 60-second launches had fused logging off and verified the saved camera, overlapping spells, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. Both modes passed **342** GPU tests with the ordinary draw policy. [Full-raid A/B and staged allocation checks](results/raid-winemetalgl-fused-client-index-upload-ab.json)

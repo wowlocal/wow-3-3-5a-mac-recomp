@@ -1,0 +1,293 @@
+diff --git a/src/core/draw.h b/src/core/draw.h
+--- a/src/core/draw.h
++++ b/src/core/draw.h
+@@ -163,15 +163,20 @@
+         NSUInteger offset;
+         NSUInteger count = 1, stride = 0;
+     };
++    struct ClientIndexUpload {
++        const uint8_t* bytes;
++        TransientAllocator::Reservation* reservation = nullptr;
++        uint64_t commitAtReservation = 0;
++    };
+     // Encodes one draw. indexData (CPU, uint32) or indexBuffer select indexed drawing.
+-    // clientIndexBytes is an immediate snapshot source with the native index type.
++    // clientIndices supplies an immediate snapshot source with the native index type.
+     // minVertex/vertexSpan is the vertex range attribute conversion must cover.
+     // With `indirect`, the GPU reads the command (count, instances, first and
+     // base vertex) from it instead (draws indirectCpuReason allows).
+     bool issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+                GLint minVertex, GLsizei vertexSpan, bool listed = false, const IndirectSource* indirect = nullptr,
+-               const uint8_t* clientIndexBytes = nullptr);
++               const ClientIndexUpload* clientIndices = nullptr);
+     // Why a draw of `mode` (`type`: of indices, or GL_NONE) with the current
+     // state cannot take its command from the GPU: something needs the
+     // command's values on the CPU (vertex ranges to convert, indices to
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -6,6 +6,7 @@
+ #include <cstdlib>
+ #include <cstring>
+ #include <mutex>
++#include <optional>
+ #include <string>
+ #include <unordered_map>
+ #include <vector>
+@@ -2242,6 +2243,28 @@
+                      (unsigned long long)shortDraws, (unsigned long long)intDraws, (unsigned long long)copiedBytes);
+ }
+
++bool fusedClientIndexUploads() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_FUSED_CLIENT_INDICES");
++        return value && !std::strcmp(value, "1");
++    }();
++    return enabled;
++}
++
++void recordFusedClientIndices(bool crossedCommit, size_t bytes) {
++    static const unsigned interval = [] {
++        const char* value = std::getenv("WINEMETALGL_FUSED_CLIENT_INDICES_LOG");
++        return value && *value ? static_cast<unsigned>(std::strtoul(value, nullptr, 10)) : 0u;
++    }();
++    if (!interval) return;
++    static thread_local uint64_t draws = 0, crossed = 0, copiedBytes = 0;
++    crossed += crossedCommit;
++    copiedBytes += bytes;
++    if (++draws % interval == 0)
++        std::fprintf(stderr, "wmgl fused client indices draws=%llu crossed_commit=%llu bytes=%llu\n",
++                     (unsigned long long)draws, (unsigned long long)crossed, (unsigned long long)copiedBytes);
++}
++
+ uint64_t triangleSubmissionBudget() {
+     static const uint64_t budget = [] {
+         const char* value = std::getenv("OCERZ_WMGL_COMMIT_TRIANGLES");
+@@ -2254,7 +2277,7 @@
+ bool DrawState::issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                       id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+                       GLint minVertex, GLsizei vertexSpan, bool listed, const IndirectSource* indirect,
+-                      const uint8_t* clientIndexBytes) {
++                      const ClientIndexUpload* clientIndices) {
+     queriesCountPrimitives(ctx_, mode, count, instances);
+     stats::count(&stats::Frame::draws);
+     LinkedProgram* current = executable();
+@@ -2351,16 +2374,23 @@
+     const int64_t arrayStart = int64_t{first} - rebase, indexedBase = int64_t{baseVertex} - rebase;
+     const bool limited = Device::get().caps().drawOffsets16;
+     std::vector<uint32_t> readIndices;
+-    if (clientIndexBytes) {
++    if (clientIndices) {
+         const size_t width = indexType == MTLIndexTypeUInt16 ? 2 : 4;
+         if (!needsIndices && !rotate && !points && (!limited || drawOffsetFits(indexedBase))) {
+             const size_t bytes = static_cast<size_t>(count) * width;
+-            TransientAllocation allocation = transient_.allocate(bytes, serial, width);
+-            if (!allocation.data) {
+-                ctx_.setError(GL_OUT_OF_MEMORY);
+-                return false;
++            TransientAllocation allocation;
++            if (clientIndices->reservation) {
++                allocation = clientIndices->reservation->allocation();
++                clientIndices->reservation->usedBy(serial);
++                recordFusedClientIndices(clientIndices->commitAtReservation != ctx_.stream().lastCommitNanos(), bytes);
++            } else {
++                allocation = transient_.allocate(bytes, serial, width);
++                if (!allocation.data) {
++                    ctx_.setError(GL_OUT_OF_MEMORY);
++                    return false;
++                }
++                std::memcpy(allocation.data, clientIndices->bytes, bytes);
+             }
+-            std::memcpy(allocation.data, clientIndexBytes, bytes);
+             indexBuffer = allocation.buffer;
+             indexOffset = allocation.offset;
+             recordClientIndexUpload(width, bytes);
+@@ -2368,7 +2398,7 @@
+             readIndices.resize(static_cast<size_t>(count));
+             for (size_t i = 0; i < readIndices.size(); ++i) {
+                 uint32_t value = 0;
+-                std::memcpy(&value, clientIndexBytes + i * width, width);
++                std::memcpy(&value, clientIndices->bytes + i * width, width);
+                 readIndices[i] = value;
+             }
+             indexData = readIndices.data();
+@@ -4409,6 +4439,21 @@
+     }
+ }
+
++template <typename T>
++void scanAndCopyIndices(const uint8_t* source, void* destination, GLsizei count, uint32_t& lo, uint32_t& hi) {
++    auto* output = static_cast<T*>(destination);
++    T low = static_cast<T>(~T(0)), high = 0;
++    for (GLsizei i = 0; i < count; ++i) {
++        T value;
++        std::memcpy(&value, source + static_cast<size_t>(i) * sizeof(T), sizeof(T));
++        output[i] = value;
++        low = std::min(low, value);
++        high = std::max(high, value);
++    }
++    lo = low;
++    hi = high;
++}
++
+ }  // namespace
+
+ void DrawState::drawElements(GLenum mode, GLsizei count, GLenum type, const void* indices, GLsizei instances,
+@@ -4486,6 +4531,26 @@
+     stats::Timer indexTimer(&stats::Frame::drawIndexNanos);  // the used range: kept, or scanned
+     uint32_t minIndex = UINT32_MAX, maxIndex = 0;
+     bool hasRestart = false;
++    std::optional<TransientAllocator::Reservation> reservation;
++    ClientIndexUpload upload{source};
++    // The desktop triangle-list path can prepare Metal-native indices before
++    // vertex preparation. The remaining paths keep their ordinary range scan.
++    if (!elementBuffer && !restart && indexSize != 1 && mode == GL_TRIANGLES &&
++        !ctx_.isEs() && !st.debugOutput && !ctx_.state.transformFeedback->active &&
++        !pointPolygons(mode) && !Device::get().caps().drawOffsets16 &&
++        directClientIndexUploads() && fusedClientIndexUploads()) {
++        LinkedProgram* program = executable();
++        if (program && !program->link.geometry.active && !rotateProvoking(mode, *program)) {
++            upload.commitAtReservation = ctx_.stream().lastCommitNanos();
++            reservation.emplace(transient_, static_cast<size_t>(count) * indexSize, indexSize);
++            void* destination = reservation->allocation().data;
++            if (destination) {
++                upload.reservation = &*reservation;
++                if (indexSize == 2) scanAndCopyIndices<uint16_t>(source, destination, count, minIndex, maxIndex);
++                else scanAndCopyIndices<uint32_t>(source, destination, count, minIndex, maxIndex);
++            }
++        }
++    }
+     const Buffer::IndexRange range{offset, static_cast<uint64_t>(count), type, restart ? restartIndex : ~0ull};
+     const Buffer::IndexScan* cached = nullptr;
+     if (elementBuffer && !elementBuffer->mapped) {
+@@ -4500,7 +4565,7 @@
+         minIndex = cached->minIndex;
+         maxIndex = cached->maxIndex;
+         hasRestart = cached->hasRestart;
+-    } else {
++    } else if (!upload.reservation) {
+         const uint8_t* p = cpuSource();
+         if (!restart) {
+             // Without restart a plain min/max, which the compiler vectorizes.
+@@ -4678,7 +4743,7 @@
+     if (!elementBuffer && nativeIndices && !pointPolygons(mode) && !st.debugOutput && directClientIndexUploads()) {
+         issue(mode, 0, count, instances, nullptr, nil, 0,
+               indexSize == 2 ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32,
+-              baseVertex, spanFirst, span, false, nullptr, source);
++              baseVertex, spanFirst, span, false, nullptr, &upload);
+         return;
+     }
+     issue(mode, 0, count, instances, cpuIndices().data(), nil, 0, MTLIndexTypeUInt32, baseVertex, spanFirst, span);
+diff --git a/src/core/metal/transient.h b/src/core/metal/transient.h
+--- a/src/core/metal/transient.h
++++ b/src/core/metal/transient.h
+@@ -26,12 +26,31 @@
+     // an empty allocation (nil buffer) when the device has no memory for it.
+     TransientAllocation allocate(size_t size, uint64_t serial, size_t alignment = 256);
+
++    // Keeps the chunk from being recycled while drawing code prepares its
++    // encoder and before the final command-buffer serial is known.
++    class Reservation {
++    public:
++        Reservation(TransientAllocator& owner, size_t size, size_t alignment);
++        ~Reservation();
++        Reservation(const Reservation&) = delete;
++        Reservation& operator=(const Reservation&) = delete;
++        const TransientAllocation& allocation() const { return allocation_; }
++        void usedBy(uint64_t serial);
++
++    private:
++        TransientAllocator& owner_;
++        TransientAllocation allocation_;
++        size_t chunk_ = SIZE_MAX;
++    };
++
+ private:
+     struct Chunk {
+         id<MTLBuffer> buffer;
+         size_t used = 0;
+         uint64_t lastSerial = 0;
++        unsigned reservations = 0;
+     };
++    Chunk& reservedChunk(size_t index, id<MTLBuffer> buffer);
+     Queue& queue_;
+     std::vector<Chunk> chunks_;
+     size_t current_ = SIZE_MAX;
+diff --git a/src/core/metal/transient.mm b/src/core/metal/transient.mm
+--- a/src/core/metal/transient.mm
++++ b/src/core/metal/transient.mm
+@@ -1,6 +1,7 @@
+ #include "core/metal/transient.h"
+
+ #include <algorithm>
++#include <cstdlib>
+
+ #include "core/metal/device.h"
+ #include "core/stats.h"
+@@ -29,8 +30,8 @@
+     }
+     for (size_t i = 0; i < chunks_.size(); ++i) {
+         Chunk& chunk = chunks_[i];
+-        if (i == current_ || chunk.buffer.length < size) continue;
+-        if (chunk.lastSerial == serial || !queue_.isComplete(chunk.lastSerial)) continue;
++        if (i == current_ || chunk.reservations || chunk.buffer.length < size) continue;
++        if ((serial && chunk.lastSerial == serial) || !queue_.isComplete(chunk.lastSerial)) continue;
+         chunk.used = size;
+         chunk.lastSerial = serial;
+         current_ = i;
+@@ -40,7 +41,9 @@
+         // Chunks made for one large allocation go once their work is done,
+         // so a few huge draws do not keep their memory.
+         for (size_t i = chunks_.size(); i-- > 0;) {
+-            if (i == current_ || chunks_[i].buffer.length <= kChunkSize || !queue_.isComplete(chunks_[i].lastSerial)) continue;
++            if (i == current_ || chunks_[i].reservations || chunks_[i].buffer.length <= kChunkSize ||
++                !queue_.isComplete(chunks_[i].lastSerial))
++                continue;
+             chunks_.erase(chunks_.begin() + static_cast<long>(i));
+             if (current_ != SIZE_MAX && current_ > i) --current_;
+         }
+@@ -62,4 +65,29 @@
+     return {chunk.buffer, 0, chunk.buffer.contents};
+ }
+
++TransientAllocator::Chunk& TransientAllocator::reservedChunk(size_t index, id<MTLBuffer> buffer) {
++    if (index < chunks_.size() && chunks_[index].buffer == buffer) return chunks_[index];
++    // Retiring an unrelated oversized chunk can shift later indices.
++    for (Chunk& chunk : chunks_)
++        if (chunk.buffer == buffer) return chunk;
++    std::abort();
++}
++
++TransientAllocator::Reservation::Reservation(TransientAllocator& owner, size_t size, size_t alignment)
++    : owner_(owner), allocation_(owner.allocate(size, 0, alignment)) {
++    if (allocation_.buffer) {
++        chunk_ = owner_.current_;
++        ++owner_.chunks_[chunk_].reservations;
++    }
++}
++
++TransientAllocator::Reservation::~Reservation() {
++    if (allocation_.buffer) --owner_.reservedChunk(chunk_, allocation_.buffer).reservations;
++}
++
++void TransientAllocator::Reservation::usedBy(uint64_t serial) {
++    auto& chunk = owner_.reservedChunk(chunk_, allocation_.buffer);
++    chunk.lastSerial = std::max(chunk.lastSerial, serial);
++}
++
+ }  // namespace wmgl
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -495,7 +495,9 @@
+     for (int frame = 0; frame < 2; ++frame) {
+         clear();
+         glColor4f(frame == 0, 0, frame == 1, 1);
+-        for (int draw = 0; draw < 100; ++draw) glDrawArrays(GL_TRIANGLES, 0, 3);
++        const GLushort indices[] = {0, 1, 2};
++        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
++        for (int draw = 0; draw < 100; ++draw) glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, indices);
+         CHECK(wmgl_surface_swap(fixture.surface));
+         CHECK(pixel(32, 32, frame == 0 ? kRed : kBlue));
+     }
