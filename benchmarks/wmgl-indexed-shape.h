@@ -26,18 +26,28 @@ static unsigned subdivision(unsigned triangles)
     return 0;
 }
 
-static void build_geometry(const char *histogram)
+static int build_geometry(const char *shape)
 {
-    FILE *file = fopen(histogram, "r");
-    require(file != NULL, "could not open the triangle histogram");
+    FILE *file = fopen(shape, "r");
+    require(file != NULL, "could not open the triangle counts");
+    const int first = fgetc(file);
+    const int ordered = first == '#';
+    if (ordered) {
+        char header[16];
+        require(fgets(header, sizeof header, file) && strcmp(header, " ordered\n") == 0,
+                "invalid triangle order header");
+    } else {
+        require(first != EOF && ungetc(first, file) != EOF, "could not read the triangle counts");
+    }
     unsigned counts[DRAWS];
     unsigned used = 0, triangles = 0, count, copies;
-    while (fscanf(file, "%u%u", &count, &copies) == 2) {
-        require(count && subdivision(count) && copies <= DRAWS - used, "invalid triangle histogram entry");
+    int fields;
+    while ((fields = fscanf(file, "%u%u", &count, &copies)) == 2) {
+        require(count && subdivision(count) && copies <= DRAWS - used, "invalid triangle count entry");
         for (unsigned i = 0; i < copies; i++) counts[used++] = count;
         triangles += count * copies;
     }
-    require(feof(file) && used == DRAWS, "the triangle histogram must cover all draws");
+    require(fields == EOF && feof(file) && used == DRAWS, "the triangle counts must cover all draws");
     fclose(file);
 
     // One index template per subdivision. Draws use just the required prefix.
@@ -68,8 +78,8 @@ static void build_geometry(const char *histogram)
         const unsigned slot = i * WRITES / DRAWS;
         if (!i || (i - 1) * WRITES / DRAWS != slot)
             uploads[slot].from = (uint32_t)offset;
-        // This permutation distributes large draws without using game meshes.
-        const unsigned triangle_count = counts[(i * 593) % DRAWS];
+        // Histogram fixtures distribute large draws across the frame.
+        const unsigned triangle_count = counts[ordered ? i : (i * 593) % DRAWS];
         const unsigned n = subdivision(triangle_count);
         const unsigned vertices = (n + 1) * (n + 2) / 2;
         draws[i] = (Draw){ triangle_count * 3, (uint32_t)offset,
@@ -87,6 +97,7 @@ static void build_geometry(const char *histogram)
         uploads[slot].to = (uint32_t)offset;
     }
     printf("shape %u draws, %u triangles, %u uploads, %zu vertex bytes\n", DRAWS, triangles, WRITES, offset);
+    return ordered;
 }
 
 #endif

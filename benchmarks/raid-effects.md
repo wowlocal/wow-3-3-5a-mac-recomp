@@ -512,3 +512,23 @@ In the two warmed 60-second pairs, throughput moved from **1,366 to 1,414 FPS** 
 Separate ten-second traces put slot acquisition p99 at **1.241 ms** with three slots and **0.5 µs** with five. Both traces kept the **466 + 360** draw split. Changes in GPU execution time and final-buffer dispatch delay were the largest contributors to **169 of 201** gaps over 2 ms at three slots and **137 of 154** at five. The two render buffers' combined GPU execution intervals reached **2.77 ms p99** and **2.75 ms p99**, respectively. [Timing traces](results/winemetalgl-direct-color-mailbox-capacity-ab.json)
 
 Both libraries passed all 336 renderer tests and the published-color preservation checks. To reproduce the comparison, build a second library with `Surface::Mailbox::kSlots = 5` and value-initialize the `state` array to `Free`. Alternate the library passed to `OCERZ_WMGL_LIBRARY` while keeping the replay flags fixed. Use a fresh GPU log and start each measured window after at least five seconds of GPU completions.
+
+### Captured raid draw order
+
+The raid frame that supplied the triangle histogram contains **826 draws** and **111,230 triangles**. The ordered fixture retains each draw's triangle count in the captured call order. The generator still uses synthetic indexed triangle lists and shaders, with the same vertex upload schedule and window size. The translated replay checks each order against its own native probe framebuffer checksum.
+
+At a 512-draw cut, the first buffer contains **94,081 triangles** in the captured order and **71,516** in the shuffled replay. Both triangle budgets trigger an earlier split and leave enough draws for the 512-draw cap to trigger a third buffer. Separate ten-second GPU traces verified each split. [Captured triangle order](fixtures/raid-triangle-order.tsv) · [Submission traces](results/winemetalgl-captured-draw-order-ab.json)
+
+| Triangle budget | Draws per command buffer | Triangles per command buffer | GPU execution p99 per frame |
+| --- | ---: | ---: | ---: |
+| Draw limit alone | 512 + 314 | 94,081 + 17,149 | 0.487 ms |
+| 56,000 | 202 + 512 + 112 | 56,261 + 50,810 + 4,159 | 0.629 ms |
+| 65,000 | 225 + 512 + 89 | 65,195 + 44,809 + 1,226 | 0.630 ms |
+
+To reproduce the ordered replay, rebuild the native probe and the AArchX test binary with the updated headers and pass `benchmarks/fixtures/raid-triangle-order.tsv` through `OCERZ_WMGL_TRIANGLE_HISTOGRAM` or as the native probe's first argument. Its `# ordered` header selects captured order. The two columns give a triangle count and its number of consecutive occurrences.
+
+The unchanged histogram control reached only **321 FPS** at the outset of the first sweep. The repeated sweep used a histogram control at both ends, which reached **1,356** and **1,335 FPS**. In three interleaved six-second blocks of the repeat, the draw limit alone, 56,000 triangles, and 65,000 triangles reached median p99 values of **2.058**, **2.363**, and **2.352 ms**. [Sweep and controls](results/winemetalgl-captured-draw-order-ab.json)
+
+The warmed 60-second pairs split the wins. The draw limit alone reached **1,443 FPS and 0.766 ms p99**, then **1,486 FPS and 0.740 ms p99**. At 65,000 triangles the paired runs reached **1,463 FPS and 0.751 ms p99**, then **1,455 FPS and 0.754 ms p99**. Every run matched its native reference pixels and logged consecutive GPU completions. The trial retains 65,000 for live validation. [Warmed comparisons](results/winemetalgl-captured-draw-order-ab.json)
+
+The three diagnostic traces matched 3,601 display callbacks with zero confirmed presentations. The desktop session was unlocked before the benchmark and locked when checked after capture. These measurements describe GPU completions in the replay. [Presentation diagnostics](results/winemetalgl-captured-draw-order-ab.json)

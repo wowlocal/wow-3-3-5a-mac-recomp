@@ -71,7 +71,7 @@ static void bench_wmgl_i386(const char *gl, uint32_t agl, const char *histogram,
     const size_t length = fread(m32_h(entry), 1, 4096, image);
     require(length > 0 && length < 4096 && feof(image), "invalid i386 code size");
     fclose(image);
-    build_geometry(histogram);
+    const int ordered = build_geometry(histogram);
 
     cross(gl, "_glGenBuffers", 2, (uint32_t[]){ 2, DATA + 0xc30 });
     cross(gl, "_glBindBuffer", 2, (uint32_t[]){ GL_ARRAY_BUFFER, m32_rd(DATA + 0xc30) });
@@ -156,7 +156,9 @@ static void bench_wmgl_i386(const char *gl, uint32_t agl, const char *histogram,
         hash = (hash ^ rgba[i]) * UINT64_C(1099511628211);
         colored += i % 4 == 0 && rgba[i] == 227;
     }
-    require(hash == UINT64_C(0x199a81aba2d36749) && colored == 161499 &&
+    const uint64_t reference_hash = ordered ? UINT64_C(0xb68e77767258e7d5) : UINT64_C(0x199a81aba2d36749);
+    const size_t reference_colored = ordered ? 161327 : 161499;
+    require(hash == reference_hash && colored == reference_colored &&
             cross(gl, "_glGetError", 0, NULL) == GL_NO_ERROR, "translated reference framebuffer differs from native");
     printf("outputs %u, RGBA %016" PRIx64 ", colored %zu, translated blocks %" PRIu64 "\n",
            output, hash, colored, ocerz_jit_blocks(g_vm.jit));
