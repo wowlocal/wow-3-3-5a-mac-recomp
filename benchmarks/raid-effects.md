@@ -1162,3 +1162,16 @@ Apply `patches/winemetalgl-arb-branchless-segments-trial.patch` after the direct
 | Boolean selection | 120.58 | 13.87 ms |
 
 The throughput median rose **3.69%**, with gains of **6.08** and **2.50 FPS** in the two pairs. P99 moved by about **0.13 ms** in opposite directions. Keep this trial enabled for follow-up throughput comparisons. The four warmed 60-second launches kept the same runtime, renderer, camera, spell timing, draw threshold and overlapping effects. All GPU sequences were consecutive, and the monitor recorded zero trial windows or activations. [Live A/B and shape witness](results/raid-winemetalgl-headless-arb-branchless-segments-ab.json)
+
+### Store mixed ARB literals in private uniform slots
+
+The trial appends up to two finite vector literals to the linked shader's existing environment or local uniform array. It writes them once when the internal program links. Guest state updates still write only their original range. A relative shader read selects the integer slot before loading one vector. A contiguous suffix can use the existing clamped index directly.
+
+Apply `patches/winemetalgl-arb-uniform-padding-trial.patch` after the boolean selection patch. Enable `WINEMETALGL_ARB_UNIFORM_PADDING=1` with both earlier uniform segment switches on. Both modes passed **339** GPU tests, including prefix and suffix literals, NaN in an unselected uniform, and a guest write to the numerical index that coincides with a private slot. The compilation diagnostic recorded both direct and remapped indexing in the test suite. The live scene emitted **24** remapped helpers across **14** shapes, including the hot 40- and 65-instruction forms with 223 parameters.
+
+| Mixed ARB parameter selection | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Boolean vector selection | 120.65 | 13.27 ms |
+| Private literal slots and integer index selection | 119.84 | 12.54 ms |
+
+The first pair dropped **3.02 FPS** and added **2.48 ms** to p99. The reverse pair gained **1.40 FPS** and cut p99 by **3.94 ms**. The comparison baseline uses boolean vector selection. All four warmed 60-second launches verified the same camera, 26 cast timings, overlapping effects, consecutive GPU completions, and no trial windows or activations. [Full-raid A/B and compile witness](results/raid-winemetalgl-headless-arb-uniform-padding-ab.json)
