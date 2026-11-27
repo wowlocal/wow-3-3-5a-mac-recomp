@@ -1525,3 +1525,32 @@ xcrun xctrace export --input cpu.trace \
     --output thread-metrics.xml
 python3 benchmarks/summarize-raid-cpu-trace.py thread-state.xml thread-metrics.xml "$pid"
 ```
+
+### Separate instruction-fetch and data-cache limits
+
+Two more isolated launches of the same optimized 24-caster raid used the detailed processing and delivery modes of CPU Counters. Each mode captured over **20 seconds** of complete main-thread intervals on performance cores. Both launches verified the saved camera, visible spell effects, all 26 timing rows, and consecutive 1365 × 768 GPU completions with no visible windows or activations.
+
+| Instruction Processing Bottlenecks category | Share of counted cycles |
+| --- | ---: |
+| Executing | 63.32% |
+| Critical L1D miss with no micro-ops executing | 18.14% |
+| Critical L1D miss while micro-ops execute | 10.09% |
+| Execution latency | 7.33% |
+| Non-critical L1D miss | 1.13% |
+
+| Instruction Delivery Bottlenecks category | Share of sustainable instruction bandwidth |
+| --- | ---: |
+| L1 instruction-cache miss | 15.48% |
+| Instruction delivery bandwidth | 7.56% |
+| Other instruction delivery latency | 5.26% |
+| Instruction TLB miss | 0.34% |
+
+Critical data misses took place in **28.23%** of the processing-mode cycles. That includes cycles in which other micro-ops progressed. Instruction-cache misses made up the largest measured delivery loss. The two modes use different denominators, and the main thread runs both translated game code and native renderer code. These traces measure aggregate costs. They leave the responsible instruction addresses and the effect of any proposed code change to separate measurements. [Detailed main-thread counters](results/raid-winemetalgl-fast-share-lock-counter-breakdown.json) · [Apple's CPU Counters guide](https://developer.apple.com/documentation/xcode/addressing-cpu-bottlenecks)
+
+To reproduce either mode, save the options returned by `xcrun xctrace record --template 'CPU Counters' --show-recording-options`. In the `CPU Counters` object, set `selectedCountingMode.countingMode` to `processing` or `delivery` and set the corresponding `selectedCountingModeDisplayName` from the tables. Keep `selectedCountingMode.analysisMode` set to `bottleneck` and `countingLevel` set to `EL0`. Attach before the diagnostic GPU window ends and export `MetricTableForThread` as above.
+
+```sh
+xcrun xctrace record --no-prompt --template 'CPU Counters' --attach "$pid" \
+    --recording-options recording-options.json --time-limit 20s --output cpu.trace
+python3 benchmarks/summarize-raid-cpu-trace.py thread-metrics.xml "$pid" --mode processing
+```

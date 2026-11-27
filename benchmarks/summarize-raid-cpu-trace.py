@@ -11,7 +11,17 @@ REFERENCE_TAGS = {
     "start-time", "thread", "thread-state", "duration", "process", "core",
     "non-zero-double", "non-zero-uint64", "string",
 }
-COUNTER_CATEGORIES = ("useful", "delivery", "processing", "discarded")
+COUNTER_CATEGORIES = {
+    "bottlenecks": ("useful", "delivery", "processing", "discarded"),
+    "processing": (
+        "executing", "execution_latency", "memory_miss", "memory_miss_executing",
+        "non_critical_memory_miss",
+    ),
+    "delivery": (
+        "delivery_bandwidth", "delivery_latency_icache", "delivery_latency_itlb",
+        "delivery_latency_other",
+    ),
+}
 
 
 def read_table(path, schema, required_columns):
@@ -83,8 +93,10 @@ def summarize_states(path, pid):
     }
 
 
-def summarize_counters(path, pid):
+def summarize_counters(path, pid, mode="bottlenecks"):
     samples = defaultdict(dict)
+    categories = COUNTER_CATEGORIES[mode]
+    expected = {*categories, "cycle"}
     columns = {
         "timestamp", "duration", "thread", "process", "core", "metric-name", "sum", "average",
     }
@@ -97,6 +109,8 @@ def summarize_counters(path, pid):
         duration_ns = int(row["duration"][1])
         core_type = row["core"][1]
         name = row["metric-name"][1]
+        if name not in expected:
+            continue
         sample = samples[start_ns, duration_ns, core_type]
         if name in sample:
             raise ValueError(f"Repeated {name} at {start_ns} ns")
@@ -105,7 +119,6 @@ def summarize_counters(path, pid):
         else:
             sample[name] = float(row["average"][1] or 0)
 
-    expected = {*COUNTER_CATEGORIES, "cycle"}
     weighted = Counter()
     sample_counts = Counter()
     cycles = 0
@@ -123,10 +136,13 @@ def summarize_counters(path, pid):
         sample_counts[core_type] += 1
         duration += duration_ns
         cycles += sample["cycle"]
-        for name in COUNTER_CATEGORIES:
+        for name in categories:
+            if not 0 <= sample[name] <= 1:
+                raise ValueError(f"Invalid {name} fraction at {start_ns} ns")
             weighted[name] += sample[name] * sample["cycle"]
     if not cycles:
         raise ValueError("No complete, cycle-weighted counters for the main thread")
+    share_key = "cycle_weighted_shares" if mode == "processing" else "cycle_weighted_bandwidth_shares"
     return {
         "complete_intervals": sum(sample_counts.values()),
         "incomplete_or_zero_cycle_intervals": len(samples) - sum(sample_counts.values()),
@@ -134,20 +150,22 @@ def summarize_counters(path, pid):
         "trace_relative_bounds_ns": [first_start, last_end],
         "complete_interval_duration_ns": duration,
         "cycles": cycles,
-        "cycle_weighted_bandwidth_shares": {name: weighted[name] / cycles for name in COUNTER_CATEGORIES},
+        share_key: {name: weighted[name] / cycles for name in categories},
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("thread_states_xml", type=Path)
+    parser.add_argument("thread_states_xml", type=Path, nargs="?")
     parser.add_argument("thread_metrics_xml", type=Path)
     parser.add_argument("pid", type=int)
+    parser.add_argument("--mode", choices=COUNTER_CATEGORIES, default="bottlenecks")
     args = parser.parse_args()
     report = {
-        "scheduling": summarize_states(args.thread_states_xml, args.pid),
-        "counters": summarize_counters(args.thread_metrics_xml, args.pid),
+        "counters": summarize_counters(args.thread_metrics_xml, args.pid, args.mode),
     }
+    if args.thread_states_xml is not None:
+        report["scheduling"] = summarize_states(args.thread_states_xml, args.pid)
     print(json.dumps(report, indent=2))
 
 
