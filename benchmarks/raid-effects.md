@@ -553,6 +553,8 @@ python3 benchmarks/model-raid-submissions.py CALL_LOG --example-frame 100 \
 
 ### Foreground raid draw-cap comparison
 
+These runs and their profiles had bridge-crossing diagnostics active. The launcher passed an empty `OCERZ_M32_CALLLOG`, which matched every native crossing. The captures still verify live input and GPU sequence continuity. The timing comparison describes the instrumented client. [Capture conditions](results/raid-winemetalgl-draw-cap-live.json)
+
 The original client ran the full 24-caster fixture at 1365 × 768 with VSync off and the 65,000-triangle budget. Both runs used Macsmoke's saved Northshire camera. The boss, casters, overlapping ground effects, and particles were visible, and the world server kept the same cast schedule between runs. Each warmed 60-second window logged consecutive GPU completions. [Live measurements](results/raid-winemetalgl-draw-cap-live.json)
 
 | Draw setting | GPU-completed FPS | p99 completion gap |

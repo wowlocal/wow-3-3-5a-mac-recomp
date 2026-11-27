@@ -159,5 +159,19 @@
     ],
     "native_key_movement_observed": true,
     "deputy_willem_dialogue_opened": true
+  },
+  "capture_conditions": {
+    "bridge_crossing_diagnostics": true,
+    "cause": "The launcher set OCERZ_M32_CALLLOG to an empty string, which matched every crossing.",
+    "scope": [
+      "both raid windows",
+      "raid profiles",
+      "Northshire route"
+    ],
+    "raw_crossing_log_lines_across_each_session": {
+      "raid_draw_setting_64": 16204687,
+      "raid_draw_setting_81": 14164143,
+      "northshire": 23896921
+    }
   }
 }

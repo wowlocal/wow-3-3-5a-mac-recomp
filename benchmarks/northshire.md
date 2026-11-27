@@ -110,6 +110,8 @@ The optional swap signposts carry the same monotonic timestamp as the frame log.
 
 ## Metal sidecar route
 
+Bridge-crossing diagnostics were active during this route because the launcher passed an empty `OCERZ_M32_CALLLOG`. The performance and resource figures describe that instrumented run. [Capture conditions](results/raid-winemetalgl-draw-cap-live.json)
+
 After removing the raid fixture, the original client ran the 120-second movement route at 1365 × 768 with VSync off. The GPU log averaged **131.03 newly rendered FPS** at **14.66 ms p99** and had zero sequence gaps. The swap logger averaged **131.08 swaps/s** with zero gaps over 250 ms. [Route measurements](results/raid-winemetalgl-draw-cap-live.json)
 
 All six mouse holds kept rendering. The largest swap gap overlapping a hold was **92.29 ms** during the first camera drag. Native movement keys changed the view and a right click opened Deputy Willem's dialogue. The client averaged 105.63% of one CPU core and reached 977.53 MiB of sampled physical footprint. [Input and resource measurements](results/raid-winemetalgl-draw-cap-live.json)
