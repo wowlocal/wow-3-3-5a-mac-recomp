@@ -1,0 +1,67 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -8550,6 +8550,18 @@
+             int pidx = (int)(g_flag_producer - g_cur_insns);
+             if (fpb_det_here(pidx)) fpb_site_emit(b, pidx, va, vb, dbl);
+         }
++        if (want_direct && g_xlat_mode32 && (cc == OCERZ_CC_E || cc == OCERZ_CC_NE) &&
++            ENV_ON("OCERZ_M32_COMIS_EQ_CCMP")) {
++            // FCMP sets V on unordered operands. x86 sets ZF on equality
++            // and on unordered operands, so CCMP can combine both outcomes.
++            a64_cset(b, JTF, A64_EQ);
++            a64_ccmp_imm(b, 0, JTF, 1, 4, A64_VC);
++            g_cc_direct = cc == OCERZ_CC_E ? A64_EQ : A64_NE;
++            if (ENV_ON("OCERZ_M32_COMIS_EQ_CCMP_LOG"))
++                fprintf(stderr, "ocerz: emitted COMIS equality CCMP at %#llx\n",
++                        (unsigned long long)g_cur_insns[g_cur_insn_idx].rip);
++            return;
++        }
+         if (want_direct) {
+             int dc = cc == OCERZ_CC_A ? A64_GT : cc == OCERZ_CC_AE ? A64_GE :
+                      cc == OCERZ_CC_B ? A64_LT : cc == OCERZ_CC_BE ? A64_LE :
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -259,7 +259,7 @@
+     run_case(name, (at), (esp), _b, sizeof _b); \
+ } while (0)
+
+-int main(void)
++int main(int argc, char **argv)
+ {
+     if (ocerz_mem_init(0x10000ull, 0x900000000ull) != OCERZ_OK) {
+         fprintf(stderr, "mem_init failed\n");
+@@ -279,6 +279,34 @@
+     }
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++
++    if (argc == 2 && argv[1][0] >= '0' && argv[1][0] <= '7' && argv[1][1] == 0) {
++        const unsigned index = argv[1][0] - '0', neq = index / 4, sample = index % 4;
++        const uint32_t fp_inputs[] = { 0x3f800000, 0x3f000000, 0x40000000, 0x7fc00000 };
++        uint8_t code[] = {
++            0xb8, 0, 0, 0, 0,                   // mov eax, input
++            0x66, 0x0f, 0x6e, 0xc0,              // movd xmm0, eax
++            0xb8, 0, 0, 0x80, 0x3f,              // mov eax, 1.0
++            0x66, 0x0f, 0x6e, 0xc8,              // movd xmm1, eax
++            0x0f, 0x2e, 0xc1,                    // ucomiss xmm0, xmm1
++            0x7a, 0x10,                          // jp parity
++            (uint8_t)(0x74 + neq), 0x07,          // je/jne taken
++            0xb8, 3, 0, 0, 0, 0xeb, 0x0c,        // fall: eax=3
++            0xb8, 2, 0, 0, 0, 0xeb, 0x05,        // taken: eax=2
++            0xb8, 1, 0, 0, 0,                     // parity: eax=1
++        };
++        memcpy(code + 1, &fp_inputs[sample], sizeof fp_inputs[sample]);
++        char label[64];
++        snprintf(label, sizeof label, "ucomiss; jp; %s (case %u)", neq ? "jne" : "je", sample);
++        run_case(label, M32_CODE, M32_STACK, code, sizeof code);
++        const int condition = neq ? sample != 0 : sample == 0;
++        const uint64_t expected = sample == 3 ? 1 : condition ? 2 : 3;
++        if (cpu()->gpr[OCERZ_RAX] != expected) {
++            fprintf(stderr, "FAIL %s: unexpected branch result\n", label);
++            g_failures++;
++        }
++        return g_failures != 0;
++    }
+
+     static const uint8_t carry_chain[] = {
+         0xb8, 0xff, 0xff, 0xff, 0xff,

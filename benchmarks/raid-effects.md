@@ -743,3 +743,13 @@ Two separate Metal System Traces measured the GPU work behind that change. The c
 A separate live profiling launch used direct ARB uniform reads. Across seven warmed eight-second CPU periods, generated code mapped to `MOV` accounted for **24.23% of the mapped translated samples**, and code mapped to `Jcc` accounted for **19.06%**. Their shares of all samples were **14.17%** and **11.15%**. The profiler uses the JIT’s host-to-guest fault map. A guest instruction’s assigned weight includes generated address work and exits associated with that instruction. [Instruction samples](results/raid-aarchx-headless-guest-instruction-profile.json)
 
 Apply `patches/aarchx-m32-guest-instruction-profile-trial.patch` and add `OCERZ_GUESTPROF_INSTRUCTIONS=1` to the existing guest profiling flags. The report switches the translated address list to instruction PCs and adds opcode weights. All 806 general runtime checks passed.
+
+### Use CCMP for fused scalar floating-point equality branches
+
+One hot guest site compares floats and branches first on parity, then on equality. A trial that tried to carry the host flags from that specific parity branch emitted zero matching sites in the live client. The broader trial normalizes the `FCMP` result with `CSET` and `CCMP` before branching. It preserves x86 equality on the unordered path. An instrumented launch recorded **147 distinct emitted sites**.
+
+Both settings passed eight focused i386 interpreter comparisons in separate processes. A native AArch64 check passed **81** combinations covering signed zeros, finite values, infinities, and NaNs. The existing full `test_jit32` suite still encounters failures after reusing guest code addresses on this host. The same failure pattern reproduced in the archived earlier build.
+
+Four warmed 60-second headless launches with direct ARB uniform reads enabled in both arms had the same median throughput of **94.57 FPS**. Median p99 moved from **14.90 to 14.43 ms**. All four sequences were consecutive, the camera and cast schedule matched, and no trial window appeared or acquired focus. The change remains opt-in. [Live A/B and checks](results/raid-aarchx-headless-comis-ccmp-ab.json)
+
+Apply `patches/aarchx-m32-comis-equality-ccmp-trial.patch` and set `OCERZ_M32_COMIS_EQ_CCMP=1` to test the trial. Leave the switch unset for control. Run `test_jit32` with each case number from `0` through `7` in its own process. `OCERZ_M32_COMIS_EQ_CCMP_LOG` enables the compile witness in a separate run.
