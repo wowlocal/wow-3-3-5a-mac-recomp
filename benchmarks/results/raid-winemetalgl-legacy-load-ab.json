@@ -1,0 +1,124 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "cc681d6",
+  "scope": "Alternating live raid performance with the earlier offscreen test process running and temporarily paused.",
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "verified_timed_script_rows": 26,
+  "visual_readbacks_verified": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "copied_client_process_guard_passed": true,
+  "shadow_allocation_reuse_enabled": true,
+  "legacy_origin": "Earlier uncapped raid test in its temporary client and bundle.",
+  "legacy_initially_offscreen": true,
+  "legacy_had_established_tcp_at_preflight": false,
+  "legacy_resumed_after_each_pause": true,
+  "legacy_process_restarted": false,
+  "paused_gpu_drain_wait_seconds": 2,
+  "timed_runs": [
+    {
+      "order": 1,
+      "mode": "running",
+      "legacy_paused": false,
+      "legacy_completed_frames_during_launch": 2675,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8158,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998562584,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 135.95,
+      "p99_gpu_completion_gap_ns": 12682500,
+      "min_draws": 701,
+      "max_draws": 953
+    },
+    {
+      "order": 2,
+      "mode": "paused",
+      "legacy_paused": true,
+      "legacy_completed_frames_during_launch": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8073,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997711625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 134.53333333333333,
+      "p99_gpu_completion_gap_ns": 12477625,
+      "min_draws": 694,
+      "max_draws": 958
+    },
+    {
+      "order": 3,
+      "mode": "paused",
+      "legacy_paused": true,
+      "legacy_completed_frames_during_launch": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8114,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999989291,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 135.21666666666667,
+      "p99_gpu_completion_gap_ns": 12924209,
+      "min_draws": 687,
+      "max_draws": 965
+    },
+    {
+      "order": 4,
+      "mode": "running",
+      "legacy_paused": false,
+      "legacy_completed_frames_during_launch": 2675,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7957,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996457209,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 132.6,
+      "p99_gpu_completion_gap_ns": 13188375,
+      "min_draws": 711,
+      "max_draws": 995
+    }
+  ],
+  "comparison": {
+    "running": {
+      "median_completed_fps": 134.27499999999998,
+      "median_p99_gap_ns": 12935437.5
+    },
+    "paused": {
+      "median_completed_fps": 134.875,
+      "median_p99_gap_ns": 12700917.0
+    }
+  },
+  "paired_paused_minus_running": [
+    {
+      "completed_fps": -1.4166666666666572,
+      "p99_gap_ns": -204875
+    },
+    {
+      "completed_fps": 2.6166666666666742,
+      "p99_gap_ns": -264166
+    }
+  ],
+  "paused_vs_running_median_fps_percent": 0.4468441630981257,
+  "paused_vs_running_median_p99_percent": -1.8130078708199826
+}

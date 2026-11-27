@@ -1673,3 +1673,20 @@ python3 benchmarks/summarize-raid-system-tail.py SCHEDULER_CAPTURE gpu-intervals
 python3 benchmarks/summarize-raid-system-tail.py ACCELERATOR_CAPTURE gpu-intervals.xml \
     --legacy-pid "$legacy_pid"
 ```
+
+### Isolate the older test client's background GPU load
+
+The background process belonged to the earlier uncapped raid benchmark. Its executable, redirected output, and completion stream identified the same temporary test instance. It was offscreen and had no established TCP connection at the preflight check. For the paused arms, the runner suspended only that process, allowed two seconds for queued work to drain, and resumed it after each launch. The current copied client, runtime, renderer, shadow reuse, and raid settings were shared across all arms. [Earlier uncapped reference](results/raid-winemetalgl-uncapped-live.json)
+
+The timed run order is `1-running`, `2-paused`, `3-paused`, and `4-running`. Each directory carries a legacy completion delta from the full monitored launch and a verified 60-second throughput window for the current client. The analyzer also checks the fixture marker, consecutive completions, window monitor result, and restored state.
+
+| Earlier test process | Median current-client FPS | Median current-client p99 completion gap |
+| --- | ---: | ---: |
+| Running | 134.28 | 12.94 ms |
+| Paused | 134.88 | 12.70 ms |
+
+The older client completed **2,675 outputs** during each running launch and **zero** during each paused launch. Pausing reduced p99 by **0.20 and 0.26 ms** in the two pairs. Throughput changed by **−1.42 and +2.62 FPS**. The saved camera and all 26 timing rows verified in all four runs. The readbacks showed overlapping effects, the GPU completion sequences were consecutive, and the test monitor recorded zero windows or activations. The earlier instance resumed with the same process identity. [Timed A/B and legacy completion witnesses](results/raid-winemetalgl-legacy-load-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-legacy-load.py TIMED_CAPTURES
+```
