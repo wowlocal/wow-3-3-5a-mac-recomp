@@ -1,0 +1,185 @@
+diff --git a/include/ocerz/a64emit.h b/include/ocerz/a64emit.h
+--- a/include/ocerz/a64emit.h
++++ b/include/ocerz/a64emit.h
+@@ -49,6 +49,8 @@
+ void a64_ldr_regoff(A64Buf *b, int size, int rt, int rn, int rm, int scaled);
+ void a64_ldr_v_regoff(A64Buf *b, int size, int vt, int rn, int rm, int scaled);
+ void a64_str_v_regoff(A64Buf *b, int size, int vt, int rn, int rm, int scaled);
++void a64_ldr_v_regoff_uxtw(A64Buf *b, int size, int vt, int rn, int rm);
++void a64_str_v_regoff_uxtw(A64Buf *b, int size, int vt, int rn, int rm);
+ void a64_str_regoff(A64Buf *b, int size, int rt, int rn, int rm, int scaled);
+ void a64_ldr_regoff_uxtw(A64Buf *b, int size, int rt, int rn, int rm);
+ void a64_str_regoff_uxtw(A64Buf *b, int size, int rt, int rn, int rm);
+diff --git a/src/a64emit.c b/src/a64emit.c
+--- a/src/a64emit.c
++++ b/src/a64emit.c
+@@ -827,6 +827,17 @@
+     a64_emit32(b, base | ((uint32_t)(rm & 31) << 16) | ((uint32_t)(scaled != 0) << 12) | ((uint32_t)(rn & 31) << 5) | (uint32_t)(vt & 31));
+ }
+
++void a64_ldr_v_regoff_uxtw(A64Buf *b, int size, int vt, int rn, int rm)
++{
++    uint32_t base = size == 16 ? 0x3ce04800u : size == 8 ? 0xfc604800u : 0xbc604800u;
++    a64_emit32(b, base | ((uint32_t)(rm & 31) << 16) | ((uint32_t)(rn & 31) << 5) | (uint32_t)(vt & 31));
++}
++void a64_str_v_regoff_uxtw(A64Buf *b, int size, int vt, int rn, int rm)
++{
++    uint32_t base = size == 16 ? 0x3ca04800u : size == 8 ? 0xfc204800u : 0xbc204800u;
++    a64_emit32(b, base | ((uint32_t)(rm & 31) << 16) | ((uint32_t)(rn & 31) << 5) | (uint32_t)(vt & 31));
++}
++
+ void a64_rbit(A64Buf *b, int sf, int rd, int rn)
+ { a64_emit32(b, (sf ? 0xdac00000u : 0x5ac00000u) | ((uint32_t)(rn & 31) << 5) | (uint32_t)(rd & 31)); }
+ void a64_clz(A64Buf *b, int sf, int rd, int rn)
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -4985,9 +4985,9 @@
+     return scratch;
+ }
+
+-static int emit_mem_ea32(A64Buf *b, const X86Insn *insn, const X86Operand *op, int addr_reg)
+-{
+-    uint64_t fold = ea_fold();
++static int emit_mem_ea32(A64Buf *b, const X86Insn *insn, const X86Operand *op, int addr_reg, int map_guest)
++{
++    uint64_t fold = map_guest ? ea_fold() : 0;
+     int has_b = op->base != OCERZ_REG_NONE;
+     int has_i = op->index != OCERZ_REG_NONE;
+     int sc = op->scale & 3;
+@@ -5097,7 +5097,7 @@
+         return 1;
+     }
+     if (insn->addrsize == 4) {
+-        if (!insn->mode32 || !emit_mem_ea32(b, insn, op, addr_reg))
++        if (!insn->mode32 || !emit_mem_ea32(b, insn, op, addr_reg, 1))
+             return 0;
+         if (seg == OCERZ_SEG_FS || seg == OCERZ_SEG_GS) {
+             a64_ldr(b, 8, JT0, 20, (uint32_t)(seg == OCERZ_SEG_FS ? offsetof(OcerzCPU, fs_base)
+@@ -9641,12 +9641,14 @@
+ static int g_sse_mem_ra = JTA;
+ static uint32_t g_sse_mem_disp;
+ static int g_sse_mem_plain;
++static int g_sse_mem_wrapped;
+ static int g_sse_mem_plainacc, g_sse_mem_gpr_plainacc;
+ static int emit_sse_mem_addr(A64Buf *b, const X86Insn *insn, const X86Operand *o, int size,
+                              uint32_t **exit_sites, int *n_exits, uint32_t **skip_out)
+ {
+     g_sse_mem_plainacc = mem_plain_access_ok(o);
+     g_sse_mem_gpr_plainacc = g_sse_mem_plainacc;
++    g_sse_mem_wrapped = 0;
+     if (m32_ebp_access(insn, o)) {
+         g_sse_mem_ra = JMEMBASE;
+         g_sse_mem_disp = (uint32_t)o->disp;
+@@ -9662,27 +9664,75 @@
+     }
+     g_sse_mem_plain = 0;
+     g_sse_mem_ra = JTA; g_sse_mem_disp = 0;
++    // Leave the 32-bit wrap to the EA builder and the mapping-base addition
++    // to the ARM64 memory instruction. A single register and no displacement
++    // already costs one address instruction on the ordinary path.
++    if (insn->mode32 && insn->addrsize == 4 && !insn->vex &&
++        insn->seg == OCERZ_SEG_NONE && !o->riprel && !g_align_guard &&
++        o->base != OCERZ_REG_NONE && (o->disp != 0 || o->index != OCERZ_REG_NONE) &&
++        (size == 4 || size == 8 || size == 16) && ocerz_guest_base && mem_fast_forms_ok() &&
++        (g_sse_mem_plainacc || vec_plain_size(size)) && ENV_ON("OCERZ_M32_SSE_UXTW") &&
++        emit_mem_ea32(b, insn, o, JTA, 0)) {
++        ea_cache_reset();
++        g_const_ea_valid = g_ea_is_const = g_ea_w32 = g_ea_lowhoisted = 0;
++        g_ea_plain = o == g_dep_plain_op;
++        g_sse_mem_wrapped = 1;
++        *skip_out = NULL;
++        return 1;
++    }
+     if (!emit_mem_ea(b, insn, o, JTA))
+         return 0;
+     *skip_out = emit_commpage_guard(b, insn, JTA, exit_sites, n_exits);
+     emit_add_const(b, JTA, ocerz_guest_base - ea_fold());
+     return 1;
+ }
++static void emit_m32_sse_mapped_base(A64Buf *b)
++{
++    if (g_sse_mem_wrapped) {
++        a64_add_ext_uxtw(b, JTA, JGB, JTA, 0);
++        g_sse_mem_wrapped = 0;
++    }
++}
++
+ static void emit_sse_mem_ld_gpr(A64Buf *b, int size, int rd)
+ {
++    emit_m32_sse_mapped_base(b);
+     if (g_sse_mem_plain) emit_gpr_ld_at(b, size, rd, g_sse_mem_ra, (int32_t)g_sse_mem_disp, g_sse_mem_gpr_plainacc);
+     else emit_guest_load_ordered(b, size, rd, JTA, JTU);
+ }
++
++static void trace_m32_sse_uxtw(int size, int store)
++{
++    if (ENV_ON("OCERZ_M32_SSE_UXTW_LOG") && g_cur_insns && g_cur_insn_idx >= 0)
++        fprintf(stderr, "ocerz: i386 SSE UXTW rip=%#llx width=%d %s\n",
++                (unsigned long long)g_cur_insns[g_cur_insn_idx].rip, size, store ? "store" : "load");
++}
++
+ static void emit_sse_mem_ld(A64Buf *b, int size, int vd)
+ {
++    if (g_sse_mem_wrapped && (g_sse_mem_plainacc || vec_plain_size(size))) {
++        a64_ldr_v_regoff_uxtw(b, size, vd, JGB, JTA);
++        undo_save_hook(b, size, vd);
++        trace_m32_sse_uxtw(size, 0);
++        return;
++    }
++    emit_m32_sse_mapped_base(b);
+     emit_v_ld_at(b, size, vd, g_sse_mem_ra, (int32_t)g_sse_mem_disp, g_sse_mem_plainacc);
+ }
++
+ static void emit_sse_mem_st(A64Buf *b, int size, int vs)
+ {
++    if (g_sse_mem_wrapped && (g_sse_mem_plainacc || vec_plain_size(size))) {
++        a64_str_v_regoff_uxtw(b, size, vs, JGB, JTA);
++        trace_m32_sse_uxtw(size, 1);
++        return;
++    }
++    emit_m32_sse_mapped_base(b);
+     emit_v_st_at(b, size, vs, g_sse_mem_ra, (int32_t)g_sse_mem_disp, g_sse_mem_plainacc);
+ }
+ static void emit_sse_mem_st_gpr(A64Buf *b, int size, int rv)
+ {
++    emit_m32_sse_mapped_base(b);
+     if (g_sse_mem_plain) emit_gpr_st_at(b, size, rv, g_sse_mem_ra, (int32_t)g_sse_mem_disp, g_sse_mem_plainacc);
+     else emit_guest_store_ordered(b, size, rv, JTA, JTU);
+ }
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -328,6 +328,32 @@
+         return g_failures != 0;
+     }
+
++    const char *sse_addr_case = getenv("OCERZ_TEST_JIT32_SSE_UXTW");
++    if (sse_addr_case) {
++        if (sse_addr_case[0] < '0' || sse_addr_case[0] > '2' || sse_addr_case[1]) return 2;
++        switch (sse_addr_case[0]) {
++        case '0':
++            CASE("indexed scalar SSE loads and stores", M32_CODE, M32_STACK,
++                 0xba,1,0,0,0,                    // mov edx, 1
++                 0xf3,0x0f,0x10,0x44,0x93,4,     // movss xmm0, [ebx + edx*4 + 4]
++                 0xf3,0x0f,0x58,0x43,0x0c,       // addss xmm0, [ebx + 0xc]
++                 0xf3,0x0f,0x11,0x44,0x93,0x40); // movss [ebx + edx*4 + 0x40], xmm0
++            break;
++        case '1':
++            CASE("wrapped double SSE address", M32_CODE, M32_STACK,
++                 0xba,4,0,0,0,                    // mov edx, 4
++                 0xf2,0x0f,0x10,0x42,0xec,        // movsd xmm0, [edx - 20]
++                 0xf2,0x0f,0x11,0x43,0x30);       // movsd [ebx + 0x30], xmm0
++            break;
++        case '2':
++            CASE("packed SSE reads and writes", M32_CODE, M32_STACK,
++                 0x0f,0x10,0x43,0x0b,             // movups xmm0, [ebx + 0xb]
++                 0x0f,0x11,0x43,0x2b);            // movups [ebx + 0x2b], xmm0
++            break;
++        }
++        return g_failures != 0;
++    }
++
+     const char *fpb_case = getenv("OCERZ_TEST_JIT32_FPB");
+     if (fpb_case) {
+         if (fpb_case[0] < '0' || fpb_case[0] > '5' || fpb_case[1]) return 2;

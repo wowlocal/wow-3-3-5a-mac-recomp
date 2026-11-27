@@ -1093,3 +1093,16 @@ A separate 24-caster launch enabled WineMetalGL's per-frame timers. After the in
 Draw encoding accounted for **5.7%** of the observed mean frame interval, and binding plus encoding accounted for **9.3%**. In a serial frame-time estimate, completely overlapping encoding with other work would raise throughput by about **6%** before the cost of a queue. A larger scheduling gain would need to overlap more of the GL work. The phase totals are elapsed times on the calling thread. They sit within GL and frame time.
 
 The diagnostic used `WINEMETALGL_STATS=1` and `WINEMETALGL_LOG=0,perf:info` with the baseline branch mode. The readback verified the 1365 × 768 raid view with overlapping effects. The realm verified all 26 timed rows and the separate 24-second GPU window had consecutive completions. The monitor observed zero visible trial windows or activations. [Renderer phase distributions](results/raid-winemetalgl-headless-render-cpu-phases.json)
+
+### Fold the mapping base into wrapped i386 SSE accesses
+
+The trial keeps the existing i386 effective-address calculation in a 32-bit register and folds the guest mapping base into the ARM64 load or store. It applies to eligible 4-, 8-, and 16-byte SSE memory operations. The ordinary address path still handles segments, guarded layouts and cases that require ordered memory primitives. Apply `patches/aarchx-m32-sse-wrapped-offset-trial.patch` after the EBP hoist patch and set `OCERZ_M32_SSE_UXTW=1`. Unset the variable for control.
+
+Both modes passed **806** general checks. Three address cases matched the interpreter under both default and strict vector ordering. They cover indexed scalar addresses, a wrapped double address, and unaligned packed data. Six forced FP-batch replay checks also passed in each mode. In a separate diagnostic, `OCERZ_M32_SSE_UXTW_LOG=1` recorded **12,968** distinct emitted guest addresses from startup through the raid. Of those, **834** matched sampled PCs in an earlier raid CPU profile and represented **6.89%** of that capture's total CPU weight. These counts measure emission and address coverage.
+
+| SSE memory addressing | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing addressing | 120.58 | 14.43 ms |
+| Wrapped offset in the memory instruction | 120.18 | 17.57 ms |
+
+The four warmed 60-second launches ran with emission logging off. The pairs moved in opposite directions on throughput, and p99 increased in both. The trial stays off. Each launch verified the camera, overlapping effects, all cast timing rows, consecutive GPU completions, no visible trial window or activation, and process cleanup. [Full-raid A/B and instruction coverage](results/raid-aarchx-headless-i386-sse-wrapped-offsets.json)
