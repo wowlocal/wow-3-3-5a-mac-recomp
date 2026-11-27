@@ -1,0 +1,177 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate instrumented run of the full headless Northshire raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "caster_count": 24,
+  "camera": "Saved fixture anchor",
+  "gpu_sequence_continuous": true,
+  "process_activation_notifications": 0,
+  "visible_trial_windows": 0,
+  "programmable_share_of_classified_draws": 0.9126188410503151,
+  "programmable_share_of_submitted_vertex_references": 0.9208378726726124,
+  "lighting_windows": 10,
+  "lighting_seconds": 40.008936375,
+  "direct_draw_counts_by_vertex_path": {
+    "programmable": 2723376,
+    "fixed_unlit": 260757,
+    "fixed_other_lighting": 0,
+    "fixed_directional": 0,
+    "indirect": 0
+  },
+  "submitted_vertex_references_by_path": {
+    "programmable": 1103923785,
+    "fixed_unlit": 94901565,
+    "fixed_other_lighting": 0,
+    "fixed_directional": 0,
+    "indirect": 0
+  },
+  "guest_profile_periods_after_first_full_interval": [
+    {
+      "elapsed_seconds": 24,
+      "sampled_cpu_ms": 7880,
+      "translated_percent": 57.0,
+      "runtime_percent": 43.0,
+      "runtime_hot_imports": [
+        {
+          "symbol": "_RunApplicationEventLoop",
+          "cpu_percent": 33.2
+        },
+        {
+          "symbol": "_glMapBufferARB",
+          "cpu_percent": 0.9
+        },
+        {
+          "symbol": "_glUnmapBufferARB",
+          "cpu_percent": 0.3
+        },
+        {
+          "symbol": "_glTestObjectAPPLE",
+          "cpu_percent": 0.3
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 32,
+      "sampled_cpu_ms": 7872,
+      "translated_percent": 55.2,
+      "runtime_percent": 44.8,
+      "runtime_hot_imports": [
+        {
+          "symbol": "_RunApplicationEventLoop",
+          "cpu_percent": 34.6
+        },
+        {
+          "symbol": "_glMapBufferARB",
+          "cpu_percent": 0.9
+        },
+        {
+          "symbol": "_glTestObjectAPPLE",
+          "cpu_percent": 0.4
+        },
+        {
+          "symbol": "_glUnmapBufferARB",
+          "cpu_percent": 0.3
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 40,
+      "sampled_cpu_ms": 7886,
+      "translated_percent": 57.9,
+      "runtime_percent": 42.1,
+      "runtime_hot_imports": [
+        {
+          "symbol": "_RunApplicationEventLoop",
+          "cpu_percent": 32.6
+        },
+        {
+          "symbol": "_glMapBufferARB",
+          "cpu_percent": 0.7
+        },
+        {
+          "symbol": "_glTestObjectAPPLE",
+          "cpu_percent": 0.5
+        },
+        {
+          "symbol": "_glUnmapBufferARB",
+          "cpu_percent": 0.3
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 48,
+      "sampled_cpu_ms": 7889,
+      "translated_percent": 58.6,
+      "runtime_percent": 41.4,
+      "runtime_hot_imports": [
+        {
+          "symbol": "_RunApplicationEventLoop",
+          "cpu_percent": 31.2
+        },
+        {
+          "symbol": "_glMapBufferARB",
+          "cpu_percent": 0.8
+        },
+        {
+          "symbol": "_glTestObjectAPPLE",
+          "cpu_percent": 0.6
+        },
+        {
+          "symbol": "_glUnmapBufferARB",
+          "cpu_percent": 0.2
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 56,
+      "sampled_cpu_ms": 7864,
+      "translated_percent": 57.8,
+      "runtime_percent": 42.2,
+      "runtime_hot_imports": [
+        {
+          "symbol": "_RunApplicationEventLoop",
+          "cpu_percent": 32.3
+        },
+        {
+          "symbol": "_glMapBufferARB",
+          "cpu_percent": 0.7
+        },
+        {
+          "symbol": "_glTestObjectAPPLE",
+          "cpu_percent": 0.5
+        },
+        {
+          "symbol": "_glUnmapBufferARB",
+          "cpu_percent": 0.2
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 64,
+      "sampled_cpu_ms": 7878,
+      "translated_percent": 56.8,
+      "runtime_percent": 43.2,
+      "runtime_hot_imports": [
+        {
+          "symbol": "_RunApplicationEventLoop",
+          "cpu_percent": 32.6
+        },
+        {
+          "symbol": "_glMapBufferARB",
+          "cpu_percent": 0.7
+        },
+        {
+          "symbol": "_glTestObjectAPPLE",
+          "cpu_percent": 0.5
+        },
+        {
+          "symbol": "_glUnmapBufferARB",
+          "cpu_percent": 0.3
+        }
+      ]
+    }
+  ]
+}

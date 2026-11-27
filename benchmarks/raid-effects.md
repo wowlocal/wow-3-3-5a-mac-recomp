@@ -711,3 +711,11 @@ Four warmed 60-second runs used control, trial, trial, and control order in the 
 | Directional half-vector trial | 94.89 | 15.95 ms |
 
 Throughput differed by 0.03%, and p99 rose by 0.26 ms. The live benchmark retains the control renderer. [Full-raid A/B](results/raid-winemetalgl-headless-directional-half-vector-ab.json)
+
+### Vertex path and guest CPU profile in the full raid
+
+A separate instrumented headless run counted **2.98 million** direct draws in ten complete four-second intervals. Programmable vertex stages accounted for **91.26% of draws** and **92.08% of submitted vertex references**. The remaining classified draws used unlit fixed-function vertices. The directional-light path recorded zero draws. Vertex references count submitted indices or array vertices times instance count. Hardware invocations also depend on reuse and the vertex cache. [Vertex path profile](results/raid-winemetalgl-headless-vertex-path-profile.json)
+
+Across six warmed eight-second CPU reports, translated code accounted for **55.2–58.6%** on the sampled guest thread. Each report covered about 7.88 seconds of that thread’s CPU time. Import tracing resolved the largest runtime bucket to `_RunApplicationEventLoop`. Its callback stack can include game, bridge, and renderer work. [Guest CPU attribution](results/raid-winemetalgl-headless-vertex-path-profile.json)
+
+Apply `patches/winemetalgl-raid-lighting-profile-trial.patch` after the ARB pass-label patch. Set `WINEMETALGL_PROFILE_RAID_LIGHTING=1` and `WINEMETALGL_LOG=0,perf:info` for the diagnostic capture. For the guest CPU report, set `OCERZ_GUESTPROF=2000`, `OCERZ_GUESTPROF_PERIOD=8`, `OCERZ_GUESTPROF_HOT=1`, and `OCERZ_M32LOG=imports`. Collect throughput separately with these diagnostics disabled.

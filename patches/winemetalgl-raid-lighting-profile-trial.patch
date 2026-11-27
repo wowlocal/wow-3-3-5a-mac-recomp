@@ -1,0 +1,74 @@
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2,6 +2,7 @@
+
+ #include <algorithm>
+ #include <cmath>
++#include <time.h>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+@@ -2238,6 +2239,55 @@
+ }
+ }  // namespace
+
++static void profileRaidLighting(Context& context, GLsizei count, GLsizei instances, bool indirect)
++{
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_PROFILE_RAID_LIGHTING");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    if (!enabled) return;
++
++    enum Path { PROGRAMMABLE, FIXED_UNLIT, FIXED_OTHER_LIGHT, FIXED_DIRECTIONAL, INDIRECT, PATH_COUNT };
++    struct Totals {
++        uint64_t draws[PATH_COUNT] = {};
++        uint64_t vertexReferences[PATH_COUNT] = {};
++        uint64_t first = 0;
++    };
++    static thread_local Totals totals;
++    const auto& state = context.state;
++    const auto& fixed = state.fixed;
++    Path path;
++    if (indirect)
++        path = INDIRECT;
++    else if (!context.isCompat() || state.program || state.programPipeline || compat::arbVertexProgramActive(context))
++        path = PROGRAMMABLE;
++    else if (!fixed.lighting)
++        path = FIXED_UNLIT;
++    else if (!fixed.lightModelLocalViewer &&
++             std::any_of(fixed.lights.begin(), fixed.lights.end(), [](const auto& light) {
++                 return light.enabled && light.position[3] == 0.0f;
++             }))
++        path = FIXED_DIRECTIONAL;
++    else
++        path = FIXED_OTHER_LIGHT;
++
++    ++totals.draws[path];
++    if (!indirect && count > 0 && instances > 0)
++        totals.vertexReferences[path] += static_cast<uint64_t>(count) * instances;
++    const uint64_t now = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++    if (!totals.first) totals.first = now;
++    if (now - totals.first >= 4'000'000'000ull) {
++        constexpr const char* names[] = {
++            "programmable", "fixed_unlit", "fixed_other_lighting", "fixed_directional", "indirect"
++        };
++        for (size_t i = 0; i < PATH_COUNT; i++)
++            WMGL_INFO(Perf, "raid lighting profile %llu %llu %s draws=%llu vertex_references=%llu",
++                      (unsigned long long)totals.first, (unsigned long long)now, names[i],
++                      (unsigned long long)totals.draws[i], (unsigned long long)totals.vertexReferences[i]);
++        totals = {};
++    }
++}
++
+ bool DrawState::issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                       id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+                       GLint minVertex, GLsizei vertexSpan, bool listed, const IndirectSource* indirect) {
+@@ -2265,6 +2315,7 @@
+         encoder = prepare(points ? GL_POINTS : mode, primitive);
+     }
+     if (!encoder) return false;
++    profileRaidLighting(ctx_, count, instances, indirect != nullptr);
+     if (CommandStream::passProfile()) ctx_.stream().profileNote(profileName());
+     queriesBeforeDraw(ctx_, encoder, instances);
+     LinkedProgram& program = *current;
