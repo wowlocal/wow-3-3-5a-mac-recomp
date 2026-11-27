@@ -1031,3 +1031,16 @@ The headless diagnostic sampled every 64 swaps on the render thread and counted 
 The renderer's existing batch API keeps one autorelease pool until its matching end call. Here a pool scoped to the outer game callback would retain autoreleased objects across thousands of swaps. The probe makes frame-specific lifetime boundaries the relevant unit for a future batching trial.
 
 Apply `patches/aarchx-m32-render-callback-scope-profile-trial.patch` after the headless drawable and realm patches and set `OCERZ_M32_HEADLESS_CALLBACK_SAMPLE=1` in a diagnostic build. [Callback-scope measurements](results/raid-aarchx-headless-render-callback-scopes.json)
+
+### Skip autorelease pools around selected CPU-only OpenGL state calls
+
+A diagnostic entrypoint log contained **111,260** calls after the in-world readback, including **8,094** draw calls. The selected state setters accounted for **48,661** of those calls. The trace changes the array-buffer binding dispatch. The throughput comparison used the trace off.
+
+The trial skips the call-local pool for the audited CPU-only setters. It keeps sharing and validation under the original lock. Debug output, display-list recording and immediate-mode calls retain a pool that drains after releasing the lock. Buffer bindings and draw calls use their ordinary pools. Apply `patches/winemetalgl-pure-state-pool-trial.patch` and set `WINEMETALGL_PURE_STATE_NO_POOL=1`. A separate software counter confirmed **18,890,752** eligible omissions between in-world log rows.
+
+| CPU-only state calls | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing pools | 118.28 | 12.71 ms |
+| Pool omission | 117.43 | 13.53 ms |
+
+The pairs disagreed in direction. The result includes one RSS reading just after each measured window. Both modes passed **337** GPU tests, including the debug callback and display lists. Four isolated 60-second launches verified the camera, full cast schedule, overlapping effects, consecutive GPU completions and cleanup. [Full-raid A/B, counts and checks](results/raid-winemetalgl-headless-pure-state-pool-ab.json)
