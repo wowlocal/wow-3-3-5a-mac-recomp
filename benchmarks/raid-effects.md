@@ -876,7 +876,7 @@ Only five aligned slots changed in the capture. They contained the modelview nor
 
 ### Invalidate packed uniform data only when its fields change
 
-The original timing series ran with five other trial instances present.
+The original timing series ran with five other trial instances present. [Isolated recheck](results/raid-winemetalgl-headless-precise-uniform-invalidation-isolated-recheck.json)
 
 The trial updates shader selectors independently of the packed block. Its grouped setters invalidate the packed block when the stored field changes at the byte level. Paths that update materials, individual lights, point parameters, or saved attributes still use their existing invalidation. Apply `patches/winemetalgl-fixed-uniform-invalidation-trial.patch` and set `WINEMETALGL_FIXED_UNIFORM_INVALIDATION=1`. The headless comparison used direct fixed-function writes, direct ARB uniform reads, and liveness depth 3 in both arms.
 
@@ -891,7 +891,7 @@ In separate instrumented launches, a reference writer independently rebuilt and 
 
 ### Reuse the packed block generation when matrix bytes match
 
-The original timing series ran with five other trial instances present.
+The original timing series ran with five other trial instances present. [Isolated recheck](results/raid-winemetalgl-headless-retain-matrix-generation-isolated-recheck.json)
 
 The trial advances the packed block generation after matrix-only invalidation when a packed matrix changes. It uses the matrix and texture comparisons already performed by the packer. Apply `patches/winemetalgl-fixed-retain-matrix-generation-trial.patch` after the direct uniform writer and set `WINEMETALGL_FIXED_KEEP_MATRIX_GENERATION=1`. Both arms enabled precise uniform invalidation.
 
@@ -937,3 +937,7 @@ Four warmed 60-second launches reused the same precise-invalidation build and ch
 #### Isolated recheck of i386 forward branches
 
 Four warmed 60-second launches repeated the forward-branch comparison on the direct uniform writer. The control median was **111.68 FPS** at **14.78 ms p99**. Forward-branch merging reached **116.79 FPS** at **11.92 ms p99**, a **4.57%** median throughput gain and a **2.86 ms** shorter median p99 gap. Both pairs improved on both metrics. All launches checked the scene, exact cast timing, continuous GPU completion sequences, and zero trial windows or activations. The process checker verified cleanup between every launch. [Isolated throughput recheck](results/raid-aarchx-headless-i386-forward-superblock-isolated-recheck.json)
+
+#### Isolated recheck of matrix generation reuse
+
+Four warmed 60-second launches repeated the matrix-generation comparison with precise uniform invalidation on in both arms. The control median was **117.41 FPS** at **13.40 ms p99**. Reusing the generation reached **115.28 FPS** at **13.94 ms p99**. The two pairs disagreed in direction. Every launch verified the camera, spell effects, cast schedule, consecutive GPU completions, and zero visible windows or activations. The process checker verified cleanup between launches. [Isolated throughput recheck](results/raid-winemetalgl-headless-retain-matrix-generation-isolated-recheck.json)
