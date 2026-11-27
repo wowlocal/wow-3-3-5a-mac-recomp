@@ -1,0 +1,276 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Headless translated i386 microbenchmark, synthetic scalar float copies",
+  "copies_per_timed_sample": 6000000,
+  "compilation_experiment": "Form the wrapped 32-bit offset and use an indexed SIMD memory instruction instead of a separate host-base add.",
+  "compiled_code_note": "Bytes include common JIT setup, so the difference measures the experiment in the active compiled span.",
+  "initial_combined_pairs": {
+    "warmup_samples_per_process": 2,
+    "timed_samples_per_process": 7,
+    "runs": [
+      {
+        "launch": 1,
+        "mode": "control",
+        "median_ns": 4884625,
+        "minimum_ns": 4138625,
+        "maximum_ns": 5120458,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 2,
+        "mode": "loads_and_stores",
+        "median_ns": 3428333,
+        "minimum_ns": 3376417,
+        "maximum_ns": 3468833,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 3,
+        "mode": "loads_and_stores",
+        "median_ns": 3409500,
+        "minimum_ns": 3347125,
+        "maximum_ns": 3864791,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 4,
+        "mode": "control",
+        "median_ns": 3326417,
+        "minimum_ns": 3271084,
+        "maximum_ns": 3372833,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 5,
+        "mode": "control",
+        "median_ns": 3352084,
+        "minimum_ns": 3286208,
+        "maximum_ns": 3390584,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 6,
+        "mode": "loads_and_stores",
+        "median_ns": 3351584,
+        "minimum_ns": 3334209,
+        "maximum_ns": 3398042,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 7,
+        "mode": "loads_and_stores",
+        "median_ns": 3444125,
+        "minimum_ns": 3375709,
+        "maximum_ns": 3524292,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 8,
+        "mode": "control",
+        "median_ns": 3357917,
+        "minimum_ns": 3274875,
+        "maximum_ns": 3377125,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      }
+    ]
+  },
+  "calibrated_comparison": {
+    "warmup_samples_per_process": 28,
+    "timed_samples_per_process": 21,
+    "discarded_calibration_launches": 4,
+    "runs": [
+      {
+        "launch": 1,
+        "mode": "control",
+        "median_ns": 3363333,
+        "minimum_ns": 3290042,
+        "maximum_ns": 3663708,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 2,
+        "mode": "stores_only",
+        "median_ns": 3319167,
+        "minimum_ns": 3279167,
+        "maximum_ns": 3531417,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 3,
+        "mode": "loads_and_stores",
+        "median_ns": 3414000,
+        "minimum_ns": 3302417,
+        "maximum_ns": 3531416,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 4,
+        "mode": "loads_only",
+        "median_ns": 3365875,
+        "minimum_ns": 3260542,
+        "maximum_ns": 3444417,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 5,
+        "mode": "loads_only",
+        "median_ns": 3342584,
+        "minimum_ns": 3266417,
+        "maximum_ns": 3391791,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 6,
+        "mode": "loads_and_stores",
+        "median_ns": 3383000,
+        "minimum_ns": 3332000,
+        "maximum_ns": 3538750,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 7,
+        "mode": "stores_only",
+        "median_ns": 3361375,
+        "minimum_ns": 3253667,
+        "maximum_ns": 3422292,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 8,
+        "mode": "control",
+        "median_ns": 3326167,
+        "minimum_ns": 3263250,
+        "maximum_ns": 3430917,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 9,
+        "mode": "loads_and_stores",
+        "median_ns": 3397792,
+        "minimum_ns": 3319041,
+        "maximum_ns": 3487208,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 10,
+        "mode": "control",
+        "median_ns": 3319833,
+        "minimum_ns": 3267959,
+        "maximum_ns": 3455792,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 11,
+        "mode": "loads_only",
+        "median_ns": 3299458,
+        "minimum_ns": 3252875,
+        "maximum_ns": 3428500,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 12,
+        "mode": "stores_only",
+        "median_ns": 3304375,
+        "minimum_ns": 3248209,
+        "maximum_ns": 3420875,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 13,
+        "mode": "stores_only",
+        "median_ns": 3311708,
+        "minimum_ns": 3258625,
+        "maximum_ns": 3449833,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 24
+      },
+      {
+        "launch": 14,
+        "mode": "loads_only",
+        "median_ns": 3316625,
+        "minimum_ns": 3285500,
+        "maximum_ns": 3404333,
+        "compiled_bytes": 264940,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 15,
+        "mode": "control",
+        "median_ns": 3314416,
+        "minimum_ns": 3275959,
+        "maximum_ns": 3416458,
+        "compiled_bytes": 265052,
+        "indexed_scalar_loads": 0,
+        "indexed_scalar_stores": 0
+      },
+      {
+        "launch": 16,
+        "mode": "loads_and_stores",
+        "median_ns": 3372125,
+        "minimum_ns": 3327000,
+        "maximum_ns": 3435750,
+        "compiled_bytes": 264860,
+        "indexed_scalar_loads": 24,
+        "indexed_scalar_stores": 24
+      }
+    ],
+    "median_ns_by_mode": {
+      "control": 3323000.0,
+      "stores_only": 3315437.5,
+      "loads_and_stores": 3390396.0,
+      "loads_only": 3329604.5
+    }
+  },
+  "interpreter_differential_cases_passed": {
+    "default": {
+      "control": 34,
+      "loads_and_stores": 34
+    },
+    "software_ordered_vector_memory": {
+      "control": 34,
+      "loads_and_stores": 34
+    }
+  }
+}

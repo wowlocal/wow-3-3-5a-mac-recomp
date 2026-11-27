@@ -207,7 +207,7 @@ Use `--seconds 600 --segment-seconds 60` for the ten-minute run to see how compl
 
 With GL statistics disabled, **193** calibration records from the direct file matched the Instruments signposts for sequence, dimensions, draw count, and GPU timestamp. A subsequent fixed **60-second login-screen window** contained **1,749** successful GPU completion records including its start marker, with zero missing sequence numbers. This verified the extended recording path at 1365 × 768. The background login screen averaged 29.13 completed FPS and had a 41.34 ms p99, with the raid workload still awaiting in-world testing. [Direct GPU recording results](results/metal-login-direct-60s.json)
 
-For live acceptance on the M4 Pro, use the fixed camera with all 24 casters at 1365 × 768 and VSync off. Preserve the spell effects and cast schedule. Collect three warmed 60-second windows and one warmed 600-second window from the GPU completion log. Each window must average at least 500 newly rendered frames per second, with p99 completion gaps of 2.0 ms or less. Check sequence continuity, confirm the visible spell effects and combat timing, and run the movement and input checks separately in Northshire. [Northshire route](northshire.md)
+For live acceptance on the M4 Pro, use the fixed camera with all 24 casters at 1365 × 768, VSync off, and `maxFPS=0`. The stock client applies a 200 FPS foreground cap. Preserve the spell effects and cast schedule. Collect three warmed 60-second windows and one warmed 600-second window from the GPU completion log. Each window must average at least 500 newly rendered frames per second, with p99 completion gaps of 2.0 ms or less. Check sequence continuity, confirm the visible spell effects and combat timing, and run the movement and input checks separately in Northshire. [Northshire route and cap verification](northshire.md)
 
 ## Guest-backed Metal vertex storage
 
@@ -585,6 +585,12 @@ The sampled share of uniform-packing stacks fell from **9.7% to 7.6%**. Both lib
 With uniform storage reuse and bridge logging disabled, five warmed eight-second intervals on the busiest guest thread attributed **59.5–60.6%** of sampled CPU time to executing translated code. The profiler sampled **7.86–7.89 seconds** of CPU time per interval. Each interval spent less than one millisecond compiling new blocks and reported zero retirements. Precompiling the same blocks can save only the observed translation cost. [Guest CPU samples](results/raid-winemetalgl-guest-profile.json)
 
 Use `OCERZ_GUESTPROF=2000`, `OCERZ_GUESTPROF_PERIOD=8`, and `OCERZ_GUESTPROF_HOT=1` in a separate profiling launch. In the earlier instrumented sessions, `glTestObjectAPPLE` accounted for **48.7–51.8%** of crossing messages. Those counts include startup and describe call frequency in the instrumented sessions. [Profiling conditions and crossing counts](results/raid-winemetalgl-guest-profile.json)
+
+#### i386 scalar memory offsets
+
+The most sampled translated instruction block in the five warmed intervals accounted for **1.6–2.1%** of the thread's sampled CPU time. It starts with repeated scalar SSE loads and stores. The compiler trial formed the wrapped 32-bit guest offset and used it directly in an Arm SIMD load or store. All 34 differential cases matched the interpreter in both trial arms under default and ordered vector memory settings. [Scalar address experiment](results/raid-i386-scalar-offset.json)
+
+In the calibrated headless benchmark, folding both addresses emitted **192 fewer bytes** and increased median wall time from **3.323 to 3.390 ms** for six million copies. Folding loads alone reached **3.330 ms**, and folding stores alone reached **3.315 ms**. These measurements cover a synthetic i386 copy loop. [Interleaved timings](results/raid-i386-scalar-offset.json)
 
 ### Direct calls for byte-valued GL queries
 
