@@ -195,5 +195,98 @@
         "share": 0.0014880882304464736
       }
     ]
+  },
+  "jcc_x20_memory_offsets": {
+    "ldr": [
+      {
+        "byte_offset": 5176,
+        "cpu_usec": 1051230,
+        "share_of_arm_opcode": 0.5713057485456902
+      },
+      {
+        "byte_offset": 168,
+        "cpu_usec": 585720,
+        "share_of_arm_opcode": 0.31831778301435615
+      },
+      {
+        "byte_offset": 160,
+        "cpu_usec": 77198,
+        "share_of_arm_opcode": 0.04195434032155683
+      },
+      {
+        "byte_offset": 144,
+        "cpu_usec": 62136,
+        "share_of_arm_opcode": 0.0337686842951923
+      },
+      {
+        "byte_offset": 152,
+        "cpu_usec": 31337,
+        "share_of_arm_opcode": 0.017030533986069928
+      },
+      {
+        "byte_offset": 352,
+        "cpu_usec": 8732,
+        "share_of_arm_opcode": 0.0047455283775205866
+      },
+      {
+        "byte_offset": 88,
+        "cpu_usec": 7276,
+        "share_of_arm_opcode": 0.003954244671878125
+      },
+      {
+        "byte_offset": 336,
+        "cpu_usec": 4035,
+        "share_of_arm_opcode": 0.0021928775771066842
+      },
+      {
+        "byte_offset": 80,
+        "cpu_usec": 2730,
+        "share_of_arm_opcode": 0.0014836569480796153
+      },
+      {
+        "byte_offset": 224,
+        "cpu_usec": 2685,
+        "share_of_arm_opcode": 0.0014592010643200612
+      },
+      {
+        "byte_offset": 208,
+        "cpu_usec": 2262,
+        "share_of_arm_opcode": 0.0012293157569802527
+      },
+      {
+        "byte_offset": 104,
+        "cpu_usec": 1572,
+        "share_of_arm_opcode": 0.0008543255393337565
+      },
+      {
+        "byte_offset": 320,
+        "cpu_usec": 1546,
+        "share_of_arm_opcode": 0.0008401954731615697
+      },
+      {
+        "byte_offset": 384,
+        "cpu_usec": 1191,
+        "share_of_arm_opcode": 0.0006472657235028651
+      },
+      {
+        "byte_offset": 96,
+        "cpu_usec": 398,
+        "share_of_arm_opcode": 0.00021629870525116736
+      }
+    ],
+    "stp": [
+      {
+        "byte_offset": 152,
+        "cpu_usec": 2246732,
+        "share_of_arm_opcode": 1.0
+      }
+    ]
+  },
+  "verified_ocerz_cpu_byte_offsets": {
+    "rflags": 144,
+    "cc_src": 152,
+    "cc_dst": 160,
+    "cc_op": 168,
+    "jit_fcmp_mem": 5176
   }
 }

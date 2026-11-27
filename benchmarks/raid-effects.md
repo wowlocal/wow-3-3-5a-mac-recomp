@@ -774,6 +774,8 @@ Seven warmed eight-second periods recorded sampled host instruction words for tr
 
 Apply `patches/aarchx-m32-arm64-instruction-profile-trial.patch` after the MOV form profile patch and add `OCERZ_GUESTPROF_HOST_WORDS=1` to the profiling flags. Run `python3 benchmarks/summarize-aarchx-host-profile.py RUN_DIR` against the diagnostic directory on macOS with Xcode Command Line Tools. It assembles the sampled words into a temporary object and uses the local disassembler for the instruction names.
 
+All sampled `STP` instructions attributed to guest `Jcc` wrote at byte offset 152 from the CPU state pointer. That pair stores `cc_src` and `cc_dst`, the operands of the deferred x86 flags. Of the `LDR` samples attributed to `Jcc`, **57.13%** read the saved floating-point compare operand and **31.83%** read `cc_op`, the descriptor of the deferred flags. The CPU field offsets were checked with `offsetof` in the same source. [Decoded CPU offsets](results/raid-aarchx-headless-arm64-instruction-profile.json)
+
 ### Triangle submission budget with direct ARB uniform reads
 
 Four warmed 60-second headless runs alternated the triangle budget in 65,000, 0, 0, and 65,000 order. All runs used direct ARB uniform reads, the same 1365 × 768 viewport, VSync off, and draw setting 64. Setting `OCERZ_WMGL_COMMIT_TRIANGLES=0` disables the triangle threshold while retaining the 512-draw threshold.
@@ -784,6 +786,8 @@ Four warmed 60-second headless runs alternated the triangle budget in 65,000, 0,
 | Disabled | 99.23 | 13.14 ms |
 
 Both pairs had higher throughput and a shorter p99 gap with the triangle threshold disabled. The second pair differed by 0.27 FPS. The realm verified all 25 actors and 26 timed script rows in every launch. All four GPU sequences were consecutive, and all four readbacks showed the saved camera and overlapping spell effects. The desktop monitor recorded zero activations or visible trial windows. [Full-raid A/B](results/raid-winemetalgl-headless-triangle-budget-ab.json)
+
+Two separate 16-second diagnostic runs joined each completed output to its final render command buffer by GPU end timestamp. With the 65,000-triangle threshold, **1,556 of 1,563** consecutive output intervals used three draw-bearing command buffers. With the threshold disabled, **all 1,559** used two, starting with a 512-draw submission. Set `OCERZ_WMGL_SUBMISSION_LOG` to a fresh path for this capture. Count draw-bearing buffers in serial order on the matched rendering stream. The trace describes how work was submitted. The four minute-long measurements above give the throughput comparison. [Metal submission counts](results/raid-winemetalgl-headless-triangle-submissions.json)
 
 ### Repeated loads through one i386 register
 

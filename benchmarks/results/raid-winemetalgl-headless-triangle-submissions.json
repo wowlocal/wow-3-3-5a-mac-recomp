@@ -1,0 +1,168 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate 16-second Metal submission traces of the full headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows_per_launch": 26,
+  "direct_arb_uniforms_enabled": true,
+  "commit_draw_setting": 64,
+  "method": "Exact GPU end timestamp match for final render submissions. Count nonzero draws in serial order on the matched render stream between consecutive GPU completions.",
+  "runs": [
+    {
+      "triangle_budget": 65000,
+      "window_seconds": 16.0,
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "matched_gpu_completions": 1564,
+      "logged_completed_outputs": 1564,
+      "classified_frame_gaps": 1563,
+      "draw_bearing_submissions_per_frame": {
+        "2": 7,
+        "3": 1556
+      },
+      "common_draw_count_splits": [
+        {
+          "draws": [
+            228,
+            512,
+            12
+          ],
+          "frames": 30
+        },
+        {
+          "draws": [
+            226,
+            512,
+            110
+          ],
+          "frames": 17
+        },
+        {
+          "draws": [
+            223,
+            512,
+            112
+          ],
+          "frames": 15
+        },
+        {
+          "draws": [
+            222,
+            512,
+            142
+          ],
+          "frames": 15
+        },
+        {
+          "draws": [
+            223,
+            512,
+            116
+          ],
+          "frames": 14
+        },
+        {
+          "draws": [
+            225,
+            512,
+            100
+          ],
+          "frames": 13
+        },
+        {
+          "draws": [
+            227,
+            512,
+            106
+          ],
+          "frames": 13
+        },
+        {
+          "draws": [
+            224,
+            512,
+            80
+          ],
+          "frames": 13
+        }
+      ]
+    },
+    {
+      "triangle_budget": 0,
+      "window_seconds": 16.0,
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "matched_gpu_completions": 1560,
+      "logged_completed_outputs": 1560,
+      "classified_frame_gaps": 1559,
+      "draw_bearing_submissions_per_frame": {
+        "2": 1559
+      },
+      "common_draw_count_splits": [
+        {
+          "draws": [
+            512,
+            298
+          ],
+          "frames": 35
+        },
+        {
+          "draws": [
+            512,
+            307
+          ],
+          "frames": 34
+        },
+        {
+          "draws": [
+            512,
+            309
+          ],
+          "frames": 33
+        },
+        {
+          "draws": [
+            512,
+            275
+          ],
+          "frames": 32
+        },
+        {
+          "draws": [
+            512,
+            336
+          ],
+          "frames": 25
+        },
+        {
+          "draws": [
+            512,
+            288
+          ],
+          "frames": 25
+        },
+        {
+          "draws": [
+            512,
+            287
+          ],
+          "frames": 24
+        },
+        {
+          "draws": [
+            512,
+            269
+          ],
+          "frames": 23
+        }
+      ]
+    }
+  ]
+}

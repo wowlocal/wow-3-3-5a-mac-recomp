@@ -27,16 +27,31 @@ with tempfile.TemporaryDirectory(prefix="headless-jit-decode.") as path:
     subprocess.run(["xcrun","clang","-arch","arm64","-c",str(asm),"-o",str(obj)],check=True,capture_output=True)
     decoded=subprocess.check_output(["xcrun","llvm-objdump","-d","--no-show-raw-insn",str(obj)],text=True)
 lookup={}
-for match in re.finditer(r"^\s*([0-9a-f]+):\s+([^\s;]+)",decoded,re.M):
+for match in re.finditer(r"^[ \t]*([0-9a-f]+):[ \t]+([^\s;]+)[ \t]*(.*)$",decoded,re.M):
     index=int(match[1],16)//4
     if 0<=index<len(words):
-        lookup[words[index]]=match[2].lower()
+        lookup[words[index]]=(match[2].lower(),match[3])
 assert len(lookup)>=len(words)*.95
 groups=defaultdict(Counter)
+jcc_offsets = defaultdict(Counter)
 for (guest,word),weight in samples.items():
-    groups[guest][lookup.get(word,"unknown")]+=weight
+    opcode, operands = lookup.get(word, ("unknown", ""))
+    groups[guest][opcode] += weight
+    if guest == "jcc" and opcode in ("stp", "ldr"):
+        address = re.search(r"\[x20(?:,\s*#(-?(?:0x[0-9a-f]+|[0-9]+)))?\]", operands)
+        if address:
+            offset = int(address[1], 0) if address[1] else 0
+            jcc_offsets[opcode][offset] += weight
 report={
     "warm_cpu_periods":len(periods),
+    "jcc_x20_memory_offsets": {
+        opcode: [
+            {"byte_offset": offset, "cpu_usec": weight,
+             "share_of_arm_opcode": weight / groups["jcc"][opcode]}
+            for offset, weight in offsets.most_common()
+        ]
+        for opcode, offsets in sorted(jcc_offsets.items())
+    },
     "guest_operations":{
         guest:[{"arm_mnemonic":op,"cpu_usec":weight,"share":weight/sum(hist.values())}
                for op,weight in hist.most_common(18)]
