@@ -1,0 +1,183 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "GPU-completed outputs from the original headless WoW client and the full raid fixture.",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_rows_per_launch": 26,
+  "continuing_draw_threshold": 512,
+  "idle_first_draw_threshold": 256,
+  "completed_serial_fast_path": true,
+  "borrow_guest_autorelease_pool": true,
+  "arb_contiguous_segments": true,
+  "i386_general_base_hoist": true,
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256": "c58359658415096ca1b005661344140b00d480132891dc898f4185201ad5da56",
+  "process_isolation_verified": true,
+  "selected_for_followup": true,
+  "runs": [
+    {
+      "run": 1,
+      "direct_client_index_uploads": false,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 83449,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7453,
+        "first_sequence": 4380,
+        "last_sequence": 11832,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59992924209,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 124.2,
+        "p99_gpu_completion_gap_ns": 13244375,
+        "min_draws": 692,
+        "max_draws": 976
+      }
+    },
+    {
+      "run": 2,
+      "direct_client_index_uploads": true,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 21842,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7831,
+        "first_sequence": 4558,
+        "last_sequence": 12388,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59998552875,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 130.5,
+        "p99_gpu_completion_gap_ns": 13264041,
+        "min_draws": 698,
+        "max_draws": 965
+      }
+    },
+    {
+      "run": 3,
+      "direct_client_index_uploads": true,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 60257,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7991,
+        "first_sequence": 4647,
+        "last_sequence": 12637,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59998537250,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 133.16666666666666,
+        "p99_gpu_completion_gap_ns": 12648334,
+        "min_draws": 695,
+        "max_draws": 963
+      }
+    },
+    {
+      "run": 4,
+      "direct_client_index_uploads": false,
+      "verified_timed_rows": 26,
+      "visual_readback_checked": true,
+      "visible_windows": 0,
+      "focus_activations": 0,
+      "window": {
+        "stream": 1,
+        "pid": 98085,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7437,
+        "first_sequence": 4471,
+        "last_sequence": 11907,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59996090834,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 123.93333333333334,
+        "p99_gpu_completion_gap_ns": 13617875,
+        "min_draws": 683,
+        "max_draws": 964
+      }
+    }
+  ],
+  "medians": {
+    "expand_and_upload": {
+      "average_completed_fps": 124.06666666666666,
+      "p99_gpu_completion_gap_ns": 13431125.0
+    },
+    "native_width_snapshot": {
+      "average_completed_fps": 131.83333333333331,
+      "p99_gpu_completion_gap_ns": 12956187.5
+    }
+  },
+  "paired_trial_minus_control": [
+    {
+      "average_completed_fps": 6.299999999999997,
+      "p99_gpu_completion_gap_ns": 19666
+    },
+    {
+      "average_completed_fps": 9.23333333333332,
+      "p99_gpu_completion_gap_ns": -969541
+    }
+  ],
+  "verification": {
+    "gpu_tests_passed_per_mode": 342,
+    "focused_unaligned_client_indices_snapshot_both_modes": true,
+    "focused_client_index_65535_restarts_disabled_both_modes": true
+  },
+  "copy_diagnostic": {
+    "gpu_window": {
+      "stream": 1,
+      "pid": 62968,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 2646,
+      "first_sequence": 4647,
+      "last_sequence": 7292,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 19999156375,
+      "measurement_duration_ns": 20000000000,
+      "average_completed_fps": 132.25,
+      "p99_gpu_completion_gap_ns": 12720000,
+      "min_draws": 676,
+      "max_draws": 989
+    },
+    "visible_windows": 0,
+    "focus_activations": 0,
+    "counter_rows_after_world_readback": 770,
+    "direct_u16_copies_between_counter_rows": 3149824,
+    "direct_u32_copies_between_counter_rows": 0,
+    "native_bytes_copied_between_counter_rows": 2535520604,
+    "scope": "Counter deltas cover the process interval between logged samples after the world readback. The separately verified GPU window covers 20 seconds."
+  }
+}

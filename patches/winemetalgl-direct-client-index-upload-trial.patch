@@ -1,0 +1,175 @@
+diff --git a/src/core/draw.h b/src/core/draw.h
+--- a/src/core/draw.h
++++ b/src/core/draw.h
+@@ -163,14 +163,16 @@
+         NSUInteger offset;
+         NSUInteger count = 1, stride = 0;
+     };
+     // Encodes one draw. indexData (CPU, uint32) or indexBuffer select indexed drawing.
++    // clientIndexBytes is an immediate snapshot source with the native index type.
+     // minVertex/vertexSpan is the vertex range attribute conversion must cover.
+     // With `indirect`, the GPU reads the command (count, instances, first and
+     // base vertex) from it instead (draws indirectCpuReason allows).
+     bool issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+-               GLint minVertex, GLsizei vertexSpan, bool listed = false, const IndirectSource* indirect = nullptr);
++               GLint minVertex, GLsizei vertexSpan, bool listed = false, const IndirectSource* indirect = nullptr,
++               const uint8_t* clientIndexBytes = nullptr);
+     // Why a draw of `mode` (`type`: of indices, or GL_NONE) with the current
+     // state cannot take its command from the GPU: something needs the
+     // command's values on the CPU (vertex ranges to convert, indices to
+     // rewrite, emulated stages, counting queries, gl_BaseVertex/BaseInstance).
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2218,8 +2218,31 @@
+ // A vertex start or base vertex every Metal device draws from
+ // (DeviceCaps::drawOffsets16).
+ bool drawOffsetFits(int64_t v) { return v >= -32768 && v <= 32767; }
+
++bool directClientIndexUploads() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_DIRECT_CLIENT_INDICES");
++        return value && !std::strcmp(value, "1");
++    }();
++    return enabled;
++}
++
++void recordClientIndexUpload(size_t width, size_t bytes) {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_DIRECT_CLIENT_INDICES_LOG");
++        return value && !std::strcmp(value, "1");
++    }();
++    if (!enabled) return;
++    static thread_local uint64_t shortDraws = 0, intDraws = 0, copiedBytes = 0;
++    if (width == 2) ++shortDraws;
++    else ++intDraws;
++    copiedBytes += bytes;
++    if (((shortDraws + intDraws) & 4095u) == 0)
++        std::fprintf(stderr, "wmgl client index copies u16=%llu u32=%llu bytes=%llu\n",
++                     (unsigned long long)shortDraws, (unsigned long long)intDraws, (unsigned long long)copiedBytes);
++}
++
+ uint64_t triangleSubmissionBudget() {
+     static const uint64_t budget = [] {
+         const char* value = std::getenv("OCERZ_WMGL_COMMIT_TRIANGLES");
+         return value && *value ? std::strtoull(value, nullptr, 10) : 0ull;
+@@ -2229,9 +2252,10 @@
+ }  // namespace
+
+ bool DrawState::issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                       id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+-                      GLint minVertex, GLsizei vertexSpan, bool listed, const IndirectSource* indirect) {
++                      GLint minVertex, GLsizei vertexSpan, bool listed, const IndirectSource* indirect,
++                      const uint8_t* clientIndexBytes) {
+     queriesCountPrimitives(ctx_, mode, count, instances);
+     stats::count(&stats::Frame::draws);
+     LinkedProgram* current = executable();
+     if (!current) return false;
+@@ -2326,8 +2350,31 @@
+     // indices that hold the vertex numbers themselves, with no offset.
+     const int64_t arrayStart = int64_t{first} - rebase, indexedBase = int64_t{baseVertex} - rebase;
+     const bool limited = Device::get().caps().drawOffsets16;
+     std::vector<uint32_t> readIndices;
++    if (clientIndexBytes) {
++        const size_t width = indexType == MTLIndexTypeUInt16 ? 2 : 4;
++        if (!needsIndices && !rotate && !points && (!limited || drawOffsetFits(indexedBase))) {
++            const size_t bytes = static_cast<size_t>(count) * width;
++            TransientAllocation allocation = transient_.allocate(bytes, serial, width);
++            if (!allocation.data) {
++                ctx_.setError(GL_OUT_OF_MEMORY);
++                return false;
++            }
++            std::memcpy(allocation.data, clientIndexBytes, bytes);
++            indexBuffer = allocation.buffer;
++            indexOffset = allocation.offset;
++            recordClientIndexUpload(width, bytes);
++        } else {
++            readIndices.resize(static_cast<size_t>(count));
++            for (size_t i = 0; i < readIndices.size(); ++i) {
++                uint32_t value = 0;
++                std::memcpy(&value, clientIndexBytes + i * width, width);
++                readIndices[i] = value;
++            }
++            indexData = readIndices.data();
++        }
++    }
+     if (limited && indexBuffer && !drawOffsetFits(indexedBase) && count > 0) {
+         // drawElements has read the element buffer on the CPU already.
+         const uint8_t* at = static_cast<const uint8_t*>(indexBuffer.contents) + indexOffset;
+         readIndices.resize(static_cast<size_t>(count));
+@@ -4573,10 +4620,10 @@
+         return;
+     }
+     // Metal always restarts at the type's largest index; GL only when asked.
+     const uint32_t metalRestart = indexSize == 2 ? 0xffffu : 0xffffffffu;
+-    const bool drawnAsIs = !hasRestart && !needsIndices && !rotate && indexSize != 1 && offset % indexSize == 0 &&
+-                           maxIndex != metalRestart;
++    const bool nativeIndices = !hasRestart && !needsIndices && !rotate && indexSize != 1 && maxIndex != metalRestart;
++    const bool drawnAsIs = nativeIndices && offset % indexSize == 0;
+     if (elementBuffer && !drawnAsIs && !elementBuffer->mapped && !elementBuffer->pinned && !pointPolygons(mode)) {
+         // An element buffer range whose indices are rewritten (restart
+         // segments, provoking-vertex rotation, fans, quads and loops, byte
+         // indices, misaligned offsets) keeps its rewritten list until the
+@@ -4625,8 +4672,14 @@
+     if (elementBuffer && drawnAsIs && !pointPolygons(mode)) {
+         elementBuffer->lastUseSerial = ctx_.stream().serial();
+         issue(mode, 0, count, instances, nullptr, elementBuffer->mtl, offset,
+               indexSize == 2 ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32, baseVertex, spanFirst, span);
++        return;
++    }
++    if (!elementBuffer && nativeIndices && !pointPolygons(mode) && !st.debugOutput && directClientIndexUploads()) {
++        issue(mode, 0, count, instances, nullptr, nil, 0,
++              indexSize == 2 ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32,
++              baseVertex, spanFirst, span, false, nullptr, source);
+         return;
+     }
+     issue(mode, 0, count, instances, cpuIndices().data(), nil, 0, MTLIndexTypeUInt32, baseVertex, spanFirst, span);
+ }
+diff --git a/tests/gpu/compat_tests.cpp b/tests/gpu/compat_tests.cpp
+--- a/tests/gpu/compat_tests.cpp
++++ b/tests/gpu/compat_tests.cpp
+@@ -438,8 +438,43 @@
+     CHECK(pixel(48, 32, kRed));
+     glListBase(0);
+     glDeleteLists(base, 3);
+     CHECK(glIsList(base) == GL_FALSE);
++    CHECK_GL();
++}
++
++COMPAT_TEST(compat_client_index_snapshots) {
++    clear();
++    pixelProjection();
++    const GLfloat positions[] = {0, 0, 32, 0, 32, 64, 0, 64, 32, 0, 64, 0, 64, 64, 32, 64};
++    glBindBuffer(GL_ARRAY_BUFFER, 0);
++    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
++    glVertexPointer(2, GL_FLOAT, 0, positions);
++    glEnableClientState(GL_VERTEX_ARRAY);
++    const GLushort left[] = {0, 1, 2, 0, 2, 3};
++    const GLuint right[] = {4, 5, 6, 4, 6, 7};
++    alignas(4) uint8_t storage[sizeof(right) + 1] = {};
++    std::memcpy(storage + 1, left, sizeof(left));
++    glColor3f(1, 0, 0);
++    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, storage + 1);
++    std::memcpy(storage + 1, right, sizeof(right));
++    glColor3f(0, 1, 0);
++    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, storage + 1);
++    std::memset(storage + 1, 0, sizeof(right));
++    CHECK(pixel(16, 32, kRed));
++    CHECK(pixel(48, 32, kGreen));
++
++    // A genuine 0xffff index with primitive restart disabled must survive.
++    clear();
++    std::vector<GLfloat> large(65536 * 2, 0);
++    large[2] = 64;
++    large[65535 * 2 + 1] = 64;
++    glVertexPointer(2, GL_FLOAT, 0, large.data());
++    glColor3f(0, 0, 1);
++    const GLushort largest[] = {0, 1, 65535};
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, largest);
++    CHECK(pixel(16, 16, kBlue));
++    glDisableClientState(GL_VERTEX_ARRAY);
+     CHECK_GL();
+ }
+
+ COMPAT_TEST(compat_client_arrays) {

@@ -1430,3 +1430,20 @@ python3 benchmarks/summarize-gl-command-timeline.py CAPTURE_DIR
 ```
 
 All four launches checked the camera, spell effects, and 26 cast timing rows. The desktop monitor recorded zero trial windows or activations. The renderer passed **341** GPU tests with the timeline disabled. [Scope and verification](results/raid-winemetalgl-command-timeline.json)
+
+### Upload client indices at their native width
+
+The existing client-index path scans the used range, widens the indices into a 32-bit vector, then builds a second vector before uploading it. The trial keeps the range scan and snapshots eligible 16- and 32-bit lists directly into a transient Metal buffer. It allocates that storage after draw preparation, using the serial of the command buffer that will read it. Client addresses can be unaligned. The renderer's destination offset meets Metal's native index alignment.
+
+Topology conversion, provoking-vertex rotation, primitive restart handling, point polygons and restricted base offsets retain a CPU rewrite path. A valid maximum index such as `0xffff` stays on the wider path so Metal's implicit restart cannot consume it. Draws that may invoke debug callbacks keep the earlier snapshot path.
+
+Apply `patches/winemetalgl-direct-client-index-upload-trial.patch` to the renderer. Set `WINEMETALGL_DIRECT_CLIENT_INDICES=1` for the trial. Both modes passed **342** GPU tests. The focused case checks unaligned 16- and 32-bit indices, reusing caller storage between draws, and a drawable vertex at `0xffff` with restart disabled.
+
+In a separate in-world diagnostic, `WINEMETALGL_DIRECT_CLIENT_INDICES_LOG=1` recorded **3,149,824** direct uploads between counter rows and **2.54 GB** copied. Every upload in that interval used 16-bit indices. The 20-second diagnostic GPU window was verified separately.
+
+| Client index upload | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Expand and upload | 124.07 | 13.43 ms |
+| Snapshot at native width | 131.83 | 12.96 ms |
+
+Throughput increased **6.30 and 9.23 FPS** across the two pairs. P99 rose **0.02 ms** in the first and fell **0.97 ms** in the reverse pair. Use the native-width option for follow-up comparisons. The four warmed 60-second launches ran without copy logging and verified the camera, spell effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid A/B and copy counts](results/raid-winemetalgl-direct-client-index-upload-ab.json)
