@@ -107,5 +107,10 @@
       "function": "wmgl::TransientAllocator::allocate",
       "stack_samples": 15
     }
-  ]
+  ],
+  "process_isolation": {
+    "other_trial_instances_detected": 5,
+    "capture_kind": "profile",
+    "cause": "The cleanup script for the i386 forward-branch trial checked the standard trial executable name."
+  }
 }

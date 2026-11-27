@@ -853,6 +853,8 @@ A separate diagnostic packed both ways before checking each complete 6,384-byte 
 
 ### Follow forward i386 branches within a guest page
 
+The original timing series had other trial instances running, rising from one to four across its launches.
+
 The trial translates through the fall-through of up to four forward conditional branches when both destinations lie in the entry guest page. It uses the existing side exits for taken branches. The trial runs with the translation cache off. A separate compile witness found **26,848** distinct translated entry sites with side exits, including **4,481** with four.
 
 Apply `patches/aarchx-m32-forward-superblock-trial.patch` to the AArchX source and set `OCERZ_M32_FORWARD_SUPERBLOCK=1` to select the trial. Run the comparison with that variable unset in control. Set `OCERZ_TCACHE=off` in both arms. Enabling `OCERZ_M32_FORWARD_SUPERBLOCK_LOG` in a separate launch records the emitted sites. Run `test_jit32` in separate processes with `OCERZ_TEST_JIT32_FORWARD_BRANCH` set to each number from 0 through 5. The cases cover taken and fall-through paths, integer and floating-point flags, a guest-page boundary, and a backward branch. Both arms passed all six interpreter comparisons and all **806** general runtime checks.
@@ -866,11 +868,15 @@ The first pair lost throughput and the second gained 1 FPS. The median throughpu
 
 ### Fixed-function uniform invalidations and changed fields
 
+This diagnostic ran with five other trial instances present.
+
 A separate headless run compared old and new packed tails in 16-byte units and recorded the last OpenGL fixed-state mutation before each repack. Of **2,097,152** in-world repacks between checkpoints, **1,841,620 (87.82%)** left the tail byte-identical. The last tracked call was `setLightModel` for **1,893,492** repacks and `MatrixMode` for **203,660**. Every interval between repacks included more than one version increment, so the recorded call identifies the latest mutation in each interval.
 
 Only five aligned slots changed in the capture. They contained the modelview normal scale, alpha-test parameters, two fog slots, and line parameters. The separately captured throughput comparisons omit these diagnostics. [Invalidation and uniform slot counts](results/raid-winemetalgl-headless-uniform-invalidation-profile.json)
 
 ### Invalidate packed uniform data only when its fields change
+
+The original timing series ran with five other trial instances present.
 
 The trial updates shader selectors independently of the packed block. Its grouped setters invalidate the packed block when the stored field changes at the byte level. Paths that update materials, individual lights, point parameters, or saved attributes still use their existing invalidation. Apply `patches/winemetalgl-fixed-uniform-invalidation-trial.patch` and set `WINEMETALGL_FIXED_UNIFORM_INVALIDATION=1`. The headless comparison used direct fixed-function writes, direct ARB uniform reads, and liveness depth 3 in both arms.
 
@@ -885,6 +891,8 @@ In separate instrumented launches, a reference writer independently rebuilt and 
 
 ### Reuse the packed block generation when matrix bytes match
 
+The original timing series ran with five other trial instances present.
+
 The trial advances the packed block generation after matrix-only invalidation when a packed matrix changes. It uses the matrix and texture comparisons already performed by the packer. Apply `patches/winemetalgl-fixed-retain-matrix-generation-trial.patch` after the direct uniform writer and set `WINEMETALGL_FIXED_KEEP_MATRIX_GENERATION=1`. Both arms enabled precise uniform invalidation.
 
 A diagnostic rebuilt and compared the 6,384-byte block at every binding. Of **908,838** matrix-only invalidations between in-world checkpoints, **275,222 (30.28%)** had byte-identical output and kept the existing generation. The diagnostic compared at least **3,276,800** complete blocks and found byte parity throughout.
@@ -898,12 +906,30 @@ Both median differences were within **0.2%**, and the individual pairs moved in 
 
 ### Native render stacks after precise uniform invalidation
 
+This diagnostic ran with five other trial instances present.
+
 A live 18-second main-thread sample with direct packing and precise invalidation collected **7,842** stacks. The fixed-function block appeared in **26** stacks and uniform binding in **161**. The indexed draw path appeared in **1,682** stacks, including **1,253** in `DrawState::issue`. Direct children of the latter included **271** in state binding, **186** in draw preparation, and **186** in the Metal indexed draw call.
 
 Of the sampled leaves, **4,774** resolved to an unknown binary and **1,044** to WineMetalGL. The unknown bucket records symbol resolution. The instrumented launch kept consecutive GPU completions, with zero visible windows or activations. The throughput comparisons use uninstrumented launches. [Native stack counts](results/raid-winemetalgl-headless-precise-main-thread-stacks.json)
 
 ### Translated CPU hotspots after reducing uniform work
 
+This diagnostic ran with five other trial instances present.
+
 A separate CPU-time-weighted capture covered seven warmed eight-second periods on the hottest guest thread with precise uniform invalidation enabled. Already translated instructions accounted for **63.2–65.9%** of sampled CPU time across those periods. Guest `MOV` accounted for **18.59%** of all sampled CPU time, conditional branches for **9.70%**, and `MOVSS` for **3.87%**.
 
 Of the sampled ARM64 instruction weight attributed to guest `MOV`, **52.5%** was on `ADD` and **23.9%** on `SUB`. The largest operand shapes added or subtracted an immediate from `w26` into `w15`. With full pinning, `w26` holds the guest frame pointer EBP. The profiles use the same headless scene, camera, renderer options, cast schedule, and verified GPU completions. [CPU-time and ARM64 instruction distributions](results/raid-aarchx-headless-precise-guest-profile.json)
+
+### Verify process isolation across launches
+
+The forward-branch runner launched a dedicated test bundle and its cleanup checked the standard bundle's executable path. The smoke instance and four timed instances stayed alive. Observation after the later profiles found all five running. Their aggregate CPU reading at that check was **263% of one core**. The number of other instances rose across the forward-branch trial and stayed at five through the precise-invalidation and matrix-generation trials. Those timing records carry a process-isolation note. The byte comparisons verified the packed data produced by each instrumented launch.
+
+The runner now checks the executable path of the launched bundle. The isolated run uses the process checker before the first launch and after every launch to confirm that the entire isolated client directory is free of running trial instances. The checker scopes its process scan to that directory.
+
+```sh
+python3 benchmarks/check-isolated-raid-processes.py ISOLATED_CLIENT_DIR
+```
+
+#### Isolated recheck of precise uniform invalidation
+
+Four warmed 60-second launches reused the same precise-invalidation build and checked process isolation through the final cleanup. The control median was **115.32 FPS** at **13.00 ms p99** and precise invalidation reached **119.26 FPS** at **13.05 ms p99**. Throughput rose **3.42%** and improved in both pairs. Median p99 rose **0.05 ms**. GPU sequences stayed consecutive, the fixed camera and overlapping spell effects were visible, and the server verified the full cast schedule. [Isolated throughput recheck](results/raid-winemetalgl-headless-precise-uniform-invalidation-isolated-recheck.json)

@@ -137,5 +137,11 @@
       "tests": 337,
       "failed_checks": 0
     }
+  },
+  "process_isolation": {
+    "other_trial_instances_detected": 5,
+    "capture_kind": "timing",
+    "cause": "The cleanup script for the i386 forward-branch trial checked the standard trial executable name.",
+    "isolated_timing_verified": false
   }
 }

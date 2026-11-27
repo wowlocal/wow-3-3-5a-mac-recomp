@@ -231,5 +231,10 @@
     "total_cpu_usec": 3689103,
     "share_of_all_sampled_cpu": 0.0681665034461095,
     "full_pinning_guest_register_for_w26": "EBP"
+  },
+  "process_isolation": {
+    "other_trial_instances_detected": 5,
+    "capture_kind": "profile",
+    "cause": "The cleanup script for the i386 forward-branch trial checked the standard trial executable name."
   }
 }
