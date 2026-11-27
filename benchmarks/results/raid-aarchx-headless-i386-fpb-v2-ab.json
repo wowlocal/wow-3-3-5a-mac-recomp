@@ -1,0 +1,287 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "i386_forward_superblocks": false,
+  "explicit_headless_interactive_qos": false,
+  "i386_mov_base_uxtw": true,
+  "vertex_shader_uniform_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "i386_fp_batch_v2": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7388,
+      "first_sequence": 4827,
+      "last_sequence": 12214,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993715791,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 123.11666666666666,
+      "p99_gpu_completion_gap_ns": 10519375,
+      "min_draws": 672,
+      "max_draws": 960
+    },
+    {
+      "launch": 2,
+      "i386_fp_batch_v2": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7531,
+      "first_sequence": 4841,
+      "last_sequence": 12371,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998542666,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 125.5,
+      "p99_gpu_completion_gap_ns": 10345791,
+      "min_draws": 685,
+      "max_draws": 939
+    },
+    {
+      "launch": 3,
+      "i386_fp_batch_v2": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7471,
+      "first_sequence": 4825,
+      "last_sequence": 12295,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999017500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 124.5,
+      "p99_gpu_completion_gap_ns": 10593916,
+      "min_draws": 703,
+      "max_draws": 948
+    },
+    {
+      "launch": 4,
+      "i386_fp_batch_v2": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7277,
+      "first_sequence": 4647,
+      "last_sequence": 11923,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993952416,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 121.26666666666667,
+      "p99_gpu_completion_gap_ns": 13137000,
+      "min_draws": 699,
+      "max_draws": 969
+    }
+  ],
+  "medians": {
+    "0": {
+      "average_completed_fps": 122.19166666666666,
+      "p99_gpu_completion_gap_ns": 11828187.5
+    },
+    "1": {
+      "average_completed_fps": 125.0,
+      "p99_gpu_completion_gap_ns": 10469853.5
+    }
+  },
+  "process_isolation": {
+    "other_trial_instances_detected": 0,
+    "isolated_timing_verified": true,
+    "guard_checkpoints": "Before the first launch and after each of the four launches"
+  },
+  "renderer_sha256": "a9b7eb857d7acbd64b4b2b25f7391b79aad11cdda7a203f44b0109960547840d",
+  "visual_readback_checked_per_launch": true,
+  "checks": {
+    "control": {
+      "interpreter_comparisons": [
+        {
+          "case": 0,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": null
+        },
+        {
+          "case": 1,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": null
+        },
+        {
+          "case": 2,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": null
+        },
+        {
+          "case": 3,
+          "description": "SSE batch with a wrapped memory load",
+          "emitted_batch_range": null
+        },
+        {
+          "case": 4,
+          "description": "SSE batch ends before a store and compare",
+          "emitted_batch_range": null
+        },
+        {
+          "case": 5,
+          "description": "SSE batch with a wrapped NaN load",
+          "emitted_batch_range": null
+        }
+      ],
+      "general_checks": 806,
+      "general_failures": 0
+    },
+    "v2": {
+      "interpreter_comparisons": [
+        {
+          "case": 0,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 1,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 2,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 3,
+          "description": "SSE batch with a wrapped memory load",
+          "emitted_batch_range": [
+            1,
+            7
+          ]
+        },
+        {
+          "case": 4,
+          "description": "SSE batch ends before a store and compare",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 5,
+          "description": "SSE batch with a wrapped NaN load",
+          "emitted_batch_range": [
+            1,
+            7
+          ]
+        }
+      ],
+      "general_checks": 806,
+      "general_failures": 0
+    },
+    "forced-replay": {
+      "interpreter_comparisons": [
+        {
+          "case": 0,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 1,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 2,
+          "description": "SSE arithmetic and delayed check",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 3,
+          "description": "SSE batch with a wrapped memory load",
+          "emitted_batch_range": [
+            1,
+            7
+          ]
+        },
+        {
+          "case": 4,
+          "description": "SSE batch ends before a store and compare",
+          "emitted_batch_range": [
+            0,
+            7
+          ]
+        },
+        {
+          "case": 5,
+          "description": "SSE batch with a wrapped NaN load",
+          "emitted_batch_range": [
+            1,
+            7
+          ]
+        }
+      ]
+    }
+  },
+  "separate_compile_witness": {
+    "v2_without_32_bit_memory_reads": {
+      "distinct_emitted_batch_ranges": 483,
+      "distinct_emitting_blocks": 387,
+      "median_static_instructions_in_batch": 3,
+      "longest_static_batch": 19,
+      "static_batches_with_at_least_16_instructions": 5
+    },
+    "v2_with_32_bit_memory_reads": {
+      "distinct_emitted_batch_ranges": 995,
+      "distinct_emitting_blocks": 740,
+      "median_static_instructions_in_batch": 6,
+      "longest_static_batch": 64,
+      "static_batches_with_at_least_16_instructions": 87
+    }
+  }
+}

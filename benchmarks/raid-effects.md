@@ -987,3 +987,16 @@ The ten longest completion gaps had a median duration of **11.96 ms** and **2.53
 Seven warmed eight-second periods attributed **60.7–63.4%** of CPU time to translated instructions. The full histogram covered **9,125** sampled guest PCs. The hottest single address accounted for **0.30%** of all sampled CPU time. The hottest four aligned 4 KiB regions accounted for **10.43%**, while the hottest four aligned 64 KiB regions accounted for **22.88%**. The 1 MiB range beginning at guest address `0x800000` accounted for **27.16%**. These groups describe address ranges, each of which can contain multiple functions.
 
 Apply `patches/aarchx-m32-full-guest-pc-profile-trial.patch` after the guest instruction profile patch and enable `OCERZ_GUESTPROF_FULL_GUEST_PC=1` and `OCERZ_GUESTPROF_INSTRUCTIONS=1` for a separate diagnostic. The recorder emits weighted guest addresses and leaves the uninstrumented throughput measurements separate. The live capture verified the full cast schedule, consecutive GPU completions, cleanup, and zero window activations. [Translated address coverage](results/raid-aarchx-headless-precise-uxtw-guest-regions.json)
+
+### Use the later SSE batching pass for inline i386 reads and registers
+
+The i386 trial selects the later FP batching pass for inline legacy SSE arithmetic and moves. An eligible group can read through a wrapped 32-bit address. Groups end at stores and conditional branches. When the pass finds no batch, the translator uses its earlier pass. Apply `patches/aarchx-m32-fpb-v2-trial.patch` after the folded-load patch and enable `OCERZ_M32_FPB_V2=1` with the translation cache off.
+
+Six interpreter cases passed with the existing pass, the trial, and forced replay. They cover finite arithmetic, signed zero, infinities, NaN payloads, wrapped finite and NaN memory reads, and a store followed by a compare. The wrapped reads were emitted inside the trial batch. Both normal settings passed 806 general checks. For the focused cases, run `test_jit32` in separate processes with `OCERZ_TEST_JIT32_FPB` set to each number from 0 to 5. In a separate diagnostic, `OCERZ_FPB_DBGPRINT=1` logged **995** distinct emitted groups with 32-bit reads admitted. A probe preceding the read support recorded **483** groups.
+
+| i386 FP batching | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Earlier pass | 122.19 | 11.83 ms |
+| Later pass | 125.00 | 10.47 ms |
+
+Throughput rose **2.30%** and median p99 fell **1.36 ms**. Both pairs improved on both metrics. All four isolated 60-second launches used precise uniform invalidation and folded load addresses. The completion sequences were consecutive, and the launches verified the camera, full cast schedule, overlapping effects, zero visible windows or activations, and cleanup. [Full-raid A/B and checks](results/raid-aarchx-headless-i386-fpb-v2-ab.json)
