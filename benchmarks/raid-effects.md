@@ -1224,3 +1224,20 @@ The first pair gained **6.07 FPS** and shortened p99 by **0.46 ms**. The reverse
 With these cache settings, each mode passed two full suites of **340** GPU tests and four focused fragment-switch checks. One full run with default caches reported a pixel mismatch on a fragment switch. The repeated full suite with default caches passed. [Live A/B and validation](results/raid-winemetalgl-headless-arb-vertex-spirv-opt-ab.json)
 
 Two separate 20-second Metal System Traces matched all **2,355** control completions and **2,293** optimized completions within **42 ns**. Median client vertex activity was **0.612 ms** in control and **0.622 ms** with optimization. Its p99 was **5.27 and 5.82 ms**. Median total client GPU activity was **1.90 and 2.10 ms**. Both traces kept the same camera, effects and cast timings. The shorter intermediate modules did not produce shorter measured GPU stage activity in these captures. [Hardware stage comparison](results/raid-winemetalgl-headless-arb-spirv-opt-metal-trace.json)
+
+### Measure matching geometry and vertex inputs
+
+Two separate 30-second diagnostic launches matched the reuse counters to **3,487** and **3,431** verified GPU outputs. The covered direct ARB calls accounted for about **91.2%** of all recorded draws. The probe examines native indexed commands, CPU-rewritten indices and sequential vertex ranges. It compares buffer addresses and formats, then adds versions, then the ARB vertex stage's parameters and fixed state, then the complete linked-program and pipeline signature.
+
+| Matching submitted vertex references | First capture | Second capture |
+| --- | ---: | ---: |
+| Geometry and buffer versions within the frame | 42.02% | 41.31% |
+| Vertex inputs within the frame | 0.21% | 0.15% |
+| Complete linked state within the frame | 0.00% | 0.00% |
+| Geometry and buffer versions from the previous frame | 87.72% | 87.63% |
+| Vertex inputs from the previous frame | 9.49% | 9.25% |
+| Complete linked state from the previous frame | 9.49% | 9.25% |
+
+These are signature matches weighted by submitted vertex references. The measurement covers the captured draw paths, and buffer-wide versions can miss an unchanged range after an unrelated write. The measured vertex-state match rate limits the opportunity for a cache of complete transformed vertices. Both runs verified the camera, overlapping effects, cast schedule and consecutive GPU completions with no visible trial windows or activations. [Matched geometry and vertex inputs](results/raid-winemetalgl-headless-vertex-input-reuse.json)
+
+Apply `patches/winemetalgl-vertex-reuse-profile-trial.patch` with the contiguous segment trial. Set `OCERZ_WMGL_VERTEX_REUSE_LOG` to `vertex-reuse.ns` and keep the usual GPU completion log. Run `python3 benchmarks/summarize-raid-vertex-reuse.py CAPTURE_DIR` after the monitor and client finish. A focused four-frame test verifies repeated geometry, a vertex parameter change and a fragment-only switch. The renderer passed **340** GPU tests with the probe off.

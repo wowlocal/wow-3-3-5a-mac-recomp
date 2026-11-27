@@ -1,0 +1,359 @@
+diff --git a/src/core/draw.h b/src/core/draw.h
+--- a/src/core/draw.h
++++ b/src/core/draw.h
+@@ -314,6 +314,10 @@
+     void samplerBinding(LinkedProgram& program, size_t index, __strong id<MTLTexture>& view,
+                         __strong id<MTLSamplerState>& sampler, Texture** used = nullptr);
+     void markSampled(Texture& texture);
++    void profileVertexReuse(LinkedProgram& program, const PipelineKey& key, id<MTLBuffer> indices,
++                            NSUInteger indexOffset, MTLIndexType indexType, MTLPrimitiveType primitive,
++                            GLsizei count, GLsizei instances, GLint baseVertex, GLint rebase,
++                            const uint32_t* rewritten = nullptr);
+     // How a draw's vertex inputs are fed (planVertexInputs): read directly
+     // from buffer objects through shared layouts, converted on the CPU into
+     // one interleaved buffer per divisor, or taken from current values. The
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -5,6 +5,8 @@
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
++#include <functional>
++#include <string_view>
+ #include <mutex>
+ #include <string>
+ #include <unordered_map>
+@@ -2228,9 +2230,124 @@
+ }
+ }  // namespace
+
++void DrawState::profileVertexReuse(LinkedProgram& program, const PipelineKey& key, id<MTLBuffer> indices,
++                                  NSUInteger indexOffset, MTLIndexType indexType, MTLPrimitiveType primitive,
++                                  GLsizei count, GLsizei instances, GLint baseVertex, GLint rebase,
++                                  const uint32_t* rewritten) {
++    const uint64_t references = uint64_t{static_cast<uint32_t>(count)} * std::max(1, instances);
++    if (!references || !compat::arbVertexProgramActive(ctx_)) return;
++    auto& stream = ctx_.stream();
++    const auto& vao = *ctx_.state.vertexArray;
++    const Buffer* elements = vao.elementBuffer.get();
++    if (indices && (!elements || elements->mtl != indices)) {
++        stream.noteVertexReuse(references, nullptr, 0);
++        return;
++    }
++
++    auto mix = [](uint64_t& digest, uint64_t field) {
++        field ^= field >> 30;
++        field *= 0xbf58476d1ce4e5b9ull;
++        field ^= field >> 27;
++        field *= 0x94d049bb133111ebull;
++        digest = (digest ^ (field ^ (field >> 31))) * 0x100000001b3ull;
++    };
++    auto bytes = [](const void* data, size_t size) -> uint64_t {
++        return std::hash<std::string_view>{}({static_cast<const char*>(data), size});
++    };
++    uint64_t address = 0xcbf29ce484222325ull, version = address, constants = address;
++    bool tracked = true;
++    const auto buffer = [&](const Buffer& source) {
++        mix(address, source.name);
++        mix(address, reinterpret_cast<uintptr_t>((__bridge void*)source.mtl));
++        mix(address, source.size);
++        mix(version, source.version);
++        mix(version, source.lastWriteSerial);
++        tracked = tracked && !source.mapped && !source.pinned;
++    };
++    mix(address, indices ? 1 : rewritten ? 2 : 3);
++    if (indices) buffer(*elements);
++    if (rewritten) mix(address, bytes(rewritten, static_cast<size_t>(count) * sizeof(*rewritten)));
++    for (uint64_t field : {uint64_t(indexOffset), uint64_t(indexType), uint64_t(primitive), uint64_t(count),
++                           uint64_t(instances), uint64_t(baseVertex), uint64_t(baseInstance_), uint64_t(rebase)})
++        mix(address, field);
++
++    const auto& vertex = program.stage(Stage::Vertex);
++    for (const auto& input : vertex.vertexInputs) {
++        if (input.location < 0 || input.location >= VertexArray::kAttribSlots) continue;
++        const auto& attrib = attribFor(vao, input.source());
++        mix(address, static_cast<uint32_t>(input.location));
++        mix(address, static_cast<uint32_t>(input.source()));
++        mix(address, static_cast<uint8_t>(input.kind));
++        mix(address, static_cast<uint32_t>(input.part));
++        mix(address, static_cast<uint32_t>(input.byteOffset));
++        mix(address, attrib.enabled);
++        if (!attrib.enabled) {
++            const auto& current = ctx_.state.genericAttribs[static_cast<size_t>(input.source())];
++            mix(constants, input.kind == 'd' ? bytes(current.d, sizeof(current.d)) : bytes(&current.value, 16));
++            continue;
++        }
++        for (uint64_t field : {uint64_t(attrib.offset), uint64_t(attrib.effectiveStride()), uint64_t(attrib.type),
++                               uint64_t(attrib.size), uint64_t(attrib.divisor), uint64_t(attrib.normalized),
++                               uint64_t(attrib.integer), uint64_t(attrib.isDouble)})
++            mix(address, field);
++        if (attrib.buffer) buffer(*attrib.buffer);
++        else tracked = false;
++    }
++    uint64_t keys[4] = {address, version, 0, 0};
++    mix(keys[1], address);
++    int keyCount = tracked ? 2 : 1;
++    if (tracked) {
++        bool complete = true;
++        keys[2] = keys[1];
++        mix(keys[2], constants);
++        mix(keys[2], bytes(encoderState_.driver, sizeof(encoderState_.driver)));
++        const auto& obj = compat::arbBound(ctx_, 0);
++        const auto& parsed = *obj.parsed;
++        mix(keys[2], obj.serial);
++        if (parsed.envCount)
++            mix(keys[2], bytes(ctx_.arb.env[0].data(), static_cast<size_t>(parsed.envCount) * sizeof(compat::Vec4)));
++        if (parsed.localCount)
++            mix(keys[2], bytes(obj.local.data(), static_cast<size_t>(parsed.localCount) * sizeof(compat::Vec4)));
++        for (int i = 0; i < FixedState::kProgramMatrices; ++i) {
++            if (!((parsed.programMatrices | parsed.programMatrixInverses) & (1u << i))) continue;
++            const auto& matrix = ctx_.state.fixed.programMatrix[static_cast<size_t>(i)].back();
++            mix(keys[2], bytes(&matrix, sizeof(matrix)));
++        }
++        for (uint64_t field : {uint64_t(key.geometryPass), uint64_t(key.positionOnly),
++                               uint64_t(key.borders[0]), uint64_t(key.cull)})
++            mix(keys[2], field);
++        uint64_t linkedUniforms = 0;
++        if (vertex.usesDefaultUniforms) {
++            if (const Program* owner = stageProgram(program, static_cast<int>(Stage::Vertex))) {
++                if (!owner->uniformData.empty()) linkedUniforms = bytes(owner->uniformData.data(), owner->uniformData.size());
++            } else {
++                complete = false;
++            }
++        }
++        for (size_t b = 0; b < program.link.blocks.size(); ++b) {
++            if (program.link.blocks[b].stageSlot[static_cast<int>(Stage::Vertex)] < 0) continue;
++            if (static_cast<int>(b) == program.link.fixedFunctionBlock) {
++                uint64_t generation = 0;
++                const auto& data = compat::fixedFunctionBlock(ctx_, generation);
++                if (!data.empty()) mix(keys[2], bytes(data.data(), data.size()));
++            } else {
++                complete = false;
++            }
++        }
++        if (complete) {
++            keys[3] = keys[2];
++            mix(keys[3], linkedUniforms);
++            mix(keys[3], bytes(&key, sizeof(key)));
++            keyCount = 4;
++        }
++    }
++    stream.noteVertexReuse(references, keys, keyCount);
++}
++
+ bool DrawState::issue(GLenum mode, GLint first, GLsizei count, GLsizei instances, const uint32_t* indexData,
+                       id<MTLBuffer> indexBuffer, NSUInteger indexOffset, MTLIndexType indexType, GLint baseVertex,
+                       GLint minVertex, GLsizei vertexSpan, bool listed, const IndirectSource* indirect) {
++    static const bool profileReuse = CommandStream::vertexReuseProfileEnabled();
+     queriesCountPrimitives(ctx_, mode, count, instances);
+     stats::count(&stats::Frame::draws);
+     LinkedProgram* current = executable();
+@@ -2369,14 +2486,21 @@
+         [encoder drawIndexedPrimitives:native indexCount:out.size() indexType:MTLIndexTypeUInt32
+                            indexBuffer:alloc.buffer indexBufferOffset:alloc.offset instanceCount:std::max(1, instances)
+                             baseVertex:indexData && !offsetIndices ? baseVertex - rebase : 0 baseInstance:baseInstance_];
++        if (profileReuse)
++            profileVertexReuse(program, key, nil, 0, MTLIndexTypeUInt32, native, static_cast<GLsizei>(out.size()),
++                               instances, indexData && !offsetIndices ? baseVertex : rebase, rebase, out.data());
+     } else if (indexBuffer) {
+         [encoder drawIndexedPrimitives:native indexCount:static_cast<NSUInteger>(count) indexType:indexType
+                            indexBuffer:indexBuffer indexBufferOffset:indexOffset instanceCount:std::max(1, instances)
+                             baseVertex:baseVertex - rebase baseInstance:baseInstance_];
++        if (profileReuse)
++            profileVertexReuse(program, key, indexBuffer, indexOffset, indexType, native, count, instances, baseVertex, rebase);
+     } else {
+         [encoder drawPrimitives:native vertexStart:static_cast<NSUInteger>(first - rebase)
+                     vertexCount:static_cast<NSUInteger>(count) instanceCount:std::max(1, instances)
+                    baseInstance:baseInstance_];
++        if (profileReuse)
++            profileVertexReuse(program, key, nil, static_cast<NSUInteger>(first), indexType, native, count, instances, 0, rebase);
+     }
+     // Count direct triangle lists. Other topologies and GPU-provided indirect
+     // counts continue to use the normal draw-budget heuristic.
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -12,6 +12,7 @@
+ #include <array>
+ #include <cstdint>
+ #include <functional>
++#include <memory>
+ #include <string>
+ #include <vector>
+
+@@ -59,7 +60,7 @@
+
+ class CommandStream {
+ public:
+-    explicit CommandStream(Queue& queue) : queue_(queue) {}
++    explicit CommandStream(Queue& queue);
+     ~CommandStream();
+
+     id<MTLCommandBuffer> commandBuffer();
+@@ -248,6 +249,10 @@
+         trianglesSinceCommit_ += triangles;
+     }
+     // Draws recorded in the command buffer being recorded.
++    static bool vertexReuseProfileEnabled();
++    void noteVertexReuse(uint64_t references, const uint64_t* keys, int keyCount);
++    void finishVertexReuseFrame(uint64_t stream, uint64_t sequence, uint64_t draws);
++
+     uint32_t drawsSinceCommit() const { return drawsSinceCommit_; }
+     uint64_t trianglesSinceCommit() const { return trianglesSinceCommit_; }
+     // The CPU waited this frame for indirect commands the GPU wrote: such a
+@@ -314,6 +319,8 @@
+     RenderTargetDesc pendingTarget_;
+     PendingClear pending_;
+     bool drawsInPass_ = false;
++    struct VertexReuse;
++    std::unique_ptr<VertexReuse> vertexReuse_;
+     uint32_t drawsSinceCommit_ = 0;
+     uint64_t trianglesSinceCommit_ = 0;
+     uint64_t submissionTraceStream_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -16,6 +16,7 @@
+
+ #include "core/metal/device.h"
+ #include "core/util/log.h"
++#include <unordered_set>
+
+ namespace wmgl {
+
+@@ -64,6 +65,66 @@
+         if (t.texture) return true;
+     return depth.texture || stencil.texture;
+ }
++
++struct CommandStream::VertexReuse {
++    std::array<std::unordered_set<uint64_t>, 4> current, previous;
++    std::array<uint64_t, 4> sameFrame{}, previousFrame{};
++    uint64_t draws = 0, references = 0;
++    uint64_t trackedDraws = 0, trackedReferences = 0, completeReferences = 0;
++};
++
++static FILE* vertexReuseLog() {
++    static FILE* file = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_VERTEX_REUSE_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* result = std::fopen(path, "wx");
++        if (!result) std::perror("cannot create WineMetalGL vertex reuse log");
++        return result;
++    }();
++    return file;
++}
++
++bool CommandStream::vertexReuseProfileEnabled() {
++    return vertexReuseLog() != nullptr;
++}
++
++void CommandStream::noteVertexReuse(uint64_t references, const uint64_t* keys, int keyCount) {
++    if (!vertexReuse_) vertexReuse_ = std::make_unique<VertexReuse>();
++    VertexReuse& frame = *vertexReuse_;
++    ++frame.draws;
++    frame.references += references;
++    if (keyCount >= 2) {
++        ++frame.trackedDraws;
++        frame.trackedReferences += references;
++    }
++    if (keyCount == 4) frame.completeReferences += references;
++    for (int i = 0; i < keyCount; ++i) {
++        if (!frame.current[i].insert(keys[i]).second) frame.sameFrame[i] += references;
++        if (frame.previous[i].count(keys[i])) frame.previousFrame[i] += references;
++    }
++}
++
++void CommandStream::finishVertexReuseFrame(uint64_t stream, uint64_t sequence, uint64_t draws) {
++    if (!vertexReuse_) return;
++    VertexReuse& frame = *vertexReuse_;
++    std::fprintf(vertexReuseLog(), "%d %llu %llu %llu %llu %llu %llu %llu %llu",
++                 getpid(), (unsigned long long)stream, (unsigned long long)sequence,
++                 (unsigned long long)draws, (unsigned long long)frame.draws,
++                 (unsigned long long)frame.references, (unsigned long long)frame.trackedDraws,
++                 (unsigned long long)frame.trackedReferences, (unsigned long long)frame.completeReferences);
++    for (uint64_t count : frame.sameFrame) std::fprintf(vertexReuseLog(), " %llu", (unsigned long long)count);
++    for (uint64_t count : frame.previousFrame) std::fprintf(vertexReuseLog(), " %llu", (unsigned long long)count);
++    std::fputc('\n', vertexReuseLog());
++    for (int i = 0; i < 4; ++i) {
++        frame.previous[i].swap(frame.current[i]);
++        frame.current[i].clear();
++    }
++    frame.sameFrame = {};
++    frame.previousFrame = {};
++    frame.draws = frame.references = frame.trackedDraws = frame.trackedReferences = frame.completeReferences = 0;
++}
++
++CommandStream::CommandStream(Queue& queue) : queue_(queue) {}
+
+ CommandStream::~CommandStream() { flush(); }
+
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -618,6 +618,7 @@
+                 offscreenRecordingStream_ = newCompletionStream();
+             const uint64_t recordingStream = offscreenRecordingStream_;
+             const uint64_t sequence = ++offscreenSequence_;
++            stream.finishVertexReuseFrame(recordingStream, sequence, draws);
+             const uint64_t dimensions = (uint64_t(width_) << 32) | uint64_t(height_);
+             // The caller switches buffers at its render boundary. The GPU
+             // callback runs after that output's work on this command queue.
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -472,6 +472,53 @@
+     CHECK_GL();
+ }
+
++TEST(arb_vertex_reuse_probe_tracks_uniform_changes) {
++    gpu::Fixture fixture(64, 64, false);
++    CHECK(fixture.ok);
++    if (!fixture.ok) return;
++    loadArb();
++    identity();
++    load(GL_VERTEX_PROGRAM_ARB,
++         "!!ARBvp1.0\n"
++         "MOV result.position, vertex.position;\n"
++         "MOV result.color, program.env[0];\n"
++         "END\n");
++    GLuint buffers[2] = {};
++    glGenBuffers(2, buffers);
++    const GLfloat vertices[] = {-1, -1, 1, -1, 0, 1};
++    const uint16_t indices[] = {0, 1, 2};
++    glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
++    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
++    glVertexPointer(2, GL_FLOAT, 0, nullptr);
++    glEnableClientState(GL_VERTEX_ARRAY);
++    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
++    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
++    glEnable(GL_VERTEX_PROGRAM_ARB);
++    clear();
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 1, 0, 0, 1);
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
++    CHECK(pixel(32, 32, kRed));
++    CHECK(wmgl_surface_swap(fixture.surface));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 0, 0, 0, 1, 1);
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
++    CHECK(pixel(32, 32, kBlue));
++    CHECK(wmgl_surface_swap(fixture.surface));
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
++    CHECK(pixel(32, 32, kBlue));
++    CHECK(wmgl_surface_swap(fixture.surface));
++    load(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n");
++    glEnable(GL_FRAGMENT_PROGRAM_ARB);
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
++    CHECK(pixel(32, 32, kBlue));
++    CHECK(wmgl_surface_swap(fixture.surface));
++    glDisable(GL_FRAGMENT_PROGRAM_ARB);
++    glDisable(GL_VERTEX_PROGRAM_ARB);
++    glDisableClientState(GL_VERTEX_ARRAY);
++    glDeleteBuffers(2, buffers);
++    CHECK_GL();
++}
++
+ ARB_TEST(arb_program_errors_and_queries) {
+     const char bad[] = "!!ARBfp1.0\nMOV result.color, nowhere;\nEND\n";
+     GLuint id = 0;

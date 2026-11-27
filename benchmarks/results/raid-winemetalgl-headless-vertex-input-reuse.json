@@ -1,0 +1,137 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Two instrumented live headless raid windows with vertex-input reuse counters",
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "verified_cast_timing_rows": 26,
+  "continuing_draw_threshold": 512,
+  "triangle_budget": 0,
+  "vsync": false,
+  "other_trial_instances_detected": 0,
+  "renderer_sha256": "6697e8af5e5c7f5bd6809b8ed137b1c195030aed85fd7b93bd97f75151675469",
+  "gpu_tests_with_probe_off": 340,
+  "focused_four_frame_probe": {
+    "same_frame": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "previous_uniform_change": [
+      3,
+      3,
+      0,
+      0
+    ],
+    "previous_identical": [
+      3,
+      3,
+      3,
+      3
+    ],
+    "previous_fragment_only_switch": [
+      3,
+      3,
+      3,
+      0
+    ]
+  },
+  "signature_order": [
+    "geometry_addresses",
+    "tracked_buffer_versions",
+    "vertex_stage_inputs",
+    "complete_linked_state"
+  ],
+  "matches_weighted_by_submitted_vertex_references": true,
+  "captures": [
+    {
+      "capture": 1,
+      "visual_readback_verified": true,
+      "viewport": [
+        1365,
+        768
+      ],
+      "measurement_duration_ns": 30000000000,
+      "verified_output_count": 3487,
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "totals": {
+        "draws": 2834598,
+        "direct_arb_draws": 2585335,
+        "direct_arb_references": 1053732819,
+        "tracked_draws": 2585335,
+        "tracked_references": 1053732819,
+        "complete_references": 1053732819,
+        "same_frame_addresses": 443135154,
+        "same_frame_versions": 442764807,
+        "same_frame_vertex_inputs": 2173581,
+        "same_frame_complete": 0,
+        "previous_frame_addresses": 967060133,
+        "previous_frame_versions": 924297075,
+        "previous_frame_vertex_inputs": 100047408,
+        "previous_frame_complete": 100047408
+      },
+      "median_per_output": {
+        "direct_arb_draws": 739,
+        "direct_arb_references": 301150,
+        "tracked_references": 301150
+      },
+      "fraction_of_eligible_references_matching": {
+        "same_frame_addresses": 0.42053843821675635,
+        "same_frame_versions": 0.42018697625854246,
+        "same_frame_vertex_inputs": 0.002062743952554068,
+        "same_frame_complete": 0.0,
+        "previous_frame_addresses": 0.9177469995835823,
+        "previous_frame_versions": 0.8771645509505575,
+        "previous_frame_vertex_inputs": 0.09494570748488759,
+        "previous_frame_complete": 0.09494570748488759
+      }
+    },
+    {
+      "capture": 2,
+      "visual_readback_verified": true,
+      "viewport": [
+        1365,
+        768
+      ],
+      "measurement_duration_ns": 30000000000,
+      "verified_output_count": 3431,
+      "gpu_missing_sequences": 0,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "totals": {
+        "draws": 2849451,
+        "direct_arb_draws": 2597195,
+        "direct_arb_references": 1052392078,
+        "tracked_draws": 2597195,
+        "tracked_references": 1052392078,
+        "complete_references": 1052392078,
+        "same_frame_addresses": 434900163,
+        "same_frame_versions": 434758527,
+        "same_frame_vertex_inputs": 1562697,
+        "same_frame_complete": 0,
+        "previous_frame_addresses": 966893182,
+        "previous_frame_versions": 922248399,
+        "previous_frame_vertex_inputs": 97368369,
+        "previous_frame_complete": 97368369
+      },
+      "median_per_output": {
+        "direct_arb_draws": 761,
+        "direct_arb_references": 306757,
+        "tracked_references": 306757
+      },
+      "fraction_of_eligible_references_matching": {
+        "same_frame_addresses": 0.41324917974154496,
+        "same_frame_versions": 0.4131145949200123,
+        "same_frame_vertex_inputs": 0.0014849000032096402,
+        "same_frame_complete": 0.0,
+        "previous_frame_addresses": 0.9187575640416403,
+        "previous_frame_versions": 0.8763353680433159,
+        "previous_frame_vertex_inputs": 0.0925210014741293,
+        "previous_frame_complete": 0.0925210014741293
+      }
+    }
+  ]
+}
