@@ -1,0 +1,71 @@
+--- a/include/ocerz/jit.h
++++ b/include/ocerz/jit.h
+@@ -33,6 +33,7 @@
+     uint8_t host_holds[8];
+     uint8_t n_pinned;
+     uint8_t pin_class;
++    uint16_t insn_opcode;
+ } OcerzJitFaultInfo;
+
+ OcerzJit *ocerz_jit_create(struct OcerzVM *vm);
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -28375,8 +28375,10 @@
+     out->block_rip = blk_rip(b);
+     out->host_word = (uint32_t)(pc - blk_base(b));
+     out->insn_index = fault_insn_index(b, pc);
+-    if (out->insn_index >= 0)
++    if (out->insn_index >= 0) {
+         out->insn_rip = blk_insn_rip(b, out->insn_index);
++        out->insn_opcode = (uint16_t)blk_insn_op(b, out->insn_index);
++    }
+     out->n_pinned = b->n_pinned;
+     out->pin_class = b->pin_class;
+     memcpy(out->host_holds, b->host_holds, sizeof(out->host_holds));
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -434,6 +434,7 @@
+ static uint64_t g_gh_key[GP_SLOTS];
+ static uint32_t g_gh_cnt[GP_SLOTS];
+ static uint64_t g_gp_samples, g_gp_jit;
++static uint64_t g_gp_opcode_us[OCERZ_OP_COUNT];
+ static uint64_t g_gf_key[GP_SLOTS];
+ static uint32_t g_gf_cnt[GP_SLOTS];
+
+@@ -608,6 +609,12 @@
+                 ocerz_op_name((unsigned)(f & 0xffff)), kc[f >> 18 & 7], kc[f >> 21 & 7],
+                 kc[f >> 24 & 7], (unsigned)(f >> 32 & 0xff), imm);
+     }
++    for (unsigned op = 1; op < OCERZ_OP_COUNT; ++op) {
++        if (!g_gp_opcode_us[op]) continue;
++        fprintf(stderr, "ocerz: GUESTPROF[%d]   opcode %s cpu_us=%llu\n", (int)getpid(),
++                ocerz_op_name(op), (unsigned long long)g_gp_opcode_us[op]);
++        g_gp_opcode_us[op] = 0;
++    }
+     memset(g_gf_key, 0, sizeof g_gf_key);
+     memset(g_gf_cnt, 0, sizeof g_gf_cnt);
+     memset(g_gp_key, 0, sizeof g_gp_key);
+@@ -629,6 +636,8 @@
+     uint64_t start = g_gp_start, next = start + period;
+     static struct { mach_port_t port; uint64_t cpu_us, period_us; } seen[256];
+     int hot_only = getenv("OCERZ_GUESTPROF_HOT") != NULL;
++    const char *instruction_mode = getenv("OCERZ_GUESTPROF_INSTRUCTIONS");
++    const int instructions = instruction_mode && !strcmp(instruction_mode, "1");
+     mach_port_t hot = MACH_PORT_NULL;
+     uint64_t pstart = start;
+     uint64_t seed = start | 1;
+@@ -683,7 +692,13 @@
+             g_gp_samples += w;
+             if (ocerz_jit_pc_in_arena(vm, pc) && ocerz_jit_fault_info(vm, pc, &fi)) {
+                 g_gp_jit += w;
+-                gp_bump(g_gp_key, g_gp_cnt, fi.block_rip ? fi.block_rip : 1, w);
++                uint64_t guest_pc = fi.block_rip;
++                if (instructions && fi.insn_index >= 0 && fi.insn_rip) {
++                    guest_pc = fi.insn_rip;
++                    if (fi.insn_opcode > 0 && fi.insn_opcode < OCERZ_OP_COUNT)
++                        g_gp_opcode_us[fi.insn_opcode] += w;
++                }
++                gp_bump(g_gp_key, g_gp_cnt, guest_pc ? guest_pc : 1, w);
+             } else {
+                 gp_bump(g_gp_key, g_gp_cnt, (grip ? grip : 1) | (1ull << 63), w);
+                 gp_bump(g_gh_key, g_gh_cnt, (uint64_t)(uintptr_t)pc, w);

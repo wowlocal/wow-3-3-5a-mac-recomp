@@ -1,0 +1,396 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate instruction-level CPU profile of the full 24-caster headless raid",
+  "renderer_trial": "Direct ARB uniform segments enabled",
+  "viewport": [
+    1365,
+    768
+  ],
+  "caster_count": 24,
+  "camera": "Saved fixture anchor",
+  "focus_activations": 0,
+  "visible_trial_windows": 0,
+  "gpu_sequence_continuous": true,
+  "general_m32_checks_passed": 806,
+  "periods": [
+    {
+      "elapsed_seconds": 24,
+      "cpu_ms": 7880,
+      "translated_percent": 58.6,
+      "top_guest_addresses": [
+        {
+          "rip": "0x8791b5",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x877d02",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x88174e",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x87e854",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x8f6e9a",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0xdda00032",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x9655c8",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x8e76ae",
+          "total_cpu_percent": 0.2
+        }
+      ],
+      "mapped_cpu_usec": 4619352
+    },
+    {
+      "elapsed_seconds": 32,
+      "cpu_ms": 7854,
+      "translated_percent": 57.5,
+      "top_guest_addresses": [
+        {
+          "rip": "0x310d6b",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x8791b5",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x877d02",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x8f6ea8",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x87e854",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x740d9c",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x877bf8",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x6e2aac",
+          "total_cpu_percent": 0.2
+        }
+      ],
+      "mapped_cpu_usec": 4516867
+    },
+    {
+      "elapsed_seconds": 40,
+      "cpu_ms": 7881,
+      "translated_percent": 58.4,
+      "top_guest_addresses": [
+        {
+          "rip": "0x88174e",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x880d7d",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x8f6e96",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x97924b",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x877cdd",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x6e2aac",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0xdda00032",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x969a6c",
+          "total_cpu_percent": 0.2
+        }
+      ],
+      "mapped_cpu_usec": 4604212
+    },
+    {
+      "elapsed_seconds": 48,
+      "cpu_ms": 7869,
+      "translated_percent": 59.0,
+      "top_guest_addresses": [
+        {
+          "rip": "0x88174e",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x877d02",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x6e2aac",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x87e854",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x9655c8",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x8e76bd",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x8791b5",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x4272c0",
+          "total_cpu_percent": 0.2
+        }
+      ],
+      "mapped_cpu_usec": 4646060
+    },
+    {
+      "elapsed_seconds": 56,
+      "cpu_ms": 7866,
+      "translated_percent": 59.0,
+      "top_guest_addresses": [
+        {
+          "rip": "0x877d02",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x877cdd",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x9655c8",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x877d20",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x8791b5",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x8e76bd",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x87e854",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x8791ca",
+          "total_cpu_percent": 0.2
+        }
+      ],
+      "mapped_cpu_usec": 4638056
+    },
+    {
+      "elapsed_seconds": 64,
+      "cpu_ms": 7882,
+      "translated_percent": 57.9,
+      "top_guest_addresses": [
+        {
+          "rip": "0x8791b5",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x87e854",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x877cdd",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x88174e",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x877d02",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x8e76ae",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0xdda00032",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x8f6ea8",
+          "total_cpu_percent": 0.2
+        }
+      ],
+      "mapped_cpu_usec": 4562539
+    },
+    {
+      "elapsed_seconds": 72,
+      "cpu_ms": 7844,
+      "translated_percent": 59.0,
+      "top_guest_addresses": [
+        {
+          "rip": "0x8791b5",
+          "total_cpu_percent": 0.4
+        },
+        {
+          "rip": "0x877cdd",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x6e2a63",
+          "total_cpu_percent": 0.3
+        },
+        {
+          "rip": "0x87e854",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x6e2aac",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x4272c0",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x9655c8",
+          "total_cpu_percent": 0.2
+        },
+        {
+          "rip": "0x880d7d",
+          "total_cpu_percent": 0.2
+        }
+      ],
+      "mapped_cpu_usec": 4625699
+    }
+  ],
+  "mapped_jit_fraction_of_estimated_translated_cpu_time": 1.0000392095722765,
+  "opcode_top": [
+    {
+      "opcode": "mov",
+      "weighted_cpu_usec": 7805396,
+      "total_sample_share": 0.14172045900210617,
+      "mapped_translated_sample_share": 0.2423073944087728
+    },
+    {
+      "opcode": "jcc",
+      "weighted_cpu_usec": 6139760,
+      "total_sample_share": 0.11147795773113515,
+      "mapped_translated_sample_share": 0.19060009868752423
+    },
+    {
+      "opcode": "movss",
+      "weighted_cpu_usec": 1792770,
+      "total_sample_share": 0.03255083884087443,
+      "mapped_translated_sample_share": 0.05565398955725188
+    },
+    {
+      "opcode": "mulss",
+      "weighted_cpu_usec": 1647306,
+      "total_sample_share": 0.029909688430532357,
+      "mapped_translated_sample_share": 0.051138266995542296
+    },
+    {
+      "opcode": "cmp",
+      "weighted_cpu_usec": 1618077,
+      "total_sample_share": 0.029378985401989976,
+      "mapped_translated_sample_share": 0.05023089434831543
+    },
+    {
+      "opcode": "ucomiss",
+      "weighted_cpu_usec": 1606684,
+      "total_sample_share": 0.029172125789817708,
+      "mapped_translated_sample_share": 0.049877214900853804
+    },
+    {
+      "opcode": "push",
+      "weighted_cpu_usec": 1457312,
+      "total_sample_share": 0.026460018882998038,
+      "mapped_translated_sample_share": 0.04524017404890636
+    },
+    {
+      "opcode": "test",
+      "weighted_cpu_usec": 1338170,
+      "total_sample_share": 0.02429678989033336,
+      "mapped_translated_sample_share": 0.04154158046253995
+    },
+    {
+      "opcode": "call",
+      "weighted_cpu_usec": 988942,
+      "total_sample_share": 0.017955951775728084,
+      "mapped_translated_sample_share": 0.030700294929482192
+    },
+    {
+      "opcode": "add",
+      "weighted_cpu_usec": 982462,
+      "total_sample_share": 0.017838296172561552,
+      "mapped_translated_sample_share": 0.030499132564911727
+    },
+    {
+      "opcode": "ret",
+      "weighted_cpu_usec": 853103,
+      "total_sample_share": 0.015489559880891858,
+      "mapped_translated_sample_share": 0.026483366775024265
+    },
+    {
+      "opcode": "addss",
+      "weighted_cpu_usec": 810685,
+      "total_sample_share": 0.01471938775510204,
+      "mapped_translated_sample_share": 0.025166560420031986
+    },
+    {
+      "opcode": "jmp",
+      "weighted_cpu_usec": 617312,
+      "total_sample_share": 0.01120836662066962,
+      "mapped_translated_sample_share": 0.019163571234216477
+    },
+    {
+      "opcode": "fistp",
+      "weighted_cpu_usec": 494946,
+      "total_sample_share": 0.008986600334083812,
+      "mapped_translated_sample_share": 0.015364893162761307
+    },
+    {
+      "opcode": "lea",
+      "weighted_cpu_usec": 454900,
+      "total_sample_share": 0.008259495969206188,
+      "mapped_translated_sample_share": 0.014121722167145747
+    },
+    {
+      "opcode": "inc",
+      "weighted_cpu_usec": 395704,
+      "total_sample_share": 0.007184690246205243,
+      "mapped_translated_sample_share": 0.012284066714504816
+    }
+  ]
+}
