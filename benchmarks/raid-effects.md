@@ -563,3 +563,11 @@ The original client ran the full 24-caster fixture at 1365 × 768 with VSync off
 | 81 | 65.72 | 21.79 ms |
 
 A separate Metal System Trace at 64 tagged 4,200 active GPU intervals to the client. Their union occupied **2.53 of 7.57 seconds**, or **33.4%** of the span. In a separate CPU sample at 64, WineMetalGL was on **747 of 3,317** main-thread stacks. Fixed-function uniform packing accounted for **181** of those stacks. The trial keeps setting 64 pending further profiling. [CPU and GPU profiles](results/raid-winemetalgl-draw-cap-live.json)
+
+### Reuse the fixed-function uniform buffer
+
+The clean control omits `OCERZ_M32_CALLLOG` entirely. At draw setting 64 its two warmed live raid windows averaged **86.92** and **86.93 GPU-completed FPS**, with p99 gaps of **15.74** and **15.92 ms**. A separate clean Metal trace attributed **37.8%** of the sampled span to client GPU work. CPU sampling put fixed-function uniform packing on **288 of 2,959** main-thread stacks. [Clean control and profiles](results/raid-winemetalgl-fixed-uniform-tail-ab.json)
+
+The trial writes the fixed-function values directly into the existing per-context buffer after the aligned matrix prefix. It reuses the buffer's capacity on subsequent updates and leaves the shader layout intact. The two warmed windows with reuse, collected in one launch between the two control launches, averaged **88.00** and **88.77 GPU-completed FPS** at **15.45** and **15.21 ms p99**. Median throughput rose **1.7%** and median p99 fell **0.50 ms**. All four windows had consecutive GPU completions. [Live comparison](results/raid-winemetalgl-fixed-uniform-tail-ab.json)
+
+The sampled share of uniform-packing stacks fell from **9.7% to 7.6%**. Both libraries passed all 336 renderer tests, including compatibility lighting, texture generation, and matrix-only updates. The fixed camera, casters, overlapping ground effects, and particles were visible in both versions. Apply `patches/winemetalgl-fixed-uniform-tail-trial.patch` after the existing WineMetalGL trial patches and rebuild the library. Keep draw setting 64 and the triangle budget at 65,000 for the comparison. [Validation and samples](results/raid-winemetalgl-fixed-uniform-tail-ab.json)

@@ -1,0 +1,116 @@
+{
+  "hardware": "Apple M4 Pro",
+  "client": "WoW 3.3.5a running through AArchX and the WineMetalGL sidecar",
+  "scene": "Live fixed-camera Northshire raid with one boss and 24 casters",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "bridge_crossing_diagnostics": false,
+  "commit_draws": 64,
+  "triangle_budget": 65000,
+  "runs": [
+    {
+      "arm": "control",
+      "launch_order": 1,
+      "verified_completed_renders": 5216,
+      "first_sequence": 9322,
+      "last_sequence": 14537,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996727959,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 86.91666666666667,
+      "p99_gpu_completion_gap_ns": 15740750,
+      "min_draws": 756,
+      "max_draws": 873
+    },
+    {
+      "arm": "reused",
+      "launch_order": 2,
+      "verified_completed_renders": 5281,
+      "first_sequence": 7207,
+      "last_sequence": 12487,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59992773334,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 88.0,
+      "p99_gpu_completion_gap_ns": 15446750,
+      "min_draws": 743,
+      "max_draws": 911
+    },
+    {
+      "arm": "reused",
+      "launch_order": 2,
+      "verified_completed_renders": 5327,
+      "first_sequence": 12982,
+      "last_sequence": 18308,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998059250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 88.76666666666667,
+      "p99_gpu_completion_gap_ns": 15211666,
+      "min_draws": 736,
+      "max_draws": 921
+    },
+    {
+      "arm": "control",
+      "launch_order": 3,
+      "verified_completed_renders": 5217,
+      "first_sequence": 10757,
+      "last_sequence": 15973,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59992166250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 86.93333333333334,
+      "p99_gpu_completion_gap_ns": 15924916,
+      "min_draws": 728,
+      "max_draws": 902
+    }
+  ],
+  "medians": {
+    "control": {
+      "average_completed_fps": 86.92500000000001,
+      "p99_gpu_completion_gap_ns": 15832833.0
+    },
+    "reused": {
+      "average_completed_fps": 88.38333333333333,
+      "p99_gpu_completion_gap_ns": 15329208.0
+    }
+  },
+  "cpu_profiles": {
+    "control": {
+      "main_thread_samples": 2959,
+      "winemetalgl_on_stack": 935,
+      "fixed_function_uniform_block_on_stack": 288,
+      "uniform_block_binding_on_stack": 326
+    },
+    "reused": {
+      "main_thread_samples": 3441,
+      "winemetalgl_on_stack": 1062,
+      "fixed_function_uniform_block_on_stack": 260,
+      "uniform_block_binding_on_stack": 309
+    }
+  },
+  "control_gpu_profile": {
+    "active_intervals": 4343,
+    "span_ns": 7448217708,
+    "active_union_ns": 2814900758,
+    "active_fraction": 0.37792944142550566,
+    "channel_times_ns": {
+      "Vertex": 1922925293,
+      "Fragment": 911640046,
+      "Compute": 46560082
+    }
+  },
+  "renderer_suite": {
+    "control": {
+      "passed": 336,
+      "failed_checks": 0
+    },
+    "reused": {
+      "passed": 336,
+      "failed_checks": 0
+    }
+  }
+}

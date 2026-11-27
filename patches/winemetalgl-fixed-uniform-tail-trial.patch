@@ -1,0 +1,60 @@
+--- a/src/core/compat/fixed_function.mm
++++ b/src/core/compat/fixed_function.mm
+@@ -23,7 +23,7 @@
+ // wmgl_FixedFunction (shader/glsl_upgrade.cpp).
+ class Std140 {
+ public:
+-    std::vector<uint8_t> data;
++    explicit Std140(std::vector<uint8_t>& bytes) : data(bytes) {}
+     void align(size_t a) { data.resize((data.size() + a - 1) / a * a, 0); }
+     void scalar(float v) {
+         align(4);
+@@ -54,6 +54,7 @@
+     void endStruct() { align(16); }
+
+ private:
++    std::vector<uint8_t>& data;
+     void append(const void* p, size_t n) {
+         const auto* b = static_cast<const uint8_t*>(p);
+         data.insert(data.end(), b, b + n);
+@@ -74,6 +75,7 @@
+ constexpr size_t kMVT = kTexInv + kTex, kPT = kMVT + 64, kMVPT = kPT + 64, kTexT = kMVPT + 64;
+ constexpr size_t kMVIT = kTexT + kTex, kPIT = kMVIT + 64, kMVPIT = kPIT + 64, kTexIT = kMVPIT + 64;
+ constexpr size_t kTailOffset = kTexIT + kTex;
++static_assert(kTailOffset % 16 == 0);
+
+ void putMat4(std::vector<uint8_t>& data, size_t offset, const Mat4& m) { std::memcpy(data.data() + offset, m.m, kMat4); }
+
+@@ -128,9 +130,11 @@
+ }
+
+ // The block from gl_NormalScale on.
+-std::vector<uint8_t> packTail(const ContextState& st, const Mat4& mvInv) {
++void packTail(const ContextState& st, const Mat4& mvInv, std::vector<uint8_t>& data) {
+     const FixedState& f = st.fixed;
+-    Std140 b;
++    // Retain capacity and the aligned matrix prefix while replacing the tail.
++    data.resize(kTailOffset);
++    Std140 b(data);
+     b.scalar(normalScale(mvInv));
+     for (const auto& plane : f.clipPlanes) b.vec4(plane);
+     b.beginStruct();  // gl_Point
+@@ -218,7 +222,6 @@
+         b.vec4(row);
+     }
+     b.align(16);
+-    return b.data;
+ }
+
+ // ------------------------------------------------------------ state key
+@@ -721,9 +724,7 @@
+         !std::equal(st.viewports[0], st.viewports[0] + 4, cache.viewport)) {
+         if (cache.data.size() < kTailOffset) cache.data.assign(kTailOffset, 0);
+         packMatrices(st.fixed, cache);
+-        const std::vector<uint8_t> tail = packTail(st, cache.modelviewInverse);
+-        cache.data.resize(kTailOffset + tail.size());
+-        std::memcpy(cache.data.data() + kTailOffset, tail.data(), tail.size());
++        packTail(st, cache.modelviewInverse, cache.data);
+         cache.version = st.fixed.version;
+         cache.matrixVersion = st.fixed.matrixVersion;
+         cache.pointSize = st.pointSize;
