@@ -1,0 +1,107 @@
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -88,7 +88,7 @@
+ typedef struct M32Leaf { const char *name; void *fn; uint8_t nargs, ptrs, ret, simd, tramp, bytes, host_fp, gl; } M32Leaf;
+ uint64_t m32_leaf_tramp(const M32Leaf *l, uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
+                         uint64_t a5, uint64_t a6);
+-enum { M32_LEAF_I32, M32_LEAF_I64, M32_LEAF_ARG0, M32_LEAF_VOID };
++enum { M32_LEAF_I32, M32_LEAF_I64, M32_LEAF_ARG0, M32_LEAF_VOID, M32_LEAF_U8 };
+ const M32Leaf *m32_leaf_for(uint32_t trap);
+ uint32_t m32_trap_slot(uint64_t trap);   /* src/m32_bridge.c: a guest word holding the trap, for a trap's block, or 0 */
+
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -20643,6 +20643,8 @@
+             yc_reload_all(b);
+             if (leaf->ret == M32_LEAF_I32) {
+                 a64_mov_reg(b, 0, hax, JT0);
++            } else if (leaf->ret == M32_LEAF_U8) {
++                a64_uxtb(b, hax, JT0);
+             } else if (leaf->ret == M32_LEAF_I64) {
+                 a64_mov_reg(b, 0, hax, JT0);
+                 a64_lsr_imm(b, 1, hdx, JT0, 32);
+--- a/src/m32_leaf.c
++++ b/src/m32_leaf.c
+@@ -141,8 +141,8 @@
+ };
+
+ /* any GL function whose guest and host notations agree and that takes 32-bit integers, booleans and pointers and
+- * returns an integer or nothing (glEnable, glBindTexture, glVertexAttribPointer, glDrawRangeElementsBaseVertex,
+- * glProgramLocalParameters4fvEXT...), through m32_leaf_tramp: it clears FPCR.AH, which translated code runs with, for
++ * returns an integer, unsigned byte or nothing (glEnable, glBindTexture, glVertexAttribPointer,
++ * glDrawRangeElementsBaseVertex...), through m32_leaf_tramp: it clears FPCR.AH, which translated code runs with, for
+  * the call (host_fp), as m32_trap does for every crossing.  Called straight, Apple's GL engine ran with it and
+  * Nexuiz's benchmark demo faulted in gleRunVertexSubmitImmediate.  Floats, 64-bit values and anything with a special
+  * keep the crossing. */
+@@ -153,8 +153,19 @@
+         !e->gnote || !e->hnote || strcmp(e->gnote, e->hnote))
+         return NULL;
+     const char *n = e->gnote;
+-    if ((n[0] != 'v' && n[0] != 'i' && n[0] != 'u') || n[1] != '(')
+-        return NULL;
++    uint8_t ret;
++    switch (n[0]) {
++    case 'v': ret = M32_LEAF_VOID; break;
++    case 'i': case 'u': ret = M32_LEAF_I32; break;
++    case 'B': {
++        const char *enabled = getenv("OCERZ_M32_GL_BYTE_LEAF");
++        if (!enabled || strcmp(enabled, "1") != 0) return NULL;
++        ret = M32_LEAF_U8;
++        break;
++    }
++    default: return NULL;
++    }
++    if (n[1] != '(') return NULL;
+     int k = 0;
+     unsigned ptrs = 0, bytes = 0;
+     for (n += 2; *n && *n != ')'; n++, k++) {
+@@ -168,7 +179,7 @@
+         return NULL;
+     if (!g_gl[id].fn)
+         g_gl[id] = (M32Leaf){ e->name, e->host_fn, (uint8_t)k, (uint8_t)ptrs,
+-                              (uint8_t)(e->gnote[0] == 'v' ? M32_LEAF_VOID : M32_LEAF_I32), 1, 1, (uint8_t)bytes, 1,
++                              ret, 1, 1, (uint8_t)bytes, 1,
+                               (uint8_t)e->gl_ptr };
+     return &g_gl[id];
+ }
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -1163,6 +1163,38 @@
+     uint32_t small = m32_rd(DATA + 0xc34);
+     check("create both driver buffers", large && small && large != small);
+     cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, large });
++
++    if (getenv("OCERZ_WMGL_TEST_BYTE_RETURN")) {
++        const uint32_t entry = CODE + 0x3800, slot = DATA + 0xe50;
++        const uint32_t trap = m32_export(gl, "_glTestObjectAPPLE");
++        const M32Leaf *leaf = m32_leaf_for(trap);
++        const char *enabled = getenv("OCERZ_M32_GL_BYTE_LEAF");
++        const int expected = enabled && !strcmp(enabled, "1");
++        check("the return ABI is selected only in the opt-in arm",
++              trap && (expected ? leaf && leaf->ret == M32_LEAF_U8 : leaf == NULL));
++        const unsigned char code[] = {
++            0xff, 0x74, 0x24, 0x04,       /* push [esp+4] */
++            0x68, 0xb3, 0x85, 0, 0,      /* push GL_BUFFER_OBJECT_APPLE */
++            0xe8, 4, 0, 0, 0,            /* call the import stub */
++            0x83, 0xc4, 8, 0xc3,         /* add esp,8; ret */
++            0xff, 0x25, 0, 0, 0, 0,     /* jmp [slot] */
++        };
++        memcpy(m32_h(entry), code, sizeof code);
++        m32_wr(entry + 20, slot);
++        m32_wr(slot, trap);
++        const int saved_jit = g_vm.jit_enabled, saved_active = m32_active;
++        g_vm.jit_enabled = m32_active = 1;
++        const uint32_t valid = m32_call(&g_vm, entry, &large, 1, NULL, NULL);
++        const uint32_t invalid_name = UINT32_MAX;
++        const uint32_t invalid = m32_call(&g_vm, entry, &invalid_name, 1, NULL, NULL);
++        int translated = g_vm.jit != NULL;
++        g_vm.jit_enabled = saved_jit;
++        m32_active = saved_active;
++        check("the translated import call returns GL_TRUE with the full EAX zero-extended",
++              translated && valid == 1);
++        check("the translated import call returns GL_FALSE and preserves the GL error",
++              invalid == 0 && cross(gl, "_glGetError", 0, NULL) == 0x0502);
++    }
+     call("_glBufferData", 4, (uint32_t[]){ ARRAY, SIZE, 0, DYNAMIC });
+     uint32_t guest = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
+     check("map the rolling buffer in the guest address space", guest && guest < M32_HANDLE_LO);
