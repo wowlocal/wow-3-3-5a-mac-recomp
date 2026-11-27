@@ -1120,3 +1120,14 @@ Set `OCERZ_WMGL_SUBMISSION_LOG` to the capture's `submissions.ns`. For thread CP
 ```sh
 python3 benchmarks/summarize-raid-frame-tail.py CAPTURE_DIR
 ```
+
+### Submit earlier in the live raid at 448 draws
+
+Four warmed 60-second runs alternated the continuing-pass draw threshold in 512, 448, 448, and 512 order. The two settings correspond to `WINEMETALGL_COMMIT_DRAWS=64` and `56`. The triangle threshold stayed disabled. The timing runs used the same runtime and renderer with submission and CPU timing logs off.
+
+| Continuing-pass draw threshold | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| 512 | 115.39 | 16.05 ms |
+| 448 | 116.48 | 14.50 ms |
+
+P99 improved by **3.03 ms** in the first pair and **0.08 ms** in the second. Throughput gained **8.12 FPS** in the first pair and fell **5.93 FPS** in the second. The baseline remains 512. All runs kept the saved camera, overlapping effects, exact cast schedule, consecutive GPU completion sequences, and zero visible trial windows or activations. [Live 448-draw comparison](results/raid-winemetalgl-headless-448-draw-split-ab.json)
