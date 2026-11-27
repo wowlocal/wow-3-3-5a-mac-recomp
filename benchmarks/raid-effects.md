@@ -1296,3 +1296,24 @@ The separate in-world counter diagnostic recorded **3,225,925** lock-free hits a
 | Completed-prefix fast path | 123.30 | 13.57 ms |
 
 Throughput rose **0.72 and 0.60 FPS** in the two pairs. P99 changed by **+0.04 and −0.09 ms**. Keep the fast path as an option for follow-up throughput comparisons. All four warmed 60-second runs used the same early first-batch policy and verified the camera, cast schedule, visible effects, consecutive GPU completions, and zero trial windows or activations. [Raid A/B and readiness checks](results/raid-winemetalgl-headless-completed-serial-prefix-ab.json)
+
+### Measure the i386 routines together with their callees
+
+Two isolated 60-second launches sampled the hottest guest thread with the original client and the full raid fixture. At each translated sample, the profiler reads up to 16 return addresses through the aligned i386 frame-pointer chain. The analysis checks each address against the end of a decoded call in the client image and ends the chain at the first unrecognized return. It credits an unwind entry once per sample, including recursive calls. CPU percentages use the entire weighted sample, including untranslated and host work. The validated calls cover **62.09% and 62.69%** of that CPU time.
+
+| i386 unwind entry | Inclusive CPU time, first capture | Inclusive CPU time, second capture |
+| --- | ---: | ---: |
+| `0x73f8e0` | 21.58% | 21.70% |
+| `0x97dbc0` | 19.40% | 19.35% |
+| Either entry | 40.97% | 41.06% |
+
+The two entries appeared in separate sampled stacks. In both captures, `0x73f8e0` spent most of its measured time through `0x97e390` and `0x97dbc0` spent most through `0x97cef0`. These callee families give two targets for profiling code generation across functions. Stack separation establishes measured coverage. Data dependencies and safe parallelism require additional evidence.
+
+Both captures verified the saved camera, overlapping effects, all 26 timings, and consecutive GPU sequences with zero visible trial windows or activations. The profiler adds suspension and stack-read work. The diagnostic FPS figures belong to these instrumented runs. The runtime also passed **806** general i386 checks with the profiler off. [Stack distributions, call weights, and GPU windows](results/raid-aarchx-headless-i386-inclusive-stack-profile.json)
+
+Apply `patches/aarchx-m32-guest-stack-profile-trial.patch` and set `OCERZ_GUESTPROF=2500`, `OCERZ_GUESTPROF_PERIOD=4`, and `OCERZ_GUESTPROF_HOT=1`. Set `OCERZ_GUESTPROF_I386_STACK_LOG` to a fresh `i386-stacks.ns` in the capture directory. Analyze it after the monitored launch and GPU window verification.
+
+```sh
+python3 benchmarks/summarize-i386-unwind-hotspots.py CAPTURE_DIR LOCAL_I386_EXECUTABLE \
+    --stacks --compare-entries 0x73f8e0 0x97dbc0
+```

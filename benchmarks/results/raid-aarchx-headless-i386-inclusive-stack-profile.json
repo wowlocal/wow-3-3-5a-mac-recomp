@@ -1,0 +1,2304 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Two CPU-time-weighted i386 stack captures in the live headless raid. FPS values describe instrumented windows.",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "profiler_interval_parameter_usec": 2500,
+  "profiler_report_interval_seconds": 4,
+  "profiler_thread_selection": "Hottest guest thread per preceding period",
+  "caller_validation": "Aligned increasing EBP chain within 2 MiB of guest ESP, at most 16 frames. Accept the prefix through return PCs decoded as ends of i386 call instructions in the client text.",
+  "cpu_denominator": "All CPU-time-weighted samples in the GPU measurement window, including host and untranslated samples.",
+  "inclusive_counter_semantics": "Count a detected unwind entry once per sample, including when it repeats recursively. Leaf and caller without an unwind match still contribute to the CPU denominator.",
+  "runtime_sha256": "c75dd80012edc421df8c32090c6c132bfb6ffee37da2d875343f89d8129e6117",
+  "renderer_sha256": "ca6e53f8b8008f59767f28583066f0e328b35b3739e93be99734a05280157c30",
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "general_m32_checks_passed_with_profiler_off": 806,
+  "process_isolation_verified": true,
+  "runs": [
+    {
+      "run": 1,
+      "gpu_window": {
+        "stream": 1,
+        "pid": 69412,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7164,
+        "first_sequence": 4293,
+        "last_sequence": 11456,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59991570750,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 119.38333333333334,
+        "p99_gpu_completion_gap_ns": 14285625,
+        "min_draws": 684,
+        "max_draws": 952
+      },
+      "verified_timed_script_rows": 26,
+      "visual_readback_checked": true,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "samples": 34608,
+      "total_cpu_usec": 58664626,
+      "translated_cpu_usec": 36425187,
+      "cpu_usec_by_validated_call_depth": {
+        "4": 29050,
+        "5": 44280,
+        "6": 86979,
+        "7": 141622,
+        "8": 558593,
+        "9": 644224,
+        "10": 591048,
+        "11": 764171,
+        "12": 1067308,
+        "13": 2584622,
+        "14": 5295108,
+        "15": 5125618,
+        "16": 19492564
+      },
+      "share_of_all_cpu_with_validated_caller": 0.6209054669503902,
+      "hottest_inclusive_unwind_ranges": [
+        {
+          "entry": "0x779bb0",
+          "inclusive_cpu_usec": 34502571,
+          "exclusive_cpu_usec": 15450,
+          "inclusive_share_of_all_sampled_cpu": 0.5881324633348894,
+          "exclusive_share_of_all_sampled_cpu": 0.0002633614335153181,
+          "top_sampled_callees": [
+            {
+              "entry": "0x868e10",
+              "cpu_usec": 30306069
+            },
+            {
+              "entry": "0x35f350",
+              "cpu_usec": 3836223
+            },
+            {
+              "entry": "0x530800",
+              "cpu_usec": 134307
+            },
+            {
+              "entry": "0x989d30",
+              "cpu_usec": 95153
+            },
+            {
+              "entry": "0x456e10",
+              "cpu_usec": 31234
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 458768
+            }
+          ]
+        },
+        {
+          "entry": "0x77d510",
+          "inclusive_cpu_usec": 32849820,
+          "exclusive_cpu_usec": 20839,
+          "inclusive_share_of_all_sampled_cpu": 0.5599595913216936,
+          "exclusive_share_of_all_sampled_cpu": 0.0003552225833673601,
+          "top_sampled_callees": [
+            {
+              "entry": "0x779bb0",
+              "cpu_usec": 32790887
+            },
+            {
+              "entry": "0x778df0",
+              "cpu_usec": 6374
+            },
+            {
+              "entry": "0x782100",
+              "cpu_usec": 5804
+            },
+            {
+              "entry": "0x119510",
+              "cpu_usec": 5116
+            },
+            {
+              "entry": "0x456e10",
+              "cpu_usec": 3364
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 458768
+            }
+          ]
+        },
+        {
+          "entry": "0x77dd40",
+          "inclusive_cpu_usec": 31898798,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.5437484251582887,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x77d510",
+              "cpu_usec": 31890587
+            },
+            {
+              "entry": "0x77c6d0",
+              "cpu_usec": 4435
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 458768
+            }
+          ]
+        },
+        {
+          "entry": "0x77dde0",
+          "inclusive_cpu_usec": 30880786,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.5263953442744185,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x77dd40",
+              "cpu_usec": 30880786
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 458768
+            }
+          ]
+        },
+        {
+          "entry": "0x868e10",
+          "inclusive_cpu_usec": 30804271,
+          "exclusive_cpu_usec": 11334,
+          "inclusive_share_of_all_sampled_cpu": 0.5250910659517373,
+          "exclusive_share_of_all_sampled_cpu": 0.00019319990210114014,
+          "top_sampled_callees": [
+            {
+              "entry": "0x8260d0",
+              "cpu_usec": 28304457
+            },
+            {
+              "entry": "0x827af0",
+              "cpu_usec": 2339788
+            },
+            {
+              "entry": "0x929240",
+              "cpu_usec": 49106
+            },
+            {
+              "entry": "0x900000",
+              "cpu_usec": 35767
+            },
+            {
+              "entry": "0xa4ee0",
+              "cpu_usec": 20580
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 484549
+            }
+          ]
+        },
+        {
+          "entry": "0x8260d0",
+          "inclusive_cpu_usec": 28494427,
+          "exclusive_cpu_usec": 20362,
+          "inclusive_share_of_all_sampled_cpu": 0.4857173554639213,
+          "exclusive_share_of_all_sampled_cpu": 0.0003470916187209648,
+          "top_sampled_callees": [
+            {
+              "entry": "0x80bf10",
+              "cpu_usec": 28419283
+            },
+            {
+              "entry": "0x8e4710",
+              "cpu_usec": 9895
+            },
+            {
+              "entry": "0x931060",
+              "cpu_usec": 9776
+            },
+            {
+              "entry": "0x8fdc00",
+              "cpu_usec": 6505
+            },
+            {
+              "entry": "0x8e8ee0",
+              "cpu_usec": 4066
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 523320
+            }
+          ]
+        },
+        {
+          "entry": "0x80bf10",
+          "inclusive_cpu_usec": 28430119,
+          "exclusive_cpu_usec": 262278,
+          "inclusive_share_of_all_sampled_cpu": 0.4846211582427884,
+          "exclusive_share_of_all_sampled_cpu": 0.004470803240099067,
+          "top_sampled_callees": [
+            {
+              "entry": "0x622650",
+              "cpu_usec": 26985828
+            },
+            {
+              "entry": "0x92ed80",
+              "cpu_usec": 361845
+            },
+            {
+              "entry": "0x8f6590",
+              "cpu_usec": 273454
+            },
+            {
+              "entry": "0x57fda0",
+              "cpu_usec": 230589
+            },
+            {
+              "entry": "0x8e8ee0",
+              "cpu_usec": 105158
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 528280
+            }
+          ]
+        },
+        {
+          "entry": "0x9903a0",
+          "inclusive_cpu_usec": 27747780,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.47298997525357106,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x77dde0",
+              "cpu_usec": 27747780
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 458768
+            }
+          ]
+        },
+        {
+          "entry": "0x622650",
+          "inclusive_cpu_usec": 26991389,
+          "exclusive_cpu_usec": 6781,
+          "inclusive_share_of_all_sampled_cpu": 0.4600964983566076,
+          "exclusive_share_of_all_sampled_cpu": 0.00011558924793963572,
+          "top_sampled_callees": [
+            {
+              "entry": "0x61c110",
+              "cpu_usec": 24574514
+            },
+            {
+              "entry": "0x621b20",
+              "cpu_usec": 2320779
+            },
+            {
+              "entry": "0x2b61a0",
+              "cpu_usec": 35886
+            },
+            {
+              "entry": "0x2a8a80",
+              "cpu_usec": 30867
+            },
+            {
+              "entry": "0x3fd8c0",
+              "cpu_usec": 4449
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 456113
+            }
+          ]
+        },
+        {
+          "entry": "0x61c110",
+          "inclusive_cpu_usec": 24601463,
+          "exclusive_cpu_usec": 20485,
+          "inclusive_share_of_all_sampled_cpu": 0.419357706294761,
+          "exclusive_share_of_all_sampled_cpu": 0.00034918828256060133,
+          "top_sampled_callees": [
+            {
+              "entry": "0x721db0",
+              "cpu_usec": 12606527
+            },
+            {
+              "entry": "0x97dbc0",
+              "cpu_usec": 11369345
+            },
+            {
+              "entry": "0x735f60",
+              "cpu_usec": 220922
+            },
+            {
+              "entry": "0x284e40",
+              "cpu_usec": 149555
+            },
+            {
+              "entry": "0x428ef0",
+              "cpu_usec": 120928
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 456113
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 455979
+            }
+          ]
+        },
+        {
+          "entry": "0x99dca0",
+          "inclusive_cpu_usec": 22452429,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.38272517070167633,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x9903a0",
+              "cpu_usec": 22452429
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1060431
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 650324
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 458768
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 455979
+            }
+          ]
+        },
+        {
+          "entry": "0x73f8e0",
+          "inclusive_cpu_usec": 12657260,
+          "exclusive_cpu_usec": 7787,
+          "inclusive_share_of_all_sampled_cpu": 0.21575625488518413,
+          "exclusive_share_of_all_sampled_cpu": 0.00013273757170121565,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97e390",
+              "cpu_usec": 8104110
+            },
+            {
+              "entry": "0x738830",
+              "cpu_usec": 1364318
+            },
+            {
+              "entry": "0x73da80",
+              "cpu_usec": 1214676
+            },
+            {
+              "entry": "0x737340",
+              "cpu_usec": 582880
+            },
+            {
+              "entry": "0x739430",
+              "cpu_usec": 387706
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 456113
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 455979
+            },
+            {
+              "entry": "0x97e390",
+              "cpu_usec": 308396
+            },
+            {
+              "entry": "0x95f7c0",
+              "cpu_usec": 298169
+            }
+          ]
+        },
+        {
+          "entry": "0x721db0",
+          "inclusive_cpu_usec": 12627986,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.21525724889135064,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x73f8e0",
+              "cpu_usec": 12626911
+            },
+            {
+              "entry": "0x6fdb50",
+              "cpu_usec": 1075
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 456113
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 455979
+            },
+            {
+              "entry": "0x97e390",
+              "cpu_usec": 308396
+            },
+            {
+              "entry": "0x95f7c0",
+              "cpu_usec": 298169
+            }
+          ]
+        },
+        {
+          "entry": "0x97dbc0",
+          "inclusive_cpu_usec": 11380456,
+          "exclusive_cpu_usec": 5028,
+          "inclusive_share_of_all_sampled_cpu": 0.19399179328271862,
+          "exclusive_share_of_all_sampled_cpu": 8.570752671294623e-05,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97cef0",
+              "cpu_usec": 11289543
+            },
+            {
+              "entry": "0x977260",
+              "cpu_usec": 45277
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 26376
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 609474
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 283923
+            },
+            {
+              "entry": "0x978890",
+              "cpu_usec": 276026
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 273266
+            }
+          ]
+        },
+        {
+          "entry": "0x97cef0",
+          "inclusive_cpu_usec": 11365332,
+          "exclusive_cpu_usec": 94913,
+          "inclusive_share_of_all_sampled_cpu": 0.19373398886068072,
+          "exclusive_share_of_all_sampled_cpu": 0.001617891504157889,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97caa0",
+              "cpu_usec": 5627371
+            },
+            {
+              "entry": "0x97b970",
+              "cpu_usec": 2625695
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 2300796
+            },
+            {
+              "entry": "0x97c040",
+              "cpu_usec": 347928
+            },
+            {
+              "entry": "0x979670",
+              "cpu_usec": 142142
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 583098
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 283923
+            },
+            {
+              "entry": "0x978890",
+              "cpu_usec": 276026
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 273266
+            }
+          ]
+        },
+        {
+          "entry": "0x97e390",
+          "inclusive_cpu_usec": 8110539,
+          "exclusive_cpu_usec": 308396,
+          "inclusive_share_of_all_sampled_cpu": 0.13825263285578604,
+          "exclusive_share_of_all_sampled_cpu": 0.005256932857630423,
+          "top_sampled_callees": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 2775032
+            },
+            {
+              "entry": "0x967f20",
+              "cpu_usec": 2419135
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 1229135
+            },
+            {
+              "entry": "0x977000",
+              "cpu_usec": 629737
+            },
+            {
+              "entry": "0x96a240",
+              "cpu_usec": 255766
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1080334
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 455979
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 453576
+            },
+            {
+              "entry": "0x95f7c0",
+              "cpu_usec": 298169
+            },
+            {
+              "entry": "0x9677c0",
+              "cpu_usec": 186282
+            }
+          ]
+        },
+        {
+          "entry": "0x97caa0",
+          "inclusive_cpu_usec": 5627371,
+          "exclusive_cpu_usec": 16771,
+          "inclusive_share_of_all_sampled_cpu": 0.09592443323511514,
+          "exclusive_share_of_all_sampled_cpu": 0.0002858792622320647,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97c340",
+              "cpu_usec": 5602902
+            },
+            {
+              "entry": "0x8e8ee0",
+              "cpu_usec": 1282
+            },
+            {
+              "entry": "0x882f20",
+              "cpu_usec": 1087
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x97c340",
+              "cpu_usec": 198813
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 97823
+            },
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 95773
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 70838
+            }
+          ]
+        },
+        {
+          "entry": "0x97c340",
+          "inclusive_cpu_usec": 5602902,
+          "exclusive_cpu_usec": 198813,
+          "inclusive_share_of_all_sampled_cpu": 0.0955073334994073,
+          "exclusive_share_of_all_sampled_cpu": 0.0033889758369890573,
+          "top_sampled_callees": [
+            {
+              "entry": "0x882f20",
+              "cpu_usec": 4679536
+            },
+            {
+              "entry": "0x87ac90",
+              "cpu_usec": 333239
+            },
+            {
+              "entry": "0x8e8ee0",
+              "cpu_usec": 150900
+            },
+            {
+              "entry": "0x979b80",
+              "cpu_usec": 130458
+            },
+            {
+              "entry": "0x8fdc30",
+              "cpu_usec": 17152
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 97823
+            },
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 95773
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 70838
+            },
+            {
+              "entry": "0x882f20",
+              "cpu_usec": 69246
+            }
+          ]
+        },
+        {
+          "entry": "0x882f20",
+          "inclusive_cpu_usec": 4680623,
+          "exclusive_cpu_usec": 70333,
+          "inclusive_share_of_all_sampled_cpu": 0.0797861218786258,
+          "exclusive_share_of_all_sampled_cpu": 0.0011988996571801209,
+          "top_sampled_callees": [
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 4247224
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 196632
+            },
+            {
+              "entry": "0x876890",
+              "cpu_usec": 52819
+            },
+            {
+              "entry": "0x8c3270",
+              "cpu_usec": 46344
+            },
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 29262
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2702181
+            },
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 84277
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 68007
+            },
+            {
+              "entry": "0x8c3270",
+              "cpu_usec": 43925
+            },
+            {
+              "entry": "0x876890",
+              "cpu_usec": 10113
+            }
+          ]
+        },
+        {
+          "entry": "0x882c80",
+          "inclusive_cpu_usec": 4258720,
+          "exclusive_cpu_usec": 95773,
+          "inclusive_share_of_all_sampled_cpu": 0.07259434331005536,
+          "exclusive_share_of_all_sampled_cpu": 0.0016325511049878679,
+          "top_sampled_callees": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 4005921
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2672919
+            },
+            {
+              "entry": "0x880690",
+              "cpu_usec": 2451
+            }
+          ]
+        },
+        {
+          "entry": "0x880c70",
+          "inclusive_cpu_usec": 4035183,
+          "exclusive_cpu_usec": 2702181,
+          "inclusive_share_of_all_sampled_cpu": 0.0687839209952519,
+          "exclusive_share_of_all_sampled_cpu": 0.04606150561668969,
+          "top_sampled_callees": [
+            {
+              "entry": "0x880690",
+              "cpu_usec": 13548
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880690",
+              "cpu_usec": 2451
+            }
+          ]
+        },
+        {
+          "entry": "0x35f350",
+          "inclusive_cpu_usec": 3843458,
+          "exclusive_cpu_usec": 6246,
+          "inclusive_share_of_all_sampled_cpu": 0.06551576754277783,
+          "exclusive_share_of_all_sampled_cpu": 0.00010646961253959072,
+          "top_sampled_callees": [
+            {
+              "entry": "0x35f260",
+              "cpu_usec": 3537919
+            },
+            {
+              "entry": "0x3623e0",
+              "cpu_usec": 276564
+            },
+            {
+              "entry": "0x32ae20",
+              "cpu_usec": 10096
+            },
+            {
+              "entry": "0x32db30",
+              "cpu_usec": 6531
+            },
+            {
+              "entry": "0x3ce0d0",
+              "cpu_usec": 6102
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x971ef0",
+              "cpu_usec": 151499
+            },
+            {
+              "entry": "0x6b4880",
+              "cpu_usec": 113333
+            },
+            {
+              "entry": "0x6c95d0",
+              "cpu_usec": 101841
+            },
+            {
+              "entry": "0x315bb0",
+              "cpu_usec": 78664
+            },
+            {
+              "entry": "0x6c9a40",
+              "cpu_usec": 72032
+            }
+          ]
+        },
+        {
+          "entry": "0x35eec0",
+          "inclusive_cpu_usec": 3559729,
+          "exclusive_cpu_usec": 21581,
+          "inclusive_share_of_all_sampled_cpu": 0.06067930953825564,
+          "exclusive_share_of_all_sampled_cpu": 0.00036787075059508604,
+          "top_sampled_callees": [
+            {
+              "entry": "0x357550",
+              "cpu_usec": 2776616
+            },
+            {
+              "entry": "0x3e7c50",
+              "cpu_usec": 715230
+            },
+            {
+              "entry": "0x3d5170",
+              "cpu_usec": 16324
+            },
+            {
+              "entry": "0x3e7630",
+              "cpu_usec": 2151
+            },
+            {
+              "entry": "0x356a90",
+              "cpu_usec": 725
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x971ef0",
+              "cpu_usec": 151499
+            },
+            {
+              "entry": "0x6b4880",
+              "cpu_usec": 113333
+            },
+            {
+              "entry": "0x6c95d0",
+              "cpu_usec": 101841
+            },
+            {
+              "entry": "0x315bb0",
+              "cpu_usec": 78664
+            },
+            {
+              "entry": "0x6c9a40",
+              "cpu_usec": 72032
+            }
+          ]
+        },
+        {
+          "entry": "0x35f260",
+          "inclusive_cpu_usec": 3556989,
+          "exclusive_cpu_usec": 10349,
+          "inclusive_share_of_all_sampled_cpu": 0.06063260336816943,
+          "exclusive_share_of_all_sampled_cpu": 0.00017640954533657132,
+          "top_sampled_callees": [
+            {
+              "entry": "0x35eec0",
+              "cpu_usec": 3539606
+            },
+            {
+              "entry": "0x35d370",
+              "cpu_usec": 3682
+            },
+            {
+              "entry": "0x3e7c50",
+              "cpu_usec": 3338
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x971ef0",
+              "cpu_usec": 151499
+            },
+            {
+              "entry": "0x6b4880",
+              "cpu_usec": 113333
+            },
+            {
+              "entry": "0x6c95d0",
+              "cpu_usec": 101841
+            },
+            {
+              "entry": "0x315bb0",
+              "cpu_usec": 78664
+            },
+            {
+              "entry": "0x6c9a40",
+              "cpu_usec": 72032
+            }
+          ]
+        }
+      ],
+      "compared_entries": {
+        "entries": [
+          "0x73f8e0",
+          "0x97dbc0"
+        ],
+        "inclusive_cpu_usec": [
+          12657260,
+          11380456
+        ],
+        "overlap_cpu_usec": 0,
+        "share_of_all_cpu_in_either_entry": 0.4097480481679027
+      }
+    },
+    {
+      "run": 2,
+      "gpu_window": {
+        "stream": 1,
+        "pid": 22427,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7064,
+        "first_sequence": 4382,
+        "last_sequence": 11445,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59993645666,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 117.71666666666667,
+        "p99_gpu_completion_gap_ns": 14162209,
+        "min_draws": 689,
+        "max_draws": 962
+      },
+      "verified_timed_script_rows": 26,
+      "visual_readback_checked": true,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "samples": 34414,
+      "total_cpu_usec": 58776015,
+      "translated_cpu_usec": 36844210,
+      "cpu_usec_by_validated_call_depth": {
+        "3": 31,
+        "4": 27828,
+        "5": 58194,
+        "6": 80657,
+        "7": 163598,
+        "8": 555858,
+        "9": 650538,
+        "10": 653568,
+        "11": 760898,
+        "12": 1104156,
+        "13": 2486857,
+        "14": 5334362,
+        "15": 5056011,
+        "16": 19911654
+      },
+      "share_of_all_cpu_with_validated_caller": 0.6268579113435983,
+      "hottest_inclusive_unwind_ranges": [
+        {
+          "entry": "0x779bb0",
+          "inclusive_cpu_usec": 34657881,
+          "exclusive_cpu_usec": 15980,
+          "inclusive_share_of_all_sampled_cpu": 0.589660272136517,
+          "exclusive_share_of_all_sampled_cpu": 0.00027187960939509086,
+          "top_sampled_callees": [
+            {
+              "entry": "0x868e10",
+              "cpu_usec": 30652649
+            },
+            {
+              "entry": "0x35f350",
+              "cpu_usec": 3711663
+            },
+            {
+              "entry": "0x530800",
+              "cpu_usec": 101727
+            },
+            {
+              "entry": "0x989d30",
+              "cpu_usec": 69822
+            },
+            {
+              "entry": "0x456e10",
+              "cpu_usec": 41231
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            }
+          ]
+        },
+        {
+          "entry": "0x77d510",
+          "inclusive_cpu_usec": 33124196,
+          "exclusive_cpu_usec": 12482,
+          "inclusive_share_of_all_sampled_cpu": 0.5635665500629806,
+          "exclusive_share_of_all_sampled_cpu": 0.0002123655372008463,
+          "top_sampled_callees": [
+            {
+              "entry": "0x779bb0",
+              "cpu_usec": 33045308
+            },
+            {
+              "entry": "0x778df0",
+              "cpu_usec": 13920
+            },
+            {
+              "entry": "0x782b60",
+              "cpu_usec": 10017
+            },
+            {
+              "entry": "0x77c6d0",
+              "cpu_usec": 8922
+            },
+            {
+              "entry": "0x119510",
+              "cpu_usec": 6884
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            }
+          ]
+        },
+        {
+          "entry": "0x77dd40",
+          "inclusive_cpu_usec": 31979841,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.5440967884603949,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x77d510",
+              "cpu_usec": 31964464
+            },
+            {
+              "entry": "0x782b60",
+              "cpu_usec": 3827
+            },
+            {
+              "entry": "0x778df0",
+              "cpu_usec": 2113
+            },
+            {
+              "entry": "0x779bb0",
+              "cpu_usec": 1721
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            }
+          ]
+        },
+        {
+          "entry": "0x868e10",
+          "inclusive_cpu_usec": 31094944,
+          "exclusive_cpu_usec": 8984,
+          "inclusive_share_of_all_sampled_cpu": 0.5290413785282994,
+          "exclusive_share_of_all_sampled_cpu": 0.00015285146500660176,
+          "top_sampled_callees": [
+            {
+              "entry": "0x8260d0",
+              "cpu_usec": 28384093
+            },
+            {
+              "entry": "0x827af0",
+              "cpu_usec": 2558727
+            },
+            {
+              "entry": "0x929240",
+              "cpu_usec": 42261
+            },
+            {
+              "entry": "0x900000",
+              "cpu_usec": 42166
+            },
+            {
+              "entry": "0xa4ee0",
+              "cpu_usec": 25733
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 515117
+            }
+          ]
+        },
+        {
+          "entry": "0x77dde0",
+          "inclusive_cpu_usec": 30713086,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.5225445447432937,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x77dd40",
+              "cpu_usec": 30713055
+            },
+            {
+              "entry": "0x77d510",
+              "cpu_usec": 31
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            }
+          ]
+        },
+        {
+          "entry": "0x8260d0",
+          "inclusive_cpu_usec": 28574171,
+          "exclusive_cpu_usec": 28912,
+          "inclusive_share_of_all_sampled_cpu": 0.4861535951357029,
+          "exclusive_share_of_all_sampled_cpu": 0.0004919013308404798,
+          "top_sampled_callees": [
+            {
+              "entry": "0x80bf10",
+              "cpu_usec": 28523794
+            },
+            {
+              "entry": "0x86c270",
+              "cpu_usec": 5366
+            },
+            {
+              "entry": "0x622650",
+              "cpu_usec": 4304
+            },
+            {
+              "entry": "0x8ff200",
+              "cpu_usec": 4233
+            },
+            {
+              "entry": "0x8d68b0",
+              "cpu_usec": 2685
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 544548
+            }
+          ]
+        },
+        {
+          "entry": "0x80bf10",
+          "inclusive_cpu_usec": 28566919,
+          "exclusive_cpu_usec": 298957,
+          "inclusive_share_of_all_sampled_cpu": 0.4860302114731664,
+          "exclusive_share_of_all_sampled_cpu": 0.005086377495990499,
+          "top_sampled_callees": [
+            {
+              "entry": "0x622650",
+              "cpu_usec": 27156441
+            },
+            {
+              "entry": "0x92ed80",
+              "cpu_usec": 316076
+            },
+            {
+              "entry": "0x8f6590",
+              "cpu_usec": 247309
+            },
+            {
+              "entry": "0x57fda0",
+              "cpu_usec": 180667
+            },
+            {
+              "entry": "0x8e8ee0",
+              "cpu_usec": 145440
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 549944
+            }
+          ]
+        },
+        {
+          "entry": "0x9903a0",
+          "inclusive_cpu_usec": 27655061,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.4705160940223661,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x77dde0",
+              "cpu_usec": 27655061
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            }
+          ]
+        },
+        {
+          "entry": "0x622650",
+          "inclusive_cpu_usec": 27167656,
+          "exclusive_cpu_usec": 6464,
+          "inclusive_share_of_all_sampled_cpu": 0.4622235107296743,
+          "exclusive_share_of_all_sampled_cpu": 0.00010997683323716315,
+          "top_sampled_callees": [
+            {
+              "entry": "0x61c110",
+              "cpu_usec": 24681541
+            },
+            {
+              "entry": "0x621b20",
+              "cpu_usec": 2390182
+            },
+            {
+              "entry": "0x2a8a80",
+              "cpu_usec": 40534
+            },
+            {
+              "entry": "0x2b61a0",
+              "cpu_usec": 25996
+            },
+            {
+              "entry": "0x62c4d0",
+              "cpu_usec": 5663
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            }
+          ]
+        },
+        {
+          "entry": "0x61c110",
+          "inclusive_cpu_usec": 24731294,
+          "exclusive_cpu_usec": 12360,
+          "inclusive_share_of_all_sampled_cpu": 0.42077187437766916,
+          "exclusive_share_of_all_sampled_cpu": 0.00021028986058343696,
+          "top_sampled_callees": [
+            {
+              "entry": "0x721db0",
+              "cpu_usec": 12712860
+            },
+            {
+              "entry": "0x97dbc0",
+              "cpu_usec": 11355567
+            },
+            {
+              "entry": "0x735f60",
+              "cpu_usec": 237888
+            },
+            {
+              "entry": "0x428ef0",
+              "cpu_usec": 167432
+            },
+            {
+              "entry": "0x284e40",
+              "cpu_usec": 121727
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 468150
+            }
+          ]
+        },
+        {
+          "entry": "0x99dca0",
+          "inclusive_cpu_usec": 22570945,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.38401625220763946,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x9903a0",
+              "cpu_usec": 22570945
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1089366
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2856a0",
+              "cpu_usec": 618501
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 413216
+            }
+          ]
+        },
+        {
+          "entry": "0x73f8e0",
+          "inclusive_cpu_usec": 12755320,
+          "exclusive_cpu_usec": 9448,
+          "inclusive_share_of_all_sampled_cpu": 0.21701573337355382,
+          "exclusive_share_of_all_sampled_cpu": 0.00016074584164986347,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97e390",
+              "cpu_usec": 7963754
+            },
+            {
+              "entry": "0x738830",
+              "cpu_usec": 1488908
+            },
+            {
+              "entry": "0x73da80",
+              "cpu_usec": 1240000
+            },
+            {
+              "entry": "0x737340",
+              "cpu_usec": 556227
+            },
+            {
+              "entry": "0x739430",
+              "cpu_usec": 371316
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 404965
+            },
+            {
+              "entry": "0x95f7c0",
+              "cpu_usec": 305087
+            },
+            {
+              "entry": "0x97e390",
+              "cpu_usec": 261843
+            }
+          ]
+        },
+        {
+          "entry": "0x721db0",
+          "inclusive_cpu_usec": 12744334,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.2168288203955304,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x73f8e0",
+              "cpu_usec": 12735241
+            },
+            {
+              "entry": "0x931060",
+              "cpu_usec": 3856
+            },
+            {
+              "entry": "0x73da80",
+              "cpu_usec": 2929
+            },
+            {
+              "entry": "0x727010",
+              "cpu_usec": 2308
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 404965
+            },
+            {
+              "entry": "0x95f7c0",
+              "cpu_usec": 305087
+            },
+            {
+              "entry": "0x97e390",
+              "cpu_usec": 261843
+            }
+          ]
+        },
+        {
+          "entry": "0x97cef0",
+          "inclusive_cpu_usec": 11380954,
+          "exclusive_cpu_usec": 134339,
+          "inclusive_share_of_all_sampled_cpu": 0.19363262378369817,
+          "exclusive_share_of_all_sampled_cpu": 0.0022856091893946875,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97caa0",
+              "cpu_usec": 5381431
+            },
+            {
+              "entry": "0x97b970",
+              "cpu_usec": 2857108
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 2453504
+            },
+            {
+              "entry": "0x97c040",
+              "cpu_usec": 248305
+            },
+            {
+              "entry": "0x979670",
+              "cpu_usec": 152909
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 640590
+            },
+            {
+              "entry": "0x2aab20",
+              "cpu_usec": 309541
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 297018
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 285604
+            }
+          ]
+        },
+        {
+          "entry": "0x97dbc0",
+          "inclusive_cpu_usec": 11375319,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.19353675134321371,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97cef0",
+              "cpu_usec": 11295315
+            },
+            {
+              "entry": "0x977260",
+              "cpu_usec": 44863
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 8957
+            },
+            {
+              "entry": "0x97b970",
+              "cpu_usec": 2837
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x979130",
+              "cpu_usec": 649547
+            },
+            {
+              "entry": "0x2aab20",
+              "cpu_usec": 309541
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 297018
+            },
+            {
+              "entry": "0x8f8a10",
+              "cpu_usec": 285604
+            }
+          ]
+        },
+        {
+          "entry": "0x97e390",
+          "inclusive_cpu_usec": 7996795,
+          "exclusive_cpu_usec": 261843,
+          "inclusive_share_of_all_sampled_cpu": 0.136055413079638,
+          "exclusive_share_of_all_sampled_cpu": 0.004454929446986156,
+          "top_sampled_callees": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 2745718
+            },
+            {
+              "entry": "0x967f20",
+              "cpu_usec": 2439487
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 1172949
+            },
+            {
+              "entry": "0x977000",
+              "cpu_usec": 632612
+            },
+            {
+              "entry": "0x96a240",
+              "cpu_usec": 202020
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x964ca0",
+              "cpu_usec": 1106009
+            },
+            {
+              "entry": "0x9763b0",
+              "cpu_usec": 493185
+            },
+            {
+              "entry": "0x957790",
+              "cpu_usec": 404965
+            },
+            {
+              "entry": "0x95f7c0",
+              "cpu_usec": 305087
+            },
+            {
+              "entry": "0x9677c0",
+              "cpu_usec": 248666
+            }
+          ]
+        },
+        {
+          "entry": "0x97caa0",
+          "inclusive_cpu_usec": 5381431,
+          "exclusive_cpu_usec": 16418,
+          "inclusive_share_of_all_sampled_cpu": 0.09155828274509593,
+          "exclusive_share_of_all_sampled_cpu": 0.00027933162872644565,
+          "top_sampled_callees": [
+            {
+              "entry": "0x97c340",
+              "cpu_usec": 5348376
+            },
+            {
+              "entry": "0x8e8ee0",
+              "cpu_usec": 6072
+            },
+            {
+              "entry": "0x8e4710",
+              "cpu_usec": 3240
+            },
+            {
+              "entry": "0x8fdc30",
+              "cpu_usec": 2935
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x97c340",
+              "cpu_usec": 166072
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 134352
+            },
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 99148
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 92689
+            }
+          ]
+        },
+        {
+          "entry": "0x97c340",
+          "inclusive_cpu_usec": 5348376,
+          "exclusive_cpu_usec": 166072,
+          "inclusive_share_of_all_sampled_cpu": 0.09099589347797737,
+          "exclusive_share_of_all_sampled_cpu": 0.0028255062885770665,
+          "top_sampled_callees": [
+            {
+              "entry": "0x882f20",
+              "cpu_usec": 4452101
+            },
+            {
+              "entry": "0x87ac90",
+              "cpu_usec": 359006
+            },
+            {
+              "entry": "0x8e8ee0",
+              "cpu_usec": 180291
+            },
+            {
+              "entry": "0x979b80",
+              "cpu_usec": 92709
+            },
+            {
+              "entry": "0x8fdc30",
+              "cpu_usec": 44958
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x8e7230",
+              "cpu_usec": 134352
+            },
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 99148
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 92689
+            },
+            {
+              "entry": "0x8fdc30",
+              "cpu_usec": 58759
+            }
+          ]
+        },
+        {
+          "entry": "0x882f20",
+          "inclusive_cpu_usec": 4452101,
+          "exclusive_cpu_usec": 49852,
+          "inclusive_share_of_all_sampled_cpu": 0.0757469011806942,
+          "exclusive_share_of_all_sampled_cpu": 0.0008481691043531958,
+          "top_sampled_callees": [
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 4065240
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 207057
+            },
+            {
+              "entry": "0x8c3270",
+              "cpu_usec": 35021
+            },
+            {
+              "entry": "0x876890",
+              "cpu_usec": 32583
+            },
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 24363
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2561602
+            },
+            {
+              "entry": "0x8783c0",
+              "cpu_usec": 92689
+            },
+            {
+              "entry": "0x882c80",
+              "cpu_usec": 90841
+            },
+            {
+              "entry": "0x8c3270",
+              "cpu_usec": 27691
+            },
+            {
+              "entry": "0x880690",
+              "cpu_usec": 13060
+            }
+          ]
+        },
+        {
+          "entry": "0x882c80",
+          "inclusive_cpu_usec": 4073547,
+          "exclusive_cpu_usec": 99148,
+          "inclusive_share_of_all_sampled_cpu": 0.06930628080178623,
+          "exclusive_share_of_all_sampled_cpu": 0.00168687856772869,
+          "top_sampled_callees": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 3850490
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880c70",
+              "cpu_usec": 2537239
+            },
+            {
+              "entry": "0x880690",
+              "cpu_usec": 13060
+            }
+          ]
+        },
+        {
+          "entry": "0x880c70",
+          "inclusive_cpu_usec": 3874853,
+          "exclusive_cpu_usec": 2561602,
+          "inclusive_share_of_all_sampled_cpu": 0.06592575219670813,
+          "exclusive_share_of_all_sampled_cpu": 0.043582437495975186,
+          "top_sampled_callees": [
+            {
+              "entry": "0x880690",
+              "cpu_usec": 17350
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x880690",
+              "cpu_usec": 13060
+            }
+          ]
+        },
+        {
+          "entry": "0x35f350",
+          "inclusive_cpu_usec": 3723008,
+          "exclusive_cpu_usec": 0,
+          "inclusive_share_of_all_sampled_cpu": 0.06334230042645797,
+          "exclusive_share_of_all_sampled_cpu": 0.0,
+          "top_sampled_callees": [
+            {
+              "entry": "0x35f260",
+              "cpu_usec": 3438625
+            },
+            {
+              "entry": "0x3623e0",
+              "cpu_usec": 270925
+            },
+            {
+              "entry": "0x32db30",
+              "cpu_usec": 11539
+            },
+            {
+              "entry": "0x3ce0d0",
+              "cpu_usec": 1904
+            },
+            {
+              "entry": "0x32ae20",
+              "cpu_usec": 15
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x6c95d0",
+              "cpu_usec": 172361
+            },
+            {
+              "entry": "0x6b4880",
+              "cpu_usec": 94196
+            },
+            {
+              "entry": "0x315bb0",
+              "cpu_usec": 82175
+            },
+            {
+              "entry": "0x971ef0",
+              "cpu_usec": 81859
+            },
+            {
+              "entry": "0x319c10",
+              "cpu_usec": 71836
+            }
+          ]
+        },
+        {
+          "entry": "0x35f260",
+          "inclusive_cpu_usec": 3446121,
+          "exclusive_cpu_usec": 11530,
+          "inclusive_share_of_all_sampled_cpu": 0.058631416233305374,
+          "exclusive_share_of_all_sampled_cpu": 0.00019616845408794727,
+          "top_sampled_callees": [
+            {
+              "entry": "0x35eec0",
+              "cpu_usec": 3428024
+            },
+            {
+              "entry": "0x357550",
+              "cpu_usec": 2759
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x6c95d0",
+              "cpu_usec": 172361
+            },
+            {
+              "entry": "0x6b4880",
+              "cpu_usec": 94196
+            },
+            {
+              "entry": "0x315bb0",
+              "cpu_usec": 82175
+            },
+            {
+              "entry": "0x971ef0",
+              "cpu_usec": 81859
+            },
+            {
+              "entry": "0x319c10",
+              "cpu_usec": 71836
+            }
+          ]
+        },
+        {
+          "entry": "0x35eec0",
+          "inclusive_cpu_usec": 3442686,
+          "exclusive_cpu_usec": 23079,
+          "inclusive_share_of_all_sampled_cpu": 0.05857297402690536,
+          "exclusive_share_of_all_sampled_cpu": 0.0003926601692884419,
+          "top_sampled_callees": [
+            {
+              "entry": "0x357550",
+              "cpu_usec": 2716105
+            },
+            {
+              "entry": "0x3e7c50",
+              "cpu_usec": 640638
+            },
+            {
+              "entry": "0x3d5170",
+              "cpu_usec": 19589
+            },
+            {
+              "entry": "0x35be90",
+              "cpu_usec": 3086
+            },
+            {
+              "entry": "0x35d370",
+              "cpu_usec": 2685
+            }
+          ],
+          "top_descendant_leaves": [
+            {
+              "entry": "0x6c95d0",
+              "cpu_usec": 172361
+            },
+            {
+              "entry": "0x6b4880",
+              "cpu_usec": 94196
+            },
+            {
+              "entry": "0x315bb0",
+              "cpu_usec": 82175
+            },
+            {
+              "entry": "0x971ef0",
+              "cpu_usec": 81859
+            },
+            {
+              "entry": "0x319c10",
+              "cpu_usec": 71836
+            }
+          ]
+        }
+      ],
+      "compared_entries": {
+        "entries": [
+          "0x73f8e0",
+          "0x97dbc0"
+        ],
+        "inclusive_cpu_usec": [
+          12755320,
+          11375319
+        ],
+        "overlap_cpu_usec": 0,
+        "share_of_all_cpu_in_either_entry": 0.41055248471676753
+      }
+    }
+  ]
+}

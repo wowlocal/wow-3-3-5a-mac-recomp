@@ -1,0 +1,97 @@
+diff --git a/src/vm.c b/src/vm.c
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -617,6 +617,58 @@
+     g_gp_samples = g_gp_jit = 0;
+ }
+
++#define GP_I386_STACK_DEPTH 16
++#define GP_I386_STACK_SPAN (2u << 20)
++
++typedef struct {
++    uint64_t leaf;
++    unsigned depth;
++    uint32_t return_pc[GP_I386_STACK_DEPTH];
++} GpI386Stack;
++
++static void gp_i386_stack(const OcerzVM *vm, const OcerzCPU *cpu,
++                         const arm_thread_state64_t *state, GpI386Stack *sample)
++{
++    const void *pc = (const void *)(uintptr_t)arm_thread_state64_get_pc(*state);
++    OcerzJitFaultInfo fi;
++    if (!cpu->mode32 || !ocerz_jit_pc_in_arena(vm, pc) ||
++        !ocerz_jit_fault_info(vm, pc, &fi) || fi.insn_index < 0)
++        return;
++    sample->leaf = fi.insn_rip;
++
++    uint64_t gpr[16];
++    memcpy(gpr, cpu->gpr, sizeof gpr);
++    if (!ocerz_jit_guest_gprs_at(vm, pc, state->__x, cpu, gpr))
++        return;
++    uint32_t sp = (uint32_t)gpr[OCERZ_RSP];
++    uint32_t fp = (uint32_t)gpr[OCERZ_RBP];
++    while (sample->depth < GP_I386_STACK_DEPTH && fp >= sp &&
++           fp - sp < GP_I386_STACK_SPAN && !(fp & 3u) &&
++           fp <= UINT32_MAX - 7u) {
++        uint32_t frame[2];
++        mach_vm_size_t copied = 0;
++        if (mach_vm_read_overwrite(mach_task_self(),
++                                   (mach_vm_address_t)(uintptr_t)ocerz_g2h(fp),
++                                   sizeof frame, (mach_vm_address_t)(uintptr_t)frame,
++                                   &copied) != KERN_SUCCESS || copied != sizeof frame || !frame[1])
++            break;
++        sample->return_pc[sample->depth++] = frame[1];
++        if (frame[0] <= fp)
++            break;
++        fp = frame[0];
++    }
++}
++
++static void gp_write_i386_stack(FILE *out, uint64_t sample_ns, uint32_t weight,
++                               const GpI386Stack *sample)
++{
++    fprintf(out, "%llu %u %llx", (unsigned long long)sample_ns, weight,
++            (unsigned long long)sample->leaf);
++    for (unsigned i = 0; i < sample->depth; ++i)
++        fprintf(out, " %x", sample->return_pc[i]);
++    fputc('\n', out);
++}
++
+ static void *guestprof_thread(void *arg)
+ {
+     OcerzVM *vm = (OcerzVM *)arg;
+@@ -629,6 +681,10 @@
+     uint64_t start = g_gp_start, next = start + period;
+     static struct { mach_port_t port; uint64_t cpu_us, period_us; } seen[256];
+     int hot_only = getenv("OCERZ_GUESTPROF_HOT") != NULL;
++    const char *stack_path = getenv("OCERZ_GUESTPROF_I386_STACK_LOG");
++    FILE *stack_log = stack_path && *stack_path ? fopen(stack_path, "wx") : NULL;
++    if (stack_path && *stack_path && !stack_log)
++        perror("ocerz: opening i386 guest stack log");
+     mach_port_t hot = MACH_PORT_NULL;
+     uint64_t pstart = start;
+     uint64_t seed = start | 1;
+@@ -675,9 +731,14 @@
+             kern_return_t kr = thread_get_state(ports[i], ARM_THREAD_STATE64, (thread_state_t)&st, &sc);
+             uint64_t grip = cpus[i]->rip;
+             uint64_t sop = cpus[i]->slow_op;
++            GpI386Stack stack = {0};
++            if (stack_log && kr == KERN_SUCCESS)
++                gp_i386_stack(vm, cpus[i], &st, &stack);
+             thread_resume(ports[i]);
+             if (kr != KERN_SUCCESS)
+                 continue;
++            if (stack_log)
++                gp_write_i386_stack(stack_log, clock_gettime_nsec_np(CLOCK_UPTIME_RAW), w, &stack);
+             const void *pc = (const void *)(uintptr_t)arm_thread_state64_get_pc(st);
+             OcerzJitFaultInfo fi;
+             g_gp_samples += w;
+@@ -707,6 +768,8 @@
+                         (int)getpid(), (unsigned)hot, 100.0 * (double)best / ((double)(now - pstart) / 1000.0 + 1));
+             }
+             gp_report((double)(now - start) / 1e9);
++            if (stack_log)
++                fflush(stack_log);
+             next = now + period;
+             pstart = now;
+         }
