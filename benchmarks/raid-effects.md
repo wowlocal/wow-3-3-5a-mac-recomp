@@ -1687,6 +1687,10 @@ The timed run order is `1-running`, `2-paused`, `3-paused`, and `4-running`. Eac
 
 The older client completed **2,675 outputs** during each running launch and **zero** during each paused launch. Pausing reduced p99 by **0.20 and 0.26 ms** in the two pairs. Throughput changed by **−1.42 and +2.62 FPS**. The saved camera and all 26 timing rows verified in all four runs. The readbacks showed overlapping effects, the GPU completion sequences were consecutive, and the test monitor recorded zero windows or activations. The earlier instance resumed with the same process identity. [Timed A/B and legacy completion witnesses](results/raid-winemetalgl-legacy-load-ab.json)
 
+Two separate 14-second Metal System Traces matched **1,771** consecutive outputs with the old test running and **1,841** with it paused. The trace with the older test paused contained zero GPU activity attributed to it. Client vertex activity in the slowest one percent still had a **5.93 ms** median, compared with **0.56 ms** across the capture. The median overlap with other GPU activity in that tail was **6.94 ms**. The measurements describe the tail in each trace. The paired minute windows quantify the effect on live throughput. [Matched GPU traces](results/raid-winemetalgl-legacy-load-gpu-traces.json)
+
+Use the Metal System Trace template and the same submission log for each state. After exporting `metal-gpu-intervals`, run `summarize-raid-system-tail.py` on each capture with the older test's PID.
+
 ```sh
 python3 benchmarks/summarize-raid-legacy-load.py TIMED_CAPTURES
 ```
