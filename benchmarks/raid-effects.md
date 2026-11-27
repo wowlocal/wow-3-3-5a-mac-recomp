@@ -1000,3 +1000,11 @@ Six interpreter cases passed with the existing pass, the trial, and forced repla
 | Later pass | 125.00 | 10.47 ms |
 
 Throughput rose **2.30%** and median p99 fell **1.36 ms**. Both pairs improved on both metrics. All four isolated 60-second launches used precise uniform invalidation and folded load addresses. The completion sequences were consecutive, and the launches verified the camera, full cast schedule, overlapping effects, zero visible windows or activations, and cleanup. [Full-raid A/B and checks](results/raid-aarchx-headless-i386-fpb-v2-ab.json)
+
+### Attribute sampled guest addresses to memory forms
+
+A streaming disassembly of the local i386 executable's `__text` matched **98.30%** of the saved translated CPU weight. Instructions with a memory operand based on EBP without an index accounted for **14.38%** of all sampled CPU time. The corresponding ESP forms accounted for **1.12%**. EBP-relative `MOV` loads without an index accounted for **3.70%** with negative displacements and **2.49%** with nonnegative displacements. The matched weight includes the ARM64 work assigned to each guest instruction. The underlying capture predates the later FP batching trial. [Weighted address forms](results/raid-aarchx-headless-i386-weighted-address-forms.json)
+
+```sh
+python3 benchmarks/summarize-i386-address-forms.py CAPTURE_DIR LOCAL_I386_EXECUTABLE
+```

@@ -1,0 +1,177 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Static instruction forms for the sampled CPU addresses in the isolated folded-load raid profile",
+  "source_profile": "raid-aarchx-headless-precise-uxtw-guest-regions.json",
+  "viewport": [
+    1365,
+    768
+  ],
+  "caster_count": 24,
+  "boss_count": 1,
+  "precise_fixed_uniform_invalidation": true,
+  "i386_mov_base_uxtw": true,
+  "i386_fp_batch_v2": false,
+  "method": "Match sampled guest PCs against the local non-PIE i386 Mach-O __text disassembly and classify the memory operand. Exclude LEA and NOP.",
+  "warm_periods": 7,
+  "total_sampled_cpu_usec": 55001000,
+  "translated_cpu_usec": 34265308,
+  "matched_guest_address_samples_cpu_usec": 33681377,
+  "matched_fraction_of_translated_cpu": 0.9829585363715394,
+  "distinct_guest_pcs_matched_to_static_instructions": 9043,
+  "memory_address_base": [
+    {
+      "base": "other",
+      "indexing": "base_only",
+      "cpu_usec": 8236249,
+      "share_of_all_sampled_cpu": 0.14974725914074288
+    },
+    {
+      "base": "ebp",
+      "indexing": "base_only",
+      "cpu_usec": 7911612,
+      "share_of_all_sampled_cpu": 0.14384487554771733
+    },
+    {
+      "base": "other",
+      "indexing": "indexed",
+      "cpu_usec": 754788,
+      "share_of_all_sampled_cpu": 0.013723168669660552
+    },
+    {
+      "base": "esp",
+      "indexing": "base_only",
+      "cpu_usec": 615764,
+      "share_of_all_sampled_cpu": 0.011195505536262976
+    },
+    {
+      "base": "ebp",
+      "indexing": "indexed",
+      "cpu_usec": 93632,
+      "share_of_all_sampled_cpu": 0.0017023690478354938
+    }
+  ],
+  "high_weight_guest_address_forms": [
+    {
+      "opcode": "movl",
+      "move_direction": "load",
+      "base": "ebp",
+      "indexing": "base_only",
+      "cpu_usec": 3405521,
+      "share_of_all_sampled_cpu": 0.0619174378647661
+    },
+    {
+      "opcode": "movl",
+      "move_direction": "load",
+      "base": "other",
+      "indexing": "base_only",
+      "cpu_usec": 2464367,
+      "share_of_all_sampled_cpu": 0.04480585807530772
+    },
+    {
+      "opcode": "movss",
+      "move_direction": "other",
+      "base": "other",
+      "indexing": "base_only",
+      "cpu_usec": 1090240,
+      "share_of_all_sampled_cpu": 0.01982218505118089
+    },
+    {
+      "opcode": "movl",
+      "move_direction": "store",
+      "base": "ebp",
+      "indexing": "base_only",
+      "cpu_usec": 784996,
+      "share_of_all_sampled_cpu": 0.014272395047362775
+    },
+    {
+      "opcode": "movl",
+      "move_direction": "store",
+      "base": "other",
+      "indexing": "base_only",
+      "cpu_usec": 765803,
+      "share_of_all_sampled_cpu": 0.013923437755677169
+    },
+    {
+      "opcode": "mulss",
+      "move_direction": "other",
+      "base": "ebp",
+      "indexing": "base_only",
+      "cpu_usec": 744130,
+      "share_of_all_sampled_cpu": 0.01352939037472046
+    },
+    {
+      "opcode": "mulss",
+      "move_direction": "other",
+      "base": "other",
+      "indexing": "base_only",
+      "cpu_usec": 734192,
+      "share_of_all_sampled_cpu": 0.013348702750859075
+    },
+    {
+      "opcode": "movss",
+      "move_direction": "other",
+      "base": "ebp",
+      "indexing": "base_only",
+      "cpu_usec": 698002,
+      "share_of_all_sampled_cpu": 0.012690714714277922
+    },
+    {
+      "opcode": "cmpl",
+      "move_direction": "other",
+      "base": "other",
+      "indexing": "base_only",
+      "cpu_usec": 591553,
+      "share_of_all_sampled_cpu": 0.010755313539753822
+    },
+    {
+      "opcode": "movl",
+      "move_direction": "store",
+      "base": "esp",
+      "indexing": "base_only",
+      "cpu_usec": 587281,
+      "share_of_all_sampled_cpu": 0.010677642224686824
+    },
+    {
+      "opcode": "fistpl",
+      "move_direction": "other",
+      "base": "ebp",
+      "indexing": "base_only",
+      "cpu_usec": 549775,
+      "share_of_all_sampled_cpu": 0.00999572735041181
+    },
+    {
+      "opcode": "addss",
+      "move_direction": "other",
+      "base": "other",
+      "indexing": "base_only",
+      "cpu_usec": 459020,
+      "share_of_all_sampled_cpu": 0.00834566644242832
+    }
+  ],
+  "ebp_move_without_index": [
+    {
+      "direction": "load",
+      "displacement_sign": "negative",
+      "cpu_usec": 2036783,
+      "share_of_all_sampled_cpu": 0.037031744877365866
+    },
+    {
+      "direction": "load",
+      "displacement_sign": "nonnegative",
+      "cpu_usec": 1368738,
+      "share_of_all_sampled_cpu": 0.02488569298740023
+    },
+    {
+      "direction": "store",
+      "displacement_sign": "negative",
+      "cpu_usec": 801904,
+      "share_of_all_sampled_cpu": 0.014579807639861093
+    },
+    {
+      "direction": "store",
+      "displacement_sign": "nonnegative",
+      "cpu_usec": 12756,
+      "share_of_all_sampled_cpu": 0.00023192305594443738
+    }
+  ]
+}
