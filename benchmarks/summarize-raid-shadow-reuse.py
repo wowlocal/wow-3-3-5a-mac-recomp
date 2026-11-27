@@ -1,4 +1,4 @@
-"""Compare the mapped-buffer shadow allocator in isolated raid captures."""
+"""Compare mapped-buffer storage options in isolated raid captures."""
 
 import argparse
 import json
@@ -28,18 +28,26 @@ def read_window(folder, seconds):
     }
 
 
+def read_counter_rows(text):
+    return [
+        {name: int(value) for name, value in re.findall(r"(\w+)=(\d+)", line)}
+        for line in text.splitlines(keepends=True)
+        if line.startswith("ocerz: GL maps=") and line.endswith("\n")
+    ]
+
+
+def read_post_readback_counters(folder):
+    text = (folder / "client.log").read_text()
+    before, marker, after = text.rpartition("saved Metal trial backbuffer readback")
+    if not marker:
+        raise ValueError(f"Missing readback marker in {folder}")
+    return read_counter_rows(before), read_counter_rows(after)
+
+
 def read_diagnostic(folder, reuse):
     if reuse and (folder / "map-shadow-mode.txt").read_text().split() != ["1", "1"]:
         raise ValueError(f"Wrong diagnostic setting in {folder}")
-    text = (folder / "client.log").read_text()
-    marker = "saved Metal trial backbuffer readback"
-    if marker not in text:
-        raise ValueError(f"Missing readback marker in {folder}")
-    rows = [
-        {name: int(value) for name, value in re.findall(r"(\w+)=(\d+)", line)}
-        for line in text.rsplit(marker, 1)[1].splitlines()
-        if line.startswith("ocerz: GL maps=")
-    ]
+    _, rows = read_post_readback_counters(folder)
     if len(rows) < 2 or any(b["maps"] - a["maps"] != 4096 for a, b in zip(rows, rows[1:])):
         raise ValueError(f"Missing diagnostic counter rows in {folder}")
     delta = {name: rows[-1][name] - rows[0][name] for name in FIELDS}
@@ -55,24 +63,62 @@ def read_diagnostic(folder, reuse):
     }
 
 
-def summarize(control, trial, ab):
+def verify_small_mode(folder, mode):
+    if (folder / "small-storage-mode.txt").read_text().strip() != str(mode):
+        raise ValueError(f"Wrong one-page allocation setting in {folder}")
+    marker = "allocated its first guest-backed one-page buffer"
+    if (marker in (folder / "client.log").read_text()) != bool(mode):
+        raise ValueError(f"Unexpected one-page allocation witness in {folder}")
+
+
+def read_small_diagnostic(folder, mode):
+    verify_small_mode(folder, mode)
+    if (folder / "map-shadow-mode.txt").read_text().split() != ["1", "1"]:
+        raise ValueError(f"Wrong shadow settings in {folder}")
+    before, after = read_post_readback_counters(folder)
+    previous = before[-1]["maps"] if before else 0
+    final = after[-1]["maps"] if after else previous
+    # The counter emits at 128 maps and every 4,096 thereafter.
+    # At most 4,095 maps sit between each boundary and its preceding report.
+    result = {
+        "small_guest_storage": bool(mode),
+        "diagnostic_gpu_window": read_window(folder, 25),
+        "post_window_resident_kib": int((folder / "post-window-rss-kib.txt").read_text()),
+        "fallback_maps_after_readback_bounds": [
+            max(0, final - previous - 4095), final - previous + 4095,
+        ],
+        "post_readback_counter_rows": len(after),
+    }
+    if len(after) >= 2:
+        result["between_post_readback_rows"] = {
+            key: after[-1][key] - after[0][key] for key in FIELDS
+        }
+    return result
+
+
+def summarize(control, trial, ab, small_storage=False):
+    policy = "small_guest_storage" if small_storage else "shadow_reuse"
     runs = []
     for index, mode in enumerate((0, 1, 1, 0), 1):
         folder = ab / f"{index}-{mode}"
-        if (folder / "map-shadow-mode.txt").read_text().split() != [str(mode), "0"]:
+        shadow_mode = 1 if small_storage else mode
+        if (folder / "map-shadow-mode.txt").read_text().split() != [str(shadow_mode), "0"]:
             raise ValueError(f"Wrong comparison settings in {folder}")
+        if small_storage:
+            verify_small_mode(folder, mode)
         if "ocerz: GL maps=" in (folder / "client.log").read_text():
             raise ValueError(f"Counter logging during timed comparison in {folder}")
-        runs.append({"order": index, "shadow_reuse": bool(mode), **read_window(folder, 60)})
+        runs.append({"order": index, policy: bool(mode), **read_window(folder, 60)})
     comparison = {}
-    for mode, name in ((False, "control"), (True, "reuse")):
-        active = [run for run in runs if run["shadow_reuse"] == mode]
+    for mode, name in ((False, "control"), (True, "one_page" if small_storage else "reuse")):
+        active = [run for run in runs if run[policy] == mode]
         comparison[name] = {
             "median_completed_fps": median(run["average_completed_fps"] for run in active),
             "median_p99_gap_ns": median(run["p99_gpu_completion_gap_ns"] for run in active),
         }
+    read_diagnostics = read_small_diagnostic if small_storage else read_diagnostic
     return {
-        "diagnostics": [read_diagnostic(control, 0), read_diagnostic(trial, 1)],
+        "diagnostics": [read_diagnostics(control, 0), read_diagnostics(trial, 1)],
         "timed_runs": runs,
         "comparison": comparison,
     }
@@ -83,8 +129,9 @@ def main():
     parser.add_argument("logged_control", type=Path)
     parser.add_argument("logged_reuse", type=Path)
     parser.add_argument("ab", type=Path)
+    parser.add_argument("--small-storage", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(summarize(args.logged_control, args.logged_reuse, args.ab), indent=2))
+    print(json.dumps(summarize(args.logged_control, args.logged_reuse, args.ab, args.small_storage), indent=2))
 
 
 if __name__ == "__main__":

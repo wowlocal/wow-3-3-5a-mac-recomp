@@ -1592,3 +1592,25 @@ Set `OCERZ_M32_REUSE_GL_SHADOW_STORAGE=1` for follow-up comparisons and leave it
 ```sh
 python3 benchmarks/summarize-raid-shadow-reuse.py LOGGED_CONTROL LOGGED_REUSE TIMED_RUNS
 ```
+
+### Allocate one-page Metal buffer storage in guest memory
+
+The trial extends the existing buffer allocator to requests for one host page, **16 KiB** on this Mac. WineMetalGL still determines which allocations reach the provider and rounds each eligible request before calling it. The new selection applies to all one-page requests through that provider. Both arms enable the earlier 2 MiB and 8 MiB policies and copied-shadow allocation reuse. The renderer still owns the storage lifetime.
+
+The offscreen tests drew from a 4 KiB mapped vertex buffer, checked its last mapped word, and verified that a buffer four bytes larger than a page uses the copied path. Both modes passed **806** general i386 checks and **128** WineMetalGL storage checks. With only the one-page policy enabled, the storage tests passed **113** checks.
+
+In separate logged runs, the fallback map count after world readback fell from **1.69–1.70 million** to **147,457–155,647**. The ranges account for the counter reports every 4,096 fallback maps. Incoming copies between complete reports fell from **9.10 GB** to **6.87 GB**. The resident-memory sample after the 25-second GPU window rose from **482 to 595 MiB**. These are separate diagnostic launches with their own world readback and counter bounds.
+
+| Small-buffer storage | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Copied shadow | 135.99 | 12.84 ms |
+| One-page guest storage | 131.28 | 13.20 ms |
+
+Throughput fell **3.05 and 6.37 FPS** across the two pairs. P99 rose **0.40 and 0.33 ms**. The benchmark retains copied shadows for these buffers. Each of the four warmed 60-second runs verified the saved camera, spell effects, 26 timing rows, and consecutive GPU completions at 1365 × 768. The trial monitor recorded zero windows or activations. The copied client folder was isolated. A legacy instance from another bundle was observed running and its GPU load was unmeasured. [Timed A/B and fallback counters](results/raid-aarchx-one-page-guest-storage-ab.json)
+
+Apply `patches/aarchx-wmgl-small-guest-storage-trial.patch` after the AArchX guest autorelease pool trial. Use `OCERZ_WMGL_GUEST_SMALL_STORAGE=1` for the candidate on the same rebuilt binary. The comparison keeps `OCERZ_M32_REUSE_GL_SHADOW_STORAGE=1` in both arms, and captures map counters only in the two diagnostic launches.
+
+```sh
+python3 benchmarks/summarize-raid-shadow-reuse.py LOGGED_CONTROL LOGGED_ONE_PAGE TIMED_RUNS \
+    --small-storage
+```
