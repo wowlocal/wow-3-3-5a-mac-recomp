@@ -1,0 +1,141 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -753,7 +753,8 @@
+  *
+  * ---- i386 ----
+  * 32-bit blocks are compiled from a whitelist of instructions (m32_inline_ok),
+- * with no superblocks and 0x67/16-bit addressing left to the interpreter.
++ * with 0x67/16-bit addressing left to the interpreter. The optional i386
++ * superblock trial follows the fall-through of forward branches within the entry page.
+  * Effective addresses wrap at 2^32 before the host mapping is applied, and pin
+  * class 2 (the 64-bit CALL/RET protocol) is never selected for them.
+  *
+@@ -25673,6 +25674,8 @@
+     if (g_jitmeasure < 0)
+         g_jitmeasure = getenv("OCERZ_JITMEASURE") ? 1 : 0;
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
++    const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                            ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -25709,24 +25712,29 @@
+                 }
+                 vn++;
+                 if (is_terminator(op)) {
+-                    if (op == OCERZ_OP_JCC && !mode32 && superblock_enabled() && !g_no_chain &&
++                    if (op == OCERZ_OP_JCC && superblock_enabled() && !g_no_chain &&
+                         vext < SIDE_MAX && vn < JIT_MAX_BLOCK_INSNS - 1 &&
+-                        scratch[vn - 1].ops[0].kind == OCERZ_OPK_IMM &&
+-                        (scratch[vn - 1].ops[0].imm > vpc + len ||
+-                         (superblock_back_enabled() && scratch[vn - 1].ops[0].imm != rip &&
+-                          scratch[vn - 1].ops[0].imm < vpc))) {
+-                        vext++;
+-                        if (scratch[vn - 1].ops[0].imm > vpc + len &&
+-                            jcc_flip_wanted(scratch[vn - 1].rip)) {
+-                            g_tc_learned = 1;
+-                            uint64_t tgt = scratch[vn - 1].ops[0].imm;
+-                            scratch[vn - 1].ops[0].imm = vpc + len;
+-                            scratch[vn - 1].cc ^= 1;
+-                            vpc = tgt;
++                        scratch[vn - 1].ops[0].kind == OCERZ_OPK_IMM) {
++                        const uint64_t fall = vpc + len;
++                        const uint64_t target = scratch[vn - 1].ops[0].imm;
++                        const int forward = target > fall;
++                        const int can_extend = mode32
++                            ? forward_m32 && vext < 4 && forward &&
++                                (target ^ rip) < OCERZ_GUEST_PAGE_SIZE &&
++                                (fall ^ rip) < OCERZ_GUEST_PAGE_SIZE
++                            : forward || (superblock_back_enabled() && target != rip && target < vpc);
++                        if (can_extend) {
++                            vext++;
++                            if (!mode32 && forward && jcc_flip_wanted(scratch[vn - 1].rip)) {
++                                g_tc_learned = 1;
++                                scratch[vn - 1].ops[0].imm = fall;
++                                scratch[vn - 1].cc ^= 1;
++                                vpc = target;
++                                continue;
++                            }
++                            vpc = fall;
+                             continue;
+                         }
+-                        vpc += len;
+-                        continue;
+                     }
+                     break;
+                 }
+@@ -26774,7 +26782,7 @@
+                 g_side[g_n_side].jcc_rip = insn->rip;
+                 g_side[g_n_side].ft_rip = insn->rip + insn->len;
+                 g_side[g_n_side].ft_site = NULL;
+-                g_side[g_n_side].probe = probe_wanted(insn->rip, insn->rip + insn->len);
++                g_side[g_n_side].probe = !mode32 && probe_wanted(insn->rip, insn->rip + insn->len);
+                 if (g_cc_cbz_reg >= 0) {
+                     if (g_cc_cbz_nz) a64_cbnz(&b, g_cc_cbz_sf, g_cc_cbz_reg, 0);
+                     else             a64_cbz(&b, g_cc_cbz_sf, g_cc_cbz_reg, 0);
+@@ -27577,6 +27585,9 @@
+     blk->hoist_sig = hoist_signature();
+     blk->ordered_loads = (uint8_t)g_blk_ordered_loads;
+     blk->code_words = (uint32_t)(b.p - entry);
++    if (forward_m32 && g_n_side && ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK_LOG"))
++        fprintf(stderr, "ocerz: i386 forward superblock rip=%#llx insns=%d side_exits=%d\n",
++                (unsigned long long)rip, n, g_n_side);
+     if (blk->stop_patch || blk->n_stop_extra) {
+         blk->stop_next = jit->stop_blocks;
+         jit->stop_blocks = blk;
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -53,6 +53,7 @@
+
+ #include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+
+@@ -279,6 +280,43 @@
+     }
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++
++    const char *only = getenv("OCERZ_TEST_JIT32_FORWARD_BRANCH");
++    if (only) {
++        switch (atoi(only)) {
++        case 0:
++            CASE("two forward branches with live flags", M32_CODE, M32_STACK,
++                 0xb8,0,0,0,0, 0x85,0xc0, 0x75,3, 0x83,0xc6,4,
++                 0x85,0xc0, 0x74,3, 0x83,0xc7,1, 0x0f,0x94,0xc2, 0x89,0x13);
++            break;
++        case 1:
++            CASE("taken side exit keeps the comparison", M32_CODE, M32_STACK,
++                 0xb8,5,0,0,0, 0x85,0xc0, 0x75,3, 0x83,0xc7,1,
++                 0x0f,0x95,0xc2, 0x89,0x13);
++            break;
++        case 2:
++            CASE("unordered float compare and side exit", M32_CODE, M32_STACK,
++                 0xb8,0,0,0xc0,0x7f, 0x66,0x0f,0x6e,0xc0, 0x0f,0x2e,0x03,
++                 0x7a,3, 0x83,0xc7,1, 0x0f,0x9a,0xc2, 0x89,0x13);
++            break;
++        case 3:
++            CASE("flag-dependent branch after a memory compare", M32_CODE, M32_STACK,
++                 0xb8,0x40,0x47,0x4e,0x55, 0x39,0x03, 0x75,3, 0x8b,0x73,4,
++                 0x0f,0x94,0xc2, 0x89,0x13);
++            break;
++        case 4:
++            CASE("fall-through crosses a guest page", M32_CODE+0xffc, M32_STACK,
++                 0x31,0xc0, 0x75,3, 0x83,0xc6,1, 0x89,0x13);
++            break;
++        case 5:
++            CASE("backward branch", M32_CODE, M32_STACK,
++                 0xb9,2,0,0,0, 0x49, 0x75,0xfd, 0x89,0x13);
++            break;
++        default:
++            return 2;
++        }
++        return g_failures != 0;
++    }
+
+     static const uint8_t carry_chain[] = {
+         0xb8, 0xff, 0xff, 0xff, 0xff,

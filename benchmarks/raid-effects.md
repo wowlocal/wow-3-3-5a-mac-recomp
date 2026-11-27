@@ -850,3 +850,16 @@ Four warmed 60-second headless launches used the same runtime and renderer in co
 Throughput rose **9.14%** and the median p99 fell **1.80 ms**, with both metrics improving in both pairs. Each readback showed the scene and overlapping effects. GPU completion sequences stayed consecutive and the monitor observed zero trial windows or activations. Both arms passed **337** GPU tests. [Full-raid A/B and GPU checks](results/raid-winemetalgl-headless-direct-uniform-tail-ab.json)
 
 A separate diagnostic packed both ways before checking each complete 6,384-byte block. It logged at least **2,834,432 byte-identical repacks**. Of the **2,429,952** in-world repacks between logged checkpoints, **2,135,640 (87.89%)** left every tail byte unchanged. Across that interval, a repack changed an average of **0.14 aligned 16-byte slots**. The parity probe ran separately from the four timed launches. [Buffer parity and changed-slot counts](results/raid-winemetalgl-headless-direct-uniform-tail-ab.json)
+
+### Follow forward i386 branches within a guest page
+
+The trial translates through the fall-through of up to four forward conditional branches when both destinations lie in the entry guest page. It uses the existing side exits for taken branches. The trial runs with the translation cache off. A separate compile witness found **26,848** distinct translated entry sites with side exits, including **4,481** with four.
+
+Apply `patches/aarchx-m32-forward-superblock-trial.patch` to the AArchX source and set `OCERZ_M32_FORWARD_SUPERBLOCK=1` to select the trial. Run the comparison with that variable unset in control. Set `OCERZ_TCACHE=off` in both arms. Enabling `OCERZ_M32_FORWARD_SUPERBLOCK_LOG` in a separate launch records the emitted sites. Run `test_jit32` in separate processes with `OCERZ_TEST_JIT32_FORWARD_BRANCH` set to each number from 0 through 5. The cases cover taken and fall-through paths, integer and floating-point flags, a guest-page boundary, and a backward branch. Both arms passed all six interpreter comparisons and all **806** general runtime checks.
+
+| Forward fall-through merging | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Disabled | 108.30 | 14.40 ms |
+| Enabled | 105.53 | 14.39 ms |
+
+The first pair lost throughput and the second gained 1 FPS. The median throughput fell **2.55%**. The p99 changes across pairs had opposite signs. Four warmed 60-second launches used direct fixed-function uniform writes, direct ARB uniforms, liveness depth 3, and the same renderer. GPU completions were consecutive. The readbacks showed the fixed camera and overlapping effects, the realm checked all cast timing rows, and the desktop monitor recorded zero visible trial windows or activations. [Full-raid A/B, compile coverage and checks](results/raid-aarchx-headless-i386-forward-superblock-ab.json)

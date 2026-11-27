@@ -1,0 +1,189 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "vertex_shader_uniform_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "i386_forward_superblocks": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6680,
+      "first_sequence": 4483,
+      "last_sequence": 11162,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994838625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 111.31666666666666,
+      "p99_gpu_completion_gap_ns": 11514666,
+      "min_draws": 687,
+      "max_draws": 1139
+    },
+    {
+      "launch": 2,
+      "i386_forward_superblocks": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6288,
+      "first_sequence": 4475,
+      "last_sequence": 10762,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999650166,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 104.78333333333333,
+      "p99_gpu_completion_gap_ns": 12035625,
+      "min_draws": 676,
+      "max_draws": 1159
+    },
+    {
+      "launch": 3,
+      "i386_forward_superblocks": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6378,
+      "first_sequence": 4208,
+      "last_sequence": 10585,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997911834,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 106.28333333333333,
+      "p99_gpu_completion_gap_ns": 16738334,
+      "min_draws": 693,
+      "max_draws": 1117
+    },
+    {
+      "launch": 4,
+      "i386_forward_superblocks": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6318,
+      "first_sequence": 3405,
+      "last_sequence": 9722,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991989291,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 105.28333333333333,
+      "p99_gpu_completion_gap_ns": 17283500,
+      "min_draws": 679,
+      "max_draws": 955
+    }
+  ],
+  "medians": {
+    "0": {
+      "average_completed_fps": 108.3,
+      "p99_gpu_completion_gap_ns": 14399083.0
+    },
+    "1": {
+      "average_completed_fps": 105.53333333333333,
+      "p99_gpu_completion_gap_ns": 14386979.5
+    }
+  },
+  "native_compile_witness": {
+    "distinct_i386_guest_entry_sites": 26848,
+    "longest_decoded_block": 256,
+    "distinct_sites_by_side_exit_count": {
+      "1": 13106,
+      "2": 6474,
+      "3": 2787,
+      "4": 4481
+    }
+  },
+  "visual_readback_checked_per_launch": true,
+  "checks_per_arm": {
+    "0": {
+      "general_checks": 806,
+      "general_failures": 0,
+      "interpreter_comparisons": [
+        {
+          "case": "two forward branches with live flags",
+          "largest_emitted_side_exit_count": 0
+        },
+        {
+          "case": "taken side exit keeps the comparison",
+          "largest_emitted_side_exit_count": 0
+        },
+        {
+          "case": "unordered float compare and side exit",
+          "largest_emitted_side_exit_count": 0
+        },
+        {
+          "case": "flag-dependent branch after a memory compare",
+          "largest_emitted_side_exit_count": 0
+        },
+        {
+          "case": "fall-through crosses a guest page",
+          "largest_emitted_side_exit_count": 0
+        },
+        {
+          "case": "backward branch",
+          "largest_emitted_side_exit_count": 0
+        }
+      ]
+    },
+    "1": {
+      "general_checks": 806,
+      "general_failures": 0,
+      "interpreter_comparisons": [
+        {
+          "case": "two forward branches with live flags",
+          "largest_emitted_side_exit_count": 2
+        },
+        {
+          "case": "taken side exit keeps the comparison",
+          "largest_emitted_side_exit_count": 1
+        },
+        {
+          "case": "unordered float compare and side exit",
+          "largest_emitted_side_exit_count": 1
+        },
+        {
+          "case": "flag-dependent branch after a memory compare",
+          "largest_emitted_side_exit_count": 1
+        },
+        {
+          "case": "fall-through crosses a guest page",
+          "largest_emitted_side_exit_count": 0
+        },
+        {
+          "case": "backward branch",
+          "largest_emitted_side_exit_count": 0
+        }
+      ]
+    }
+  }
+}
