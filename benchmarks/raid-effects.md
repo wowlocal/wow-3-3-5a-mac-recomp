@@ -853,7 +853,7 @@ A separate diagnostic packed both ways before checking each complete 6,384-byte 
 
 ### Follow forward i386 branches within a guest page
 
-The original timing series had other trial instances running, rising from one to four across its launches.
+The original timing series had other trial instances running, rising from one to four across its launches. The isolated recheck improved throughput and p99 in both pairs. [Isolated recheck](results/raid-aarchx-headless-i386-forward-superblock-isolated-recheck.json)
 
 The trial translates through the fall-through of up to four forward conditional branches when both destinations lie in the entry guest page. It uses the existing side exits for taken branches. The trial runs with the translation cache off. A separate compile witness found **26,848** distinct translated entry sites with side exits, including **4,481** with four.
 
@@ -933,3 +933,7 @@ python3 benchmarks/check-isolated-raid-processes.py ISOLATED_CLIENT_DIR
 #### Isolated recheck of precise uniform invalidation
 
 Four warmed 60-second launches reused the same precise-invalidation build and checked process isolation through the final cleanup. The control median was **115.32 FPS** at **13.00 ms p99** and precise invalidation reached **119.26 FPS** at **13.05 ms p99**. Throughput rose **3.42%** and improved in both pairs. Median p99 rose **0.05 ms**. GPU sequences stayed consecutive, the fixed camera and overlapping spell effects were visible, and the server verified the full cast schedule. [Isolated throughput recheck](results/raid-winemetalgl-headless-precise-uniform-invalidation-isolated-recheck.json)
+
+#### Isolated recheck of i386 forward branches
+
+Four warmed 60-second launches repeated the forward-branch comparison on the direct uniform writer. The control median was **111.68 FPS** at **14.78 ms p99**. Forward-branch merging reached **116.79 FPS** at **11.92 ms p99**, a **4.57%** median throughput gain and a **2.86 ms** shorter median p99 gap. Both pairs improved on both metrics. All launches checked the scene, exact cast timing, continuous GPU completion sequences, and zero trial windows or activations. The process checker verified cleanup between every launch. [Isolated throughput recheck](results/raid-aarchx-headless-i386-forward-superblock-isolated-recheck.json)
