@@ -44,9 +44,10 @@ def render_submissions(path, pid):
     return by_end, by_stream
 
 
-def read_frames(root, window, by_end):
+def read_frames(root, window, by_end, include_crossing_gap):
     pid, stream = window["pid"], window["stream"]
     first, last = window["first_sequence"], window["last_sequence"]
+    last += int(include_crossing_gap)
     width, height = window["window_size"]
     expected_dimensions = width << 32 | height
     cpu_log = root / "cpu-swaps.ns"
@@ -197,9 +198,11 @@ def main():
     window = json.loads((args.capture / "window.json").read_text())
     if window["missing_sequences"] or window["verified_completed_renders"] < 2:
         raise ValueError("Expected a continuous measured output window")
+    elapsed_ns = window["gpu_completion_interval_ns"]
+    include_crossing_gap = elapsed_ns < window.get("measurement_duration_ns", elapsed_ns)
     by_end, by_stream = render_submissions(args.capture / "submissions.ns", window["pid"])
-    frames, has_cpu = read_frames(args.capture, window, by_end)
-    if len(frames) != window["verified_completed_renders"]:
+    frames, has_cpu = read_frames(args.capture, window, by_end, include_crossing_gap)
+    if len(frames) != window["verified_completed_renders"] + int(include_crossing_gap):
         raise ValueError("Joined frames disagree with the verified output count")
     intervals = explain_intervals(frames, has_cpu, by_stream[frames[0].final.stream])
     summary = summarize(intervals)
@@ -209,7 +212,9 @@ def main():
         "window_size": window["window_size"],
         "measurement_duration_ns": window["measurement_duration_ns"],
         "average_completed_fps": window["average_completed_fps"],
-        "verified_output_count": len(frames),
+        "verified_output_count": window["verified_completed_renders"],
+        "matched_final_command_buffers": len(frames),
+        "cutoff_crossing_gap_included": include_crossing_gap,
         "render_thread_cpu_samples_joined": has_cpu,
         **summary,
     }

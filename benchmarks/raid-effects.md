@@ -1131,3 +1131,13 @@ Four warmed 60-second runs alternated the continuing-pass draw threshold in 512,
 | 448 | 116.48 | 14.50 ms |
 
 P99 improved by **3.03 ms** in the first pair and **0.08 ms** in the second. Throughput gained **8.12 FPS** in the first pair and fell **5.93 FPS** in the second. The baseline remains 512. All runs kept the saved camera, overlapping effects, exact cast schedule, consecutive GPU completion sequences, and zero visible trial windows or activations. [Live 448-draw comparison](results/raid-winemetalgl-headless-448-draw-split-ab.json)
+
+### Identify active GPU stages in completion gaps
+
+A separate 20-second Metal System Trace at setting 56 matched all **2,217** in-range output completions to fragment endpoints within **41 ns**. The 23 intervals at or above this trace's p99 had a median completion gap of **18.64 ms**. Median recorded client GPU activity rose from **3.65 ms** across the joined intervals to **12.87 ms** in the tail. Vertex activity increased from **1.99 to 9.18 ms**, and fragment activity from **1.06 to 4.60 ms**. These values are unions of active intervals clipped to each output gap.
+
+Other processes also recorded activity. Their intervals can overlap the client's on another channel. The median time covered by other or unattributed activity outside the client's intervals was **2.98 ms** in the tail. [Metal System Trace stage distributions](results/raid-winemetalgl-headless-hardware-tail.json)
+
+In the longer submission log from this diagnostic launch, every matched output interval's first buffer had **448 draws**. The 6,394 intervals used two, three, and four render submissions in **5,705**, **688**, and **one** cases, respectively. The launcher verified all 26 timing rows and no visible window or activation. The standalone 60-second comparisons use the hardware and CPU timing instrumentation disabled.
+
+The frame-tail summarizer includes the completion gap that crosses the measurement cutoff in p99, matching the performance recorder's definition. This adds one joined command buffer beyond the in-window frame count when the last output falls before the cutoff.
