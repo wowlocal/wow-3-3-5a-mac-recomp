@@ -1,0 +1,288 @@
+diff --git a/src/core/stats.h b/src/core/stats.h
+--- a/src/core/stats.h
++++ b/src/core/stats.h
+@@ -16,6 +16,8 @@
+
+ #include <cstdint>
+ #include <string>
++
++namespace wmgl { class Context; }
+
+ namespace wmgl::stats {
+
+@@ -166,6 +168,31 @@
+ // calls), which endFrame prints every 60 frames.
+ void recordCall(const char* command, uint64_t nanos, uint64_t lockNanos);
+
++// Candidate categories for a diagnostic GL packet timeline.
++enum class TimelineKind : char {
++    Barrier = 'B', Scalar = 'S', InputCopy = 'P', BufferedDraw = 'D',
++    ArrayDraw = 'A', IndexedDraw = 'I', VertexPointer = 'V',
++};
++
++class TimelineCall {
++public:
++    TimelineCall(const char* command, TimelineKind kind);
++    ~TimelineCall();
++    bool active() const { return start_ != 0; }
++    void inspect(const Context& ctx);
++
++private:
++    const char* command_;
++    TimelineKind kind_;
++    uint64_t start_;
++    const Context* context_ = nullptr;
++    const char* reason_ = "api";
++    bool nested_ = false;
++};
++
++bool glTimelineEnabled();
++void timelineOffscreenSwap(uint64_t stream, uint64_t sequence, uint64_t draws, uint64_t entered);
++
+ // One GL call (the generated entry points): `locked()` once the share
+ // group's lock is held.
+ class CallTimer {
+diff --git a/src/core/stats.mm b/src/core/stats.mm
+--- a/src/core/stats.mm
++++ b/src/core/stats.mm
+@@ -17,6 +17,10 @@
+ #include <unordered_map>
+ #include <unordered_set>
+ #include <vector>
++#include <unistd.h>
++
++#include "core/context.h"
++#include "core/compat/immediate.h"
+
+ namespace wmgl::stats {
+ namespace {
+@@ -71,6 +75,132 @@
+         return t;
+     }();
+     return mach_absolute_time() * timebase.numer / timebase.denom;
++}
++
++namespace {
++
++struct TimelineRow {
++    const char* command;
++    const Context* context;
++    const char* reason;
++    uint64_t start, end, sequence, draws;
++    TimelineKind kind;
++};
++
++struct TimelineState {
++    FILE* file = nullptr;
++    bool attempted = false;
++    bool nestedCall = false;
++    bool overflow = false;
++    unsigned depth = 0;
++    unsigned frames = 0;
++    uint64_t stream = 0;
++    std::vector<TimelineRow> rows;
++};
++
++thread_local TimelineState timeline;
++const char* const timelinePath = std::getenv("OCERZ_WMGL_GL_TIMELINE_PATH");
++const char* const timelineRequest = std::getenv("OCERZ_WMGL_GL_TIMELINE_REQUEST");
++constexpr unsigned timelineFrameLimit = 64;
++constexpr size_t timelineRowLimit = 1024 * 1024;
++
++void addTimelineRow(TimelineRow row) {
++    if (timeline.rows.size() < timelineRowLimit) timeline.rows.push_back(row);
++    else timeline.overflow = true;
++}
++
++}  // namespace
++
++bool glTimelineEnabled() {
++    return timelinePath && *timelinePath && timelineRequest && *timelineRequest;
++}
++
++TimelineCall::TimelineCall(const char* command, TimelineKind kind)
++    : command_(command), kind_(kind), start_(timeline.file ? nowNanos() : 0) {
++    if (!start_) return;
++    nested_ = timeline.depth++ != 0;
++    if (nested_) timeline.nestedCall = true;
++    else timeline.nestedCall = false;
++}
++
++TimelineCall::~TimelineCall() {
++    if (!start_) return;
++    --timeline.depth;
++    if (nested_) return;
++    const TimelineKind result = !context_ || timeline.nestedCall ? TimelineKind::Barrier : kind_;
++    const char* reason = timeline.nestedCall ? "nested" : reason_;
++    addTimelineRow({command_, context_, reason, start_, nowNanos(), 0, 0, result});
++}
++
++void TimelineCall::inspect(const Context& ctx) {
++    context_ = &ctx;
++    if (ctx.state.debugOutput || ctx.listCompiler || (ctx.immediate && ctx.immediate->active)) {
++        kind_ = TimelineKind::Barrier;
++        reason_ = "callback_or_recording";
++        return;
++    }
++    if (kind_ == TimelineKind::VertexPointer) {
++        kind_ = ctx.state.arrayBuffer ? TimelineKind::Scalar : TimelineKind::Barrier;
++        return;
++    }
++    if (kind_ != TimelineKind::ArrayDraw && kind_ != TimelineKind::IndexedDraw) return;
++    const VertexArray* array = ctx.state.vertexArray.get();
++    if (!array) {
++        kind_ = TimelineKind::Barrier;
++        reason_ = "missing_vertex_array";
++        return;
++    }
++    if (kind_ == TimelineKind::IndexedDraw) {
++        const Buffer* index = array->elementBuffer.get();
++        if (!index || index->mapped || index->pinned) {
++            kind_ = TimelineKind::Barrier;
++            reason_ = !index ? "client_indices" : index->mapped ? "mapped_indices" : "pinned_indices";
++            return;
++        }
++    }
++    for (const auto& attribute : array->attribs) {
++        if (!attribute.enabled) continue;
++        const Buffer* input = attribute.buffer.get();
++        if (!input || input->mapped || input->pinned) {
++            kind_ = TimelineKind::Barrier;
++            reason_ = !input ? "enabled_client_array" : input->mapped ? "mapped_array" : "pinned_array";
++            return;
++        }
++    }
++    kind_ = TimelineKind::BufferedDraw;
++}
++
++void timelineOffscreenSwap(uint64_t stream, uint64_t sequence, uint64_t draws, uint64_t entered) {
++    if (!entered || !draws || !stream) return;
++    if (!timeline.file) {
++        if (timeline.attempted || ::access(timelineRequest, F_OK) != 0) return;
++        timeline.attempted = true;
++        timeline.file = std::fopen(timelinePath, "wx");
++        if (!timeline.file) return;
++        timeline.stream = stream;
++        timeline.rows.reserve(timelineRowLimit);
++        std::fprintf(timeline.file, "H %llu %llu %llu\n", (unsigned long long)stream,
++                     (unsigned long long)sequence, (unsigned long long)nowNanos());
++        return;
++    }
++    if (timeline.stream != stream) return;
++    addTimelineRow({nullptr, nullptr, nullptr, entered, nowNanos(), sequence, draws, TimelineKind::Barrier});
++    if (++timeline.frames < timelineFrameLimit) return;
++    for (const auto& row : timeline.rows) {
++        if (row.command)
++            std::fprintf(timeline.file, "C %llu %llu %c %llx %s %s\n",
++                         (unsigned long long)row.start, (unsigned long long)row.end,
++                         static_cast<char>(row.kind),
++                         (unsigned long long)reinterpret_cast<uintptr_t>(row.context), row.command, row.reason);
++        else
++            std::fprintf(timeline.file, "S %llu %llu %llu %llu\n",
++                         (unsigned long long)row.sequence, (unsigned long long)row.start,
++                         (unsigned long long)row.end, (unsigned long long)row.draws);
++    }
++    std::fputs(timeline.overflow ? "X\n" : "F\n", timeline.file);
++    std::fclose(timeline.file);
++    timeline.file = nullptr;
++    timeline.rows.clear();
+ }
+
+ namespace {
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -608,6 +608,7 @@
+ }
+
+ bool Surface::swap(CommandStream& stream) {
++    const uint64_t timelineEntry = !layer_ && stats::glTimelineEnabled() ? stats::nowNanos() : 0;
+     struct FrameBudgetReset {
+         CommandStream& stream;
+         ~FrameBudgetReset() { stream.resetFrameSubmissionBudget(); }
+@@ -630,6 +631,7 @@
+             }];
+         }
+         stream.flush();
++        if (timelineEntry) stats::timelineOffscreenSwap(offscreenRecordingStream_, offscreenSequence_, draws, timelineEntry);
+         return true;
+     }
+     stream.resolvePendingClear();
+diff --git a/src/core/driver.mm b/src/core/driver.mm
+--- a/src/core/driver.mm
++++ b/src/core/driver.mm
+@@ -356,6 +356,7 @@
+ }
+
+ WMGL_EXPORT int wmgl_make_current(wmgl_context* handle, wmgl_surface* draw, wmgl_surface* read) {
++    stats::TimelineCall timeline("wmgl_make_current", stats::TimelineKind::Barrier);
+     CallPool pool;  // see CallPool (context.h)
+     if (handle) raiseThreadQos("render");  // see thread_qos.h
+     Context* previous = currentContext();
+@@ -381,6 +382,7 @@
+ WMGL_EXPORT void* wmgl_get_proc_address(const char* name) { return lookupProc(name); }
+
+ WMGL_EXPORT int wmgl_array_buffer_binding(unsigned int* name) {
++    stats::TimelineCall timeline("wmgl_array_buffer_binding", stats::TimelineKind::Barrier);
+     Context* ctx = currentContext();
+     if (!ctx || !name || g_traceCalls || g_captureCalls || stats::g_enabled) return 0;
+     ShareLock lock(*ctx);
+diff --git a/tools/gen/gl_gen.py b/tools/gen/gl_gen.py
+--- a/tools/gen/gl_gen.py
++++ b/tools/gen/gl_gen.py
+@@ -402,6 +402,38 @@
+         "glProgramEnvParameters4fvEXT", "glTexEnvi",
+     }
+
++    timeline_arrays = {"glDrawArrays", "glDrawArraysInstanced", "glDrawArraysInstancedBaseInstance"}
++    timeline_indices = {
++        "glDrawElements", "glDrawRangeElements", "glDrawElementsBaseVertex", "glDrawRangeElementsBaseVertex",
++        "glDrawElementsInstanced", "glDrawElementsInstancedBaseVertex", "glDrawElementsInstancedBaseInstance",
++        "glDrawElementsInstancedBaseVertexBaseInstance",
++    }
++    timeline_vertex_pointers = {
++        "glVertexPointer", "glColorPointer", "glNormalPointer", "glTexCoordPointer",
++        "glVertexAttribPointer", "glVertexAttribIPointer",
++    }
++    timeline_copies = {
++        "glBufferData", "glBufferSubData", "glLightModelfv", "glLoadMatrixf",
++        "glMultMatrixf", "glProgramEnvParameter4fvARB", "glProgramEnvParameters4fvEXT",
++        "glProgramLocalParameter4fvARB",
++    }
++    timeline_barriers = {"glFlush", "glFinish", "glBegin", "glEnd", "glCallList", "glNewList", "glEndList"}
++
++    def timeline_kind(impl, ret, params):
++        if impl in timeline_arrays:
++            return "ArrayDraw"
++        if impl in timeline_indices:
++            return "IndexedDraw"
++        if impl in timeline_vertex_pointers:
++            return "VertexPointer"
++        if impl in timeline_copies:
++            return "InputCopy"
++        if ret == "void" and impl not in timeline_barriers and not impl.startswith("glDraw") and all(
++            "*" not in t and t not in {"GLsync", "GLDEBUGPROC", "GLeglImageOES"} for t, _ in params
++        ):
++            return "Scalar"
++        return "Barrier"
++
+     with open(os.path.join(args.out, "gl_entry.gen.cpp"), "w") as out:
+         out.write("// Generated by tools/gen/gl_gen.py. Do not edit.\n\n")
+         out.write('#include "gl_api.gen.h"\n#include "gl_list.gen.h"\n#include "core/compat/immediate.h"\n')
+@@ -432,6 +464,8 @@
+             decl = ", ".join("%s %s" % (t, n) for t, n in params) or "void"
+             call = ", ".join(["*ctx"] + [n for _, n in params])
+             out.write("%s e_%s(%s) {\n" % (ret, cmd, decl))
++            out.write('    wmgl::stats::TimelineCall timeline("%s", wmgl::stats::TimelineKind::%s);\n'
++                      % (cmd, timeline_kind(impl, ret, params)))
+             out.write('    if (__builtin_expect(wmgl::g_traceCalls, 0)) wmgl::traceCall("%s");\n' % cmd)
+             out.write("    wmgl::Context* ctx = wmgl::currentContext();\n")
+             dflt = default_return(ret)
+@@ -452,6 +486,7 @@
+             # different threads may use the same shared objects.
+             out.write("    wmgl::ShareLock shareLock(*ctx);\n")
+             out.write("    statsTimer.locked();\n")
++            out.write("    if (timeline.active()) timeline.inspect(*ctx);\n")
+             if impl in pure_state_pool:
+                 # Inspect callback and recording state under the share lock.
+                 # The pool's declaration still makes its drain follow unlock.

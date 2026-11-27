@@ -1407,3 +1407,26 @@ Apply `patches/aarchx-wmgl-guest-autorelease-pool-trial.patch` after the headles
 Throughput rose **1.50 and 1.87 FPS** across the two pairs. P99 rose **0.19 ms** and fell **0.24 ms**, respectively. Use the option for follow-up throughput comparisons. Each warmed 60-second run verified the camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations.
 
 Separate 20-second diagnostics sampled physical footprint every two seconds. Sampled peaks were **764.42 MiB** in control and **761.78 MiB** with borrowing. The borrowed run changed by **+0.19 MiB** from its first sample to its last. The renderer passed **341** GPU tests with borrowing off, and the patched runtime passed **806** general i386 checks. [Full-raid A/B, scope counts, and memory samples](results/raid-winemetalgl-guest-autorelease-pool-ab.json)
+
+### Trace GL call dependencies on the live game thread
+
+The diagnostic records entry and return times for GL commands on the calling thread, plus offscreen swap boundaries. It also records the direct array-buffer binding query and context changes. It classifies draw inputs using the bound index buffer and enabled vertex arrays. Return values, unclassified arguments, and calls that can enter a callback or display-list recording stay synchronous in the model. Selected calls with known pointer inputs have a separate copy category.
+
+Three 64-frame windows in different phases of the saved raid recorded **2,226,956 calls**. All **192** outputs matched consecutive GPU completions and draw counts at 1365 × 768. Median measured GL call time ranged from **2.34 to 2.39 ms** per frame. The median elapsed time outside the recorded GL calls ranged from **6.13 to 6.42 ms**. The first diagnostic attempt exceeded its buffer at a 256-frame limit. The accepted windows use the shorter frame limit.
+
+| Queue model | Ideal median savings per frame | Median calls per packet |
+| --- | ---: | ---: |
+| Scalar commands and draws with buffer-backed inputs | 0.19–0.20 ms | 1–2 |
+| Also copy selected pointer inputs | 0.28–0.29 ms | 5 |
+
+The model keeps the observed call and gap durations. One FIFO worker overlaps eligible calls with the game and drains before each synchronous call and swap. It initially gives the queue and copies zero cost. At **200 ns per enqueued call**, both models lengthened the median frame in all three windows. These are scheduling estimates from the recorded workload.
+
+A fourth 64-frame recording identified **52,671** draws blocked by client-memory indices. The model with ready snapshots of those inputs saved **1.14 ms** per frame by the median paired comparison at zero enqueue cost. Adding **200 ns per enqueue** left about **0.03 ms** of difference between the model and observed median frame intervals. The snapshot model also gives input copying and validation zero cost. [Command counts, timing windows, and models](results/raid-winemetalgl-command-timeline.json)
+
+Apply `patches/winemetalgl-gl-command-timeline-trial.patch` after the guest autorelease pool trial. Set fresh paths for `OCERZ_WMGL_GL_TIMELINE_PATH` and `OCERZ_WMGL_GL_TIMELINE_REQUEST`, and keep the diagnostic GPU completion log. Create the request file after the fixture warms. The recorder writes one buffered sequence of 64 frames to `gl-timeline.tsv`. The analyzer verifies that each recorded swap matches a GPU output by sequence, dimensions, and draw count.
+
+```sh
+python3 benchmarks/summarize-gl-command-timeline.py CAPTURE_DIR
+```
+
+All four launches checked the camera, spell effects, and 26 cast timing rows. The desktop monitor recorded zero trial windows or activations. The renderer passed **341** GPU tests with the timeline disabled. [Scope and verification](results/raid-winemetalgl-command-timeline.json)

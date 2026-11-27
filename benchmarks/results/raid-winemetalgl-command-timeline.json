@@ -1,0 +1,673 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Command timeline on the original client with four full 64-output captures of the isolated offscreen raid.",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "guest_pool_borrowing": true,
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256_before_barrier_reasons": "d8617425248348781a8572ab6cf456b0da0c4a681ba553c13be167105b28c704",
+  "renderer_sha256_with_barrier_reasons": "4ef5d203d683e5a1a113fa6ad476419288ed1cde74e2ce4aa5ca84c6632fc740",
+  "gpu_test_count_with_timeline_disabled": 341,
+  "early_overflowed_capture_excluded": true,
+  "capture_timing_scope": "Elapsed renderer calls, CPU-side gaps and swap on the observed calling thread. Includes instrumentation and any waits within those intervals.",
+  "simulation_scope": "One ideal FIFO worker, zero queue or capture-copy cost, unchanged observed call durations, and a drain before every unclassified or synchronous call and swap. The sensitivity column assumes 200 ns per enqueued call.",
+  "draw_snapshot_model_scope": "The extra scenario assumes a ready snapshot for each classified draw using caller-owned memory. Snapshot creation and validation costs are excluded.",
+  "captures": [
+    {
+      "mode": "timeline",
+      "seconds_between_world_validation_and_request": 4,
+      "verified_cast_timing_rows": 26,
+      "visual_readback_checked": true,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "diagnostic_gpu_window_after_recording": {
+        "stream": 1,
+        "pid": 12792,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1487,
+        "first_sequence": 5081,
+        "last_sequence": 6567,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 11994660750,
+        "measurement_duration_ns": 12000000000,
+        "average_completed_fps": 123.83333333333333,
+        "p99_gpu_completion_gap_ns": 13609625,
+        "min_draws": 692,
+        "max_draws": 966
+      },
+      "viewport": [
+        1365,
+        768
+      ],
+      "frames": 64,
+      "first_sequence": 5042,
+      "last_sequence": 5105,
+      "draws_per_frame": {
+        "median": 868.0,
+        "p99": 901,
+        "maximum": 901
+      },
+      "frame_wall_ns": {
+        "median": 8839771.0,
+        "p99": 15540167,
+        "maximum": 15540167
+      },
+      "recorded_gl_wall_ns": {
+        "median": 2394878.5,
+        "p99": 2680322,
+        "maximum": 2680322
+      },
+      "wall_ns_outside_recorded_calls": {
+        "median": 6418375.0,
+        "p99": 13089554,
+        "maximum": 13089554
+      },
+      "calls_by_category": {
+        "S": 426982,
+        "P": 123487,
+        "B": 212722
+      },
+      "elapsed_ns_by_category": {
+        "S": 17093867,
+        "P": 4363379,
+        "B": 130912874
+      },
+      "top_barrier_calls_by_count": {
+        "glDrawRangeElementsEXT": 55684,
+        "wmgl_array_buffer_binding": 45732,
+        "glTestObjectAPPLE": 43749,
+        "glGetBufferParameteriv": 21432,
+        "glMapBuffer": 21432,
+        "glUnmapBuffer": 21432,
+        "glColor4fv": 1524,
+        "glFogfv": 896,
+        "glTexEnvfv": 256,
+        "glGetError": 256,
+        "glGetQueryObjectuivARB": 128,
+        "glGetIntegerv": 81
+      },
+      "top_barrier_calls_by_elapsed_ns": {
+        "glDrawRangeElementsEXT": 115740460,
+        "glTestObjectAPPLE": 5842339,
+        "glGetBufferParameteriv": 3760711,
+        "glTexSubImage2D": 1958375,
+        "glUnmapBuffer": 1330300,
+        "glMapBuffer": 1159751,
+        "wmgl_array_buffer_binding": 769467,
+        "glColor4fv": 88521,
+        "glGetQueryObjectuivARB": 65175,
+        "glGetIntegerv": 60084,
+        "glDeleteBuffers": 45668,
+        "glFogfv": 40497
+      },
+      "models": {
+        "scalar_and_buffered_draws": {
+          "ideal_frame_ns": {
+            "median": 8638461.0,
+            "p99": 15337112,
+            "maximum": 15337112
+          },
+          "ideal_saved_frame_ns": {
+            "median": 193634.0,
+            "p99": 213966,
+            "maximum": 213966
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 9944075.0,
+            "p99": 16639475,
+            "maximum": 16639475
+          },
+          "nonempty_packets_per_frame": {
+            "median": 2280.0,
+            "p99": 2381,
+            "maximum": 2381
+          },
+          "calls_per_packet": {
+            "median": 1,
+            "p99": 16,
+            "maximum": 39
+          },
+          "queueable_gl_share_of_observed_call_time": 0.11218647724370107
+        },
+        "plus_staged_input_copies": {
+          "ideal_frame_ns": {
+            "median": 8545663.0,
+            "p99": 15244321,
+            "maximum": 15244321
+          },
+          "ideal_saved_frame_ns": {
+            "median": 286576.5,
+            "p99": 314588,
+            "maximum": 314588
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 10251077.5,
+            "p99": 16940818,
+            "maximum": 16940818
+          },
+          "nonempty_packets_per_frame": {
+            "median": 1310.0,
+            "p99": 1367,
+            "maximum": 1367
+          },
+          "calls_per_packet": {
+            "median": 5.0,
+            "p99": 28,
+            "maximum": 66
+          },
+          "queueable_gl_share_of_observed_call_time": 0.1408231876433516
+        }
+      },
+      "draw_barriers_by_reason": {
+        "api": 55684
+      },
+      "draw_barrier_elapsed_ns_by_reason": {
+        "api": 115740460
+      }
+    },
+    {
+      "mode": "timeline",
+      "seconds_between_world_validation_and_request": 10,
+      "verified_cast_timing_rows": 26,
+      "visual_readback_checked": true,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "diagnostic_gpu_window_after_recording": {
+        "stream": 1,
+        "pid": 37866,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1445,
+        "first_sequence": 5688,
+        "last_sequence": 7132,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 11995248125,
+        "measurement_duration_ns": 12000000000,
+        "average_completed_fps": 120.33333333333333,
+        "p99_gpu_completion_gap_ns": 13653125,
+        "min_draws": 698,
+        "max_draws": 951
+      },
+      "viewport": [
+        1365,
+        768
+      ],
+      "frames": 64,
+      "first_sequence": 5668,
+      "last_sequence": 5731,
+      "draws_per_frame": {
+        "median": 856.0,
+        "p99": 923,
+        "maximum": 923
+      },
+      "frame_wall_ns": {
+        "median": 8590396.0,
+        "p99": 10670209,
+        "maximum": 10670209
+      },
+      "recorded_gl_wall_ns": {
+        "median": 2362954.0,
+        "p99": 4533928,
+        "maximum": 4533928
+      },
+      "wall_ns_outside_recorded_calls": {
+        "median": 6130317.0,
+        "p99": 6985796,
+        "maximum": 6985796
+      },
+      "calls_by_category": {
+        "S": 415336,
+        "P": 120684,
+        "B": 208574
+      },
+      "elapsed_ns_by_category": {
+        "S": 17491665,
+        "P": 4323608,
+        "B": 131743380
+      },
+      "top_barrier_calls_by_count": {
+        "glDrawRangeElementsEXT": 54640,
+        "wmgl_array_buffer_binding": 45060,
+        "glTestObjectAPPLE": 42084,
+        "glGetBufferParameteriv": 21131,
+        "glMapBuffer": 21131,
+        "glUnmapBuffer": 21131,
+        "glColor4fv": 1401,
+        "glFogfv": 860,
+        "glTexEnvfv": 256,
+        "glGetError": 256,
+        "glGetIntegerv": 213,
+        "glDeleteBuffers": 149
+      },
+      "top_barrier_calls_by_elapsed_ns": {
+        "glDrawRangeElementsEXT": 113763885,
+        "glTestObjectAPPLE": 6689372,
+        "glGetBufferParameteriv": 3591693,
+        "glTexSubImage2D": 1963707,
+        "glGetQueryObjectuivARB": 1941926,
+        "glMapBuffer": 1245972,
+        "glUnmapBuffer": 1221809,
+        "wmgl_array_buffer_binding": 778589,
+        "glDeleteBuffers": 307672,
+        "glColor4fv": 103714,
+        "glGetIntegerv": 54963,
+        "glFogfv": 41702
+      },
+      "models": {
+        "scalar_and_buffered_draws": {
+          "ideal_frame_ns": {
+            "median": 8394625.0,
+            "p99": 10472655,
+            "maximum": 10472655
+          },
+          "ideal_saved_frame_ns": {
+            "median": 196246.5,
+            "p99": 225970,
+            "maximum": 225970
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 9630970.0,
+            "p99": 11745628,
+            "maximum": 11745628
+          },
+          "nonempty_packets_per_frame": {
+            "median": 2242.5,
+            "p99": 2413,
+            "maximum": 2413
+          },
+          "calls_per_packet": {
+            "median": 2,
+            "p99": 17,
+            "maximum": 39
+          },
+          "queueable_gl_share_of_observed_call_time": 0.11390868999091833
+        },
+        "plus_staged_input_copies": {
+          "ideal_frame_ns": {
+            "median": 8308415.5,
+            "p99": 10381739,
+            "maximum": 10381739
+          },
+          "ideal_saved_frame_ns": {
+            "median": 285538.0,
+            "p99": 323844,
+            "maximum": 323844
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 9920208.5,
+            "p99": 12061734,
+            "maximum": 12061734
+          },
+          "nonempty_packets_per_frame": {
+            "median": 1295.0,
+            "p99": 1393,
+            "maximum": 1393
+          },
+          "calls_per_packet": {
+            "median": 5.0,
+            "p99": 27,
+            "maximum": 66
+          },
+          "queueable_gl_share_of_observed_call_time": 0.14206475879936248
+        }
+      },
+      "draw_barriers_by_reason": {
+        "api": 54640
+      },
+      "draw_barrier_elapsed_ns_by_reason": {
+        "api": 113763885
+      }
+    },
+    {
+      "mode": "timeline",
+      "seconds_between_world_validation_and_request": 16,
+      "verified_cast_timing_rows": 26,
+      "visual_readback_checked": true,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "diagnostic_gpu_window_after_recording": {
+        "stream": 1,
+        "pid": 64153,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1467,
+        "first_sequence": 6384,
+        "last_sequence": 7850,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 11996692834,
+        "measurement_duration_ns": 12000000000,
+        "average_completed_fps": 122.16666666666667,
+        "p99_gpu_completion_gap_ns": 13886709,
+        "min_draws": 727,
+        "max_draws": 976
+      },
+      "viewport": [
+        1365,
+        768
+      ],
+      "frames": 64,
+      "first_sequence": 6307,
+      "last_sequence": 6370,
+      "draws_per_frame": {
+        "median": 813.0,
+        "p99": 890,
+        "maximum": 890
+      },
+      "frame_wall_ns": {
+        "median": 8761291.5,
+        "p99": 9536583,
+        "maximum": 9536583
+      },
+      "recorded_gl_wall_ns": {
+        "median": 2335433.0,
+        "p99": 2544137,
+        "maximum": 2544137
+      },
+      "wall_ns_outside_recorded_calls": {
+        "median": 6418444.5,
+        "p99": 6998928,
+        "maximum": 6998928
+      },
+      "calls_by_category": {
+        "S": 396835,
+        "P": 115915,
+        "B": 206421
+      },
+      "elapsed_ns_by_category": {
+        "S": 17055333,
+        "P": 3710129,
+        "B": 128082594
+      },
+      "top_barrier_calls_by_count": {
+        "glDrawRangeElementsEXT": 52675,
+        "wmgl_array_buffer_binding": 44862,
+        "glTestObjectAPPLE": 39908,
+        "glGetBufferParameteriv": 22002,
+        "glMapBuffer": 22002,
+        "glUnmapBuffer": 22002,
+        "glColor4fv": 1305,
+        "glFogfv": 876,
+        "glTexEnvfv": 256,
+        "glGetError": 256,
+        "glGetQueryObjectuivARB": 128,
+        "glGetIntegerv": 64
+      },
+      "top_barrier_calls_by_elapsed_ns": {
+        "glDrawRangeElementsEXT": 112163938,
+        "glTestObjectAPPLE": 6233882,
+        "glGetBufferParameteriv": 3964466,
+        "glTexSubImage2D": 2130581,
+        "glMapBuffer": 1267576,
+        "glUnmapBuffer": 1243899,
+        "wmgl_array_buffer_binding": 766508,
+        "glColor4fv": 88726,
+        "glGetQueryObjectuivARB": 79425,
+        "glGetIntegerv": 52416,
+        "glFogfv": 48638,
+        "glTexEnvfv": 18668
+      },
+      "models": {
+        "scalar_and_buffered_draws": {
+          "ideal_frame_ns": {
+            "median": 8570555.0,
+            "p99": 9335968,
+            "maximum": 9335968
+          },
+          "ideal_saved_frame_ns": {
+            "median": 188410.0,
+            "p99": 209687,
+            "maximum": 209687
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 9740413.5,
+            "p99": 10600274,
+            "maximum": 10600274
+          },
+          "nonempty_packets_per_frame": {
+            "median": 2129.5,
+            "p99": 2343,
+            "maximum": 2343
+          },
+          "calls_per_packet": {
+            "median": 2.0,
+            "p99": 17,
+            "maximum": 39
+          },
+          "queueable_gl_share_of_observed_call_time": 0.11458216827500925
+        },
+        "plus_staged_input_copies": {
+          "ideal_frame_ns": {
+            "median": 8479449.5,
+            "p99": 9232452,
+            "maximum": 9232452
+          },
+          "ideal_saved_frame_ns": {
+            "median": 279142.5,
+            "p99": 305631,
+            "maximum": 305631
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 10022519.0,
+            "p99": 10884045,
+            "maximum": 10884045
+          },
+          "nonempty_packets_per_frame": {
+            "median": 1227.0,
+            "p99": 1354,
+            "maximum": 1354
+          },
+          "calls_per_packet": {
+            "median": 5,
+            "p99": 29,
+            "maximum": 66
+          },
+          "queueable_gl_share_of_observed_call_time": 0.13950778100857428
+        }
+      },
+      "draw_barriers_by_reason": {
+        "api": 52675
+      },
+      "draw_barrier_elapsed_ns_by_reason": {
+        "api": 112163938
+      }
+    },
+    {
+      "mode": "timeline_with_draw_barrier_reasons",
+      "seconds_between_world_validation_and_request": 10,
+      "verified_cast_timing_rows": 26,
+      "visual_readback_checked": true,
+      "visible_trial_windows": 0,
+      "focus_activations": 0,
+      "diagnostic_gpu_window_after_recording": {
+        "stream": 1,
+        "pid": 36831,
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1450,
+        "first_sequence": 6223,
+        "last_sequence": 7672,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 11999641959,
+        "measurement_duration_ns": 12000000000,
+        "average_completed_fps": 120.75,
+        "p99_gpu_completion_gap_ns": 13203875,
+        "min_draws": 714,
+        "max_draws": 953
+      },
+      "viewport": [
+        1365,
+        768
+      ],
+      "frames": 64,
+      "first_sequence": 6176,
+      "last_sequence": 6239,
+      "draws_per_frame": {
+        "median": 814.5,
+        "p99": 899,
+        "maximum": 899
+      },
+      "frame_wall_ns": {
+        "median": 8435958.5,
+        "p99": 9506708,
+        "maximum": 9506708
+      },
+      "recorded_gl_wall_ns": {
+        "median": 2283394.5,
+        "p99": 2576543,
+        "maximum": 2576543
+      },
+      "wall_ns_outside_recorded_calls": {
+        "median": 6140539.5,
+        "p99": 6989786,
+        "maximum": 6989786
+      },
+      "calls_by_category": {
+        "S": 391394,
+        "P": 114243,
+        "B": 200544
+      },
+      "elapsed_ns_by_category": {
+        "S": 17216765,
+        "P": 3538539,
+        "B": 127369990
+      },
+      "top_barrier_calls_by_count": {
+        "glDrawRangeElementsEXT": 52671,
+        "wmgl_array_buffer_binding": 43880,
+        "glTestObjectAPPLE": 36169,
+        "glGetBufferParameteriv": 21576,
+        "glMapBuffer": 21576,
+        "glUnmapBuffer": 21576,
+        "glColor4fv": 1437,
+        "glFogfv": 878,
+        "glTexEnvfv": 256,
+        "glGetError": 256,
+        "glGetQueryObjectuivARB": 128,
+        "glGetIntegerv": 65
+      },
+      "top_barrier_calls_by_elapsed_ns": {
+        "glDrawRangeElementsEXT": 112050853,
+        "glTestObjectAPPLE": 5759318,
+        "glGetBufferParameteriv": 3808771,
+        "glTexSubImage2D": 2075291,
+        "glMapBuffer": 1303586,
+        "glUnmapBuffer": 1266312,
+        "wmgl_array_buffer_binding": 755370,
+        "glColor4fv": 99489,
+        "glGetQueryObjectuivARB": 73296,
+        "glFogfv": 59824,
+        "glGetIntegerv": 56961,
+        "glTexEnvfv": 20915
+      },
+      "draw_barriers_by_reason": {
+        "client_indices": 52671
+      },
+      "draw_barrier_elapsed_ns_by_reason": {
+        "client_indices": 112050853
+      },
+      "models": {
+        "scalar_and_buffered_draws": {
+          "ideal_frame_ns": {
+            "median": 8239475.5,
+            "p99": 9294181,
+            "maximum": 9294181
+          },
+          "ideal_saved_frame_ns": {
+            "median": 187945.5,
+            "p99": 215623,
+            "maximum": 215623
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 9409866.0,
+            "p99": 10592521,
+            "maximum": 10592521
+          },
+          "nonempty_packets_per_frame": {
+            "median": 2098.5,
+            "p99": 2320,
+            "maximum": 2320
+          },
+          "calls_per_packet": {
+            "median": 2.0,
+            "p99": 17,
+            "maximum": 39
+          },
+          "queueable_gl_share_of_observed_call_time": 0.11623109419786198
+        },
+        "plus_staged_input_copies": {
+          "ideal_frame_ns": {
+            "median": 8145421.0,
+            "p99": 9185760,
+            "maximum": 9185760
+          },
+          "ideal_saved_frame_ns": {
+            "median": 281762.0,
+            "p99": 320948,
+            "maximum": 320948
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 9679039.5,
+            "p99": 10885682,
+            "maximum": 10885682
+          },
+          "nonempty_packets_per_frame": {
+            "median": 1227.0,
+            "p99": 1347,
+            "maximum": 1347
+          },
+          "calls_per_packet": {
+            "median": 4,
+            "p99": 28,
+            "maximum": 66
+          },
+          "queueable_gl_share_of_observed_call_time": 0.14011991766915918
+        },
+        "plus_snapshotted_draw_inputs": {
+          "ideal_frame_ns": {
+            "median": 7291919.0,
+            "p99": 8184731,
+            "maximum": 8184731
+          },
+          "ideal_saved_frame_ns": {
+            "median": 1144636.5,
+            "p99": 1321977,
+            "maximum": 1321977
+          },
+          "frame_ns_with_200ns_per_enqueue": {
+            "median": 8409091.0,
+            "p99": 9495389,
+            "maximum": 9495389
+          },
+          "nonempty_packets_per_frame": {
+            "median": 1060.5,
+            "p99": 1144,
+            "maximum": 1144
+          },
+          "calls_per_packet": {
+            "median": 1,
+            "p99": 49,
+            "maximum": 2468
+          },
+          "queueable_gl_share_of_observed_call_time": 0.8965798710921039
+        }
+      }
+    }
+  ]
+}
