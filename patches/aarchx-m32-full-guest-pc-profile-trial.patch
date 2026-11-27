@@ -1,0 +1,17 @@
+diff --git a/src/vm.c b/src/vm.c
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -504,6 +504,13 @@
+                 (unsigned long long)((rns - last_rns) / 1000000));
+         last_tr = tr; last_ret = ret; last_flip = flip; last_ns = ns; last_rns = rns;
+     }
++    if (getenv("OCERZ_GUESTPROF_FULL_GUEST_PC")) {
++        for (unsigned i = 0; i < GP_SLOTS; i++) {
++            if (!g_gp_key[i] || (g_gp_key[i] >> 63) || !g_gp_cnt[i]) continue;
++            fprintf(stderr, "ocerz: GUESTPROF[%d]   translated_pc=%#llx cpu_us=%u\n",
++                    (int)getpid(), (unsigned long long)g_gp_key[i], g_gp_cnt[i]);
++        }
++    }
+     static GpTop top[40];
+     int n = gp_top(g_gp_key, g_gp_cnt, top, 40);
+     for (int i = 0; i < n; i++) {

@@ -1,0 +1,266 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate CPU-time-weighted profile of the hottest guest thread in the isolated 24-caster headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "direct_arb_uniforms_enabled": true,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "flag_liveness_depth": 3,
+  "i386_forward_superblocks": false,
+  "i386_mov_base_uxtw": true,
+  "draw_threshold": 512,
+  "triangle_budget": 0,
+  "other_trial_instances_detected": 0,
+  "region_definition": "Aligned ranges of guest virtual addresses, accumulated from individual sampled translated instruction PCs.",
+  "profile_periods": [
+    {
+      "elapsed_seconds": 24,
+      "cpu_usec": 7863000,
+      "translated_percent": 63.0
+    },
+    {
+      "elapsed_seconds": 32,
+      "cpu_usec": 7885000,
+      "translated_percent": 62.9
+    },
+    {
+      "elapsed_seconds": 40,
+      "cpu_usec": 7859000,
+      "translated_percent": 63.4
+    },
+    {
+      "elapsed_seconds": 48,
+      "cpu_usec": 7837000,
+      "translated_percent": 62.1
+    },
+    {
+      "elapsed_seconds": 56,
+      "cpu_usec": 7843000,
+      "translated_percent": 61.1
+    },
+    {
+      "elapsed_seconds": 64,
+      "cpu_usec": 7856000,
+      "translated_percent": 60.7
+    },
+    {
+      "elapsed_seconds": 72,
+      "cpu_usec": 7858000,
+      "translated_percent": 62.8
+    }
+  ],
+  "total_sampled_cpu_usec": 55001000,
+  "mapped_translated_cpu_usec": 34265308,
+  "hotspot_coverage": {
+    "instruction_pc": {
+      "distinct_groups": 9125,
+      "cumulative_share_of_sampled_cpu": {
+        "1": 0.003039781094889184,
+        "4": 0.010969618734204833,
+        "16": 0.03287865675169542,
+        "64": 0.07975605898074581,
+        "256": 0.16839601098161852,
+        "1024": 0.3129687642042872
+      },
+      "cumulative_share_of_translated_cpu": {
+        "1": 0.004879308249615033,
+        "4": 0.017607896593254027,
+        "16": 0.052775215095104355,
+        "64": 0.12802053318767775,
+        "256": 0.2703010578512821,
+        "1024": 0.5023621850998684
+      },
+      "hottest_groups": [
+        {
+          "address": "0x877d02",
+          "cpu_usec": 167191
+        },
+        {
+          "address": "0x8791ca",
+          "cpu_usec": 155382
+        },
+        {
+          "address": "0x6e2aab",
+          "cpu_usec": 143363
+        },
+        {
+          "address": "0x88187d",
+          "cpu_usec": 137404
+        },
+        {
+          "address": "0x8f6e9a",
+          "cpu_usec": 127901
+        },
+        {
+          "address": "0x877cdd",
+          "cpu_usec": 126478
+        },
+        {
+          "address": "0x310d6b",
+          "cpu_usec": 121967
+        },
+        {
+          "address": "0x877ced",
+          "cpu_usec": 106360
+        }
+      ]
+    },
+    "aligned_region_4096_bytes": {
+      "distinct_groups": 553,
+      "cumulative_share_of_sampled_cpu": {
+        "1": 0.027848366393338302,
+        "4": 0.10431801239977455,
+        "16": 0.25411599789094746,
+        "64": 0.4623077398592753
+      },
+      "cumulative_share_of_translated_cpu": {
+        "1": 0.04470083852741087,
+        "4": 0.16744618201009603,
+        "16": 0.40789459706593034,
+        "64": 0.742073819969749
+      },
+      "hottest_groups": [
+        {
+          "address": "0x8c2000",
+          "cpu_usec": 1531688
+        },
+        {
+          "address": "0x881000",
+          "cpu_usec": 1527095
+        },
+        {
+          "address": "0x976000",
+          "cpu_usec": 1514872
+        },
+        {
+          "address": "0x877000",
+          "cpu_usec": 1163940
+        },
+        {
+          "address": "0x310000",
+          "cpu_usec": 1031130
+        },
+        {
+          "address": "0x965000",
+          "cpu_usec": 912397
+        },
+        {
+          "address": "0x6e2000",
+          "cpu_usec": 875597
+        },
+        {
+          "address": "0x882000",
+          "cpu_usec": 800356
+        }
+      ]
+    },
+    "aligned_region_65536_bytes": {
+      "distinct_groups": 111,
+      "cumulative_share_of_sampled_cpu": {
+        "1": 0.07277567680587625,
+        "4": 0.2288007490772895,
+        "16": 0.48909394374647736,
+        "64": 0.6171675969527827
+      },
+      "cumulative_share_of_translated_cpu": {
+        "1": 0.11681596441508713,
+        "4": 0.36725979524246505,
+        "16": 0.7850697270837315,
+        "64": 0.9906473042647099
+      },
+      "hottest_groups": [
+        {
+          "address": "0x970000",
+          "cpu_usec": 4002735
+        },
+        {
+          "address": "0x880000",
+          "cpu_usec": 3193893
+        },
+        {
+          "address": "0x8c0000",
+          "cpu_usec": 2849761
+        },
+        {
+          "address": "0x870000",
+          "cpu_usec": 2537881
+        },
+        {
+          "address": "0x8f0000",
+          "cpu_usec": 2242291
+        },
+        {
+          "address": "0x960000",
+          "cpu_usec": 2023481
+        },
+        {
+          "address": "0x310000",
+          "cpu_usec": 1797513
+        },
+        {
+          "address": "0x950000",
+          "cpu_usec": 1390376
+        }
+      ]
+    },
+    "aligned_region_1048576_bytes": {
+      "distinct_groups": 12,
+      "cumulative_share_of_sampled_cpu": {
+        "1": 0.27159337102961767,
+        "4": 0.52817172415047,
+        "16": 0.6229942728314031,
+        "64": 0.6229942728314031
+      },
+      "cumulative_share_of_translated_cpu": {
+        "1": 0.43594842340246875,
+        "4": 0.8477954729022135,
+        "16": 1.0,
+        "64": 1.0
+      },
+      "hottest_groups": [
+        {
+          "address": "0x800000",
+          "cpu_usec": 14937907
+        },
+        {
+          "address": "0x900000",
+          "cpu_usec": 7895639
+        },
+        {
+          "address": "0x600000",
+          "cpu_usec": 3318429
+        },
+        {
+          "address": "0x300000",
+          "cpu_usec": 2897998
+        },
+        {
+          "address": "0x700000",
+          "cpu_usec": 2373775
+        },
+        {
+          "address": "0x200000",
+          "cpu_usec": 1461108
+        },
+        {
+          "address": "0xdda00000",
+          "cpu_usec": 492855
+        },
+        {
+          "address": "0x400000",
+          "cpu_usec": 478501
+        }
+      ]
+    }
+  },
+  "gpu_missing_sequences": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0
+}
