@@ -1008,3 +1008,18 @@ A streaming disassembly of the local i386 executable's `__text` matched **98.30%
 ```sh
 python3 benchmarks/summarize-i386-address-forms.py CAPTURE_DIR LOCAL_I386_EXECUTABLE
 ```
+
+### Guard and reuse the mapped EBP base inside a stable i386 prefix
+
+The trial selects a block with at least six compatible EBP-relative MOV or SSE memory operands before the first operation that could write EBP. One entry guard checks that every small displacement stays inside the 32-bit address space. The selected code uses the mapped base with an immediate displacement and preserves the original memory ordering. Near either address-space boundary, the existing retirement path recompiles the block with ordinary address generation.
+
+Apply `patches/aarchx-m32-ebp-hoist-trial.patch` after the i386 FP batching patch. Set `OCERZ_M32_EBP_HOIST=1` and turn the translation cache off. Eight focused cases passed in each setting, including indexed operands, EBP reassignment, both guard exits and the wrapped load. A separate forced SSE replay check with the mapped base also passed. Both settings passed all **806** general runtime checks.
+
+| EBP address generation | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing | 116.73 | 12.61 ms |
+| Guarded mapped base | 118.32 | 10.97 ms |
+
+The four isolated minute-long launches improved both metrics in both pairs. The throughput median rose **1.36%** and the p99 median fell **1.64 ms**. Camera, effects, the full cast schedule, and consecutive GPU completions were verified. The monitor recorded zero visible trial windows or activations.
+
+A separate compile witness reported **1,448** selected prefixes with a median of **eight** matching operands. Matching those prefixes to the earlier folded-load CPU profile covered candidate operand shapes accounting for **2.46%** of total sampled CPU time. This is static coverage of the selected prefixes. [Full-raid A/B and checks](results/raid-aarchx-headless-i386-ebp-hoist-ab.json)

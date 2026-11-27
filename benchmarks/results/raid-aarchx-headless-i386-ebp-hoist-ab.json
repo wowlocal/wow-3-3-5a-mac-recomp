@@ -1,0 +1,319 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "i386_forward_superblocks": false,
+  "explicit_headless_interactive_qos": false,
+  "i386_mov_base_uxtw": true,
+  "i386_fp_batch_v2": true,
+  "vertex_shader_uniform_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "i386_ebp_hoist": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7041,
+      "first_sequence": 5005,
+      "last_sequence": 12045,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999045459,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 117.33333333333333,
+      "p99_gpu_completion_gap_ns": 11123209,
+      "min_draws": 707,
+      "max_draws": 992
+    },
+    {
+      "launch": 2,
+      "i386_ebp_hoist": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7125,
+      "first_sequence": 4843,
+      "last_sequence": 11967,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996110000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 118.73333333333333,
+      "p99_gpu_completion_gap_ns": 11049709,
+      "min_draws": 686,
+      "max_draws": 960
+    },
+    {
+      "launch": 3,
+      "i386_ebp_hoist": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7075,
+      "first_sequence": 4915,
+      "last_sequence": 11989,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994036750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 117.9,
+      "p99_gpu_completion_gap_ns": 10899084,
+      "min_draws": 671,
+      "max_draws": 958
+    },
+    {
+      "launch": 4,
+      "i386_ebp_hoist": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 6969,
+      "first_sequence": 4470,
+      "last_sequence": 11438,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994469416,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 116.13333333333334,
+      "p99_gpu_completion_gap_ns": 14105000,
+      "min_draws": 662,
+      "max_draws": 943
+    }
+  ],
+  "medians": {
+    "0": {
+      "average_completed_fps": 116.73333333333333,
+      "p99_gpu_completion_gap_ns": 12614104.5
+    },
+    "1": {
+      "average_completed_fps": 118.31666666666666,
+      "p99_gpu_completion_gap_ns": 10974396.5
+    }
+  },
+  "process_isolation": {
+    "other_trial_instances_detected": 0,
+    "isolated_timing_verified": true,
+    "guard_checkpoints": "Before the first launch and after each of the four launches"
+  },
+  "renderer_sha256": "a9b7eb857d7acbd64b4b2b25f7391b79aad11cdda7a203f44b0109960547840d",
+  "visual_readback_checked_per_launch": true,
+  "checks_per_arm": {
+    "0": {
+      "general_checks": 806,
+      "general_failures": 0,
+      "interpreter_comparisons": [
+        {
+          "case": 0,
+          "description": "EBP block with positive offsets",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 1,
+          "description": "EBP block with negative offsets",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 2,
+          "description": "Low guard falls back for wrapped negative offsets",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 3,
+          "description": "High guard falls back near 4 GiB",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 4,
+          "description": "EBP is reassigned after the first group",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 5,
+          "description": "EBP mixed scalar and vector memory operations",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 6,
+          "description": "Indexed EBP operands keep ordinary addressing",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 7,
+          "description": "SSE replay keeps the mapped EBP base live",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        }
+      ]
+    },
+    "1": {
+      "general_checks": 806,
+      "general_failures": 0,
+      "interpreter_comparisons": [
+        {
+          "case": 0,
+          "description": "EBP block with positive offsets",
+          "emitted_guard": true,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 1,
+          "description": "EBP block with negative offsets",
+          "emitted_guard": true,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 2,
+          "description": "Low guard falls back for wrapped negative offsets",
+          "emitted_guard": true,
+          "retired_on_guard_failure": true
+        },
+        {
+          "case": 3,
+          "description": "High guard falls back near 4 GiB",
+          "emitted_guard": true,
+          "retired_on_guard_failure": true
+        },
+        {
+          "case": 4,
+          "description": "EBP is reassigned after the first group",
+          "emitted_guard": true,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 5,
+          "description": "EBP mixed scalar and vector memory operations",
+          "emitted_guard": true,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 6,
+          "description": "Indexed EBP operands keep ordinary addressing",
+          "emitted_guard": false,
+          "retired_on_guard_failure": false
+        },
+        {
+          "case": 7,
+          "description": "SSE replay keeps the mapped EBP base live",
+          "emitted_guard": true,
+          "retired_on_guard_failure": false
+        }
+      ]
+    }
+  },
+  "forced_sse_replay_check": {
+    "passed": true,
+    "emitted_sse_batch": true,
+    "emitted_ebp_guard": true
+  },
+  "compile_witness": {
+    "distinct_selected_prefixes": 1448,
+    "median_matching_operands_per_selected_prefix": 8.0,
+    "maximum_matching_operands_per_selected_prefix": 116
+  },
+  "static_coverage_on_prior_folded_load_cpu_profile": {
+    "emitted_nonrejected_prefix_starts": 1448,
+    "rejected_prefix_starts": 0,
+    "emitted_prefix_starts_matching_static_i386_text": 1445,
+    "compiled_prefixes_are_static_and_do_not_prove_optimized_execution": true,
+    "candidate_address_shape_cpu_usec": 1350400,
+    "candidate_share_of_all_sampled_cpu": 0.02455228086762059,
+    "candidate_share_of_cached_ebp_base_only_cpu": 0.17068582230776735,
+    "highest_weight_candidate_forms": [
+      {
+        "opcode": "movl",
+        "move_direction": "load",
+        "cpu_usec": 581194,
+        "share_of_all_sampled_cpu": 0.010566971509608915
+      },
+      {
+        "opcode": "movss",
+        "move_direction": "other",
+        "cpu_usec": 233621,
+        "share_of_all_sampled_cpu": 0.004247577316776058
+      },
+      {
+        "opcode": "movl",
+        "move_direction": "store",
+        "cpu_usec": 209348,
+        "share_of_all_sampled_cpu": 0.0038062580680351264
+      },
+      {
+        "opcode": "mulss",
+        "move_direction": "other",
+        "cpu_usec": 139216,
+        "share_of_all_sampled_cpu": 0.0025311539790185632
+      },
+      {
+        "opcode": "addss",
+        "move_direction": "other",
+        "cpu_usec": 132813,
+        "share_of_all_sampled_cpu": 0.0024147379138561116
+      },
+      {
+        "opcode": "subss",
+        "move_direction": "other",
+        "cpu_usec": 41800,
+        "share_of_all_sampled_cpu": 0.0007599861820694169
+      },
+      {
+        "opcode": "movb",
+        "move_direction": "store",
+        "cpu_usec": 5692,
+        "share_of_all_sampled_cpu": 0.00010348902747222778
+      },
+      {
+        "opcode": "movw",
+        "move_direction": "store",
+        "cpu_usec": 4967,
+        "share_of_all_sampled_cpu": 9.030744895547353e-05
+      },
+      {
+        "opcode": "divss",
+        "move_direction": "other",
+        "cpu_usec": 1563,
+        "share_of_all_sampled_cpu": 2.8417665133361212e-05
+      },
+      {
+        "opcode": "ucomiss",
+        "move_direction": "other",
+        "cpu_usec": 186,
+        "share_of_all_sampled_cpu": 3.381756695332812e-06
+      }
+    ]
+  }
+}

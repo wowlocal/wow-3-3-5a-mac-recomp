@@ -1,0 +1,267 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -1941,6 +1941,7 @@
+     return 0x14000000u | ((uint32_t)off & 0x03ffffffu);
+ }
+ static int g_mem_hoist_greg = -1;
++static int g_m32_ebp_stop;
+ static int g_ea_lowhoisted, g_ea_lowhoisted_reg;
+ static int g_mem_hoist_aux_disp;
+ static int g_mem_hoist_aux_index = -1;
+@@ -5761,7 +5762,9 @@
+         return;
+     int bs = pin_slot(g_mem_hoist_greg);
+     assert(bs >= 0);
+-    if (jgb_usable()) {
++    if (g_m32_ebp_stop) {
++        a64_add_ext_uxtw(b, JMEMBASE, JGB, pin_hreg(bs), 0);
++    } else if (jgb_usable()) {
+         a64_add_reg(b, 1, JMEMBASE, JGB, pin_hreg(bs), 0);
+     } else {
+         a64_mov_imm64(b, JMEMBASE, ocerz_guest_base);
+@@ -5795,10 +5798,40 @@
+                                 int size, int *ra_out, uint32_t *disp_out, int unscaled_ok);
+ static void emit_gpr_ld_regoff(A64Buf *b, int size, int rd, int ra, int ri, int scaled, int plain);
+ static void emit_gpr_st_regoff(A64Buf *b, int size, int rs, int ra, int ri, int scaled, int plain);
++static int m32_ebp_form(const X86Insn *in, const X86Operand *op)
++{
++    return in->mode32 && in->addrsize == 4 && in->seg == OCERZ_SEG_NONE &&
++           op->kind == OCERZ_OPK_MEM && !op->riprel && op->base == OCERZ_RBP &&
++           op->index == OCERZ_REG_NONE && op->disp >= -256 && op->disp <= 255;
++}
++
++static int m32_ebp_access(const X86Insn *in, const X86Operand *op)
++{
++    return g_m32_ebp_stop && !g_align_guard && g_cur_insn_idx >= 0 &&
++           g_cur_insn_idx < g_m32_ebp_stop &&
++           g_cur_insns && &g_cur_insns[g_cur_insn_idx] == in && m32_ebp_form(in, op);
++}
++
++static int m32_ebp_plain(const X86Operand *op)
++{
++    return g_plain_mem || hw_tso_ordered() || op == g_dep_plain_op;
++}
++
+ static int emit_hoisted_mem_access(A64Buf *b, const X86Insn *insn,
+                                    const X86Operand *mem, int size,
+                                    int value_reg, int store)
+ {
++    if (m32_ebp_access(insn, mem)) {
++        const X86Operand *dst = &insn->ops[0];
++        const int folded_load = !store && insn->op == OCERZ_OP_MOV && size == 4 &&
++            dst->kind == OCERZ_OPK_REG && pin_slot(dst->reg) >= 0 &&
++            !(rsp_is_ptr() && dst->reg == OCERZ_RSP && !jgb_zero()) &&
++            ENV_ON("OCERZ_M32_MOV_BASE_UXTW") && mem_plain_access_ok(mem);
++        const int plain = m32_ebp_plain(mem) || folded_load;
++        if (store) emit_gpr_st_at(b, size, value_reg, JMEMBASE, (int32_t)mem->disp, plain);
++        else       emit_gpr_ld_at(b, size, value_reg, JMEMBASE, (int32_t)mem->disp, plain);
++        return 1;
++    }
+     if (g_mem_hoist_greg < 0 ||
+         insn->seg != OCERZ_SEG_NONE || insn->addrsize != 8 || mem->riprel ||
+         mem->base == OCERZ_REG_NONE)
+@@ -9608,11 +9641,20 @@
+ static int g_sse_mem_ra = JTA;
+ static uint32_t g_sse_mem_disp;
+ static int g_sse_mem_plain;
+-static int g_sse_mem_plainacc;
++static int g_sse_mem_plainacc, g_sse_mem_gpr_plainacc;
+ static int emit_sse_mem_addr(A64Buf *b, const X86Insn *insn, const X86Operand *o, int size,
+                              uint32_t **exit_sites, int *n_exits, uint32_t **skip_out)
+ {
+     g_sse_mem_plainacc = mem_plain_access_ok(o);
++    g_sse_mem_gpr_plainacc = g_sse_mem_plainacc;
++    if (m32_ebp_access(insn, o)) {
++        g_sse_mem_ra = JMEMBASE;
++        g_sse_mem_disp = (uint32_t)o->disp;
++        g_sse_mem_plain = 1;
++        g_sse_mem_gpr_plainacc = m32_ebp_plain(o);
++        *skip_out = NULL;
++        return 1;
++    }
+     if (emit_mem_ea_plain_ex(b, insn, o, size, &g_sse_mem_ra, &g_sse_mem_disp, 1)) {
+         g_sse_mem_plain = 1;
+         *skip_out = NULL;
+@@ -9628,7 +9670,7 @@
+ }
+ static void emit_sse_mem_ld_gpr(A64Buf *b, int size, int rd)
+ {
+-    if (g_sse_mem_plain) emit_gpr_ld_at(b, size, rd, g_sse_mem_ra, (int32_t)g_sse_mem_disp, g_sse_mem_plainacc);
++    if (g_sse_mem_plain) emit_gpr_ld_at(b, size, rd, g_sse_mem_ra, (int32_t)g_sse_mem_disp, g_sse_mem_gpr_plainacc);
+     else emit_guest_load_ordered(b, size, rd, JTA, JTU);
+ }
+ static void emit_sse_mem_ld(A64Buf *b, int size, int vd)
+@@ -21996,13 +22038,57 @@
+     g_n_llh_bail_tb = g_n_llh_bail_cb = 0;
+     tc_imm64(b, JT0, TCR_BLK, 0, (uint64_t)(uintptr_t)g_cur_blk);
+     a64_str(b, 8, JT0, 20, SIDE_BLK_OFF);
+-    a64_movn(b, JT0, g_llh_wide ? 1 : 3, 0);
++    a64_movn(b, JT0, (g_llh_wide || g_m32_ebp_stop) ? 1 : 3, 0);
+     a64_str(b, 4, JT0, 20, SIDE_IDX_OFF);
+     a64_mov_imm64(b, JT0, rip);
+     a64_str(b, 8, JT0, 20, RIP_OFF);
+     a64_mov_imm64(b, 0, OCERZ_STEP_PROFILE);
+     epi_sites[(*n_epi)++] = a64_label(b);
+     a64_b(b, 0);
++}
++
++static int select_m32_ebp_hoist(const X86Insn *insns, int n, uint64_t rip)
++{
++    if (!g_xlat_mode32 || g_pin_class != 3 || g_no_chain || !ocerz_guest_base ||
++        !mem_fast_forms_ok() || g_align_guard || g_no_ldapr || align_test_all() ||
++        ocerz_tcache_mode() != OCERZ_TC_OFF || !ENV_ON("OCERZ_M32_EBP_HOIST") || lowhoist_marked(jit_key(rip, 1)))
++        return 0;
++    const X86Insn *last = &insns[n - 1];
++    const int self_loop = (last->op == OCERZ_OP_JMP || last->op == OCERZ_OP_JCC) &&
++                          last->ops[0].kind == OCERZ_OPK_IMM && last->ops[0].imm == rip;
++    int count = 0, stop = 0;
++    for (; stop < n; ++stop) {
++        const X86Insn *insn = &insns[stop];
++        if (is_terminator(insn->op) || insn_may_write_gpr(insn, OCERZ_RBP) || !m32_inline_ok(insn))
++            break;
++        int supported_form = insn->op == OCERZ_OP_MOV;
++        for (int q = 0; q < insn->nops && !supported_form; ++q)
++            supported_form = insn->ops[q].kind == OCERZ_OPK_XMM;
++        if (supported_form)
++            for (int q = 0; q < insn->nops; ++q)
++                count += m32_ebp_form(insn, &insn->ops[q]);
++    }
++    // A self-edge can skip the entry guard.
++    if (count < 6 || self_loop)
++        return 0;
++    if (ENV_ON("OCERZ_M32_EBP_HOIST_LOG"))
++        fprintf(stderr, "ocerz: i386 EBP hoist rip=%#llx accesses=%d prefix=%d\n",
++                (unsigned long long)rip, count, stop);
++    return stop;
++}
++
++static void emit_m32_ebp_guard(A64Buf *b)
++{
++    if (!g_m32_ebp_stop) return;
++
++    // Reject if the base is within 256 bytes of 0 or 4 GiB. The W subtraction
++    // wraps and the X addition exposes the out-of-range bit without using NZCV.
++    int base = pin_hreg(pin_slot(OCERZ_RBP));
++    a64_sub_imm(b, 0, JTT, base, 256);
++    a64_add_imm(b, 1, JTT, JTT, 512);
++    a64_lsr_imm(b, 1, JTT, JTT, 32);
++    g_llh_bail_cb[g_n_llh_bail_cb++] = a64_label(b);
++    a64_cbnz(b, 0, JTT, 0);
+ }
+
+ static int select_mem_base_hoist(const X86Insn *insns, int n, uint64_t rip)
+@@ -26090,7 +26176,9 @@
+         }
+     }
+
++    g_m32_ebp_stop = jit->stop_requested ? 0 : select_m32_ebp_hoist(blk->insns, n, rip);
+     g_mem_hoist_greg = select_mem_base_hoist(blk->insns, n, rip);
++    if (g_m32_ebp_stop) g_mem_hoist_greg = OCERZ_RBP;
+     select_low_hoist(blk->insns, n, rip);
+     g_n_llh_bail_tb = g_n_llh_bail_cb = 0;
+
+@@ -26208,7 +26296,8 @@
+         }
+         g_body_entry = g_place_pro ? entry : a64_label(&b);
+         emit_reload_mem_base(&b);
+-        body_noreload = a64_label(&b);
++        body_noreload = g_m32_ebp_stop ? NULL : a64_label(&b);
++        emit_m32_ebp_guard(&b);
+         {
+             static int bt = -1;
+             if (bt < 0) bt = getenv("OCERZ_BTRACE") ? 1 : 0;
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -69,6 +69,7 @@
+
+ static int g_failures;
+ static int g_fpb_case = -1;
++static int g_ebp_case = -1;
+ static OcerzVM g_vm;
+ static OcerzCPU *cpu(void) { return &g_vm.cpu; }
+
+@@ -90,6 +91,13 @@
+         cpu()->gpr[i] = (0xdead0000ull << 32) | (0x11111111ull * (unsigned)(i + 1));
+     cpu()->gpr[OCERZ_RSP] = esp;
+     cpu()->gpr[OCERZ_RBP] = M32_STACK - 0x40;
++    if (g_ebp_case >= 0) {
++        static const uint32_t bases[] = {
++            M32_DATA + 0x40, M32_DATA + 0x80, 4, 0xffffffc0, M32_DATA + 0x40,
++            M32_DATA + 0x80, M32_DATA + 0x40, M32_DATA + 0x80,
++        };
++        cpu()->gpr[OCERZ_RBP] = bases[g_ebp_case];
++    }
+     cpu()->gpr[OCERZ_RBX] = M32_DATA;
+     cpu()->gpr[OCERZ_RSI] = 0x10;
+     cpu()->gpr[OCERZ_RDI] = 0x00000004;
+@@ -235,7 +243,10 @@
+     for (int i = 0; i < 64; i++) {
+         if (cpu()->rip == DONE)
+             return 1;
+-        if (ocerz_jit_step(&g_vm, cpu()) != OCERZ_STEP_OK)
++        const int step = ocerz_jit_step(&g_vm, cpu());
++        if (g_ebp_case >= 0 && step == OCERZ_STEP_PROFILE)
++            continue;  // The following dispatch handles the guard's retirement.
++        if (step != OCERZ_STEP_OK)
+             return 0;
+     }
+     return 0;
+@@ -338,6 +349,56 @@
+                  0x0f,0x58,0xc1, 0x0f,0x59,0xc1, 0x0f,0x58,0xc1, 0x0f,0x59,0xc1,
+                  0x0f,0x5c,0xc1, 0x0f,0x59,0xc1, 0x0f,0x58,0xc1, 0x0f,0x59,0xc1,
+                  0x0f,0x11,0x43,0x40, 0x0f,0x2e,0xc1, 0x74,0x02, 0x31,0xc0);
++        }
++        return g_failures != 0;
++    }
++
++    const char *ebp_case = getenv("OCERZ_TEST_JIT32_EBP_HOIST");
++    if (ebp_case) {
++        if (ebp_case[0] < '0' || ebp_case[0] > '7' || ebp_case[1]) return 2;
++        g_ebp_case = ebp_case[0] - '0';
++        switch (g_ebp_case) {
++        case 0:
++            CASE("EBP block with positive offsets", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x4d,8, 0x8b,0x55,12, 0x8b,0x5d,16, 0x8b,0x75,20, 0x8b,0x7d,24);
++            break;
++        case 1:
++            CASE("EBP block with negative offsets", M32_CODE, M32_STACK,
++                 0x8b,0x45,0xfc, 0x8b,0x4d,0xf8, 0x8b,0x55,0xf4,
++                 0x8b,0x5d,0xf0, 0x8b,0x75,0xec, 0x8b,0x7d,0xe8);
++            break;
++        case 2:
++            CASE("Low guard falls back for wrapped negative offsets", M32_CODE, M32_STACK,
++                 0x8b,0x45,0xf8, 0x8b,0x4d,0xf4, 0x8b,0x55,0xf0,
++                 0x8b,0x5d,0xec, 0x8b,0x75,0xe8, 0x8b,0x7d,0xe4);
++            break;
++        case 3:
++            CASE("High guard falls back near 4 GiB", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x4d,8, 0x8b,0x55,12, 0x8b,0x5d,16, 0x8b,0x75,20, 0x8b,0x7d,24);
++            break;
++        case 4:
++            CASE("EBP is reassigned after the first group", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x4d,8, 0x8b,0x55,12, 0x8b,0x5d,16, 0x8b,0x75,20, 0x8b,0x7d,24,
++                 0xbd,0x80,0,0x50,0, 0x8b,0x45,4, 0x89,0x45,0x20);
++            break;
++        case 5:
++            CASE("EBP mixed scalar and vector memory operations", M32_CODE, M32_STACK,
++                 0x8b,0x45,0xf8, 0x89,0x45,4, 0xf3,0x0f,0x10,0x45,4, 0xf3,0x0f,0x59,0x45,8,
++                 0xf3,0x0f,0x11,0x45,12, 0x8b,0x55,12, 0xc7,0x45,0x10,7,0,0,0);
++            break;
++        case 7:
++            CASE("SSE replay keeps the mapped EBP base live", M32_CODE, M32_STACK,
++                 0xf3,0x0f,0x58,0x45,4, 0xf3,0x0f,0x59,0x45,8,
++                 0xf3,0x0f,0x58,0x45,12, 0xf3,0x0f,0x59,0x45,16,
++                 0xf3,0x0f,0x58,0x45,20, 0xf3,0x0f,0x59,0x45,24,
++                 0xf3,0x0f,0x58,0x45,28, 0xf3,0x0f,0x59,0x45,32,
++                 0xf3,0x0f,0x11,0x45,40, 0x8b,0x45,40);
++            break;
++        default:
++            CASE("Indexed EBP operands keep ordinary addressing", M32_CODE, M32_STACK,
++                 0x8b,0x44,0xb5,4, 0x8b,0x4c,0xb5,8, 0x8b,0x54,0xb5,12,
++                 0x8b,0x5c,0xb5,16, 0x8b,0x7c,0xb5,20, 0x8b,0x44,0xb5,24);
++            break;
+         }
+         return g_failures != 0;
+     }
