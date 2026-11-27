@@ -462,3 +462,15 @@ The renderer counters confirmed one pass and one submission per frame at 256, an
 A diagnostic capture with the 512-draw split recorded **215** completion gaps over 2 ms. The change in time from host flush to GPU start was the largest component in **109** gaps, followed by GPU duration in **80** and slot acquisition in **19**. These timestamps describe the final command buffer of the split frame. The frame's earlier pass was already submitted at that point. [Final-command timing](results/winemetalgl-published-color-tail.json)
 
 A separate experiment used early submission and a raster copy only when every mailbox slot was busy. Across four pairs, median p99 moved from **2.38 to 2.32 ms**, improving in two pairs. Median throughput fell from **1,378 to 1,362 GPU-completed FPS**. This change stayed experimental. [Busy-slot comparison](results/winemetalgl-published-color-tail.json)
+
+### Match both submissions in a split frame
+
+Two ten-second command-buffer traces paired **27,318** frames into a 512-draw buffer followed by a 314-draw buffer. In all **140** long completion gaps where final-buffer dispatch delay was the largest component, an increase in overlap with earlier render work was the largest part of that delay. The same frame’s first render buffer alone covered **0.97–1.10 ms** of the final buffer's dispatch wait at p99. The portion of dispatch wait outside the recorded render and presentation intervals was **0.13–0.14 ms** at p99. [Split command-buffer traces](results/winemetalgl-split-dispatch.json)
+
+Apply `patches/winemetalgl-submission-trace-trial.patch` after the direct-publication patch. Set `OCERZ_WMGL_SUBMISSION_LOG` to a fresh file with the GPU and frame timing logs enabled, and pass that file with `--submission-log` alongside `--timing-log` in the analyzer. The trace joins the final buffer by its GPU start and end timestamps, checks each frame's producer draw count, and measures overlap with recorded GPU work during final dispatch. [Trace outputs](results/winemetalgl-split-dispatch.json)
+
+With direct publication and the 512-draw split active, three interleaved blocks compared two, three, and four frames in flight. Median p99 was **2.116**, **2.136**, and **2.096 ms** respectively, with throughput of **1,328**, **1,361**, and **1,360 GPU-completed FPS**. All outputs matched the reference pixels and kept consecutive GPU completion sequences. [Frame-in-flight sweep](results/winemetalgl-split-dispatch.json)
+
+The warmed 60-second pair favored three frames in flight, at **1,361 FPS and 2.077 ms p99**. Four frames in flight reached **1,340 FPS and 2.103 ms p99**. [Sustained in-flight comparison](results/winemetalgl-split-dispatch.json)
+
+Another three paired short windows tested splitting the draw stream after each 384 draws by setting `WINEMETALGL_COMMIT_DRAWS=48`. The resulting three-pass configuration reached **1,303 FPS and 2.468 ms median p99**. The paired 512-draw split at 64 reached **1,380 FPS and 2.072 ms median p99**, improving both metrics in every pair. [Two- and three-pass results](results/winemetalgl-split-dispatch.json)

@@ -6,6 +6,7 @@ import json
 import math
 import subprocess
 import xml.etree.ElementTree as ElementTree
+from bisect import bisect_right
 from collections import Counter, defaultdict, namedtuple
 from pathlib import Path
 from statistics import median
@@ -329,6 +330,7 @@ def presentation_report(path, pid, stream, completed_sequences):
 
 
 FrameTiming = namedtuple("FrameTiming", "slot_begin slot_end submit gpu_start gpu_end callback ready")
+Submission = namedtuple("Submission", "stream serial draws submit start end kernel_start kernel_end callback")
 
 
 def timing_stats(values):
@@ -385,7 +387,109 @@ def pass_timing_report(path, pid, timings, gpu_dominant_indices):
     }
 
 
-def frame_timing_report(path, pid, stream, frames, pass_log=None):
+def interval_coverage(intervals):
+    merged = []
+    for start, end in sorted(intervals):
+        if merged and start <= merged[-1][1]:
+            first, last = merged[-1]
+            merged[-1] = first, max(last, end)
+        else:
+            merged.append((start, end))
+    ends = [end for _, end in merged]
+
+    def covered(start, end):
+        total = 0
+        for i in range(bisect_right(ends, start), len(merged)):
+            first, last = merged[i]
+            if first >= end:
+                break
+            total += min(end, last) - max(start, first)
+        return total
+
+    return covered
+
+
+def submission_report(path, pid, stream, frames, timings, dispatch_dominant_indices):
+    render, present = [], []
+    with path.open() as log:
+        for line in log:
+            if not line.endswith("\n"):
+                break
+            process, kind, *fields = line.split()
+            if int(process) != pid:
+                continue
+            if kind not in ("render", "present") or len(fields) != len(Submission._fields):
+                raise ValueError("Invalid command-buffer submission record")
+            entry = Submission(*map(int, fields))
+            if not 0 < entry.submit <= entry.start <= entry.end <= entry.callback:
+                raise ValueError(f"Unordered timestamps for {kind} submission {entry.serial}")
+            if kind == "render":
+                render.append(entry)
+            elif entry.stream == stream:
+                present.append(entry)
+
+    expected = {(t.gpu_start, t.gpu_end) for t in timings}
+    finals = [entry for entry in render if (entry.start, entry.end) in expected]
+    streams = {entry.stream for entry in finals}
+    if len(finals) != len(expected) or {(entry.start, entry.end) for entry in finals} != expected or len(streams) != 1:
+        raise ValueError("The submission log does not identify one render stream for the sampled frames")
+    render = sorted((entry for entry in render if entry.stream in streams), key=lambda entry: entry.serial)
+    if len({entry.serial for entry in render}) != len(render):
+        raise ValueError("The render submission log includes duplicate serials")
+    if any(a.submit >= b.submit for a, b in zip(render, render[1:])):
+        raise ValueError("Render submission timestamps disagree with command serial order")
+    positions = {(entry.start, entry.end): index for index, entry in enumerate(render)}
+    final_indices = [positions[t.gpu_start, t.gpu_end] for t in timings]
+    if any(a >= b for a, b in zip(final_indices, final_indices[1:])):
+        raise ValueError("Render submissions and completed frames disagree on command order")
+
+    render_intervals = [(entry.start, entry.end) for entry in render]
+    render_covered = interval_coverage(render_intervals)
+    recorded_covered = interval_coverage(render_intervals + [(entry.start, entry.end) for entry in present])
+    phases, same_frame_wait, driver_to_gpu = [], [], []
+    counts, draw_counts = Counter(), Counter()
+    for i, (timing, final_index) in enumerate(zip(timings, final_indices)):
+        final = render[final_index]
+        if timing.submit > final.submit:
+            raise ValueError(f"Flush and commit timestamps disagree for frame {frames[i][0]}")
+        begin, end = timing.submit, timing.gpu_start
+        renders = render_covered(begin, end)
+        recorded = recorded_covered(begin, end)
+        phases.append({"render": renders, "present_only": recorded - renders, "uncovered": end - begin - recorded})
+        if final.submit <= final.kernel_start <= final.kernel_end <= final.start:
+            driver_to_gpu.append(final.start - final.kernel_end)
+        if i:
+            group = render[final_indices[i - 1] + 1:final_index + 1]
+            if sum(entry.draws for entry in group) != frames[i][2]:
+                raise ValueError(f"Submission draw counts do not match frame {frames[i][0]}")
+            counts[len(group)] += 1
+            draw_counts[",".join(str(entry.draws) for entry in group)] += 1
+            same_frame_wait.append(active_duration(
+                (max(begin, entry.start), min(end, entry.end))
+                for entry in group[:-1] if entry.start < end and begin < entry.end
+            ))
+
+    changes = Counter()
+    for index in dispatch_dominant_indices:
+        previous, current = phases[index - 1:index + 1]
+        changes[max(current, key=lambda name: current[name] - previous[name])] += 1
+    report = {
+        "matched_final_command_buffers": len(final_indices),
+        "recorded_present_command_buffers": len(present),
+        "submissions_per_frame": dict(counts),
+        "draw_counts_per_frame": dict(draw_counts),
+        "final_dispatch_coverage": {name: timing_stats(phase[name] for phase in phases)
+                                    for name in ("render", "present_only", "uncovered")},
+        "same_frame_prior_render_coverage": timing_stats(same_frame_wait),
+        "dispatch_dominated_gap_largest_coverage_changes": dict(changes),
+        "driver_schedule_samples": len(driver_to_gpu),
+    }
+    if driver_to_gpu:
+        report["driver_schedule_end_to_gpu_start"] = timing_stats(driver_to_gpu)
+    return report
+
+
+def frame_timing_report(path, pid, stream, frames, pass_log=None, submission_log=None):
     expected = {seq: end for seq, end, _ in frames}
     by_sequence = {}
     with path.open() as log:
@@ -408,6 +512,7 @@ def frame_timing_report(path, pid, stream, frames, pass_log=None):
     long_components = defaultdict(list)
     dominant = Counter()
     gpu_dominant = []
+    dispatch_dominant = []
     unattributed = 0
     over_budget = 0
     budget_ns = 2_000_000
@@ -434,6 +539,8 @@ def frame_timing_report(path, pid, stream, frames, pass_log=None):
         dominant[largest] += 1
         if pass_log is not None and largest == "gpu_duration_change":
             gpu_dominant.append(index + 1)
+        if submission_log is not None and largest == "dispatch_change":
+            dispatch_dominant.append(index + 1)
     report = {
         "matched_frames": len(timings),
         "frame_phases": {
@@ -452,11 +559,13 @@ def frame_timing_report(path, pid, stream, frames, pass_log=None):
     }
     if pass_log is not None:
         report["pass_timing"] = pass_timing_report(pass_log, pid, timings, gpu_dominant)
+    if submission_log is not None:
+        report["submissions"] = submission_report(submission_log, pid, stream, frames, timings, dispatch_dominant)
     return report
 
 
 def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None, timing_log=None,
-                pass_log=None):
+                pass_log=None, submission_log=None):
     streams = defaultdict(list)
     dimensions = (width << 32) | height
     with path.open() as log:
@@ -484,7 +593,7 @@ def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, prese
         report["presentation"] = presentation_report(present_log, pid, stream, completed)
     if timing_log is not None:
         _, gap_end, _ = mailbox_sample([end for _, end, _ in frames], seconds)
-        report["frame_timing"] = frame_timing_report(timing_log, pid, stream, frames[:gap_end], pass_log)
+        report["frame_timing"] = frame_timing_report(timing_log, pid, stream, frames[:gap_end], pass_log, submission_log)
     return {"stream": stream, **report}
 
 
@@ -504,6 +613,7 @@ def main():
     parser.add_argument("--present-log", type=Path, help="join Metal drawable presentations by render sequence")
     parser.add_argument("--timing-log", type=Path, help="attribute windowed GPU completion gaps to host and GPU phases")
     parser.add_argument("--pass-log", type=Path, help="join sampled GPU encoder intervals to frame timings")
+    parser.add_argument("--submission-log", type=Path, help="attribute final-buffer dispatch wait to recorded GPU work")
     parser.add_argument("--start-sequence", type=int, help="first completed frame in the measurement")
     parser.add_argument("--seconds", type=int, help="require this many seconds of completed GPU work")
     options = parser.parse_args()
@@ -516,6 +626,8 @@ def main():
         parser.error("--stream, --start-sequence, --seconds, --present-log, and --timing-log require --wmgl-log")
     if options.pass_log is not None and options.timing_log is None:
         parser.error("--pass-log requires --timing-log")
+    if options.submission_log is not None and options.timing_log is None:
+        parser.error("--submission-log requires --timing-log")
     if any(value is not None and value <= 0 for value in (options.stream, options.start_sequence, options.seconds)):
         parser.error("Stream, starting sequence, and duration must be positive")
     try:
@@ -523,7 +635,7 @@ def main():
             report = mailbox_log(
                 options.trace, options.pid, options.width, options.height,
                 options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log,
-                options.pass_log,
+                options.pass_log, options.submission_log,
             )
             print(json.dumps(report, indent=2))
             return

@@ -1,0 +1,105 @@
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+index 65310ec..66bef12 100644
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -222,6 +222,7 @@ public:
+ 
+     // Called when the recorded work presents a drawable.
+     void present(id<CAMetalDrawable> drawable);
++    static void tracePresentationSubmission(id<MTLCommandBuffer> buffer, uint64_t mailbox, uint64_t sequence);
+ 
+     // Occlusion queries. Render passes started while visibility is wanted
+     // carry a visibility-result buffer; each slot counts samples for one
+@@ -312,6 +313,7 @@ private:
+     PendingClear pending_;
+     bool drawsInPass_ = false;
+     uint32_t drawsSinceCommit_ = 0;
++    uint64_t submissionTraceStream_ = 0;
+     bool indirectWaited_ = false;
+     uint64_t passGeneration_ = 0;
+     uint64_t renderCalls_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+index 4ee90e7..04738e6 100644
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -5,6 +5,7 @@
+ #import <QuartzCore/CAMetalLayer.h>
+ 
+ #include <algorithm>
++#include <atomic>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+@@ -20,8 +21,39 @@
+ 
+ namespace {
+ constexpr NSUInteger kVisibilitySlots = 4096;
++
++FILE* submissionLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_SUBMISSION_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL submission log");
++        return file;
++    }();
++    return log;
++}
++
++void traceSubmission(FILE* log, id<MTLCommandBuffer> buffer, const char* kind,
++                     uint64_t stream, uint64_t serial, uint32_t draws) {
++    const uint64_t submitted = stats::nowNanos();
++    [buffer addCompletedHandler:^(id<MTLCommandBuffer> finished) {
++        const uint64_t callback = stats::nowNanos();
++        if (finished.status != MTLCommandBufferStatusCompleted || finished.GPUStartTime <= 0.0)
++            return;
++        std::fprintf(log, "%d %s %llu %llu %u %llu %llu %llu %llu %llu %llu\n", getpid(), kind,
++                     (unsigned long long)stream, (unsigned long long)serial, draws,
++                     (unsigned long long)submitted, (unsigned long long)(finished.GPUStartTime * 1e9),
++                     (unsigned long long)(finished.GPUEndTime * 1e9),
++                     (unsigned long long)(finished.kernelStartTime * 1e9),
++                     (unsigned long long)(finished.kernelEndTime * 1e9), (unsigned long long)callback);
++    }];
++}
+ }  // namespace
+ 
++void CommandStream::tracePresentationSubmission(id<MTLCommandBuffer> buffer, uint64_t mailbox, uint64_t sequence) {
++    if (FILE* log = submissionLog()) traceSubmission(log, buffer, "present", mailbox, sequence, 0);
++}
++
+ bool RenderTargetDesc::operator==(const RenderTargetDesc& o) const {
+     return color == o.color && depth == o.depth && stencil == o.stencil && width == o.width && height == o.height &&
+            samples == o.samples && layers == o.layers;
+@@ -630,6 +662,7 @@
+     if (!buffer_) return lastCommitted_;
+     stats::count(&stats::Frame::commits);
+     lastCommitNanos_ = stats::nowNanos();
++    const uint32_t submittedDraws = drawsSinceCommit_;
+     drawsSinceCommit_ = 0;
+     if (!profile_.empty()) {
+         std::vector<ProfileEntry> entries = std::move(profile_);
+@@ -638,6 +671,12 @@
+             profileCollect(entries, uint64_t(finished.GPUEndTime * 1e9));
+         }];
+     }
++    if (FILE* log = submissionLog()) {
++        static std::atomic<uint64_t> nextTraceStream{1};
++        if (!submissionTraceStream_)
++            submissionTraceStream_ = nextTraceStream.fetch_add(1, std::memory_order_relaxed);
++        traceSubmission(log, buffer_, "render", submissionTraceStream_, serial_, submittedDraws);
++    }
+     queue_.commit(buffer_, serial_);
+     lastCommitted_ = serial_;
+     buffer_ = nil;
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+index 86a9b41..64673e7 100644
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -758,6 +758,7 @@ void dumpFrame(CommandStream& stream, id<MTLTexture> color, int width, int heigh
+                         box->state[slot] = Mailbox::Free;
+                         box->changed.notify_all();
+                     }];
++                    if (drawable) CommandStream::tracePresentationSubmission(commandBuffer, box->recordingStream, sequence);
+                     [commandBuffer commit];
+                 }
+             }
