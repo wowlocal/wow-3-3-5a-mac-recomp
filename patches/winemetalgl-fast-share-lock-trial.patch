@@ -1,0 +1,196 @@
+diff --git a/src/core/context.h b/src/core/context.h
+--- a/src/core/context.h
++++ b/src/core/context.h
+@@ -269,31 +269,89 @@
+     static inline thread_local bool guestPoolActive = false;
+ };
+
+-// Scoped share-group lock (every GL command runs under it).
++extern const bool g_fastShareLock;
++extern const unsigned g_fastShareLockLogInterval;
++enum class ShareLockEvent { Acquire, Reenter, Yield };
++void recordShareLockEvent(ShareLockEvent event);
++
++// Fast mode takes one native lock per group on this thread, with nested GL
++// calls borrowing their outer scope. The original lock remains the control.
+ struct ShareLock {
+-    explicit ShareLock(Context& ctx) : lock(ctx.share().mutex) { ++depth; }
+-    ~ShareLock() { --depth; }
+-    std::lock_guard<std::recursive_mutex> lock;
+-    static thread_local int depth;  // share-group locks this thread holds
+-};
+-
+-// Releases the calling thread's share-group lock around a GPU wait that
+-// touches no shared state (fence and query waits, glFinish), so the other
+-// contexts of the share group keep running meanwhile.
++    explicit ShareLock(Context& ctx) : group_(ctx.share()) {
++        if (!g_fastShareLock) {
++            group_.mutex.lock();
++            ++depth;
++            return;
++        }
++        parent_ = top_;
++        if (!ownerFor(group_)) {
++            os_unfair_lock_lock(&group_.fastMutex);
++            held_ = true;
++        }
++        top_ = this;
++        if (g_fastShareLockLogInterval)
++            recordShareLockEvent(held_ ? ShareLockEvent::Acquire : ShareLockEvent::Reenter);
++    }
++
++    ~ShareLock() {
++        if (!g_fastShareLock) {
++            --depth;
++            group_.mutex.unlock();
++            return;
++        }
++        top_ = parent_;
++        if (held_) os_unfair_lock_unlock(&group_.fastMutex);
++    }
++    ShareLock(const ShareLock&) = delete;
++    ShareLock& operator=(const ShareLock&) = delete;
++
++private:
++    friend class ShareUnlock;
++    static ShareLock* ownerFor(ShareGroup& group) {
++        for (ShareLock* scope = top_; scope; scope = scope->parent_)
++            if (&scope->group_ == &group && scope->held_) return scope;
++        return nullptr;
++    }
++    static thread_local int depth;
++    static thread_local ShareLock* top_;
++    ShareGroup& group_;
++    ShareLock* parent_ = nullptr;
++    bool held_ = false;
++};
++
++// Allows other contexts of the group to run during a GPU wait. The owner
++// stops satisfying recursive acquisitions until the waiting thread relocks.
+ class ShareUnlock {
+ public:
+-    explicit ShareUnlock(Context& ctx) : mutex_(ctx.share().mutex), depth_(ShareLock::depth) {
+-        for (int i = 0; i < depth_; ++i) mutex_.unlock();
+-    }
++    explicit ShareUnlock(Context& ctx) : group_(ctx.share()) {
++        if (!g_fastShareLock) {
++            depth_ = ShareLock::depth;
++            for (int i = 0; i < depth_; ++i) group_.mutex.unlock();
++            return;
++        }
++        owner_ = ShareLock::ownerFor(group_);
++        if (!owner_) return;
++        owner_->held_ = false;
++        os_unfair_lock_unlock(&group_.fastMutex);
++        if (g_fastShareLockLogInterval) recordShareLockEvent(ShareLockEvent::Yield);
++    }
++
+     ~ShareUnlock() {
+-        for (int i = 0; i < depth_; ++i) mutex_.lock();
++        if (!g_fastShareLock) {
++            for (int i = 0; i < depth_; ++i) group_.mutex.lock();
++            return;
++        }
++        if (!owner_) return;
++        os_unfair_lock_lock(&group_.fastMutex);
++        owner_->held_ = true;
+     }
+     ShareUnlock(const ShareUnlock&) = delete;
+     ShareUnlock& operator=(const ShareUnlock&) = delete;
+
+ private:
+-    std::recursive_mutex& mutex_;
+-    int depth_;
++    ShareGroup& group_;
++    ShareLock* owner_ = nullptr;
++    int depth_ = 0;
+ };
+
+ // Waits for `serial` (this context's work is flushed first) without the
+diff --git a/src/core/context.mm b/src/core/context.mm
+--- a/src/core/context.mm
++++ b/src/core/context.mm
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <cstdio>
+ #include <cstdlib>
++#include <cstring>
+
+ #include "core/compat/display_list.h"
+ #include "core/compat/immediate.h"
+@@ -29,6 +30,25 @@
+
+ }  // namespace
+
++const bool g_fastShareLock = [] {
++    const char* value = std::getenv("WINEMETALGL_FAST_SHARE_LOCK");
++    return value && !std::strcmp(value, "1");
++}();
++
++const unsigned g_fastShareLockLogInterval = [] {
++    const char* value = std::getenv("WINEMETALGL_FAST_SHARE_LOCK_LOG");
++    return value && *value ? static_cast<unsigned>(std::strtoul(value, nullptr, 10)) : 0u;
++}();
++
++void recordShareLockEvent(ShareLockEvent event) {
++    static thread_local unsigned long long counts[3] = {}, events = 0;
++    ++counts[static_cast<unsigned>(event)];
++    if (++events % g_fastShareLockLogInterval == 0)
++        std::fprintf(stderr, "wmgl share lock native=%llu reentrant=%llu yielded=%llu\n",
++                     counts[0], counts[1], counts[2]);
++}
++
++thread_local ShareLock* ShareLock::top_ = nullptr;
+ thread_local int ShareLock::depth = 0;
+ thread_local int CallPool::depth = 0;
+
+diff --git a/src/core/share_group.h b/src/core/share_group.h
+--- a/src/core/share_group.h
++++ b/src/core/share_group.h
+@@ -2,6 +2,7 @@
+ #pragma once
+
+ #include <atomic>
++#include <os/lock.h>
+
+ #include <map>
+ #include <mutex>
+@@ -27,6 +28,7 @@
+
+     // Held while touching any shared name table or shared object state.
+     std::recursive_mutex mutex;
++    os_unfair_lock fastMutex = OS_UNFAIR_LOCK_INIT;
+
+     NameTable<Buffer> buffers;
+     NameTable<Texture> textures;
+diff --git a/tests/gpu/debug_tests.cpp b/tests/gpu/debug_tests.cpp
+--- a/tests/gpu/debug_tests.cpp
++++ b/tests/gpu/debug_tests.cpp
+@@ -65,3 +65,27 @@
+     glDisable(GL_DEBUG_OUTPUT);
+     CHECK_GL();
+ }
++
++GPU_TEST(gpu_khr_debug_reentrant_query) {
++    struct Query {
++        GLint viewport[4] = {};
++        int calls = 0;
++    } query;
++    glEnable(GL_DEBUG_OUTPUT);
++    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
++    glViewport(1, 2, 32, 33);
++    glDebugMessageCallback([](GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*, const void* user) {
++        auto* state = static_cast<Query*>(const_cast<void*>(user));
++        glGetIntegerv(GL_VIEWPORT, state->viewport);
++        ++state->calls;
++    }, &query);
++    glEnable(0xFFFFFFFFu);
++    glDebugMessageCallback(nullptr, nullptr);
++    CHECK_EQ(glGetError(), static_cast<GLenum>(GL_INVALID_ENUM));
++    CHECK_EQ(query.calls, 1);
++    CHECK_EQ(query.viewport[0], 1);
++    CHECK_EQ(query.viewport[1], 2);
++    CHECK_EQ(query.viewport[2], 32);
++    CHECK_EQ(query.viewport[3], 33);
++    CHECK_GL();
++}

@@ -1481,3 +1481,18 @@ The separate 20-second diagnostic verified consecutive GPU completions. Counters
 | Fused scan and copy | 132.43 | 12.96 ms |
 
 The first pair gained **1.53 FPS** and the reverse pair lost **0.93 FPS**. P99 rose **0.39 and 0.27 ms** in the two pairs. Keep the separate scan and native-width copy as the performance baseline. The four warmed 60-second launches had fused logging off and verified the saved camera, overlapping spells, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. Both modes passed **342** GPU tests with the ordinary draw policy. [Full-raid A/B and staged allocation checks](results/raid-winemetalgl-fused-client-index-upload-ab.json)
+
+### Use one native GL share-group lock per thread scope
+
+The trial uses `os_unfair_lock` for physical ownership of a share group. A thread-local scope chain lets nested calls on the same group borrow a held lock. A GPU wait suspends that ownership before unlocking and restores it after reacquisition. Calls on a shared group from another thread take the same native lock.
+
+Apply `patches/winemetalgl-fast-share-lock-trial.patch` after the guest autorelease pool trial and set `WINEMETALGL_FAST_SHARE_LOCK=1`. The control uses the original recursive mutex. Both modes passed **343** GPU tests. The focused tests read GL state from a reentrant debug callback and draw through two shared contexts on different threads. With the diagnostic on, they logged both a borrowed acquisition and a GPU wait that released the lock.
+
+In the separate in-world diagnostic, the logger recorded **43,540,584** physical acquisitions and **4,693,912** borrowed acquisitions between counter rows after the world readback. The thread borrowed an outer lock for **9.73%** of recorded scopes. That interval logged zero temporary releases for GPU waits. Use `WINEMETALGL_FAST_SHARE_LOCK_LOG=262144` to log cumulative counts. The separately verified GPU window lasts 20 seconds.
+
+| GL share-group lock | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Recursive mutex | 132.85 | 12.80 ms |
+| Unfair lock with thread-local recursion | 136.00 | 12.80 ms |
+
+Throughput rose **3.35 and 2.95 FPS** in the two pairs. P99 rose **0.10 ms** and fell **0.10 ms**, respectively. Use the option for follow-up throughput comparisons. The four warmed 60-second runs verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid A/B and lock validation](results/raid-winemetalgl-fast-share-lock-ab.json)
