@@ -486,3 +486,11 @@ The warmed 60-second control reached **1,355 FPS and 2.094 ms p99**. The two run
 A separate submission trace verified the 65,000 setting changed the split from **512 + 314** draws to **466 + 360**. On this replay's original draw order, those two buffers contain **65,117** and **46,113** triangles. The pixel-preservation checks and all 336 renderer tests passed. [Submission and validation results](results/winemetalgl-triangle-split-ab.json)
 
 Apply `patches/winemetalgl-triangle-budget-trial.patch` after the submission trace patch. Set `OCERZ_WMGL_COMMIT_TRIANGLES=65000` with `WINEMETALGL_COMMIT_DRAWS=64` for this trial. The triangle count is a submission heuristic. The draw budget still applies and the commands keep their original order. Live raid and input validation are still pending.
+
+### Nearby triangle budgets
+
+Four interleaved six-second blocks compared **62,500**, **65,000**, and **67,500** triangles with the same draw limit and three frames in flight. The 62,500 setting lowered p99 against 65,000 in every block. Median p99 was **2.037**, **2.172**, and **2.166 ms**, with median throughput of **1,364**, **1,362**, and **1,348 GPU-completed FPS**, respectively. Reference pixels and GPU sequences matched. [Nearby budget comparisons](results/winemetalgl-nearby-triangle-ab.json)
+
+The two sustained pairs started after at least five seconds of completed GPU rendering and reversed run order. At 65,000, the runs reached **1,343 FPS and 2.148 ms p99**, then **1,359 FPS and 2.173 ms p99**. At 62,500, the corresponding results were **1,320 FPS and 2.226 ms p99**, then **1,358 FPS and 2.119 ms p99**. The pairs split the p99 wins and favored 65,000 on throughput. The 65,000 setting is the comparison baseline for the trial. [Warmed comparisons](results/winemetalgl-nearby-triangle-ab.json)
+
+Separate submission traces verified **466 + 360** draws per frame at 65,000 and **448 + 378** at 62,500. The union of the render buffers' GPU execution intervals reached **2.111 ms p99** and **2.492 ms p99**, respectively, in those captures. All 336 renderer tests passed. [Submission traces](results/winemetalgl-nearby-triangle-ab.json)

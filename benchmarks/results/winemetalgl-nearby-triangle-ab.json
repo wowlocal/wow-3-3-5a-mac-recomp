@@ -1,0 +1,573 @@
+{
+  "hardware": "Apple M4 Pro",
+  "fixture": "winemetalgl-triangle-split-ab.json",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "commit_draws": 64,
+  "frames_in_flight": 3,
+  "reference_rgba_fnv1a64": "199a81aba2d36749",
+  "modeled_cuts": [
+    {
+      "triangle_budget": 62500,
+      "first_pass_draws": 448,
+      "second_pass_draws": 378,
+      "first_pass_triangles": 62628,
+      "second_pass_triangles": 48602
+    },
+    {
+      "triangle_budget": 65000,
+      "first_pass_draws": 466,
+      "second_pass_draws": 360,
+      "first_pass_triangles": 65117,
+      "second_pass_triangles": 46113
+    },
+    {
+      "triangle_budget": 67500,
+      "first_pass_draws": 487,
+      "second_pass_draws": 339,
+      "first_pass_triangles": 67734,
+      "second_pass_triangles": 43496
+    }
+  ],
+  "six_second_windows": {
+    "runs": [
+      {
+        "order": 1,
+        "block": 1,
+        "triangle_budget": 65000,
+        "verified_completed_renders": 7990,
+        "first_sequence": 128,
+        "last_sequence": 8117,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999376750,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1331.5,
+        "p99_gpu_completion_gap_ns": 2463291,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 2,
+        "block": 1,
+        "triangle_budget": 62500,
+        "verified_completed_renders": 8008,
+        "first_sequence": 128,
+        "last_sequence": 8135,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999594000,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1334.5,
+        "p99_gpu_completion_gap_ns": 2102125,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 3,
+        "block": 1,
+        "triangle_budget": 67500,
+        "verified_completed_renders": 8267,
+        "first_sequence": 128,
+        "last_sequence": 8394,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999864459,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1377.6666666666667,
+        "p99_gpu_completion_gap_ns": 2019375,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 4,
+        "block": 2,
+        "triangle_budget": 62500,
+        "verified_completed_renders": 8315,
+        "first_sequence": 128,
+        "last_sequence": 8442,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999695375,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1385.6666666666667,
+        "p99_gpu_completion_gap_ns": 1972250,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 5,
+        "block": 2,
+        "triangle_budget": 67500,
+        "verified_completed_renders": 7832,
+        "first_sequence": 128,
+        "last_sequence": 7959,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999890625,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1305.1666666666667,
+        "p99_gpu_completion_gap_ns": 2276375,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 6,
+        "block": 2,
+        "triangle_budget": 65000,
+        "verified_completed_renders": 8298,
+        "first_sequence": 128,
+        "last_sequence": 8425,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999606750,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1382.8333333333333,
+        "p99_gpu_completion_gap_ns": 1975709,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 7,
+        "block": 3,
+        "triangle_budget": 67500,
+        "verified_completed_renders": 8176,
+        "first_sequence": 128,
+        "last_sequence": 8303,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5996043750,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1362.5,
+        "p99_gpu_completion_gap_ns": 2153291,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 8,
+        "block": 3,
+        "triangle_budget": 65000,
+        "verified_completed_renders": 8048,
+        "first_sequence": 128,
+        "last_sequence": 8175,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999628625,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1341.1666666666667,
+        "p99_gpu_completion_gap_ns": 2368000,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 9,
+        "block": 3,
+        "triangle_budget": 62500,
+        "verified_completed_renders": 8086,
+        "first_sequence": 128,
+        "last_sequence": 8213,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999349500,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1347.5,
+        "p99_gpu_completion_gap_ns": 2183334,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 10,
+        "block": 4,
+        "triangle_budget": 65000,
+        "verified_completed_renders": 8369,
+        "first_sequence": 128,
+        "last_sequence": 8496,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999626000,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1394.6666666666667,
+        "p99_gpu_completion_gap_ns": 1948875,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 11,
+        "block": 4,
+        "triangle_budget": 67500,
+        "verified_completed_renders": 7996,
+        "first_sequence": 128,
+        "last_sequence": 8123,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999790666,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1332.5,
+        "p99_gpu_completion_gap_ns": 2177791,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 12,
+        "block": 4,
+        "triangle_budget": 62500,
+        "verified_completed_renders": 8287,
+        "first_sequence": 128,
+        "last_sequence": 8414,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999706041,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1381.0,
+        "p99_gpu_completion_gap_ns": 1900791,
+        "min_draws": 826,
+        "max_draws": 826
+      }
+    ],
+    "medians": [
+      {
+        "triangle_budget": 62500,
+        "average_completed_fps": 1364.25,
+        "p99_gpu_completion_gap_ns": 2037187.5
+      },
+      {
+        "triangle_budget": 65000,
+        "average_completed_fps": 1362.0,
+        "p99_gpu_completion_gap_ns": 2171854.5
+      },
+      {
+        "triangle_budget": 67500,
+        "average_completed_fps": 1347.5,
+        "p99_gpu_completion_gap_ns": 2165541.0
+      }
+    ],
+    "within_block_deltas": [
+      {
+        "block": 1,
+        "triangle_budget": 62500,
+        "p99_delta_from_65000_ns": -361166
+      },
+      {
+        "block": 1,
+        "triangle_budget": 67500,
+        "p99_delta_from_65000_ns": -443916
+      },
+      {
+        "block": 2,
+        "triangle_budget": 62500,
+        "p99_delta_from_65000_ns": -3459
+      },
+      {
+        "block": 2,
+        "triangle_budget": 67500,
+        "p99_delta_from_65000_ns": 300666
+      },
+      {
+        "block": 3,
+        "triangle_budget": 62500,
+        "p99_delta_from_65000_ns": -184666
+      },
+      {
+        "block": 3,
+        "triangle_budget": 67500,
+        "p99_delta_from_65000_ns": -214709
+      },
+      {
+        "block": 4,
+        "triangle_budget": 62500,
+        "p99_delta_from_65000_ns": -48084
+      },
+      {
+        "block": 4,
+        "triangle_budget": 67500,
+        "p99_delta_from_65000_ns": 228916
+      }
+    ]
+  },
+  "warmed_sixty_second_windows": [
+    {
+      "order": 1,
+      "pair": 1,
+      "triangle_budget": 65000,
+      "warmup_ns": 5000491625,
+      "verified_completed_renders": 80610,
+      "first_sequence": 6691,
+      "last_sequence": 87300,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999196791,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 1343.4833333333333,
+      "p99_gpu_completion_gap_ns": 2148041,
+      "min_draws": 826,
+      "max_draws": 826
+    },
+    {
+      "order": 2,
+      "pair": 1,
+      "triangle_budget": 62500,
+      "warmup_ns": 5000449250,
+      "verified_completed_renders": 79188,
+      "first_sequence": 6854,
+      "last_sequence": 86041,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996634875,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 1319.7833333333333,
+      "p99_gpu_completion_gap_ns": 2225875,
+      "min_draws": 826,
+      "max_draws": 826
+    },
+    {
+      "order": 3,
+      "pair": 2,
+      "triangle_budget": 62500,
+      "warmup_ns": 5000385791,
+      "verified_completed_renders": 81457,
+      "first_sequence": 6923,
+      "last_sequence": 88379,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999332875,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 1357.6,
+      "p99_gpu_completion_gap_ns": 2119375,
+      "min_draws": 826,
+      "max_draws": 826
+    },
+    {
+      "order": 4,
+      "pair": 2,
+      "triangle_budget": 65000,
+      "warmup_ns": 5000650750,
+      "verified_completed_renders": 81550,
+      "first_sequence": 6995,
+      "last_sequence": 88544,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999402041,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 1359.15,
+      "p99_gpu_completion_gap_ns": 2173084,
+      "min_draws": 826,
+      "max_draws": 826
+    }
+  ],
+  "submission_traces": [
+    {
+      "triangle_budget": 65000,
+      "verified_completed_renders": 8198,
+      "first_sequence": 128,
+      "last_sequence": 8325,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 5999078041,
+      "measurement_duration_ns": 6000000000,
+      "average_completed_fps": 1366.1666666666667,
+      "p99_gpu_completion_gap_ns": 1956084,
+      "min_draws": 826,
+      "max_draws": 826,
+      "frame_timing": {
+        "matched_frames": 8199,
+        "frame_phases": {
+          "slot_acquire": {
+            "p50_ns": 41,
+            "p99_ns": 898208,
+            "max_ns": 9578209
+          },
+          "flush_to_gpu_start": {
+            "p50_ns": 87334,
+            "p99_ns": 1015917,
+            "max_ns": 2791542
+          },
+          "gpu_execution": {
+            "p50_ns": 113209,
+            "p99_ns": 1405459,
+            "max_ns": 9110209
+          },
+          "gpu_end_to_callback": {
+            "p50_ns": 54958,
+            "p99_ns": 92250,
+            "max_ns": 3320625
+          },
+          "callback_to_slot_ready": {
+            "p50_ns": 500,
+            "p99_ns": 12250,
+            "max_ns": 43625
+          }
+        },
+        "gap_count": 8198,
+        "unattributed_gaps": 0,
+        "long_gap_budget_ns": 2000000,
+        "over_budget_gaps": 75,
+        "long_gap_median_components_ns": {
+          "before_slot": 695875,
+          "slot_acquire": 208,
+          "after_slot": 42,
+          "dispatch_change": 94375,
+          "gpu_duration_change": 932334
+        },
+        "long_gap_largest_component_counts": {
+          "gpu_duration_change": 39,
+          "dispatch_change": 16,
+          "slot_acquire": 19,
+          "before_slot": 1
+        },
+        "submissions": {
+          "matched_final_command_buffers": 8199,
+          "recorded_present_command_buffers": 1092,
+          "submissions_per_frame": {
+            "2": 8198
+          },
+          "draw_counts_per_frame": {
+            "466,360": 8198
+          },
+          "final_dispatch_coverage": {
+            "render": {
+              "p50_ns": 0,
+              "p99_ns": 994083,
+              "max_ns": 2688958
+            },
+            "present_only": {
+              "p50_ns": 0,
+              "p99_ns": 17041,
+              "max_ns": 655625
+            },
+            "uncovered": {
+              "p50_ns": 83750,
+              "p99_ns": 154459,
+              "max_ns": 464667
+            }
+          },
+          "same_frame_prior_render_coverage": {
+            "p50_ns": 0.0,
+            "p99_ns": 827959,
+            "max_ns": 2042042
+          },
+          "prior_submission_gpu_execution": {
+            "p50_ns": 153520.5,
+            "p99_ns": 1633041,
+            "max_ns": 9789625
+          },
+          "frame_gpu_execution": {
+            "p50_ns": 269500.0,
+            "p99_ns": 2110834,
+            "max_ns": 10233709
+          },
+          "dispatch_dominated_gap_largest_coverage_changes": {
+            "render": 16
+          },
+          "driver_schedule_samples": 8179,
+          "driver_schedule_end_to_gpu_start": {
+            "p50_ns": 41750,
+            "p99_ns": 976541,
+            "max_ns": 2695334
+          }
+        }
+      }
+    },
+    {
+      "triangle_budget": 62500,
+      "verified_completed_renders": 8182,
+      "first_sequence": 128,
+      "last_sequence": 8309,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 5999691916,
+      "measurement_duration_ns": 6000000000,
+      "average_completed_fps": 1363.5,
+      "p99_gpu_completion_gap_ns": 2033416,
+      "min_draws": 826,
+      "max_draws": 826,
+      "frame_timing": {
+        "matched_frames": 8183,
+        "frame_phases": {
+          "slot_acquire": {
+            "p50_ns": 41,
+            "p99_ns": 1018500,
+            "max_ns": 9573166
+          },
+          "flush_to_gpu_start": {
+            "p50_ns": 85458,
+            "p99_ns": 1118833,
+            "max_ns": 2535959
+          },
+          "gpu_execution": {
+            "p50_ns": 133125,
+            "p99_ns": 1513584,
+            "max_ns": 8284125
+          },
+          "gpu_end_to_callback": {
+            "p50_ns": 55083,
+            "p99_ns": 91875,
+            "max_ns": 2779416
+          },
+          "callback_to_slot_ready": {
+            "p50_ns": 500,
+            "p99_ns": 13417,
+            "max_ns": 43625
+          }
+        },
+        "gap_count": 8182,
+        "unattributed_gaps": 0,
+        "long_gap_budget_ns": 2000000,
+        "over_budget_gaps": 92,
+        "long_gap_median_components_ns": {
+          "before_slot": 681104.5,
+          "slot_acquire": 62.5,
+          "after_slot": 41.0,
+          "dispatch_change": 66791.5,
+          "gpu_duration_change": 1182020.5
+        },
+        "long_gap_largest_component_counts": {
+          "slot_acquire": 10,
+          "dispatch_change": 27,
+          "gpu_duration_change": 54,
+          "before_slot": 1
+        },
+        "submissions": {
+          "matched_final_command_buffers": 8183,
+          "recorded_present_command_buffers": 1092,
+          "submissions_per_frame": {
+            "2": 8182
+          },
+          "draw_counts_per_frame": {
+            "448,378": 8182
+          },
+          "final_dispatch_coverage": {
+            "render": {
+              "p50_ns": 0,
+              "p99_ns": 1118500,
+              "max_ns": 2283833
+            },
+            "present_only": {
+              "p50_ns": 0,
+              "p99_ns": 8041,
+              "max_ns": 1174750
+            },
+            "uncovered": {
+              "p50_ns": 72917,
+              "p99_ns": 153625,
+              "max_ns": 430083
+            }
+          },
+          "same_frame_prior_render_coverage": {
+            "p50_ns": 0.0,
+            "p99_ns": 976167,
+            "max_ns": 2096584
+          },
+          "prior_submission_gpu_execution": {
+            "p50_ns": 171145.5,
+            "p99_ns": 1793334,
+            "max_ns": 8141500
+          },
+          "frame_gpu_execution": {
+            "p50_ns": 335792.0,
+            "p99_ns": 2492000,
+            "max_ns": 8665750
+          },
+          "dispatch_dominated_gap_largest_coverage_changes": {
+            "render": 25,
+            "present_only": 2
+          },
+          "driver_schedule_samples": 8175,
+          "driver_schedule_end_to_gpu_start": {
+            "p50_ns": 41584,
+            "p99_ns": 1081959,
+            "max_ns": 2510250
+          }
+        }
+      }
+    }
+  ],
+  "renderer_test_suite": {
+    "passed": 336,
+    "failed_checks": 0
+  }
+}

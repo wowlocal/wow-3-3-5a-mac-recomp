@@ -447,6 +447,7 @@ def submission_report(path, pid, stream, frames, timings, dispatch_dominant_indi
     render_covered = interval_coverage(render_intervals)
     recorded_covered = interval_coverage(render_intervals + [(entry.start, entry.end) for entry in present])
     phases, same_frame_wait, driver_to_gpu = [], [], []
+    prior_execution, frame_execution = [], []
     counts, draw_counts = Counter(), Counter()
     for i, (timing, final_index) in enumerate(zip(timings, final_indices)):
         final = render[final_index]
@@ -464,6 +465,8 @@ def submission_report(path, pid, stream, frames, timings, dispatch_dominant_indi
                 raise ValueError(f"Submission draw counts do not match frame {frames[i][0]}")
             counts[len(group)] += 1
             draw_counts[",".join(str(entry.draws) for entry in group)] += 1
+            frame_execution.append(active_duration((entry.start, entry.end) for entry in group))
+            prior_execution.append(active_duration((entry.start, entry.end) for entry in group[:-1]))
             same_frame_wait.append(active_duration(
                 (max(begin, entry.start), min(end, entry.end))
                 for entry in group[:-1] if entry.start < end and begin < entry.end
@@ -481,6 +484,8 @@ def submission_report(path, pid, stream, frames, timings, dispatch_dominant_indi
         "final_dispatch_coverage": {name: timing_stats(phase[name] for phase in phases)
                                     for name in ("render", "present_only", "uncovered")},
         "same_frame_prior_render_coverage": timing_stats(same_frame_wait),
+        "prior_submission_gpu_execution": timing_stats(prior_execution),
+        "frame_gpu_execution": timing_stats(frame_execution),
         "dispatch_dominated_gap_largest_coverage_changes": dict(changes),
         "driver_schedule_samples": len(driver_to_gpu),
     }
