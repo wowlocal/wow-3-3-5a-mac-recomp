@@ -122,5 +122,15 @@
       "failed_checks": 0
     }
   },
-  "visual_readback_checked_per_launch": true
+  "visual_readback_checked_per_launch": true,
+  "separate_byte_parity_probe": {
+    "full_buffer_bytes": 6384,
+    "verified_byte_identical_repacks_at_least": 2834432,
+    "in_world_repacks_between_witnesses": 2429952,
+    "in_world_repacks_where_tail_bytes_stayed_identical": 2135640,
+    "in_world_mean_changed_16_byte_slots": 0.13832948140539403,
+    "gpu_missing_sequences": 0,
+    "visible_trial_windows": 0,
+    "focus_activations": 0
+  }
 }

@@ -848,3 +848,5 @@ Four warmed 60-second headless launches used the same runtime and renderer in co
 | Direct writes | 112.66 | 14.27 ms |
 
 Throughput rose **9.14%** and the median p99 fell **1.80 ms**, with both metrics improving in both pairs. Each readback showed the scene and overlapping effects. GPU completion sequences stayed consecutive and the monitor observed zero trial windows or activations. Both arms passed **337** GPU tests. [Full-raid A/B and GPU checks](results/raid-winemetalgl-headless-direct-uniform-tail-ab.json)
+
+A separate diagnostic packed both ways before checking each complete 6,384-byte block. It logged at least **2,834,432 byte-identical repacks**. Of the **2,429,952** in-world repacks between logged checkpoints, **2,135,640 (87.89%)** left every tail byte unchanged. Across that interval, a repack changed an average of **0.14 aligned 16-byte slots**. The parity probe ran separately from the four timed launches. [Buffer parity and changed-slot counts](results/raid-winemetalgl-headless-direct-uniform-tail-ab.json)
