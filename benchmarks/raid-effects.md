@@ -1023,3 +1023,11 @@ Apply `patches/aarchx-m32-ebp-hoist-trial.patch` after the i386 FP batching patc
 The four isolated minute-long launches improved both metrics in both pairs. The throughput median rose **1.36%** and the p99 median fell **1.64 ms**. Camera, effects, the full cast schedule, and consecutive GPU completions were verified. The monitor recorded zero visible trial windows or activations.
 
 A separate compile witness reported **1,448** selected prefixes with a median of **eight** matching operands. Matching those prefixes to the earlier folded-load CPU profile covered candidate operand shapes accounting for **2.46%** of total sampled CPU time. This is static coverage of the selected prefixes. [Full-raid A/B and checks](results/raid-aarchx-headless-i386-ebp-hoist-ab.json)
+
+### Measure the native callback scope around swaps
+
+The headless diagnostic sampled every 64 swaps on the render thread and counted outstanding native-to-guest callbacks. All **78** in-world samples were at depth one in the **same** outer callback. By the last sampled swap, **9,856** swaps had occurred since that callback began. The monitor observed zero windows or activations, and GPU completions were consecutive.
+
+The renderer's existing batch API keeps one autorelease pool until its matching end call. Here a pool scoped to the outer game callback would retain autoreleased objects across thousands of swaps. The probe makes frame-specific lifetime boundaries the relevant unit for a future batching trial.
+
+Apply `patches/aarchx-m32-render-callback-scope-profile-trial.patch` after the headless drawable and realm patches and set `OCERZ_M32_HEADLESS_CALLBACK_SAMPLE=1` in a diagnostic build. [Callback-scope measurements](results/raid-aarchx-headless-render-callback-scopes.json)

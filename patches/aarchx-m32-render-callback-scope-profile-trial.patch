@@ -1,0 +1,97 @@
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -864,6 +864,43 @@
+     ++stage;
+ }
+
++static __thread struct {
++    unsigned depth;
++    uint32_t guest_fn;
++    uint64_t swaps, start_swaps, start_ns, sequence;
++} callback_probe;
++
++int m32_wmgl_callback_probe_enabled(void)
++{
++    if (!m32_headless_trial || !pthread_main_np())
++        return 0;
++    const char *value = getenv("OCERZ_M32_HEADLESS_CALLBACK_SAMPLE");
++    return value && !strcmp(value, "1");
++}
++
++void m32_wmgl_callback_probe_begin(uint32_t guest_fn)
++{
++    if (callback_probe.depth++ != 0)
++        return;
++    callback_probe.guest_fn = guest_fn;
++    ++callback_probe.sequence;
++    callback_probe.start_swaps = callback_probe.swaps;
++    callback_probe.start_ns = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++}
++
++void m32_wmgl_callback_probe_end(void)
++{
++    if (--callback_probe.depth != 0)
++        return;
++    const uint64_t swaps = callback_probe.swaps - callback_probe.start_swaps;
++    if (swaps)
++        fprintf(stderr, "ocerz: trial callback scope=%llu guest=%#x swaps=%llu end_swap=%llu duration_ns=%llu\n",
++                (unsigned long long)callback_probe.sequence, callback_probe.guest_fn,
++                (unsigned long long)swaps,
++                (unsigned long long)callback_probe.swaps,
++                (unsigned long long)(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - callback_probe.start_ns));
++}
++
+ int m32_wmgl_swap(void *agl)
+ {
+     Sidecar *ctx = find(agl);
+@@ -880,6 +917,14 @@
+     int presented = driver.swap(ctx->surface);
+     if (has_drawable)
+         ++ctx->swaps;
++    if (has_drawable && m32_wmgl_callback_probe_enabled()) {
++        callback_probe.swaps++;
++        if ((callback_probe.swaps & 63) == 0)
++            fprintf(stderr, "ocerz: trial callback at_swap=%llu depth=%u scope=%llu guest=%#x within=%llu\n",
++                    (unsigned long long)callback_probe.swaps, callback_probe.depth,
++                    (unsigned long long)callback_probe.sequence, callback_probe.guest_fn,
++                    (unsigned long long)(callback_probe.swaps - callback_probe.start_swaps));
++    }
+     if (ctx->layer && ctx->swaps == 1) {
+         sync_window(ctx, YES);
+         fprintf(stderr, "ocerz: trial WineMetalGL first window swap (presented=%d)\n", presented);
+diff --git a/src/m32_callback.c b/src/m32_callback.c
+--- a/src/m32_callback.c
++++ b/src/m32_callback.c
+@@ -16,6 +16,7 @@
+ #include "ocerz/bridge.h"
+ #include "ocerz/decode.h"
+ #include "ocerz/m32.h"
++#include "ocerz/m32_wmgl.h"
+ #include "ocerz/m32_objc.h"
+ #include "ocerz/m32_sig.h"
+ #include "ocerz/vm.h"
+@@ -70,7 +71,10 @@
+     struct OcerzBridgeFrame saved;
+     ocerz_bridge_guest_enter(&saved);
+     uint64_t fpcr = ocerz_afp_guest();   /* translated code relies on FPCR.AH (src/cpu.c) */
++    const int wmgl_callback_probe = m32_wmgl_callback_probe_enabled();
++    if (wmgl_callback_probe) m32_wmgl_callback_probe_begin(fn);
+     ocerz_vm_call32(vm, fn, &call, top, M32_TRAP(M32_ID_SENTINEL));
++    if (wmgl_callback_probe) m32_wmgl_callback_probe_end();
+     ocerz_afp_restore(fpcr);
+     ocerz_bridge_guest_leave(&saved);
+     if (edx)
+diff --git a/include/ocerz/m32_wmgl.h b/include/ocerz/m32_wmgl.h
+--- a/include/ocerz/m32_wmgl.h
++++ b/include/ocerz/m32_wmgl.h
+@@ -14,6 +14,9 @@
+ int m32_wmgl_set_current(void *agl);
+ int m32_wmgl_drawable(void *agl, void *window);
+ int m32_wmgl_swap(void *agl);
++int m32_wmgl_callback_probe_enabled(void);
++void m32_wmgl_callback_probe_begin(uint32_t guest_fn);
++void m32_wmgl_callback_probe_end(void);
+ uint32_t m32_wmgl_guest_buffer(const void *host, size_t size);
+ int m32_wmgl_guest_storage_enabled(void);
+ int m32_wmgl_array_buffer_binding(uint32_t *name);

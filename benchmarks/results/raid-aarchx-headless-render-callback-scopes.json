@@ -1,0 +1,37 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate callback-scope diagnostic of the live isolated 24-caster headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "precise_fixed_uniform_invalidation": true,
+  "i386_mov_base_uxtw": true,
+  "i386_fp_batch_v2": true,
+  "i386_ebp_hoist": true,
+  "other_trial_instances_detected": 0,
+  "in_world_swap_samples": 78,
+  "sample_interval_swaps": 64,
+  "sampled_callback_depth_counts": {
+    "1": 78
+  },
+  "distinct_sampled_outer_callbacks": 1,
+  "samples_in_most_sampled_outer_callback": 78,
+  "greatest_number_of_swaps_since_callback_entry": 9856,
+  "completed_outer_callbacks_with_swaps": 0,
+  "completed_callback_swap_counts": {},
+  "completed_callback_median_duration_ms": null,
+  "most_sampled_outer_callback_functions": [
+    {
+      "guest_pc": "0x99dca0",
+      "samples": 78
+    }
+  ],
+  "gpu_missing_sequences": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0
+}
