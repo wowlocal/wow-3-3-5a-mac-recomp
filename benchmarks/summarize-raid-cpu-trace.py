@@ -239,15 +239,49 @@ def summarize_memmove_time(path, pid):
     }
 
 
+def summarize_function_time(path, pid, symbols):
+    running = 0
+    leaf = Counter()
+    inclusive = Counter()
+    selected = set(symbols)
+    columns = {"thread", "thread-state", "weight", "stack"}
+    for row in read_table(path, "time-profile", columns):
+        if not is_main_thread(row["thread"][0], pid) or row["thread-state"][1] != "Running":
+            continue
+        weight = int(row["weight"][1])
+        running += weight
+        frames = row["stack"]
+        if frames:
+            if frames[0][1] in selected:
+                leaf[frames[0][1]] += weight
+            for symbol in selected.intersection(frame[1] for frame in frames):
+                inclusive[symbol] += weight
+    if not running:
+        raise ValueError("No main-thread running samples for the target PID")
+    return {
+        "main_thread_running_weight_ns": running,
+        "functions": {
+            symbol: {"leaf_weight_ns": leaf[symbol], "inclusive_weight_ns": inclusive[symbol]}
+            for symbol in symbols
+        },
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("thread_states_xml", type=Path, nargs="?")
     parser.add_argument("thread_metrics_xml", type=Path)
     parser.add_argument("pid", type=int)
-    parser.add_argument("--mode", choices=[*COUNTER_CATEGORIES, "l1d_miss_sampling"], default="bottlenecks")
+    parser.add_argument("--mode", choices=[*COUNTER_CATEGORIES, "l1d_miss_sampling", "functions"],
+                        default="bottlenecks")
+    parser.add_argument("--symbol", action="append", default=[])
     parser.add_argument("--time-profile", type=Path)
     args = parser.parse_args()
-    if args.mode == "l1d_miss_sampling":
+    if args.mode == "functions":
+        if not args.symbol:
+            parser.error("functions mode requires at least one --symbol")
+        report = {"time_profile_functions": summarize_function_time(args.thread_metrics_xml, args.pid, args.symbol)}
+    elif args.mode == "l1d_miss_sampling":
         report = {"miss_samples": summarize_l1d_samples(args.thread_metrics_xml, args.pid)}
     else:
         report = {"counters": summarize_counters(args.thread_metrics_xml, args.pid, args.mode)}

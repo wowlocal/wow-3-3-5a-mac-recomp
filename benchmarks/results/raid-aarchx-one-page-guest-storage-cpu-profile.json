@@ -1,0 +1,142 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "runtime_sha256": "81825bf73f460edf51d95ef02cb4dbda1c78400d3670c685432914e6bada6d4c",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "base_commit": "50a5f8c",
+  "scope": "Two separate Time Profiler recordings on the same live raid, with one-page guest storage off and on.",
+  "verified_timed_script_rows": 26,
+  "trace_duration_requested_seconds": 10,
+  "process_guard_passed": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "shadow_reuse_both_modes": true,
+  "runs": [
+    {
+      "small_guest_storage": false,
+      "concurrent_diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3339,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24995646625,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 133.52,
+        "p99_gpu_completion_gap_ns": 12946625,
+        "min_draws": 685,
+        "max_draws": 939
+      },
+      "main_thread_running_weight_ns": 10412000000,
+      "functions": {
+        "m32_wmgl_guest_buffer": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 1000000
+        },
+        "allocate_guest_buffer": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 0
+        },
+        "release_guest_buffer": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 0
+        },
+        "ocerz_map_anywhere_aligned": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 0
+        },
+        "ocerz_unmap": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 0
+        },
+        "map_common": {
+          "leaf_weight_ns": 1000000,
+          "inclusive_weight_ns": 183000000
+        },
+        "sp_glUnmapBuffer": {
+          "leaf_weight_ns": 2000000,
+          "inclusive_weight_ns": 117000000
+        },
+        "_platform_memmove": {
+          "leaf_weight_ns": 323000000,
+          "inclusive_weight_ns": 323000000
+        },
+        "shadow_for": {
+          "leaf_weight_ns": 86000000,
+          "inclusive_weight_ns": 90000000
+        }
+      }
+    },
+    {
+      "small_guest_storage": true,
+      "concurrent_diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3198,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24995387916,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 127.88,
+        "p99_gpu_completion_gap_ns": 13522500,
+        "min_draws": 694,
+        "max_draws": 964
+      },
+      "main_thread_running_weight_ns": 10321000000,
+      "functions": {
+        "m32_wmgl_guest_buffer": {
+          "leaf_weight_ns": 477000000,
+          "inclusive_weight_ns": 480000000
+        },
+        "allocate_guest_buffer": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 3000000
+        },
+        "release_guest_buffer": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 2000000
+        },
+        "ocerz_map_anywhere_aligned": {
+          "leaf_weight_ns": 1000000,
+          "inclusive_weight_ns": 3000000
+        },
+        "ocerz_unmap": {
+          "leaf_weight_ns": 0,
+          "inclusive_weight_ns": 2000000
+        },
+        "map_common": {
+          "leaf_weight_ns": 1000000,
+          "inclusive_weight_ns": 582000000
+        },
+        "sp_glUnmapBuffer": {
+          "leaf_weight_ns": 1000000,
+          "inclusive_weight_ns": 87000000
+        },
+        "_platform_memmove": {
+          "leaf_weight_ns": 274000000,
+          "inclusive_weight_ns": 274000000
+        },
+        "shadow_for": {
+          "leaf_weight_ns": 23000000,
+          "inclusive_weight_ns": 42000000
+        }
+      }
+    }
+  ],
+  "small_storage_lookup_leaf_source_line": {
+    "file": "src/m32_wmgl.m",
+    "line": 121,
+    "weight_ns": 477000000,
+    "description": "Traversal of the guest buffer list"
+  }
+}

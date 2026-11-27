@@ -1608,9 +1608,18 @@ In separate logged runs, the fallback map count after world readback fell from *
 
 Throughput fell **3.05 and 6.37 FPS** across the two pairs. P99 rose **0.40 and 0.33 ms**. The benchmark retains copied shadows for these buffers. Each of the four warmed 60-second runs verified the saved camera, spell effects, 26 timing rows, and consecutive GPU completions at 1365 × 768. The trial monitor recorded zero windows or activations. The copied client folder was isolated. A legacy instance from another bundle was observed running and its GPU load was unmeasured. [Timed A/B and fallback counters](results/raid-aarchx-one-page-guest-storage-ab.json)
 
+Separate ten-second Time Profiler recordings located the added CPU work. The one-page arm spent **4.62%** of main-thread running-sample weight directly in `m32_wmgl_guest_buffer`. All **477 ms** of its leaf weight resolved to the buffer-list loop. The control recorded zero leaf weight there. Across the same two samples, the share directly in `_platform_memmove` fell from **3.10%** to **2.65%**. The profile supports testing address-indexed lookup while keeping the allocation policy fixed. CPU sample shares describe the profiled launches. [Native CPU profiles](results/raid-aarchx-one-page-guest-storage-cpu-profile.json)
+
 Apply `patches/aarchx-wmgl-small-guest-storage-trial.patch` after the AArchX guest autorelease pool trial. Use `OCERZ_WMGL_GUEST_SMALL_STORAGE=1` for the candidate on the same rebuilt binary. The comparison keeps `OCERZ_M32_REUSE_GL_SHADOW_STORAGE=1` in both arms, and captures map counters only in the two diagnostic launches.
 
 ```sh
 python3 benchmarks/summarize-raid-shadow-reuse.py LOGGED_CONTROL LOGGED_ONE_PAGE TIMED_RUNS \
     --small-storage
+```
+
+For the CPU profile, attach with the Time Profiler template and export its `time-profile` table. Count leaf and inclusive sample weight for each requested symbol on the main thread.
+
+```sh
+python3 benchmarks/summarize-raid-cpu-trace.py time-profile.xml "$pid" --mode functions \
+    --symbol m32_wmgl_guest_buffer --symbol _platform_memmove
 ```
