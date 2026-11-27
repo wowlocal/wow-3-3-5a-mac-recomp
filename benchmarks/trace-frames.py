@@ -146,6 +146,60 @@ def identify_draws(writes, output_buffers, assignments, intervals, pid):
         )
         if write["render_verified"]:
             write["gpu_active_ns"] = active_duration(work_by_frame[frame])
+    return assignments_by_buffer
+
+
+def encoder_breakdown(writes, assignments, encoders, pid, overlap=None):
+    frames = {
+        write["trace_frame"]
+        for write in writes
+        if write["render_verified"] and (
+            overlap is None or overlap[0] <= write["completed_ns"] <= overlap[1]
+        )
+    }
+    if not frames:
+        raise ValueError("No verified game outputs in the requested interval")
+
+    buffers = {buffer: frame for buffer, (frame, _) in assignments.items() if frame in frames}
+    labels_by_buffer = defaultdict(set)
+    for row in encoders:
+        if (not row["process"].get("fmt", "").endswith(f" ({pid})")
+                or row["event-type"].get("fmt") != "Encoding"):
+            continue
+        buffer_id = row["cmdbuffer-id"].text
+        if buffer_id is None:
+            continue
+        buffer = int(buffer_id)
+        if buffer in buffers:
+            labels_by_buffer[buffer].add(row["encoder-label"].get("fmt", ""))
+
+    counts = defaultdict(Counter)
+    for buffer, frame in buffers.items():
+        labels = labels_by_buffer.get(buffer)
+        counts[frame]["all"] += 1
+        # These labels come from Apple's OpenGL trace. Preserve any other or
+        # absent labels, so the classified counts do not imply full coverage.
+        if not labels:
+            kind = "missing_encoder"
+        elif labels == {"metal.gl"}:
+            kind = "metal_gl_only"
+        elif all(label.startswith("Blit Command ") for label in labels):
+            kind = "blit_only"
+        else:
+            kind = "other_or_mixed"
+        counts[frame][kind] += 1
+
+    summary = {}
+    for kind in ("all", "metal_gl_only", "blit_only", "other_or_mixed", "missing_encoder"):
+        values = sorted(counts[frame][kind] for frame in frames)
+        summary[kind] = {
+            "total": sum(values),
+            "p50": median(values),
+            "p95": values[math.ceil(0.95 * len(values)) - 1],
+            "min": values[0],
+            "max": values[-1],
+        }
+    return {"verified_outputs": len(frames), "command_buffers_per_output": summary}
 
 
 def compare_swaps(writes, markers, frame_log):
@@ -284,6 +338,7 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--wmgl", action="store_true", help="read WineMetalGL's completed mailbox renders")
     mode.add_argument("--wmgl-log", action="store_true", help="read a WineMetalGL GPU completion log")
+    mode.add_argument("--encoder-breakdown", action="store_true", help="group traced AGL command buffers by encoder label")
     parser.add_argument("--stream", type=int, help="mailbox generation to select from a GPU completion log")
     parser.add_argument("--start-sequence", type=int, help="first completed frame in the measurement")
     parser.add_argument("--seconds", type=int, help="require this many seconds of completed GPU work")
@@ -317,7 +372,7 @@ def main():
             options.height,
         )
         writes = report["completed_window_writes"]
-        identify_draws(
+        assignments = identify_draws(
             writes,
             output_buffers,
             trace_rows(options.trace, options.run, "metal-command-buffer-frame-assignment"),
@@ -331,6 +386,12 @@ def main():
                 options.pid,
             )
             report["overlap"] = compare_swaps(writes, markers, options.frame_log)
+        if options.encoder_breakdown:
+            report["encoder_breakdown"] = encoder_breakdown(
+                writes, assignments,
+                trace_rows(options.trace, options.run, "metal-application-encoders-list"),
+                options.pid, report.get("overlap", {}).get("interval_ns"),
+            )
     except (ElementTree.ParseError, KeyError, OSError, ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{parser.prog}: {error}\n")
     print(json.dumps(report, indent=2))

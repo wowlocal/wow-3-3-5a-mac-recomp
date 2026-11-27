@@ -107,6 +107,13 @@ The native probe also tested rolling between four buffer objects with `glBufferS
 
 The Instruments frame assignments show a median of **59 Metal command buffers per verified game output**, with **73 at p95**, in the 24-caster control. The medians and p95s matched at reduced resolution, with tracked array state, and with single-threaded OpenGL. At 12 casters the counts dropped to **17** and **45**. The samples include only outputs with verified rendering and surfaces. [Raid submission counts](results/raid-metal-submissions.json)
 
+Joining encoder labels to the same 243 verified control outputs identifies **6,658 blit-only command buffers out of 13,705 (48.6%)**. The medians were **28 blit-only** and **29 `metal.gl`-only** buffers per output. Both full-resolution repeats had a median of 28 blit-only buffers, and the lower-resolution 24-caster run had 29. The 12-caster run fell to eight. These labels identify the work submitted by Apple's OpenGL driver. The separate GL call-order trace established when vertex uploads fed subsequent draws. Identifying each blit's source GL call would require a correlated API trace. [Encoder breakdown and replay measurements](results/raid-command-buffer-breakdown.json)
+
+```sh
+python3 benchmarks/trace-frames.py RAID.trace PID 1365 768 \
+    --frame-log RAID.frames.ns --encoder-breakdown
+```
+
 A native Metal probe drew the same 48 triangles at 1365 × 768 with one command buffer and pass, or with one command buffer and pass per draw. Each arm copied a per-frame color marker to a readback buffer and verified every marker. Full framebuffer readbacks also matched pixel for pixel. The 200-frame runs averaged **0.021–0.049 ms/frame** combined and **0.985–1.103 ms/frame** split. The probe uses synthetic geometry and preloaded vertices, so the measurements isolate submission and render-pass overhead in that scene. [Native Metal probe results](results/metal-submission-probe.json)
 
 ```sh
@@ -268,6 +275,8 @@ This offscreen WineMetalGL probe uses the triangle-count histogram from one reco
 The offscreen-completion patch records the GPU timestamp at the submitted pbuffer boundary using the existing completion log. Each measured window starts after 120 warmup frames, covers five seconds of GPU completions, and checks for gaps in the sequence. Each run also reads back the same final reference frame.
 
 Across four interleaved pairs at an in-flight limit of three frames, direct uploads raised median throughput from **1,199 to 1,635 GPU-completed frames/s** and lowered median p99 from **3.52 to 2.05 ms**. With direct uploads enabled in both arms, raising the probe's in-flight limit from three to six moved the median from **1,664 to 1,754 frames/s** and from **1.88 to 1.64 ms p99**. One six-in-flight sample still exceeded 2 ms p99. All 16 windows had consecutive sequences, and all reference frames matched. The 336 renderer tests passed. Queue depth was varied only in the probe. The live raid still needs GPU and input verification. [GPU completion measurements](results/winemetalgl-indexed-geometry-gpu-ab.json)
+
+The staged replay recorded **23 render passes per output**, including 22 that ended at upload blits. Disabling the elapsed-time submit heuristic (`WINEMETALGL_PASS_COMMIT_US=0`) kept those splits and produced a similar median across four pairs, **1,209 to 1,218 GPU-completed frames/s**. With that heuristic disabled in both arms, also disabling the draw-count heuristic (`WINEMETALGL_COMMIT_DRAWS=0`) reduced main-stream commits from three to one while retaining 23 passes. Across four pairs, throughput fell from **1,228 to 1,174 frames/s** and p99 rose from **3.20 to 3.73 ms**. Direct uploads produced one render pass and one main-stream commit with the normal heuristics. The recorded timings used statistics disabled and all checksums matched. [Encoder breakdown and replay measurements](results/raid-command-buffer-breakdown.json)
 
 Apply the offscreen-completion patch to the Metal trial tree with the frame-completion and application-synchronized upload patches already applied. Build the benchmark against the resulting WineMetalGL core. Use a fresh log path per run. Alternate `OCERZ_WMGL_APPLE_SUBDATA=0` and `1` for the upload comparison. Use `3` and `6` in the last argument for the depth comparison.
 

@@ -1,0 +1,478 @@
+{
+  "hardware": "Apple M4 Pro",
+  "live_raid_apple_opengl": {
+    "full_resolution_control": {
+      "surface": [
+        1365,
+        768
+      ],
+      "casters": 24,
+      "verified_outputs": 243,
+      "command_buffers_per_output": {
+        "all": {
+          "total": 13705,
+          "p50": 59,
+          "p95": 73,
+          "min": 31,
+          "max": 73
+        },
+        "metal_gl_only": {
+          "total": 6674,
+          "p50": 29,
+          "p95": 36,
+          "min": 15,
+          "max": 36
+        },
+        "blit_only": {
+          "total": 6658,
+          "p50": 28,
+          "p95": 36,
+          "min": 15,
+          "max": 36
+        },
+        "other_or_mixed": {
+          "total": 0,
+          "p50": 0,
+          "p95": 0,
+          "min": 0,
+          "max": 0
+        },
+        "missing_encoder": {
+          "total": 373,
+          "p50": 1,
+          "p95": 3,
+          "min": 1,
+          "max": 5
+        }
+      }
+    },
+    "full_resolution_repeat_a": {
+      "surface": [
+        1365,
+        768
+      ],
+      "casters": 24,
+      "verified_outputs": 373,
+      "command_buffers_per_output": {
+        "all": {
+          "total": 20637,
+          "p50": 59,
+          "p95": 73,
+          "min": 31,
+          "max": 73
+        },
+        "metal_gl_only": {
+          "total": 10015,
+          "p50": 28,
+          "p95": 36,
+          "min": 14,
+          "max": 36
+        },
+        "blit_only": {
+          "total": 9971,
+          "p50": 28,
+          "p95": 36,
+          "min": 14,
+          "max": 36
+        },
+        "other_or_mixed": {
+          "total": 1,
+          "p50": 0,
+          "p95": 0,
+          "min": 0,
+          "max": 1
+        },
+        "missing_encoder": {
+          "total": 650,
+          "p50": 1,
+          "p95": 3,
+          "min": 1,
+          "max": 5
+        }
+      }
+    },
+    "full_resolution_repeat_b": {
+      "surface": [
+        1365,
+        768
+      ],
+      "casters": 24,
+      "verified_outputs": 387,
+      "command_buffers_per_output": {
+        "all": {
+          "total": 21650,
+          "p50": 59,
+          "p95": 73,
+          "min": 31,
+          "max": 87
+        },
+        "metal_gl_only": {
+          "total": 10539,
+          "p50": 29,
+          "p95": 36,
+          "min": 15,
+          "max": 43
+        },
+        "blit_only": {
+          "total": 10522,
+          "p50": 28,
+          "p95": 36,
+          "min": 15,
+          "max": 43
+        },
+        "other_or_mixed": {
+          "total": 0,
+          "p50": 0,
+          "p95": 0,
+          "min": 0,
+          "max": 0
+        },
+        "missing_encoder": {
+          "total": 589,
+          "p50": 1,
+          "p95": 3,
+          "min": 1,
+          "max": 5
+        }
+      }
+    },
+    "reduced_resolution": {
+      "surface": [
+        1066,
+        600
+      ],
+      "casters": 24,
+      "verified_outputs": 394,
+      "command_buffers_per_output": {
+        "all": {
+          "total": 22076,
+          "p50": 59.0,
+          "p95": 73,
+          "min": 29,
+          "max": 87
+        },
+        "metal_gl_only": {
+          "total": 10791,
+          "p50": 29.0,
+          "p95": 36,
+          "min": 14,
+          "max": 43
+        },
+        "blit_only": {
+          "total": 10753,
+          "p50": 29.0,
+          "p95": 36,
+          "min": 14,
+          "max": 43
+        },
+        "other_or_mixed": {
+          "total": 0,
+          "p50": 0.0,
+          "p95": 0,
+          "min": 0,
+          "max": 0
+        },
+        "missing_encoder": {
+          "total": 532,
+          "p50": 1.0,
+          "p95": 3,
+          "min": 1,
+          "max": 4
+        }
+      }
+    },
+    "half_casters": {
+      "surface": [
+        1365,
+        768
+      ],
+      "casters": 12,
+      "verified_outputs": 653,
+      "command_buffers_per_output": {
+        "all": {
+          "total": 15262,
+          "p50": 17,
+          "p95": 45,
+          "min": 4,
+          "max": 45
+        },
+        "metal_gl_only": {
+          "total": 7241,
+          "p50": 8,
+          "p95": 22,
+          "min": 2,
+          "max": 22
+        },
+        "blit_only": {
+          "total": 7234,
+          "p50": 8,
+          "p95": 22,
+          "min": 1,
+          "max": 22
+        },
+        "other_or_mixed": {
+          "total": 0,
+          "p50": 0,
+          "p95": 0,
+          "min": 0,
+          "max": 0
+        },
+        "missing_encoder": {
+          "total": 787,
+          "p50": 1,
+          "p95": 3,
+          "min": 0,
+          "max": 3
+        }
+      }
+    }
+  },
+  "wine_metal_gl_offscreen": {
+    "fixture": "winemetalgl-indexed-geometry-gpu-ab.json",
+    "in_flight_limit": 3,
+    "warmup_frames": 120,
+    "first_gpu_sequence": 128,
+    "timing_duration_ns": 5000000000,
+    "timing_upload_mode": "staged",
+    "timing_framebuffer_checksum": "199a81aba2d36749",
+    "pass_commit_ab": {
+      "fixed": {
+        "commit_draws": 256
+      },
+      "medians": [
+        {
+          "pass_commit_us": 1000,
+          "average_completed_fps": 1209.3,
+          "p99_gpu_completion_gap_ns": 3288687.5
+        },
+        {
+          "pass_commit_us": 0,
+          "average_completed_fps": 1217.7,
+          "p99_gpu_completion_gap_ns": 3227750.0
+        }
+      ],
+      "runs": [
+        {
+          "order": 1,
+          "pass_commit_us": 1000,
+          "verified_completed_renders": 6050,
+          "missing_sequences": 0,
+          "average_completed_fps": 1209.8,
+          "p99_gpu_completion_gap_ns": 3184875
+        },
+        {
+          "order": 2,
+          "pass_commit_us": 0,
+          "verified_completed_renders": 6068,
+          "missing_sequences": 0,
+          "average_completed_fps": 1213.4,
+          "p99_gpu_completion_gap_ns": 3249500
+        },
+        {
+          "order": 3,
+          "pass_commit_us": 0,
+          "verified_completed_renders": 6129,
+          "missing_sequences": 0,
+          "average_completed_fps": 1225.6,
+          "p99_gpu_completion_gap_ns": 3206000
+        },
+        {
+          "order": 4,
+          "pass_commit_us": 1000,
+          "verified_completed_renders": 5990,
+          "missing_sequences": 0,
+          "average_completed_fps": 1197.8,
+          "p99_gpu_completion_gap_ns": 3377250
+        },
+        {
+          "order": 5,
+          "pass_commit_us": 1000,
+          "verified_completed_renders": 6058,
+          "missing_sequences": 0,
+          "average_completed_fps": 1211.4,
+          "p99_gpu_completion_gap_ns": 3307750
+        },
+        {
+          "order": 6,
+          "pass_commit_us": 0,
+          "verified_completed_renders": 6062,
+          "missing_sequences": 0,
+          "average_completed_fps": 1212.2,
+          "p99_gpu_completion_gap_ns": 3179500
+        },
+        {
+          "order": 7,
+          "pass_commit_us": 0,
+          "verified_completed_renders": 6111,
+          "missing_sequences": 0,
+          "average_completed_fps": 1222.0,
+          "p99_gpu_completion_gap_ns": 3364000
+        },
+        {
+          "order": 8,
+          "pass_commit_us": 1000,
+          "verified_completed_renders": 6045,
+          "missing_sequences": 0,
+          "average_completed_fps": 1208.8,
+          "p99_gpu_completion_gap_ns": 3269625
+        }
+      ]
+    },
+    "draw_commit_ab": {
+      "fixed": {
+        "pass_commit_us": 0
+      },
+      "medians": [
+        {
+          "commit_draws": 256,
+          "average_completed_fps": 1228.4,
+          "p99_gpu_completion_gap_ns": 3196375.0
+        },
+        {
+          "commit_draws": 0,
+          "average_completed_fps": 1173.5,
+          "p99_gpu_completion_gap_ns": 3726208.0
+        }
+      ],
+      "runs": [
+        {
+          "order": 1,
+          "commit_draws": 256,
+          "verified_completed_renders": 6134,
+          "missing_sequences": 0,
+          "average_completed_fps": 1226.6,
+          "p99_gpu_completion_gap_ns": 3250500
+        },
+        {
+          "order": 2,
+          "commit_draws": 0,
+          "verified_completed_renders": 5806,
+          "missing_sequences": 0,
+          "average_completed_fps": 1161.0,
+          "p99_gpu_completion_gap_ns": 3882875
+        },
+        {
+          "order": 3,
+          "commit_draws": 0,
+          "verified_completed_renders": 5754,
+          "missing_sequences": 0,
+          "average_completed_fps": 1150.6,
+          "p99_gpu_completion_gap_ns": 4236750
+        },
+        {
+          "order": 4,
+          "commit_draws": 256,
+          "verified_completed_renders": 5968,
+          "missing_sequences": 0,
+          "average_completed_fps": 1193.4,
+          "p99_gpu_completion_gap_ns": 3423791
+        },
+        {
+          "order": 5,
+          "commit_draws": 256,
+          "verified_completed_renders": 6152,
+          "missing_sequences": 0,
+          "average_completed_fps": 1230.2,
+          "p99_gpu_completion_gap_ns": 3085416
+        },
+        {
+          "order": 6,
+          "commit_draws": 0,
+          "verified_completed_renders": 6024,
+          "missing_sequences": 0,
+          "average_completed_fps": 1204.6,
+          "p99_gpu_completion_gap_ns": 3569541
+        },
+        {
+          "order": 7,
+          "commit_draws": 0,
+          "verified_completed_renders": 5931,
+          "missing_sequences": 0,
+          "average_completed_fps": 1186.0,
+          "p99_gpu_completion_gap_ns": 3557666
+        },
+        {
+          "order": 8,
+          "commit_draws": 256,
+          "verified_completed_renders": 6169,
+          "missing_sequences": 0,
+          "average_completed_fps": 1233.6,
+          "p99_gpu_completion_gap_ns": 3142250
+        }
+      ]
+    },
+    "separate_instrumented_counts": [
+      {
+        "upload_mode": "staged",
+        "pass_commit_us": 1000,
+        "commit_draws": 256,
+        "groups": [
+          {
+            "render_passes": 23,
+            "main_stream_commits": 3,
+            "render_pass_ends_at_blit": 22,
+            "frames": 304
+          },
+          {
+            "render_passes": 23,
+            "main_stream_commits": 4,
+            "render_pass_ends_at_blit": 22,
+            "frames": 7
+          }
+        ]
+      },
+      {
+        "upload_mode": "staged",
+        "pass_commit_us": 0,
+        "commit_draws": 256,
+        "groups": [
+          {
+            "render_passes": 23,
+            "main_stream_commits": 3,
+            "render_pass_ends_at_blit": 22,
+            "frames": 295
+          }
+        ]
+      },
+      {
+        "upload_mode": "staged",
+        "pass_commit_us": 0,
+        "commit_draws": 0,
+        "groups": [
+          {
+            "render_passes": 23,
+            "main_stream_commits": 1,
+            "render_pass_ends_at_blit": 22,
+            "frames": 313
+          }
+        ]
+      },
+      {
+        "upload_mode": "direct",
+        "pass_commit_us": 1000,
+        "commit_draws": 256,
+        "groups": [
+          {
+            "render_passes": 1,
+            "main_stream_commits": 1,
+            "render_pass_ends_at_blit": 0,
+            "frames": 407
+          }
+        ]
+      },
+      {
+        "upload_mode": "direct",
+        "pass_commit_us": 0,
+        "commit_draws": 256,
+        "groups": [
+          {
+            "render_passes": 1,
+            "main_stream_commits": 1,
+            "render_pass_ends_at_blit": 0,
+            "frames": 424
+          }
+        ]
+      }
+    ]
+  }
+}
