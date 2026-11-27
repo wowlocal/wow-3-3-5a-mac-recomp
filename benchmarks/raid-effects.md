@@ -550,3 +550,14 @@ The model reproduces the ordered replay's measured **225 + 512 + 89** split at 6
 python3 benchmarks/model-raid-submissions.py CALL_LOG --example-frame 100 \
     --draw-settings $(seq 64 81)
 ```
+
+### Foreground raid draw-cap comparison
+
+The original client ran the full 24-caster fixture at 1365 × 768 with VSync off and the 65,000-triangle budget. Both runs used Macsmoke's saved Northshire camera. The boss, casters, overlapping ground effects, and particles were visible, and the world server kept the same cast schedule between runs. Each warmed 60-second window logged consecutive GPU completions. [Live measurements](results/raid-winemetalgl-draw-cap-live.json)
+
+| Draw setting | GPU-completed FPS | p99 completion gap |
+| --- | ---: | ---: |
+| 64 | 64.55 | 21.67 ms |
+| 81 | 65.72 | 21.79 ms |
+
+A separate Metal System Trace at 64 tagged 4,200 active GPU intervals to the client. Their union occupied **2.53 of 7.57 seconds**, or **33.4%** of the span. In a separate CPU sample at 64, WineMetalGL was on **747 of 3,317** main-thread stacks. Fixed-function uniform packing accounted for **181** of those stacks. The trial keeps setting 64 pending further profiling. [CPU and GPU profiles](results/raid-winemetalgl-draw-cap-live.json)

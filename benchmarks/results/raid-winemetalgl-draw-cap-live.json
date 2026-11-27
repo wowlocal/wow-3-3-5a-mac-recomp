@@ -1,0 +1,163 @@
+{
+  "hardware": "Apple M4 Pro",
+  "client": "WoW 3.3.5a running through AArchX and the WineMetalGL sidecar",
+  "raid": {
+    "caster_count": 24,
+    "boss_count": 1,
+    "viewport": [
+      1365,
+      768
+    ],
+    "vsync": false,
+    "fixed_view": true,
+    "triangle_budget": 65000,
+    "mailbox_slots": 3,
+    "sample_order": [
+      64,
+      81
+    ],
+    "gpu_completion_windows": [
+      {
+        "commit_draws": 64,
+        "verified_completed_renders": 3874,
+        "first_sequence": 7389,
+        "last_sequence": 11262,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59989552416,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 64.55,
+        "p99_gpu_completion_gap_ns": 21667500,
+        "min_draws": 769,
+        "max_draws": 880,
+        "agl_swaps_in_gpu_window": 3880
+      },
+      {
+        "commit_draws": 81,
+        "verified_completed_renders": 3944,
+        "first_sequence": 6160,
+        "last_sequence": 10103,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59987375916,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 65.71666666666667,
+        "p99_gpu_completion_gap_ns": 21788500,
+        "min_draws": 744,
+        "max_draws": 898,
+        "agl_swaps_in_gpu_window": 3957
+      }
+    ],
+    "cpu_profile_setting_64": {
+      "main_thread_samples": 3317,
+      "winemetalgl_on_stack": 747,
+      "fixed_function_uniform_block_on_stack": 181,
+      "uniform_block_binding_on_stack": 204
+    },
+    "gpu_profile_setting_64": {
+      "active_intervals": 4200,
+      "span_ns": 7568325583,
+      "active_union_ns": 2528105129,
+      "active_fraction": 0.3340375755872129,
+      "channel_times_ns": {
+        "Vertex": 1769177562,
+        "Fragment": 818131024,
+        "Compute": 57831141
+      }
+    },
+    "gameplay_sanity_check": "Boss, casters and overlapping ground and particle effects visible at the same saved camera.",
+    "saved_anchor": {
+      "map": 0,
+      "zone": 12,
+      "position": [
+        -8947.22,
+        -133.353,
+        83.6899
+      ],
+      "orientation_radians": 6.11982
+    }
+  },
+  "northshire": {
+    "raid_fixture_removed": true,
+    "commit_draws": 64,
+    "swap_route": {
+      "swaps": 15730,
+      "duration_ns": 120004289000,
+      "average_swap_fps": 131.079,
+      "median_fps": 139.04,
+      "p50_frame_ms": 7.192,
+      "p95_frame_ms": 10.885,
+      "p99_frame_ms": 14.539,
+      "stalls_over_250_ms": 0,
+      "longest_gap_ms": 157.1,
+      "median_inside_swap_ms": 0.03,
+      "p95_inside_swap_ms": 0.04,
+      "median_between_swaps_ms": 7.16,
+      "p95_between_swaps_ms": 10.66,
+      "time_inside_swap_percent": 0.7,
+      "slowest_5pct_time_inside_swap_percent": 3.79,
+      "duration_seconds": 120.004,
+      "average_client_cpu_percent": 105.63,
+      "peak_sampled_client_footprint_mib": 977.53,
+      "footprint_sample_interval_seconds": 0.5
+    },
+    "gpu_route_window": {
+      "verified_completed_renders": 15724,
+      "first_sequence": 7298,
+      "last_sequence": 23021,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 119995504625,
+      "measurement_duration_ns": 120000000000,
+      "average_completed_fps": 131.025,
+      "p99_gpu_completion_gap_ns": 14655875,
+      "min_draws": 361,
+      "max_draws": 510
+    },
+    "key_holds_by_key": {
+      "w": 26,
+      "s": 26,
+      "q": 26,
+      "e": 26,
+      "a": 26,
+      "d": 26
+    },
+    "mouse_holds": [
+      {
+        "button": "left",
+        "duration_ns": 1206804000,
+        "swaps_during_hold": 135,
+        "longest_swap_gap_overlapping_hold_ns": 92294000
+      },
+      {
+        "button": "left",
+        "duration_ns": 1212028000,
+        "swaps_during_hold": 156,
+        "longest_swap_gap_overlapping_hold_ns": 14271000
+      },
+      {
+        "button": "right",
+        "duration_ns": 1203731000,
+        "swaps_during_hold": 169,
+        "longest_swap_gap_overlapping_hold_ns": 11977000
+      },
+      {
+        "button": "left",
+        "duration_ns": 1234052000,
+        "swaps_during_hold": 159,
+        "longest_swap_gap_overlapping_hold_ns": 17554000
+      },
+      {
+        "button": "left",
+        "duration_ns": 1213670000,
+        "swaps_during_hold": 161,
+        "longest_swap_gap_overlapping_hold_ns": 15243000
+      },
+      {
+        "button": "right",
+        "duration_ns": 1205065000,
+        "swaps_during_hold": 170,
+        "longest_swap_gap_overlapping_hold_ns": 14135000
+      }
+    ],
+    "native_key_movement_observed": true,
+    "deputy_willem_dialogue_opened": true
+  }
+}

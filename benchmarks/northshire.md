@@ -108,6 +108,12 @@ sample PID 4 1 -file northshire-sample.txt
 
 The optional swap signposts carry the same monotonic timestamp as the frame log. The trace script aligns the two clocks and reports AGL swaps, completed window writes, and p99 GPU completion gaps in their common interval. It qualifies a write when the renderer identifies a game-sized surface read by WindowServer as its presentation target and that renderer frame contains vertex work, fragment work, and a single window write that completes. Missing evidence can enlarge the gap between qualified completions. Confirm the frame correspondence in the timeline before using swaps as an acceptance count. Display refresh is tracked separately. For a longer GPU timeline, use the `Metal System Trace` template with `--instrument 'Points of Interest'`. Disable swap signposts for the timed runs.
 
+## Metal sidecar route
+
+After removing the raid fixture, the original client ran the 120-second movement route at 1365 × 768 with VSync off. The GPU log averaged **131.03 newly rendered FPS** at **14.66 ms p99** and had zero sequence gaps. The swap logger averaged **131.08 swaps/s** with zero gaps over 250 ms. [Route measurements](results/raid-winemetalgl-draw-cap-live.json)
+
+All six mouse holds kept rendering. The largest swap gap overlapping a hold was **92.29 ms** during the first camera drag. Native movement keys changed the view and a right click opened Deputy Willem's dialogue. The client averaged 105.63% of one CPU core and reached 977.53 MiB of sampled physical footprint. [Input and resource measurements](results/raid-winemetalgl-draw-cap-live.json)
+
 The control sample put 281 of 1,585 main-thread samples under the OpenGL state query and 200 under OpenGL flush. The query stack included renderer draw work executing while it drained the queue. An offscreen fixture reproduced the draw and upload output with and without the queries, but the fixture's queries took about 0.1 µs and did not reproduce the in-game wait.
 
 In a separate launch with `OCERZ_GUESTPROF=2000 OCERZ_GUESTPROF_PERIOD=8 OCERZ_GUESTPROF_HOT=1`, the four warmed foreground periods each spent 0–2 ms compiling new blocks. The translated blocks accounted for 63–66% of sampled CPU time on the hottest guest thread. Precompiling the same blocks can remove the small compilation cost in that scene. Lowering the cost of executing them would require changes to the generated code.
