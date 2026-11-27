@@ -1715,3 +1715,26 @@ The trial lost **1.62 and 0.32 FPS**. P99 fell **0.26 ms** in the first pair and
 ```sh
 python3 benchmarks/summarize-raid-deep-ebp.py CAPTURE_ROOT I386_CLIENT EARLIER_STACK_RUN_1 EARLIER_STACK_RUN_2
 ```
+
+### Match sampled ARM64 instructions to the hot i386 call trees
+
+The stack profiler can record the ARM64 PC and instruction word during the same suspension that captures the i386 leaf and saved return addresses. This keeps the host instruction and call-tree attribution on the same CPU-time-weighted sample. The analyzer validates the unwind chain against decoded i386 call sites. It decodes the sampled host words locally and counts 16 KiB host-code pages. The page counts describe sampled code placement.
+
+Apply `patches/aarchx-m32-stack-arm64-profile-trial.patch` after the i386 guest-stack profiler. Use `OCERZ_GUESTPROF=2500`, `OCERZ_GUESTPROF_PERIOD=4`, `OCERZ_GUESTPROF_HOT=1`, and `OCERZ_GUESTPROF_I386_ARM64_LOG` pointing to a fresh `i386-arm64.ns`. The original guest-stack log format remains supported. Both recordings use the accepted optimization settings and suspend the older test during capture. The patched runtime passed **806** general i386 checks with the profiler off.
+
+The two verified 60-second windows contained **7,790** and **7,837** consecutive GPU completions. They kept the saved camera, overlapping spell effects, all 26 timing rows, and zero trial windows or activations. The profiler selected one distinct guest thread after world readback in each run. Instruction and page shares describe profiling samples.
+
+| Weighted sample measure | First capture | Second capture |
+| --- | ---: | ---: |
+| Translated i386 code, share of all sampled CPU | 66.32% | 66.67% |
+| Either call tree rooted at `0x73f8e0` or `0x97dbc0`, share of all sampled CPU | 43.59% | 43.20% |
+| Immediate 32-bit ARM64 ADD/SUB mapped to guest memory MOVs, share of all sampled CPU | 10.15% | 10.60% |
+| Same ADD/SUB forms within either selected call tree, share of all sampled CPU | 6.82% | 7.14% |
+| Host code pages covering 80% of translated CPU weight | 148 | 150 |
+
+The largest address band was base-only EBP with near displacements of **−256 to 255 bytes**. In the full sample, its immediate ADD/SUB forms accounted for **3.78% and 4.16%** of CPU weight. The deep negative EBP band accounted for **0.67% and 0.73%**. EAX, EBX, and ECX also appeared among the leading near-displacement forms. The same recordings assigned **1.83% and 1.72%** to conditional branches loading `jit_fcmp_mem`, verified at offset 5,176 from the CPU state pointer. The data supports targeting common address calculations across the two call trees and measuring their generated-code placement. [Combined guest stacks and ARM64 attribution](results/raid-aarchx-native-instructions-in-guest-call-trees.json)
+
+```sh
+python3 benchmarks/summarize-raid-guest-native-stacks.py I386_CLIENT CAPTURE_1 CAPTURE_2 \
+    --roots 0x73f8e0 0x97dbc0
+```

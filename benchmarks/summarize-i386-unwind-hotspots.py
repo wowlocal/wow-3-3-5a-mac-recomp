@@ -39,7 +39,7 @@ def attribute_weights(guest_pcs, ranges):
     return weights
 
 
-def read_stack_window(capture):
+def read_stack_window_bounds(capture):
     window = json.loads((capture / 'window.json').read_text())
     if window['missing_sequences'] != 0:
         raise ValueError('Stack window requires consecutive GPU completions')
@@ -55,6 +55,11 @@ def read_stack_window(capture):
         raise ValueError('Expected one GPU timestamp at the stack window start')
     start = anchors[0]
     end = start + window['measurement_duration_ns']
+    return window, start, end
+
+
+def read_stack_window(capture):
+    window, start, end = read_stack_window_bounds(capture)
     samples = []
     first = None
     last = None

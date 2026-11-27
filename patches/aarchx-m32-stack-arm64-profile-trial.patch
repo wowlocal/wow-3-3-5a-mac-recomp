@@ -1,0 +1,75 @@
+diff --git a/src/vm.c b/src/vm.c
+--- a/src/vm.c
++++ b/src/vm.c
+@@ -623,4 +623,6 @@
+ typedef struct {
+     uint64_t leaf;
++    uintptr_t host_pc;
++    uint32_t host_instruction;
+     unsigned depth;
+     uint32_t return_pc[GP_I386_STACK_DEPTH];
+@@ -628,5 +630,5 @@
+
+ static void gp_i386_stack(const OcerzVM *vm, const OcerzCPU *cpu,
+-                         const arm_thread_state64_t *state, GpI386Stack *sample)
++                         const arm_thread_state64_t *state, int include_host, GpI386Stack *sample)
+ {
+     const void *pc = (const void *)(uintptr_t)arm_thread_state64_get_pc(*state);
+@@ -636,4 +638,8 @@
+         return;
+     sample->leaf = fi.insn_rip;
++    if (include_host) {
++        sample->host_pc = (uintptr_t)pc;
++        sample->host_instruction = __atomic_load_n((const uint32_t *)pc, __ATOMIC_RELAXED);
++    }
+
+     uint64_t gpr[16];
+@@ -661,8 +667,10 @@
+
+ static void gp_write_i386_stack(FILE *out, uint64_t sample_ns, uint32_t weight,
+-                               const GpI386Stack *sample)
++                               int include_host, const GpI386Stack *sample)
+ {
+     fprintf(out, "%llu %u %llx", (unsigned long long)sample_ns, weight,
+             (unsigned long long)sample->leaf);
++    if (include_host)
++        fprintf(out, " %llx %08x", (unsigned long long)sample->host_pc, sample->host_instruction);
+     for (unsigned i = 0; i < sample->depth; ++i)
+         fprintf(out, " %x", sample->return_pc[i]);
+@@ -686,4 +694,8 @@
+     if (stack_path && *stack_path && !stack_log)
+         perror("ocerz: opening i386 guest stack log");
++    const char *arm64_path = getenv("OCERZ_GUESTPROF_I386_ARM64_LOG");
++    FILE *arm64_log = arm64_path && *arm64_path ? fopen(arm64_path, "wx") : NULL;
++    if (arm64_path && *arm64_path && !arm64_log)
++        perror("ocerz: opening i386/ARM64 guest stack log");
+     mach_port_t hot = MACH_PORT_NULL;
+     uint64_t pstart = start;
+@@ -733,11 +745,16 @@
+             uint64_t sop = cpus[i]->slow_op;
+             GpI386Stack stack = {0};
+-            if (stack_log && kr == KERN_SUCCESS)
+-                gp_i386_stack(vm, cpus[i], &st, &stack);
++            if ((stack_log || arm64_log) && kr == KERN_SUCCESS)
++                gp_i386_stack(vm, cpus[i], &st, arm64_log != NULL, &stack);
+             thread_resume(ports[i]);
+             if (kr != KERN_SUCCESS)
+                 continue;
+-            if (stack_log)
+-                gp_write_i386_stack(stack_log, clock_gettime_nsec_np(CLOCK_UPTIME_RAW), w, &stack);
++            if (stack_log || arm64_log) {
++                uint64_t stamp = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++                if (stack_log)
++                    gp_write_i386_stack(stack_log, stamp, w, 0, &stack);
++                if (arm64_log)
++                    gp_write_i386_stack(arm64_log, stamp, w, 1, &stack);
++            }
+             const void *pc = (const void *)(uintptr_t)arm_thread_state64_get_pc(st);
+             OcerzJitFaultInfo fi;
+@@ -771,4 +788,6 @@
+             if (stack_log)
+                 fflush(stack_log);
++            if (arm64_log)
++                fflush(arm64_log);
+             next = now + period;
+             pstart = now;
