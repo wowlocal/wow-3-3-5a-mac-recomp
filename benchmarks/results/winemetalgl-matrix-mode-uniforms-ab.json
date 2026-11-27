@@ -1,0 +1,112 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Offscreen fixed-function indexed replay with one matrix stack selection per draw",
+  "viewport": [
+    1365,
+    768
+  ],
+  "draws_per_output": 826,
+  "copies_fixture_draw_triangle_counts_and_order": true,
+  "sets_modelview_and_projection_once_per_frame": true,
+  "alternates_selected_stack_for_each_draw": true,
+  "warmup_frames": 12,
+  "timed_seconds_per_run": 8,
+  "runs": [
+    {
+      "launch": 1,
+      "arm": "control",
+      "frames_including_warmup": 3691,
+      "timed_frames": 3679,
+      "fps_over_8_seconds": 459.875,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    },
+    {
+      "launch": 2,
+      "arm": "trial",
+      "frames_including_warmup": 6973,
+      "timed_frames": 6961,
+      "fps_over_8_seconds": 870.125,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    },
+    {
+      "launch": 3,
+      "arm": "trial",
+      "frames_including_warmup": 6610,
+      "timed_frames": 6598,
+      "fps_over_8_seconds": 824.75,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    },
+    {
+      "launch": 4,
+      "arm": "control",
+      "frames_including_warmup": 3658,
+      "timed_frames": 3646,
+      "fps_over_8_seconds": 455.75,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    },
+    {
+      "launch": 5,
+      "arm": "control",
+      "frames_including_warmup": 3615,
+      "timed_frames": 3603,
+      "fps_over_8_seconds": 450.375,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    },
+    {
+      "launch": 6,
+      "arm": "trial",
+      "frames_including_warmup": 6848,
+      "timed_frames": 6836,
+      "fps_over_8_seconds": 854.5,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    },
+    {
+      "launch": 7,
+      "arm": "trial",
+      "frames_including_warmup": 6892,
+      "timed_frames": 6880,
+      "fps_over_8_seconds": 860.0,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    },
+    {
+      "launch": 8,
+      "arm": "control",
+      "frames_including_warmup": 3598,
+      "timed_frames": 3586,
+      "fps_over_8_seconds": 448.25,
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "colored_pixels": 161333
+    }
+  ],
+  "median_fps": {
+    "control": 453.0625,
+    "trial": 857.25
+  },
+  "gpu_test_suite": {
+    "control": {
+      "tests": 336,
+      "failed_checks": 0
+    },
+    "trial": {
+      "tests": 336,
+      "failed_checks": 0
+    }
+  },
+  "published_probe_smoke": {
+    "matrix_mode": {
+      "framebuffer_fnv1a_rgba8": "5a5c29fb202decb5",
+      "matches_reference": true
+    },
+    "ordinary_replay": {
+      "framebuffer_fnv1a_rgba8": "b68e77767258e7d5",
+      "matches_reference": true
+    }
+  }
+}

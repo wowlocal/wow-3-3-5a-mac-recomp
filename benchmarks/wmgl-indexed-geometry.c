@@ -14,8 +14,8 @@
     X(glBindBuffer) X(glBindProgramARB) X(glBufferData) X(glBufferParameteriAPPLE) X(glBufferSubData) \
     X(glClear) X(glClearColor) X(glClientWaitSync) X(glColor4ub) X(glDeleteSync) X(glDrawRangeElements) \
     X(glEnable) X(glEnableClientState) X(glFenceSync) X(glFlushMappedBufferRangeAPPLE) \
-    X(glGenBuffers) X(glGenProgramsARB) X(glGetError) X(glMapBuffer) X(glProgramStringARB) X(glReadPixels) \
-    X(glUnmapBuffer) X(glVertexPointer) X(glViewport)
+    X(glGenBuffers) X(glGenProgramsARB) X(glGetError) X(glLoadIdentity) X(glMapBuffer) X(glMatrixMode) \
+    X(glProgramStringARB) X(glReadPixels) X(glTranslatef) X(glUnmapBuffer) X(glVertexPointer) X(glViewport)
 
 #define DECLARE(name) static __typeof__(&name) run_##name;
 FUNCTIONS(DECLARE)
@@ -51,6 +51,7 @@ static void program(GLenum target, const char *source)
 }
 
 static int profile_storage;
+static int select_matrix_mode;
 static unsigned allocated, released, startup_allocations, measured;
 static uint64_t storage_nanos[60000];
 
@@ -87,6 +88,13 @@ static uint64_t time_ns(void) { return clock_gettime_nsec_np(CLOCK_UPTIME_RAW); 
 
 static void render(unsigned stamp)
 {
+    if (select_matrix_mode) {
+        run_glMatrixMode(GL_PROJECTION);
+        run_glLoadIdentity();
+        run_glMatrixMode(GL_MODELVIEW);
+        run_glLoadIdentity();
+        run_glTranslatef(stamp % 2 ? -0.015625f : 0.015625f, 0, 0);
+    }
     run_glClear(GL_COLOR_BUFFER_BIT);
     const int sample_storage = profile_storage && stamp >= WARMUP;
     const uint64_t before = sample_storage ? time_ns() : 0;
@@ -112,6 +120,7 @@ static void render(unsigned stamp)
             }
             previous = slot;
         }
+        if (select_matrix_mode) run_glMatrixMode(i % 2 ? GL_MODELVIEW : GL_PROJECTION);
         const Draw d = draws[i];
         run_glVertexPointer(2, GL_FLOAT, 0, (const void *)(uintptr_t)d.vertices);
         run_glColor4ub(227, (GLubyte)(slot + 40), (GLubyte)stamp, 255);
@@ -141,6 +150,8 @@ int main(int argc, char **argv)
     const char *record_storage = getenv("OCERZ_WMGL_PROBE_STORAGE");
     profile_storage = record_storage && strcmp(record_storage, "1") == 0;
     if (profile_storage) wmgl_set_optional_buffer_memory(allocate_storage, release_storage);
+    const char *matrix_mode = getenv("OCERZ_WMGL_PROBE_MATRIX_MODE");
+    select_matrix_mode = matrix_mode && strcmp(matrix_mode, "1") == 0;
     load();
     struct wmgl_pixel_format formats[256];
     unsigned available = wmgl_get_pixel_formats(formats, 256, NULL);
@@ -171,8 +182,10 @@ int main(int argc, char **argv)
     run_glViewport(0, 0, WIDTH, HEIGHT);
     run_glClearColor(0.1f, 0.15f, 0.2f, 1.0f);
     run_glEnableClientState(GL_VERTEX_ARRAY);
-    program(GL_VERTEX_PROGRAM_ARB, "!!ARBvp1.0\nMOV result.position, vertex.position;\nMOV result.color, vertex.color;\nEND\n");
-    program(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n");
+    if (!select_matrix_mode) {
+        program(GL_VERTEX_PROGRAM_ARB, "!!ARBvp1.0\nMOV result.position, vertex.position;\nMOV result.color, vertex.color;\nEND\n");
+        program(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n");
+    }
 
     GLsync fences[MAX_IN_FLIGHT] = {0};
     uint64_t start = 0;

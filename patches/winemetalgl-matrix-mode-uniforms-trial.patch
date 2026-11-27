@@ -1,0 +1,12 @@
+--- a/src/core/api/fixed_state.mm
++++ b/src/core/api/fixed_state.mm
+@@ -143,7 +143,8 @@
+     if (mode != GL_MODELVIEW && mode != GL_PROJECTION && mode != GL_TEXTURE && mode != GL_COLOR && !programMatrix)
+         return ctx.setError(GL_INVALID_ENUM);
+     if (mode == GL_TEXTURE && ctx.state.activeTexture >= FixedState::kTextureUnits) return ctx.setError(GL_INVALID_OPERATION);
+-    fixedState(ctx).matrixMode = mode;
++    // Matrix writes advance matrixVersion through matrixStack.
++    ctx.state.fixed.matrixMode = mode;
+ }
+
+ void LoadIdentity(Context& ctx) { load(ctx, Mat4()); }
