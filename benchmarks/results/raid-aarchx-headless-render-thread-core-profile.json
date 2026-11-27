@@ -1,0 +1,49 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate main-thread core and CPU-time sampling in the live 24-caster headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "verified_timed_script_rows": 26,
+  "sample_interval_swaps": 64,
+  "available_performance_logical_cpus": 8,
+  "available_efficiency_logical_cpus": 4,
+  "efficiency_cpu_ids_from_device_tree": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "reported_qos_names": {
+    "33": "User Interactive"
+  },
+  "i386_forward_superblocks": false,
+  "i386_mov_base_uxtw": false,
+  "precise_fixed_uniform_invalidation": true,
+  "other_trial_instances_detected": 0,
+  "render_samples": 72,
+  "all_samples_on_main_thread": true,
+  "sampled_cpu_counts": {
+    "4": 20,
+    "5": 21,
+    "6": 15,
+    "7": 14,
+    "8": 1,
+    "10": 1
+  },
+  "reported_qos_counts": {
+    "33": 72
+  },
+  "reported_relative_priority_counts": {
+    "0": 72
+  },
+  "explicit_interactive_request": [],
+  "median_thread_cpu_ms_per_swap": 8.216000640625,
+  "gpu_missing_sequences": 0,
+  "visible_trial_windows": 0,
+  "focus_activations": 0
+}

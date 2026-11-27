@@ -1,0 +1,200 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "i386_forward_superblocks": false,
+  "explicit_headless_interactive_qos": false,
+  "vertex_shader_uniform_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "i386_mov_base_uxtw": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7140,
+      "first_sequence": 4737,
+      "last_sequence": 11876,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999232625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 118.98333333333333,
+      "p99_gpu_completion_gap_ns": 10988500,
+      "min_draws": 701,
+      "max_draws": 957
+    },
+    {
+      "launch": 2,
+      "i386_mov_base_uxtw": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7357,
+      "first_sequence": 4827,
+      "last_sequence": 12183,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995689625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 122.6,
+      "p99_gpu_completion_gap_ns": 10510250,
+      "min_draws": 686,
+      "max_draws": 958
+    },
+    {
+      "launch": 3,
+      "i386_mov_base_uxtw": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7514,
+      "first_sequence": 4477,
+      "last_sequence": 11990,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994734500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 125.21666666666667,
+      "p99_gpu_completion_gap_ns": 10385459,
+      "min_draws": 677,
+      "max_draws": 976
+    },
+    {
+      "launch": 4,
+      "i386_mov_base_uxtw": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7212,
+      "first_sequence": 4203,
+      "last_sequence": 11414,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996250250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 120.18333333333334,
+      "p99_gpu_completion_gap_ns": 11104875,
+      "min_draws": 683,
+      "max_draws": 941
+    }
+  ],
+  "medians": {
+    "0": {
+      "average_completed_fps": 119.58333333333334,
+      "p99_gpu_completion_gap_ns": 11046687.5
+    },
+    "1": {
+      "average_completed_fps": 123.90833333333333,
+      "p99_gpu_completion_gap_ns": 10447854.5
+    }
+  },
+  "process_isolation": {
+    "other_trial_instances_detected": 0,
+    "isolated_timing_verified": true,
+    "guard_checkpoints": "Before the first launch and after each of the four launches"
+  },
+  "renderer_sha256": "a9b7eb857d7acbd64b4b2b25f7391b79aad11cdda7a203f44b0109960547840d",
+  "visual_readback_checked_per_launch": true,
+  "checks_per_arm": {
+    "0": {
+      "general_checks": 806,
+      "general_failures": 0,
+      "interpreter_comparisons": [
+        {
+          "case": 0,
+          "description": "mov base plus displacement (case 0)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 1,
+          "description": "mov base plus displacement (case 1)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 2,
+          "description": "mov base plus displacement (case 2)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 3,
+          "description": "mov base plus displacement (case 3)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 4,
+          "description": "mov base plus displacement (case 4)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 5,
+          "description": "mov base plus displacement (case 5)",
+          "emitted_uxtw_load": false
+        }
+      ]
+    },
+    "1": {
+      "general_checks": 805,
+      "general_failures": 0,
+      "interpreter_comparisons": [
+        {
+          "case": 0,
+          "description": "mov base plus displacement (case 0)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 1,
+          "description": "mov base plus displacement (case 1)",
+          "emitted_uxtw_load": true
+        },
+        {
+          "case": 2,
+          "description": "mov base plus displacement (case 2)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 3,
+          "description": "mov base plus displacement (case 3)",
+          "emitted_uxtw_load": true
+        },
+        {
+          "case": 4,
+          "description": "mov base plus displacement (case 4)",
+          "emitted_uxtw_load": false
+        },
+        {
+          "case": 5,
+          "description": "mov base plus displacement (case 5)",
+          "emitted_uxtw_load": false
+        }
+      ]
+    }
+  }
+}

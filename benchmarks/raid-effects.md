@@ -958,3 +958,20 @@ Four isolated 60-second launches kept precise uniform invalidation enabled and v
 | Enabled | 114.52 | 13.73 ms |
 
 Throughput fell **4.81%** and median p99 rose **2.57 ms**, with both pairs moving in the same direction. The previous isolated comparison with precise invalidation disabled improved both metrics with forward merging. Test the switches together on the intended baseline. The capture verified consecutive GPU frames, overlapping effects, all cast timing rows, zero visible trial windows or activations, and cleanup between launches. [Combined-baseline A/B](results/raid-aarchx-headless-forward-superblock-precise-uniform-ab.json)
+
+### Headless render thread scheduling
+
+The core probe sampled every 64 swaps. All **72** in-world samples were on the main thread and reported `User Interactive` QoS with relative priority zero. Sampled CPU indices were 4–8 and 10. The machine exposes four efficiency and eight performance logical CPUs, and the device tree identifies the efficiency CPUs as 0–3. Median main-thread CPU time was **8.22 ms per swap**. The trial used the system's original scheduling policy. The probe observed consecutive GPU completions and zero windows or activations. [Render thread profile](results/raid-aarchx-headless-render-thread-core-profile.json)
+
+Apply `patches/aarchx-m32-render-core-profile-trial.patch` after the headless drawable and realm patches and set `OCERZ_M32_HEADLESS_CORE_SAMPLE=1` for this diagnostic.
+
+### Fold 32-bit load addresses with precise uniform invalidation
+
+Four isolated 60-second launches varied only `OCERZ_M32_MOV_BASE_UXTW` with precise uniform invalidation and the direct uniform writer enabled. Forward-branch merging and explicit QoS requests were off in both arms. The core sampler was off for the timed launches.
+
+| Wrapped load addressing | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing | 119.58 | 11.05 ms |
+| Folded into the load | 123.91 | 10.45 ms |
+
+Throughput rose **3.62%** and median p99 fell **0.60 ms**. Both pairs improved on both metrics. All launches verified the cast schedule and GPU completion sequences. The readbacks showed the saved camera and overlapping spells. Both settings passed **806** general checks and six focused interpreter comparisons. The trial emitted the folded load on the negative-displacement and wraparound cases. The process checker and desktop monitor verified isolation. [Full-raid A/B and checks](results/raid-aarchx-headless-mov-base-uxtw-precise-uniform-ab.json)

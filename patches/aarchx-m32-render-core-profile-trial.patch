@@ -1,0 +1,32 @@
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -4,6 +4,7 @@
+ #include <dispatch/dispatch.h>
+ #include <dlfcn.h>
+ #include <pthread.h>
++#include <pthread/qos.h>
+ #include <objc/runtime.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -880,6 +881,20 @@
+     int presented = driver.swap(ctx->surface);
+     if (has_drawable)
+         ++ctx->swaps;
++    if (has_drawable && m32_headless_trial && (ctx->swaps & 63) == 0) {
++        const char *sample = getenv("OCERZ_M32_HEADLESS_CORE_SAMPLE");
++        if (sample && !strcmp(sample, "1")) {
++            size_t cpu = 0;
++            qos_class_t qos = QOS_CLASS_UNSPECIFIED;
++            int priority = 0;
++            if (!pthread_cpu_number_np(&cpu) &&
++                !pthread_get_qos_class_np(pthread_self(), &qos, &priority)) {
++                fprintf(stderr, "ocerz: trial render core swap=%lu main=%d cpu=%zu qos=%u relative=%d cpu_ns=%llu\n",
++                        ctx->swaps, pthread_main_np(), cpu, (unsigned)qos, priority,
++                        (unsigned long long)clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID));
++            }
++        }
++    }
+     if (ctx->layer && ctx->swaps == 1) {
+         sync_window(ctx, YES);
+         fprintf(stderr, "ocerz: trial WineMetalGL first window swap (presented=%d)\n", presented);
