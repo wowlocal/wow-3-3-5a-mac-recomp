@@ -1,0 +1,125 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "instruments": "27.0 (27A266a)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "base_commit": "c04a9fa",
+  "scope": "Main-thread data cache miss sample PCs and Time Profiler callers from the same isolated live raid trace.",
+  "verified_timed_script_rows": 26,
+  "process_isolation_verified": true,
+  "visual_readback_verified": true,
+  "visible_trial_windows": 0,
+  "focus_activations": 0,
+  "trace": {
+    "template": "CPU Counters",
+    "mode": "l1d_miss_sampling",
+    "recording_level": "EL0",
+    "requested_duration_seconds": 12,
+    "recording_duration_seconds": 12.816805
+  },
+  "diagnostic_gpu_window": {
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 4209,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 31994849084,
+    "measurement_duration_ns": 32000000000,
+    "average_completed_fps": 131.5,
+    "p99_gpu_completion_gap_ns": 13131334,
+    "min_draws": 688,
+    "max_draws": 946
+  },
+  "miss_samples": {
+    "trace_relative_bounds_ns": [
+      269380791,
+      12816797583
+    ],
+    "events": {
+      "l1d_load_miss": {
+        "sample_rows": 130336,
+        "platform_memmove_sample_rows": 25654,
+        "platform_memmove_sample_rows_with_caller": 0,
+        "sample_rows_by_top_images": {
+          "Unattributed address": 42911,
+          "libsystem_platform.dylib": 28498,
+          "libwinemetalgl.dylib": 26904,
+          "ocerz": 12303,
+          "AGXMetalG16X": 10669,
+          "libobjc.A.dylib": 2753
+        },
+        "sample_rows_in_other_images": 6298
+      },
+      "l1d_store_miss": {
+        "sample_rows": 113620,
+        "platform_memmove_sample_rows": 78185,
+        "platform_memmove_sample_rows_with_caller": 0,
+        "sample_rows_by_top_images": {
+          "libsystem_platform.dylib": 79515,
+          "libwinemetalgl.dylib": 11158,
+          "Unattributed address": 10639,
+          "AGXMetalG16X": 7561,
+          "libobjc.A.dylib": 1520,
+          "ocerz": 1447
+        },
+        "sample_rows_in_other_images": 1780
+      },
+      "l1d_tlb_miss": {
+        "sample_rows": 51903,
+        "platform_memmove_sample_rows": 4975,
+        "platform_memmove_sample_rows_with_caller": 0,
+        "sample_rows_by_top_images": {
+          "Unattributed address": 13997,
+          "libwinemetalgl.dylib": 10299,
+          "AGXMetalG16X": 7518,
+          "libsystem_platform.dylib": 7341,
+          "ocerz": 4715,
+          "libobjc.A.dylib": 2871
+        },
+        "sample_rows_in_other_images": 5162
+      }
+    }
+  },
+  "time_profile": {
+    "main_thread_running_weight_ns": 12417000000,
+    "platform_memmove_leaf_weight_ns": 464000000,
+    "platform_memmove_direct_callers": [
+      {
+        "image": "ocerz",
+        "function": "sp_glUnmapBuffer",
+        "weight_ns": 114000000
+      },
+      {
+        "image": "ocerz",
+        "function": "map_common",
+        "weight_ns": 110000000
+      },
+      {
+        "image": "libwinemetalgl.dylib",
+        "function": "wmgl::DrawState::bindUniforms(id<MTLRenderCommandEncoder>, wmgl::LinkedProgram&, bool)",
+        "weight_ns": 64000000
+      },
+      {
+        "image": "libwinemetalgl.dylib",
+        "function": "wmgl::DrawState::uniformBlockBuffer(wmgl::LinkedProgram&, unsigned long, id<MTLBuffer> __strong&, unsigned long&)",
+        "weight_ns": 62000000
+      },
+      {
+        "image": "libwinemetalgl.dylib",
+        "function": "wmgl::DrawState::issue(unsigned int, int, int, int, unsigned int const*, id<MTLBuffer>, unsigned long, MTLIndexType, int, int, int, bool, wmgl::DrawState::IndirectSource const*, unsigned char const*)",
+        "weight_ns": 50000000
+      }
+    ],
+    "platform_memmove_other_caller_weight_ns": 64000000
+  }
+}

@@ -9,7 +9,8 @@ from xml.etree import ElementTree
 
 REFERENCE_TAGS = {
     "start-time", "thread", "thread-state", "duration", "process", "core",
-    "non-zero-double", "non-zero-uint64", "string",
+    "non-zero-double", "non-zero-uint64", "string", "sample-time", "uint64",
+    "backtrace", "tagged-backtrace", "frame", "binary", "weight",
 }
 COUNTER_CATEGORIES = {
     "bottlenecks": ("useful", "delivery", "processing", "discarded"),
@@ -29,9 +30,21 @@ def read_table(path, schema, required_columns):
     columns = None
     node = None
 
-    def value(field):
+    def resolve(field):
         if "ref" in field.attrib:
             return references[field.attrib["ref"]]
+        return field
+
+    def value(field, column):
+        field = resolve(field)
+        if column in {"backtrace", "stack"}:
+            frames = []
+            for child in field.findall("frame"):
+                frame = resolve(child)
+                image = frame.find("binary")
+                name = resolve(image).get("name") if image is not None else None
+                frames.append((frame.get("addr"), frame.get("name"), name))
+            return frames
         return field.get("fmt"), field.text
 
     for event, element in ElementTree.iterparse(path, events=("start", "end")):
@@ -51,8 +64,8 @@ def read_table(path, schema, required_columns):
             raise ValueError("Missing xctrace table header")
         for field in element.iter():
             if field.tag in REFERENCE_TAGS and "id" in field.attrib:
-                references[field.attrib["id"]] = value(field)
-        yield {name: value(element[columns[name]]) for name in required_columns}
+                references[field.attrib["id"]] = field
+        yield {name: value(element[columns[name]], name) for name in required_columns}
         node.remove(element)
 
 
@@ -154,18 +167,94 @@ def summarize_counters(path, pid, mode="bottlenecks"):
     }
 
 
+def is_main_thread(thread, pid):
+    return bool(thread and thread.startswith("Main Thread ") and thread.endswith(f", pid: {pid})"))
+
+
+def summarize_l1d_samples(path, pid):
+    images = defaultdict(Counter)
+    memmove = Counter()
+    memmove_callers = Counter()
+    first = None
+    last = None
+    columns = {"timestamp", "pmi-event", "thread", "backtrace", "pc"}
+    for row in read_table(path, "SamplingModeSamples", columns):
+        if not is_main_thread(row["thread"][0], pid):
+            continue
+        event = row["pmi-event"][1]
+        frames = row["backtrace"]
+        if not frames or int(frames[0][0], 16) != int(row["pc"][1]):
+            raise ValueError("Miss sample has no frame at its sampled PC")
+        timestamp = int(row["timestamp"][1])
+        if first is None:
+            first = timestamp
+        if last is not None and timestamp < last:
+            raise ValueError("Miss samples are out of time order")
+        last = timestamp
+
+        _, symbol, image = frames[0]
+        images[event][image or "Unattributed address"] += 1
+        if image == "libsystem_platform.dylib" and symbol == "_platform_memmove":
+            memmove[event] += 1
+            if len(frames) > 1:
+                memmove_callers[event] += 1
+    if not images:
+        raise ValueError("No main-thread cache miss samples for the target PID")
+    return {
+        "trace_relative_bounds_ns": [first, last],
+        "events": {
+            event: {
+                "sample_rows": sum(counts.values()),
+                "sample_rows_by_image": dict(counts.most_common()),
+                "platform_memmove_sample_rows": memmove[event],
+                "platform_memmove_sample_rows_with_caller": memmove_callers[event],
+            }
+            for event, counts in sorted(images.items())
+        },
+    }
+
+
+def summarize_memmove_time(path, pid):
+    running = 0
+    callers = Counter()
+    columns = {"thread", "thread-state", "weight", "stack"}
+    for row in read_table(path, "time-profile", columns):
+        if not is_main_thread(row["thread"][0], pid) or row["thread-state"][1] != "Running":
+            continue
+        weight = int(row["weight"][1])
+        running += weight
+        frames = row["stack"]
+        if frames and frames[0][1:] == ("_platform_memmove", "libsystem_platform.dylib"):
+            _, function, image = frames[1] if len(frames) > 1 else (None, None, None)
+            callers[image or "Unattributed", function or "Unattributed"] += weight
+    if not running:
+        raise ValueError("No main-thread running samples for the target PID")
+    return {
+        "main_thread_running_weight_ns": running,
+        "platform_memmove_leaf_weight_ns": sum(callers.values()),
+        "platform_memmove_direct_callers": [
+            {"image": image, "function": function, "weight_ns": weight}
+            for (image, function), weight in callers.most_common()
+        ],
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("thread_states_xml", type=Path, nargs="?")
     parser.add_argument("thread_metrics_xml", type=Path)
     parser.add_argument("pid", type=int)
-    parser.add_argument("--mode", choices=COUNTER_CATEGORIES, default="bottlenecks")
+    parser.add_argument("--mode", choices=[*COUNTER_CATEGORIES, "l1d_miss_sampling"], default="bottlenecks")
+    parser.add_argument("--time-profile", type=Path)
     args = parser.parse_args()
-    report = {
-        "counters": summarize_counters(args.thread_metrics_xml, args.pid, args.mode),
-    }
+    if args.mode == "l1d_miss_sampling":
+        report = {"miss_samples": summarize_l1d_samples(args.thread_metrics_xml, args.pid)}
+    else:
+        report = {"counters": summarize_counters(args.thread_metrics_xml, args.pid, args.mode)}
     if args.thread_states_xml is not None:
         report["scheduling"] = summarize_states(args.thread_states_xml, args.pid)
+    if args.time_profile is not None:
+        report["time_profile"] = summarize_memmove_time(args.time_profile, args.pid)
     print(json.dumps(report, indent=2))
 
 

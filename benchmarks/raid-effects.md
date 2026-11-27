@@ -1554,3 +1554,22 @@ xcrun xctrace record --no-prompt --template 'CPU Counters' --attach "$pid" \
     --recording-options recording-options.json --time-limit 20s --output cpu.trace
 python3 benchmarks/summarize-raid-cpu-trace.py thread-metrics.xml "$pid" --mode processing
 ```
+
+### Locate data-cache miss samples and copy callers
+
+An isolated **12-second** L1D Cache Miss Sampling recording used the same live raid. Of **113,620** sampled main-thread store misses, **78,185 (68.81%)** had their sampled PC in `_platform_memmove`. It also accounted for **25,654 of 130,336** load-miss samples. These counts describe sampled PCs. The exported miss samples at that symbol carry no caller frame.
+
+The separate Time Profiler table in the same trace assigned **464 ms of 12,417 ms** of main-thread running-sample weight to `_platform_memmove`. Its two largest direct callers were AArchX's `sp_glUnmapBuffer` (**114 ms**) and `map_common` (**110 ms**). The next three were WineMetalGL's `bindUniforms`, `uniformBlockBuffer`, and `issue` (**64, 62, and 50 ms**). The two AArchX copy sites together represent **1.80%** of running-sample weight. The time profile identifies recurring copies. The miss samples leave the per-caller cache cost unresolved. The client verified the saved camera, 26 timing rows, and consecutive 1365 × 768 GPU completions with zero visible windows or activations. [Miss samples and copy callers](results/raid-winemetalgl-fast-share-lock-l1d-samples.json)
+
+Use the same CPU Counters options with `selectedCountingMode.countingMode` set to `l1d_miss_sampling` and `selectedCountingModeDisplayName` set to `L1D Cache Miss Sampling`. Export the sampling and time-profile tables from that recording.
+
+```sh
+xcrun xctrace export --input cpu.trace \
+    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="SamplingModeSamples"]' \
+    --output l1d-samples.xml
+xcrun xctrace export --input cpu.trace \
+    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' \
+    --output time-profile.xml
+python3 benchmarks/summarize-raid-cpu-trace.py l1d-samples.xml "$pid" \
+    --mode l1d_miss_sampling --time-profile time-profile.xml
+```
