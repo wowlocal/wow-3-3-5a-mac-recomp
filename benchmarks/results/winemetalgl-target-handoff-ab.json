@@ -1,0 +1,207 @@
+{
+  "hardware": "Apple M4 Pro",
+  "synthetic_translated_fixture": "winemetalgl-i386-indexed-gpu-ab.json",
+  "reference_frame_rgba_fnv1a64": "199a81aba2d36749",
+  "translated_blocks": 36,
+  "cpu_profiles": {
+    "sample_seconds": 6,
+    "sample_interval_ms": 1,
+    "arms": {
+      "control": {
+        "main_thread_samples": 3401,
+        "indexed_draw_entry": 2357,
+        "draw_prepare": 313,
+        "render_target_desc_assignment": 213,
+        "draw_validate": 550
+      },
+      "candidate": {
+        "main_thread_samples": 3409,
+        "indexed_draw_entry": 2337,
+        "draw_prepare": 267,
+        "draw_validate": 544,
+        "render_target_desc_assignment": 138
+      }
+    }
+  },
+  "gpu_ab": {
+    "runs": [
+      {
+        "order": 1,
+        "arm": "control",
+        "verified_completed_renders": 8107,
+        "first_sequence": 128,
+        "last_sequence": 8234,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999762250,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1351.0,
+        "p99_gpu_completion_gap_ns": 2030584,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 2,
+        "arm": "candidate",
+        "verified_completed_renders": 8248,
+        "first_sequence": 128,
+        "last_sequence": 8375,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999903375,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1374.5,
+        "p99_gpu_completion_gap_ns": 2006750,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 3,
+        "arm": "candidate",
+        "verified_completed_renders": 8365,
+        "first_sequence": 128,
+        "last_sequence": 8492,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999545625,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1394.0,
+        "p99_gpu_completion_gap_ns": 1874625,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 4,
+        "arm": "control",
+        "verified_completed_renders": 8195,
+        "first_sequence": 128,
+        "last_sequence": 8322,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999947625,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1365.6666666666667,
+        "p99_gpu_completion_gap_ns": 1949375,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 5,
+        "arm": "control",
+        "verified_completed_renders": 8214,
+        "first_sequence": 128,
+        "last_sequence": 8341,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999890209,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1368.8333333333333,
+        "p99_gpu_completion_gap_ns": 1992000,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 6,
+        "arm": "candidate",
+        "verified_completed_renders": 8185,
+        "first_sequence": 128,
+        "last_sequence": 8312,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999842959,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1364.0,
+        "p99_gpu_completion_gap_ns": 1902834,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 7,
+        "arm": "candidate",
+        "verified_completed_renders": 8407,
+        "first_sequence": 128,
+        "last_sequence": 8534,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999999125,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1401.0,
+        "p99_gpu_completion_gap_ns": 1968709,
+        "min_draws": 826,
+        "max_draws": 826
+      },
+      {
+        "order": 8,
+        "arm": "control",
+        "verified_completed_renders": 8096,
+        "first_sequence": 128,
+        "last_sequence": 8223,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 5999316750,
+        "measurement_duration_ns": 6000000000,
+        "average_completed_fps": 1349.1666666666667,
+        "p99_gpu_completion_gap_ns": 1949500,
+        "min_draws": 826,
+        "max_draws": 826
+      }
+    ],
+    "medians": [
+      {
+        "arm": "control",
+        "average_completed_fps": 1358.3333333333335,
+        "p99_gpu_completion_gap_ns": 1970750.0
+      },
+      {
+        "arm": "candidate",
+        "average_completed_fps": 1384.25,
+        "p99_gpu_completion_gap_ns": 1935771.5
+      }
+    ]
+  },
+  "renderer_test_suite": {
+    "passed": 336,
+    "failed_checks": 0
+  },
+  "original_client_background_login": {
+    "duration_seconds": 5,
+    "graphics_only": true,
+    "viewport": [
+      1365,
+      768
+    ],
+    "fixed_extension_string_cap": 3825,
+    "guest_backed_buffer_sizes_mib": [
+      2,
+      8
+    ],
+    "startup_direct_8mib_maps_verified": 128,
+    "readback": "Original login scene and compatibility warning visually verified in both arms",
+    "arms": {
+      "control": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 147,
+        "first_sequence": 241,
+        "last_sequence": 387,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 4998580791,
+        "measurement_duration_ns": 5000000000,
+        "average_completed_fps": 29.2,
+        "p99_gpu_completion_gap_ns": 43344459,
+        "min_draws": 86,
+        "max_draws": 93
+      },
+      "candidate": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 146,
+        "first_sequence": 241,
+        "last_sequence": 386,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 4979908625,
+        "measurement_duration_ns": 5000000000,
+        "average_completed_fps": 29.0,
+        "p99_gpu_completion_gap_ns": 42469250,
+        "min_draws": 86,
+        "max_draws": 93
+      }
+    }
+  }
+}

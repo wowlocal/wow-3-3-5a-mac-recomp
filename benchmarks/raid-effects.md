@@ -344,3 +344,11 @@ python3 "$TRIAL_REPO/benchmarks/trace-frames.py" "$replay_dir/gpu.ns" "$probe_pi
 ```
 
 Alternate `OCERZ_WMGL_APPLE_SUBDATA=0` and `1` for the paired runs and use a fresh log each time. To collect a 60-second window, set `OCERZ_WMGL_I386_SECONDS=63` and analyze with `--seconds 60`.
+
+## Reusing the validated render-target descriptor
+
+In the translated replay's separate six-second CPU profile, **2,357 of 3,401** main-thread samples included the indexed-draw entry point. Render-target descriptor assignment accounted for **213** samples. Direct initialization from the validated descriptor avoids the release calls on empty destination texture slots while keeping the same attachment lifetime. After the change, a separate profile recorded **138** descriptor-assignment samples out of **3,409** main-thread samples. [CPU profiles and A/B measurements](results/winemetalgl-target-handoff-ab.json)
+
+Four interleaved pairs of six-second translated replay windows moved the median from **1,358 to 1,384 GPU-completed FPS** and from **1.97 to 1.94 ms p99**. Throughput improved in three pairs. All eight runs had consecutive GPU sequences, identical reference pixels, and 826 draws per output. The change passed all 336 renderer tests. To reproduce the A/B, keep the replay, configuration, and direct uploads fixed. Build two WineMetalGL libraries and apply `patches/winemetalgl-target-handoff-trial.patch` on the candidate only. [Replay results](results/winemetalgl-target-handoff-ab.json)
+
+Both libraries also rendered the original client’s background login screen at **1365 × 768**. The control and candidate recorded **147** and **146** consecutive GPU completions in their respective five-second windows. The login scene and compatibility dialog were visible in both readbacks, and both clients used the guest-backed texture upload path. The logged rates reflect the background login workload. [Original client smoke test](results/winemetalgl-target-handoff-ab.json)
