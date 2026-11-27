@@ -1,0 +1,40 @@
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -50,6 +50,14 @@
+         return file;
+     }();
+     return log;
++}
++
++bool flushBeforeSlotWait() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("OCERZ_WMGL_FLUSH_BEFORE_SLOT_WAIT");
++        return value && value[0] == '1' && !value[1];
++    }();
++    return enabled;
+ }
+ 
+ void recordCompletedRender(id<MTLCommandBuffer> finished, uint64_t recordingStream, uint64_t sequence,
+@@ -716,11 +724,19 @@
+         // yet (it is dropped). Only a GPU two frames behind makes this wait.
+         stats::Timer drawableTimer(&stats::Frame::drawableNanos);
+         std::unique_lock<std::mutex> lock(box->mutex);
+-        box->changed.wait(lock, [&] {
++        const auto reusable = [&] {
+             for (int i = 0; i < Mailbox::kSlots; ++i)
+                 if (box->state[i] == Mailbox::Free || box->state[i] == Mailbox::Ready) return true;
+             return false;
+-        });
++        };
++        if (flushBeforeSlotWait() && !reusable()) {
++            // Submit the draw commands while there is no slot to copy into.
++            // The eventual copy uses the same render queue after these draws.
++            lock.unlock();
++            stream.flush();
++            lock.lock();
++        }
++        box->changed.wait(lock, reusable);
+         for (int i = 0; i < Mailbox::kSlots && slot < 0; ++i)
+             if (box->state[i] == Mailbox::Free) slot = i;
+         for (int i = 0; i < Mailbox::kSlots && slot < 0; ++i)

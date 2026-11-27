@@ -1,0 +1,90 @@
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -36,6 +36,17 @@
+         if (!path || !*path) return nullptr;
+         FILE* file = std::fopen(path, "wx");
+         if (!file) std::perror("cannot create WineMetalGL presentation log");
++        return file;
++    }();
++    return log;
++}
++
++FILE* frameTimingLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_TIMING_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL frame timing log");
+         return file;
+     }();
+     return log;
+@@ -211,6 +222,7 @@
+     uint64_t nextSequence = 1;
+     uint64_t recordingStream = 0;
+     FILE* presentations = nullptr;
++    FILE* timings = nullptr;
+     bool stop = false;
+     id<MTLCommandQueue> queue = nil;
+     std::thread thread;
+@@ -630,7 +642,8 @@
+         mailbox_ = std::make_unique<Mailbox>();
+         Mailbox* box = mailbox_.get();
+         box->presentations = presentationLog();
+-        if (stats::g_recordMailboxDraws || box->presentations)
++        box->timings = frameTimingLog();
++        if (stats::g_recordMailboxDraws || box->presentations || box->timings)
+             box->recordingStream = newCompletionStream();
+         MTLTextureDescriptor* desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:source.pixelFormat
+                                                                                          width:source.width
+@@ -694,8 +707,10 @@
+         });
+     }
+     Mailbox* box = mailbox_.get();
++    FILE* timings = box->timings;
+     int slot = -1;
+     uint64_t sequence;
++    const uint64_t slotBegin = timings ? stats::nowNanos() : 0;
+     {
+         // A free slot, else the finished frame the presenter has not taken
+         // yet (it is dropped). Only a GPU two frames behind makes this wait.
+@@ -714,6 +729,7 @@
+         sequence = box->nextSequence++;
+         box->sequence[slot] = sequence;
+     }
++    const uint64_t slotEnd = timings ? stats::nowNanos() : 0;
+     const uint64_t dimensions = (uint64_t(source.width) << 32) | uint64_t(source.height);
+     const uint64_t recordingStream = box->recordingStream;
+     id<MTLBlitCommandEncoder> blit = stream.blit();
+@@ -721,12 +737,27 @@
+                sourceSize:MTLSizeMake(source.width, source.height, 1) toTexture:box->slots[slot] destinationSlice:0
+          destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+     stream.endEncoder();
++    const uint64_t submitted = timings ? stats::nowNanos() : 0;
+     [stream.commandBuffer() addCompletedHandler:^(id<MTLCommandBuffer> finished) {
++        const uint64_t callback = timings ? stats::nowNanos() : 0;
+         recordCompletedRender(finished, recordingStream, sequence, draws, dimensions);
+-        // Notify under the lock (see the present handler).
+-        std::lock_guard<std::mutex> lock(box->mutex);
+-        box->state[slot] = Mailbox::Ready;
+-        box->changed.notify_all();
++        {
++            // Notify under the lock (see the present handler).
++            std::lock_guard<std::mutex> lock(box->mutex);
++            box->state[slot] = Mailbox::Ready;
++            box->changed.notify_all();
++        }
++        // The mailbox can be destroyed after the state change. This log
++        // uses only the captured timestamps and stream identity.
++        if (timings && finished.status == MTLCommandBufferStatusCompleted && finished.GPUStartTime > 0.0) {
++            const uint64_t ready = stats::nowNanos();
++            std::fprintf(timings, "%d %llu %llu %llu %llu %llu %llu %llu %llu %llu\n", getpid(),
++                         (unsigned long long)recordingStream, (unsigned long long)sequence,
++                         (unsigned long long)slotBegin, (unsigned long long)slotEnd,
++                         (unsigned long long)submitted, (unsigned long long)(finished.GPUStartTime * 1e9),
++                         (unsigned long long)(finished.GPUEndTime * 1e9), (unsigned long long)callback,
++                         (unsigned long long)ready);
++        }
+     }];
+     stream.flush();
+     return true;

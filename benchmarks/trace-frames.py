@@ -6,7 +6,7 @@ import json
 import math
 import subprocess
 import xml.etree.ElementTree as ElementTree
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, namedtuple
 from pathlib import Path
 from statistics import median
 
@@ -262,6 +262,20 @@ def mailbox_frames(rows, pid, width, height):
     return mailbox_report(frames, pid, width, height)
 
 
+def mailbox_sample(times, seconds):
+    sample_duration = times[-1] - times[0] if seconds is None else seconds * 10**9
+    cutoff = times[0] + sample_duration
+    if times[-1] < cutoff:
+        raise ValueError("The GPU completion log does not yet cover the requested duration")
+    # Include the gap crossing the cutoff in p99, including any stall
+    # that starts before the end and completes just after it.
+    sample_end = next((i for i, time in enumerate(times) if time > cutoff), len(times))
+    if sample_end < 2:
+        raise ValueError("Fewer than two GPU completions inside the measurement window")
+    gap_end = sample_end + (sample_end < len(times) and times[sample_end - 1] < cutoff)
+    return sample_end, gap_end, sample_duration
+
+
 def mailbox_report(frames, pid, width, height, seconds=None):
     if len(frames) < 2:
         raise ValueError("Fewer than two completed WineMetalGL renders at the requested size")
@@ -270,17 +284,7 @@ def mailbox_report(frames, pid, width, height, seconds=None):
     times = [frame[1] for frame in frames]
     if len(set(sequences)) != len(frames) or any(a >= b for a, b in zip(times, times[1:])):
         raise ValueError("WineMetalGL markers do not identify one ordered stream of GPU completions")
-    sample_duration = times[-1] - times[0] if seconds is None else seconds * 10**9
-    cutoff = times[0] + sample_duration
-    if times[-1] < cutoff:
-        raise ValueError("The GPU completion log does not yet cover the requested duration")
-    # Include the gap crossing the cutoff in p99, including any stall
-    # that starts before the end and completes just after it.
-    sample_end = next((i for i, time in enumerate(times) if time > cutoff), len(times))
-    verified = sample_end
-    if verified < 2:
-        raise ValueError("Fewer than two GPU completions inside the measurement window")
-    gap_end = sample_end + (sample_end < len(times) and times[sample_end - 1] < cutoff)
+    verified, gap_end, sample_duration = mailbox_sample(times, seconds)
     frames = frames[:verified]
     hardware_span = times[verified - 1] - times[0]
     missing = sequences[gap_end - 1] - sequences[0] + 1 - gap_end
@@ -324,7 +328,79 @@ def presentation_report(path, pid, stream, completed_sequences):
     }
 
 
-def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None):
+FrameTiming = namedtuple("FrameTiming", "slot_begin slot_end submit gpu_start gpu_end callback ready")
+
+
+def timing_stats(values):
+    ordered = sorted(values)
+    return {"p50_ns": median(ordered), "p99_ns": ordered[math.ceil(.99 * len(ordered)) - 1],
+            "max_ns": ordered[-1]}
+
+
+def frame_timing_report(path, pid, stream, frames):
+    expected = {seq: end for seq, end, _ in frames}
+    by_sequence = {}
+    with path.open() as log:
+        for line in log:
+            if not line.endswith("\n"):
+                break
+            process, stream_id, sequence, *fields = map(int, line.split())
+            if process != pid or stream_id != stream or sequence not in expected:
+                continue
+            timing = FrameTiming(*fields) if len(fields) == len(FrameTiming._fields) else None
+            if not timing or sequence in by_sequence or timing.gpu_end != expected[sequence]:
+                raise ValueError(f"Invalid timing record for GPU completion {sequence}")
+            if timing.slot_begin <= 0 or any(a > b for a, b in zip(timing, timing[1:])):
+                raise ValueError(f"CPU and GPU timestamps do not align for sequence {sequence}")
+            by_sequence[sequence] = timing
+    if len(by_sequence) != len(frames):
+        raise ValueError("The frame timing log does not cover every GPU completion in the sample")
+    timings = [by_sequence[seq] for seq, _, _ in frames]
+
+    long_components = defaultdict(list)
+    dominant = Counter()
+    unattributed = 0
+    over_budget = 0
+    budget_ns = 2_000_000
+    for index, (previous, current) in enumerate(zip(timings, timings[1:])):
+        long_gap = current.gpu_end - previous.gpu_end > budget_ns
+        over_budget += long_gap
+        if frames[index + 1][0] != frames[index][0] + 1 or current.slot_begin < previous.submit:
+            unattributed += 1
+            continue
+        if not long_gap:
+            continue
+        components = {
+            "before_slot": current.slot_begin - previous.submit,
+            "slot_acquire": current.slot_end - current.slot_begin,
+            "after_slot": current.submit - current.slot_end,
+            "dispatch_change": ((current.gpu_start - current.submit) -
+                                (previous.gpu_start - previous.submit)),
+            "gpu_duration_change": ((current.gpu_end - current.gpu_start) -
+                                    (previous.gpu_end - previous.gpu_start)),
+        }
+        for name, length in components.items():
+            long_components[name].append(length)
+        dominant[max(components, key=components.get)] += 1
+    return {
+        "matched_frames": len(timings),
+        "frame_phases": {
+            "slot_acquire": timing_stats(t.slot_end - t.slot_begin for t in timings),
+            "flush_to_gpu_start": timing_stats(t.gpu_start - t.submit for t in timings),
+            "gpu_execution": timing_stats(t.gpu_end - t.gpu_start for t in timings),
+            "gpu_end_to_callback": timing_stats(t.callback - t.gpu_end for t in timings),
+            "callback_to_slot_ready": timing_stats(t.ready - t.callback for t in timings),
+        },
+        "gap_count": len(timings) - 1,
+        "unattributed_gaps": unattributed,
+        "long_gap_budget_ns": budget_ns,
+        "over_budget_gaps": over_budget,
+        "long_gap_median_components_ns": {name: median(values) for name, values in long_components.items()},
+        "long_gap_largest_component_counts": dict(dominant),
+    }
+
+
+def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, present_log=None, timing_log=None):
     streams = defaultdict(list)
     dimensions = (width << 32) | height
     with path.open() as log:
@@ -350,6 +426,9 @@ def mailbox_log(path, pid, width, height, stream, start_sequence, seconds, prese
         # GPU and display events join by the renderer's sequence identity.
         completed = {seq for seq, _, _ in frames[:report["verified_completed_renders"]]}
         report["presentation"] = presentation_report(present_log, pid, stream, completed)
+    if timing_log is not None:
+        _, gap_end, _ = mailbox_sample([end for _, end, _ in frames], seconds)
+        report["frame_timing"] = frame_timing_report(timing_log, pid, stream, frames[:gap_end])
     return {"stream": stream, **report}
 
 
@@ -367,6 +446,7 @@ def main():
     mode.add_argument("--encoder-breakdown", action="store_true", help="group traced AGL command buffers by encoder label")
     parser.add_argument("--stream", type=int, help="mailbox generation to select from a GPU completion log")
     parser.add_argument("--present-log", type=Path, help="join Metal drawable presentations by render sequence")
+    parser.add_argument("--timing-log", type=Path, help="attribute windowed GPU completion gaps to host and GPU phases")
     parser.add_argument("--start-sequence", type=int, help="first completed frame in the measurement")
     parser.add_argument("--seconds", type=int, help="require this many seconds of completed GPU work")
     options = parser.parse_args()
@@ -374,16 +454,16 @@ def main():
         parser.error("PID, viewport dimensions, and run number must be positive")
     if (options.wmgl or options.wmgl_log) and options.frame_log:
         parser.error("--frame-log applies to the AGL window-write analysis")
-    log_options = (options.stream, options.start_sequence, options.seconds, options.present_log)
+    log_options = (options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log)
     if not options.wmgl_log and any(value is not None for value in log_options):
-        parser.error("--stream, --start-sequence, --seconds, and --present-log require --wmgl-log")
+        parser.error("--stream, --start-sequence, --seconds, --present-log, and --timing-log require --wmgl-log")
     if any(value is not None and value <= 0 for value in (options.stream, options.start_sequence, options.seconds)):
         parser.error("Stream, starting sequence, and duration must be positive")
     try:
         if options.wmgl_log:
             report = mailbox_log(
                 options.trace, options.pid, options.width, options.height,
-                options.stream, options.start_sequence, options.seconds, options.present_log,
+                options.stream, options.start_sequence, options.seconds, options.present_log, options.timing_log,
             )
             print(json.dumps(report, indent=2))
             return

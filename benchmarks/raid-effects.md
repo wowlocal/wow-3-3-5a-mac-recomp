@@ -386,3 +386,17 @@ The windowed replay compared three changes to when the renderer can reuse a mail
 The last experiment signaled each slot's event after the queued presentation read. A later writer could submit its render work and wait on the GPU before copying into that slot. A separate diagnostic verified all 492 queued reads signaled their events. The trial uses separate queues and waits for slot readiness on the CPU. [Apple Metal event synchronization](https://developer.apple.com/documentation/metal/synchronizing-events-within-a-single-device)
 
 A windowed replay sweep varied the harness's fence limit through 1, 2, 3, 4, and 6 frames in flight. The lowest single-window p99 was **2.93 ms** with four frames in flight. One frame in flight averaged **846 FPS** and reached **4.16 ms p99**. [Fence-depth sweep](results/winemetalgl-mailbox-scheduling-ab.json)
+
+### CPU and GPU time in long completion gaps
+
+Two ten-second windowed captures matched CPU slot and flush timestamps to Metal command-buffer intervals for **25,259** consecutive GPU completion gaps. Of the **942** gaps over 2 ms, the change in GPU command-buffer execution duration was the largest component in **654** and slot acquisition was largest in **280**. GPU execution duration had a median of **0.30 ms** and a p99 of **3.21–3.25 ms**. The completion callback began about **0.10 ms at p99** after the GPU end timestamp in both captures. These intervals measure the command buffer that contains rendering and the mailbox copy in the normal windowed path. [Windowed frame timing](results/winemetalgl-windowed-frame-timing.json)
+
+Each gap equals the interval between the two host flush entries plus the change in time from flush entry to GPU start and the change in GPU execution duration. The analyzer also splits the host interval at slot acquisition. Metal's GPU start and end timestamps and the CPU timestamps use system Mach time. [Apple GPU timestamp documentation](https://developer.apple.com/documentation/metal/mtlcommandbuffer/gpustarttime?language=objc)
+
+Apply `patches/winemetalgl-frame-timing-trial.patch` after the presentation log patch. Set `OCERZ_WMGL_TIMING_LOG` and `OCERZ_WMGL_GPU_LOG` to separate fresh files on a windowed run, then add `--timing-log FILE` to the GPU analysis command. Collect performance windows separately with the phase log disabled.
+
+### Early submission while waiting for a slot
+
+When every mailbox slot is busy, the opt-in trial submits the current render commands before waiting for a slot. It then submits the copy on the same render queue after acquiring the slot. In four paired six-second windows, median p99 fell from **2.96 to 2.86 ms**, with an improvement in every pair. Median throughput moved from **1,287 to 1,279 GPU-completed FPS**. A separate warmed 60-second pair moved from **1,245 FPS and 3.09 ms p99** to **1,260 FPS and 2.96 ms p99**. The reference pixels matched and GPU sequences were consecutive across all runs. [Early submission results](results/winemetalgl-windowed-frame-timing.json)
+
+Apply `patches/winemetalgl-flush-before-slot-wait-trial.patch` after the frame timing patch and set `OCERZ_WMGL_FLUSH_BEFORE_SLOT_WAIT=1` for this trial. Use the regular GPU log for performance comparisons. When early submission splits the draw and copy, the phase log records the copy command buffer that completes the output. Live rendering and input latency still need verification.
