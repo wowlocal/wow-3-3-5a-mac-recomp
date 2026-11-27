@@ -773,3 +773,14 @@ Four warmed 60-second headless runs moved median throughput from **94.47 to 97.9
 Seven warmed eight-second periods recorded sampled host instruction words for translated `MOV`, `MOVSS`, and `Jcc` in the headless raid. For samples attributed to guest `MOV`, the largest native groups were `ADD` at **51.38%** and `SUB` at **22.38%**. For guest `Jcc`, the largest groups were `STP` at **34.55%** and `LDR` at **28.30%**, followed by unconditional `B` at **12.90%**. The sampled host instructions include the address work and exit code associated with the guest instruction. The GPU sequence was continuous, and all 806 general runtime checks passed. [Native instruction profile](results/raid-aarchx-headless-arm64-instruction-profile.json)
 
 Apply `patches/aarchx-m32-arm64-instruction-profile-trial.patch` after the MOV form profile patch and add `OCERZ_GUESTPROF_HOST_WORDS=1` to the profiling flags. Run `python3 benchmarks/summarize-aarchx-host-profile.py RUN_DIR` against the diagnostic directory on macOS with Xcode Command Line Tools. It assembles the sampled words into a temporary object and uses the local disassembler for the instruction names.
+
+### Triangle submission budget with direct ARB uniform reads
+
+Four warmed 60-second headless runs alternated the triangle budget in 65,000, 0, 0, and 65,000 order. All runs used direct ARB uniform reads, the same 1365 × 768 viewport, VSync off, and draw setting 64. Setting `OCERZ_WMGL_COMMIT_TRIANGLES=0` disables the triangle threshold while retaining the 512-draw threshold.
+
+| Triangle budget | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| 65,000 | 97.94 | 14.52 ms |
+| Disabled | 99.23 | 13.14 ms |
+
+Both pairs had higher throughput and a shorter p99 gap with the triangle threshold disabled. The second pair differed by 0.27 FPS. The realm verified all 25 actors and 26 timed script rows in every launch. All four GPU sequences were consecutive, and all four readbacks showed the saved camera and overlapping spell effects. The desktop monitor recorded zero activations or visible trial windows. [Full-raid A/B](results/raid-winemetalgl-headless-triangle-budget-ab.json)
