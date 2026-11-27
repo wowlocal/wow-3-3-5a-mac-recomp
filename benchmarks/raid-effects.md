@@ -448,3 +448,17 @@ OCERZ_WMGL_MAILBOX_ROTATE_COLOR=1 OCERZ_WMGL_MAILBOX_RASTER_COPY=1 \
 The warmed 60-second pair moved from **1,304 FPS and 2.67 ms p99** to **1,367 FPS and 2.38 ms p99**. A separate ten-second encoder capture matched **13,232** render command buffers, each without a blit interval. The render pass reached **2.43 ms p99**. The pass and command-buffer durations agreed within 42 ns in that capture. With the trial enabled, the original client rendered its background login screen and recorded 146 consecutive GPU completions. [Sustained and encoder results](results/winemetalgl-published-color-ab.json)
 
 Apply `patches/winemetalgl-published-color-trial.patch` after the raster copy patch and set `OCERZ_WMGL_MAILBOX_ROTATE_COLOR=1`. Direct publication is eligible on the single-sample windowed linear RGBA8 path when a draw is pending on the render queue. Live raid and input validation are still pending.
+
+### Render-pass tail after direct publication
+
+Two windowed traces with direct publication recorded **639** completion gaps over 2 ms. The change in GPU render duration was the largest component in **446** gaps, while mailbox-slot acquisition was largest in **186**. Neither trace showed a blit in the sampled frame completions. The median GPU execution time was about **0.26 ms**, with p99 of **2.48–2.53 ms**. [Frame and encoder timing](results/winemetalgl-published-color-tail.json)
+
+The draw-count submission sweep rotated `WINEMETALGL_COMMIT_DRAWS` through 256, 64, and 96 in three interleaved six-second blocks. A limit of 64 causes an earlier submission when the running pass reaches 512 draws. The median moved from **1,368 FPS and 2.32 ms p99** at 256 to **1,367 FPS and 2.06 ms p99** at 64. The 96 setting reached **2.42 ms p99**. All runs matched the reference pixels and recorded consecutive GPU completions. [Draw submission sweep](results/winemetalgl-published-color-tail.json)
+
+The warmed 60-second pair moved from **1,299 FPS and 2.499 ms p99** at 256 to **1,366 FPS and 2.049 ms p99** at 64. Draw counts, reference pixels, and GPU sequence continuity matched. [Sustained draw submission results](results/winemetalgl-published-color-tail.json)
+
+The renderer counters confirmed one pass and one submission per frame at 256, and two of each at 64 and 52. A second short sweep paired the 512-draw split at 64 with a more even 416-draw split at 52. Median p99 was **2.076 ms** at 64 and **2.119 ms** at 52, with 52 improving in one of three pairs. [Split-size and activation checks](results/winemetalgl-published-color-tail.json)
+
+A diagnostic capture with the 512-draw split recorded **215** completion gaps over 2 ms. The change in time from host flush to GPU start was the largest component in **109** gaps, followed by GPU duration in **80** and slot acquisition in **19**. These timestamps describe the final command buffer of the split frame. The frame's earlier pass was already submitted at that point. [Final-command timing](results/winemetalgl-published-color-tail.json)
+
+A separate experiment used early submission and a raster copy only when every mailbox slot was busy. Across four pairs, median p99 moved from **2.38 to 2.32 ms**, improving in two pairs. Median throughput fell from **1,378 to 1,362 GPU-completed FPS**. This change stayed experimental. [Busy-slot comparison](results/winemetalgl-published-color-tail.json)
