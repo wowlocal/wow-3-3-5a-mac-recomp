@@ -25,17 +25,27 @@ class ReuseRow(NamedTuple):
     previous_frame_versions: int
     previous_frame_vertex_inputs: int
     previous_frame_complete: int
+    position_references: int = 0
+    same_frame_position: int = 0
+    previous_frame_position: int = 0
 
 
-def integers(path, width):
+def integers(path, widths):
     with path.open() as file:
         for line in file:
             if not line.endswith("\n"):
                 break
             row = tuple(map(int, line.split()))
-            if len(row) != width:
+            if len(row) not in widths:
                 raise ValueError(f"Unexpected record in {path.name}")
             yield row
+
+
+def reuse_row(values):
+    if len(values) == 17:
+        return ReuseRow(*values)
+    original = values[:9] + values[10:14] + values[15:19]
+    return ReuseRow(*original, values[9], values[14], values[19])
 
 
 def select_rows(capture, window):
@@ -44,12 +54,12 @@ def select_rows(capture, window):
     expected = list(range(first, last + 1))
     draws = {
         sequence: count
-        for process, generation, sequence, _, count, _ in integers(capture / "gpu.ns", 6)
+        for process, generation, sequence, _, count, _ in integers(capture / "gpu.ns", (6,))
         if (process, generation) == (pid, stream) and first <= sequence <= last
     }
     selected = sorted(
-        ReuseRow(*row)
-        for row in integers(capture / "vertex-reuse.ns", len(ReuseRow._fields))
+        reuse_row(row)
+        for row in integers(capture / "vertex-reuse.ns", (17, 20))
         if row[:2] == (pid, stream) and first <= row[2] <= last
     )
     if sorted(draws) != expected or [row.sequence for row in selected] != expected:
@@ -57,7 +67,7 @@ def select_rows(capture, window):
     for row in selected:
         if not 0 <= row.tracked_draws <= row.direct_arb_draws <= row.draws == draws[row.sequence]:
             raise ValueError(f"Inconsistent draw counts at output {row.sequence}")
-        if not 0 <= row.complete_references <= row.tracked_references <= row.direct_arb_references:
+        if not 0 <= row.position_references <= row.complete_references <= row.tracked_references <= row.direct_arb_references:
             raise ValueError(f"Inconsistent reference counts at output {row.sequence}")
         for addresses, versions, vertex, complete in (
             (row.same_frame_addresses, row.same_frame_versions, row.same_frame_vertex_inputs, row.same_frame_complete),
@@ -70,6 +80,12 @@ def select_rows(capture, window):
                 or vertex > row.complete_references
             ):
                 raise ValueError(f"Inconsistent matching references at output {row.sequence}")
+        for position, versions in (
+            (row.same_frame_position, row.same_frame_versions),
+            (row.previous_frame_position, row.previous_frame_versions),
+        ):
+            if not 0 <= position <= min(versions, row.position_references):
+                raise ValueError(f"Inconsistent position references at output {row.sequence}")
     return selected
 
 
@@ -92,7 +108,9 @@ def summarize(capture):
         "complete": totals["complete_references"],
     }
     if not all(denominators.values()):
-        raise ValueError("The capture did not exercise all three levels of the probe")
+        raise ValueError("The capture did not exercise the vertex reuse probe")
+    if totals["position_references"]:
+        denominators["position"] = totals["position_references"]
     proportions = {
         f"{scope}_{key}": totals[f"{scope}_{key}"] / total
         for scope in ("same_frame", "previous_frame")

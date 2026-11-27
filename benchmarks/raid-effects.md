@@ -1241,3 +1241,17 @@ Two separate 30-second diagnostic launches matched the reuse counters to **3,487
 These are signature matches weighted by submitted vertex references. The measurement covers the captured draw paths, and buffer-wide versions can miss an unchanged range after an unrelated write. The measured vertex-state match rate limits the opportunity for a cache of complete transformed vertices. Both runs verified the camera, overlapping effects, cast schedule and consecutive GPU completions with no visible trial windows or activations. [Matched geometry and vertex inputs](results/raid-winemetalgl-headless-vertex-input-reuse.json)
 
 Apply `patches/winemetalgl-vertex-reuse-profile-trial.patch` with the contiguous segment trial. Set `OCERZ_WMGL_VERTEX_REUSE_LOG` to `vertex-reuse.ns` and keep the usual GPU completion log. Run `python3 benchmarks/summarize-raid-vertex-reuse.py CAPTURE_DIR` after the monitor and client finish. A focused four-frame test verifies repeated geometry, a vertex parameter change and a fragment-only switch. The renderer passed **340** GPU tests with the probe off.
+
+### Measure reuse of position inputs separately
+
+The diagnostic works backward from the ARB writes to `result.position`, following temporary-register and address dependencies. It compares the retained instruction slice and the parameters, matrices and fixed state it needs. Dynamically indexed arrays contribute their full accessible range. Tracking whole source registers and the full fixed block where required makes this a conservative signature.
+
+| Matching submitted vertex references | First capture | Second capture |
+| --- | ---: | ---: |
+| Position inputs within the frame | 0.20% | 0.23% |
+| Position inputs from the previous frame | 20.77% | 20.31% |
+| Full vertex inputs from the previous frame | 9.19% | 9.12% |
+
+The two 30-second windows covered **6,789** consecutive verified outputs. The position probe covered every submitted reference in the observed direct ARB paths. Both runs verified the camera, overlapping spell effects, all 26 timing rows, and zero visible trial windows or activations. The reported fractions count matching input signatures weighted by submitted references. [Live position-input measurements](results/raid-winemetalgl-headless-arb-position-input-reuse.json)
+
+Apply `patches/winemetalgl-arb-position-reuse-profile-trial.patch` after the vertex reuse probe. The same log variables and summarizer accept both record formats. A six-frame GPU test verified that changing color preserves the position match, changing the position uniform breaks it, and a different program with the same position calculation preserves it. The renderer passed **340** GPU tests with the probe off.

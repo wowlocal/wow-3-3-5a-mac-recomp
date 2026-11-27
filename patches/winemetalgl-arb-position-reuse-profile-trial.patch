@@ -1,0 +1,311 @@
+diff --git a/src/core/compat/arb_program.h b/src/core/compat/arb_program.h
+--- a/src/core/compat/arb_program.h
++++ b/src/core/compat/arb_program.h
+@@ -50,6 +50,14 @@
+ struct Instruction;
+ struct Operand;
+
++struct PositionInputs {
++    uint64_t signature = 0;
++    std::vector<int> env, local;
++    bool fixed = false;
++    uint8_t matrices = 0;
++    bool complete = false;
++};
++
+ struct Parsed {
+     Kind kind = Kind::Vertex;
+     bool ok = false;
+@@ -80,6 +88,7 @@
+     int envCount = 0, localCount = 0;  // highest index used + 1
+     uint8_t programMatrices = 0, programMatrixInverses = 0;  // bit per program matrix
+
++    PositionInputs position;
+     std::shared_ptr<const struct Body> body;
+ };
+
+diff --git a/src/core/compat/arb_program.cpp b/src/core/compat/arb_program.cpp
+--- a/src/core/compat/arb_program.cpp
++++ b/src/core/compat/arb_program.cpp
+@@ -7,6 +7,8 @@
+ #include <cstdlib>
+ #include <cstring>
+ #include <map>
++#include <functional>
++#include <string_view>
+ #include <set>
+
+ #include "core/gl/types.h"
+@@ -63,6 +65,7 @@
+ struct Instruction {
+     Op op = Op::MOV;
+     bool saturate = false;
++    uint8_t sourceCount = 0;
+     Dest dst;
+     Operand src[3];
+     int unit = 0;  // TEX/TXB/TXP
+@@ -1089,6 +1092,7 @@
+         Instruction in;
+         in.op = info->op;
+         in.saturate = saturate;
++        in.sourceCount = static_cast<uint8_t>(info->sources);
+         ++out_.instructions;
+         switch (info->shape) {
+         case 'k':
+@@ -1583,6 +1587,103 @@
+
+ }  // namespace
+
++namespace {
++
++PositionInputs collectPositionInputs(const Parsed& program) {
++    PositionInputs result;
++    uint64_t hash = 0xcbf29ce484222325ull;
++    const auto add = [&](uint64_t n) { hash = (hash ^ n) * 0x100000001b3ull; };
++    const auto text = [&](std::string_view value) { add(std::hash<std::string_view>{}(value)); };
++    if (program.positionInvariant) {
++        text("position-invariant");
++        result.signature = hash;
++        result.fixed = true;
++        result.complete = true;
++        return result;
++    }
++    std::set<int> env, local;
++    const auto expression = [&](const std::string& value) {
++        text(value);
++        const auto parameter = [&](bool environment, std::set<int>& indices) {
++            const std::string prefix = std::string(envName(program.kind, environment)) + "[";
++            size_t start = 0;
++            while ((start = value.find(prefix, start)) != std::string::npos) {
++                start += prefix.size();
++                char* end;
++                const long index = std::strtol(value.c_str() + start, &end, 10);
++                const int limit = environment ? Limits::kEnvParameters : Limits::kLocalParameters;
++                if (end != value.c_str() + start && *end == ']' && index >= 0 && index < limit)
++                    indices.insert(static_cast<int>(index));
++            }
++        };
++        parameter(true, env);
++        parameter(false, local);
++        if (value.find("gl_") != std::string::npos) result.fixed = true;
++        if (value.find("arb_pm") != std::string::npos)
++            result.matrices = program.programMatrices | program.programMatrixInverses;
++    };
++    const Body& body = *program.body;
++    std::array<uint8_t, Limits::kTemporaries> temps{};
++    unsigned needPosition = 15;
++    bool needAddress = false;
++    for (auto it = body.code.rbegin(); it != body.code.rend(); ++it) {
++        const Instruction& in = *it;
++        const Dest& dest = in.dst;
++        unsigned live = 0;
++        if (dest.base == Dest::Out && dest.output == Output::Position) {
++            live = needPosition & dest.mask;
++            needPosition &= ~live;
++        } else if (dest.base == Dest::Temp) {
++            live = temps[dest.index] & dest.mask;
++            temps[dest.index] &= ~live;
++        } else if (dest.base == Dest::Address) {
++            live = needAddress;
++            needAddress = false;
++        }
++        if (!live) continue;
++        add(static_cast<uint8_t>(in.op)); add(dest.base); add(dest.index); add(dest.mask); add(live);
++        for (int n = 0; n < in.sourceCount; ++n) {
++            const Operand& src = in.src[n];
++            add(src.base);
++            add(src.negate); add(src.extended);
++            for (int c = 0; c < 4; ++c) {
++                add(src.swizzle[c]); add(src.extSelect[c]); add(src.extNegate[c]);
++            }
++            switch (src.base) {
++            case Operand::Temp:
++                add(src.index);
++                // Track whole source registers. Multi-lane instructions can read
++                // a lane other than the component they write.
++                temps[src.index] = 15;
++                break;
++            case Operand::Address: needAddress = true; break;
++            case Operand::In:
++                add(static_cast<uint8_t>(src.input)); add(src.index);
++                break;
++            case Operand::Static: expression(src.expr); break;
++            case Operand::Array: {
++                const auto& array = body.arrays[static_cast<size_t>(src.index)];
++                add(src.relative >= 0);
++                if (src.relative < 0) expression(array.elements[static_cast<size_t>(src.offset)]);
++                else {
++                    add(src.offset);
++                    add(array.elements.size());
++                    needAddress = true;
++                    for (const auto& value : array.elements) expression(value);
++                }
++                break;
++            }
++            }
++        }
++    }
++    result.complete = needPosition == 0;
++    result.signature = hash;
++    result.env.assign(env.begin(), env.end());
++    result.local.assign(local.begin(), local.end());
++    return result;
++}
++}  // namespace
++
+ std::shared_ptr<const Parsed> parse(Kind kind, const char* source, size_t length) {
+     auto out = std::make_shared<Parsed>();
+     out->kind = kind;
+@@ -1595,6 +1696,8 @@
+     try {
+         Parser parser(kind, source, length, *out);
+         parser.run();
++        static const bool profile = std::getenv("OCERZ_WMGL_VERTEX_REUSE_LOG") != nullptr;
++        if (kind == Kind::Vertex && profile) out->position = collectPositionInputs(*out);
+         out->ok = true;
+     } catch (const ParseError& e) {
+         out->ok = false;
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2293,11 +2293,12 @@
+         if (attrib.buffer) buffer(*attrib.buffer);
+         else tracked = false;
+     }
+-    uint64_t keys[4] = {address, version, 0, 0};
++    uint64_t keys[5] = {address, version, 0, 0, 0};
+     mix(keys[1], address);
+     int keyCount = tracked ? 2 : 1;
+     if (tracked) {
+         bool complete = true;
++        uint64_t fixed = 0;
+         keys[2] = keys[1];
+         mix(keys[2], constants);
+         mix(keys[2], bytes(encoderState_.driver, sizeof(encoderState_.driver)));
+@@ -2329,7 +2330,10 @@
+             if (static_cast<int>(b) == program.link.fixedFunctionBlock) {
+                 uint64_t generation = 0;
+                 const auto& data = compat::fixedFunctionBlock(ctx_, generation);
+-                if (!data.empty()) mix(keys[2], bytes(data.data(), data.size()));
++                if (!data.empty()) {
++                    fixed = bytes(data.data(), data.size());
++                    mix(keys[2], fixed);
++                }
+             } else {
+                 complete = false;
+             }
+@@ -2339,6 +2343,28 @@
+             mix(keys[3], linkedUniforms);
+             mix(keys[3], bytes(&key, sizeof(key)));
+             keyCount = 4;
++            const auto& position = parsed.position;
++            if (position.complete) {
++                keys[4] = keys[1];
++                mix(keys[4], constants);
++                mix(keys[4], position.signature);
++                mix(keys[4], bytes(encoderState_.driver, sizeof(encoderState_.driver)));
++                mix(keys[4], key.geometryPass); mix(keys[4], key.positionOnly); mix(keys[4], key.cull);
++                for (int i : position.env) mix(keys[4], bytes(ctx_.arb.env[0][i].data(), sizeof(compat::Vec4)));
++                for (int i : position.local) mix(keys[4], bytes(obj.local[i].data(), sizeof(compat::Vec4)));
++                for (int i = 0; i < FixedState::kProgramMatrices; ++i) {
++                    if (!(position.matrices & (1u << i))) continue;
++                    const auto& matrix = ctx_.state.fixed.programMatrix[static_cast<size_t>(i)].back();
++                    mix(keys[4], bytes(&matrix, sizeof(matrix)));
++                }
++                if (position.fixed && !fixed) {
++                    uint64_t generation = 0;
++                    const auto& data = compat::fixedFunctionBlock(ctx_, generation);
++                    if (!data.empty()) fixed = bytes(data.data(), data.size());
++                }
++                if (position.fixed) mix(keys[4], fixed);
++                keyCount = 5;
++            }
+         }
+     }
+     stream.noteVertexReuse(references, keys, keyCount);
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -67,10 +67,10 @@
+ }
+
+ struct CommandStream::VertexReuse {
+-    std::array<std::unordered_set<uint64_t>, 4> current, previous;
+-    std::array<uint64_t, 4> sameFrame{}, previousFrame{};
++    std::array<std::unordered_set<uint64_t>, 5> current, previous;
++    std::array<uint64_t, 5> sameFrame{}, previousFrame{};
+     uint64_t draws = 0, references = 0;
+-    uint64_t trackedDraws = 0, trackedReferences = 0, completeReferences = 0;
++    uint64_t trackedDraws = 0, trackedReferences = 0, completeReferences = 0, positionReferences = 0;
+ };
+
+ static FILE* vertexReuseLog() {
+@@ -97,7 +97,8 @@
+         ++frame.trackedDraws;
+         frame.trackedReferences += references;
+     }
+-    if (keyCount == 4) frame.completeReferences += references;
++    if (keyCount >= 4) frame.completeReferences += references;
++    if (keyCount == 5) frame.positionReferences += references;
+     for (int i = 0; i < keyCount; ++i) {
+         if (!frame.current[i].insert(keys[i]).second) frame.sameFrame[i] += references;
+         if (frame.previous[i].count(keys[i])) frame.previousFrame[i] += references;
+@@ -107,21 +108,22 @@
+ void CommandStream::finishVertexReuseFrame(uint64_t stream, uint64_t sequence, uint64_t draws) {
+     if (!vertexReuse_) return;
+     VertexReuse& frame = *vertexReuse_;
+-    std::fprintf(vertexReuseLog(), "%d %llu %llu %llu %llu %llu %llu %llu %llu",
++    std::fprintf(vertexReuseLog(), "%d %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+                  getpid(), (unsigned long long)stream, (unsigned long long)sequence,
+                  (unsigned long long)draws, (unsigned long long)frame.draws,
+                  (unsigned long long)frame.references, (unsigned long long)frame.trackedDraws,
+-                 (unsigned long long)frame.trackedReferences, (unsigned long long)frame.completeReferences);
++                 (unsigned long long)frame.trackedReferences, (unsigned long long)frame.completeReferences,
++                 (unsigned long long)frame.positionReferences);
+     for (uint64_t count : frame.sameFrame) std::fprintf(vertexReuseLog(), " %llu", (unsigned long long)count);
+     for (uint64_t count : frame.previousFrame) std::fprintf(vertexReuseLog(), " %llu", (unsigned long long)count);
+     std::fputc('\n', vertexReuseLog());
+-    for (int i = 0; i < 4; ++i) {
++    for (int i = 0; i < 5; ++i) {
+         frame.previous[i].swap(frame.current[i]);
+         frame.current[i].clear();
+     }
+     frame.sameFrame = {};
+     frame.previousFrame = {};
+-    frame.draws = frame.references = frame.trackedDraws = frame.trackedReferences = frame.completeReferences = 0;
++    frame.draws = frame.references = frame.trackedDraws = frame.trackedReferences = frame.completeReferences = frame.positionReferences = 0;
+ }
+
+ CommandStream::CommandStream(Queue& queue) : queue_(queue) {}
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -480,7 +480,7 @@
+     identity();
+     load(GL_VERTEX_PROGRAM_ARB,
+          "!!ARBvp1.0\n"
+-         "MOV result.position, vertex.position;\n"
++         "ADD result.position, vertex.position, program.env[1];\n"
+          "MOV result.color, program.env[0];\n"
+          "END\n");
+     GLuint buffers[2] = {};
+@@ -511,6 +511,19 @@
+     glEnable(GL_FRAGMENT_PROGRAM_ARB);
+     glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
+     CHECK(pixel(32, 32, kBlue));
++    CHECK(wmgl_surface_swap(fixture.surface));
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 1, 0.125f, 0, 0, 0);
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
++    CHECK(pixel(32, 32, kBlue));
++    CHECK(wmgl_surface_swap(fixture.surface));
++    load(GL_VERTEX_PROGRAM_ARB,
++         "!!ARBvp1.0\n"
++         "ADD result.position, vertex.position, program.env[1];\n"
++         "MOV result.color, program.env[2];\n"
++         "END\n");
++    glProgramEnvParameter4fARB(GL_VERTEX_PROGRAM_ARB, 2, 0, 1, 0, 1);
++    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, nullptr);
++    CHECK(pixel(32, 32, kGreen));
+     CHECK(wmgl_surface_swap(fixture.surface));
+     glDisable(GL_FRAGMENT_PROGRAM_ARB);
+     glDisable(GL_VERTEX_PROGRAM_ARB);
