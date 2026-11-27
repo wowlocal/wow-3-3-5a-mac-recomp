@@ -1,0 +1,87 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Instruments thread scheduling and hardware CPU counters during the live headless raid. The GPU window includes the traced interval and is diagnostic.",
+  "base_commit": "29ec58ccb690c5fe43548ceefbe67b67d4b3dc18",
+  "macos": "27.2.1 (26B131)",
+  "instruments": "27.0 (27A266a)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "verified_timed_script_rows": 26,
+  "process_isolation_verified": true,
+  "visual_readback_verified": true,
+  "visible_trial_windows": 0,
+  "focus_activations": 0,
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "trace": {
+    "template": "CPU Counters",
+    "configured_mode": "CPU Bottlenecks",
+    "requested_duration_seconds": 20,
+    "reported_duration_seconds": 20.872181,
+    "end_reason": "Time limit reached"
+  },
+  "gpu_window": {
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 5844,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 43996141625,
+    "measurement_duration_ns": 44000000000,
+    "average_completed_fps": 132.79545454545453,
+    "p99_gpu_completion_gap_ns": 12884875,
+    "min_draws": 668,
+    "max_draws": 952
+  },
+  "scheduling": {
+    "recorded_threads": 15,
+    "main_thread_state_ns": {
+      "Running": 20570386728,
+      "Interrupted": 183494033,
+      "Blocked": 105734026,
+      "Preempted": 7480505,
+      "Runnable": 5085885
+    },
+    "main_thread_state_total_ns": 20872181177,
+    "main_thread_running_percent": 98.55408284145904,
+    "main_thread_running_ns_by_core": {
+      "CPU 10 (P Core)": 301131912,
+      "CPU 11 (P Core)": 215060072,
+      "CPU 3 (E Core)": 20375,
+      "CPU 4 (P Core)": 4581991242,
+      "CPU 5 (P Core)": 4613128587,
+      "CPU 6 (P Core)": 4048224032,
+      "CPU 7 (P Core)": 4850127255,
+      "CPU 8 (P Core)": 1106611465,
+      "CPU 9 (P Core)": 484089747,
+      "Unknown": 370002041
+    },
+    "other_threads_running_ns": 2228667238
+  },
+  "counters": {
+    "complete_intervals": 44497,
+    "incomplete_or_zero_cycle_intervals": 0,
+    "complete_intervals_by_core_type": {
+      "Performance": 44497
+    },
+    "trace_relative_bounds_ns": [
+      366396500,
+      20871975625
+    ],
+    "complete_interval_duration_ns": 20380771657,
+    "cycles": 78981387623,
+    "cycle_weighted_bandwidth_shares": {
+      "useful": 0.3310388170574484,
+      "delivery": 0.28481280425432876,
+      "processing": 0.30804031730457554,
+      "discarded": 0.07052609797702944
+    }
+  }
+}

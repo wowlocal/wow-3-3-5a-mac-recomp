@@ -1496,3 +1496,32 @@ In the separate in-world diagnostic, the logger recorded **43,540,584** physical
 | Unfair lock with thread-local recursion | 136.00 | 12.80 ms |
 
 Throughput rose **3.35 and 2.95 FPS** in the two pairs. P99 rose **0.10 ms** and fell **0.10 ms**, respectively. Use the option for follow-up throughput comparisons. The four warmed 60-second runs verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid A/B and lock validation](results/raid-winemetalgl-fast-share-lock-ab.json)
+
+### Measure CPU pipeline limits on the optimized raid baseline
+
+The live client ran the full 24-caster raid with the native-width index upload, guest autorelease pool, and fast share lock enabled. Instruments recorded a separate CPU Counters trace after the world readback and fixture checks. The main thread ran for **20.57 of 20.87 seconds** (**98.55%**), including **20.20 seconds** attributed to performance cores. The blocked state accounted for **106 ms**. The headless client kept the saved camera and all 26 cast timings, delivered consecutive GPU completions, and recorded zero window activations.
+
+| Main-thread CPU Counters category | Cycle-weighted share of sustainable instruction bandwidth |
+| --- | ---: |
+| Useful | 33.10% |
+| Instruction processing bottleneck | 30.80% |
+| Instruction delivery bottleneck | 28.48% |
+| Discarded | 7.05% |
+
+The estimate weights each complete interval by its recorded core cycles. The **44,497** nonoverlapping intervals cover **20.38 seconds** of main-thread execution. Categories sum to **99.44%** in the export. They describe instruction bandwidth. This mode leaves instruction-cache misses, data-cache misses, dependency stalls, and branch behavior unresolved within their respective categories. The concurrent GPU window includes profiling overhead and serves as a workload check. [Raid trace summary](results/raid-winemetalgl-fast-share-lock-cpu-trace.json) · [Apple's CPU Counters guide](https://developer.apple.com/documentation/xcode/addressing-cpu-bottlenecks)
+
+Previous guest-stack captures attributed **41%** of sampled CPU time to the two call trees rooted at `0x73f8e0` and `0x97dbc0`. A serial model starting at 136 FPS estimates about **171 FPS** with a twofold speedup across both trees and **196 FPS** with a fourfold speedup, assuming the same CPU share and all other frame costs fixed. The model predicts average throughput only. It gives a scale for testing function-level ARM64 optimizations across call boundaries. [Guest stack captures](results/raid-aarchx-headless-i386-inclusive-stack-profile.json) · [Uninstrumented throughput baseline](results/raid-winemetalgl-fast-share-lock-ab.json)
+
+Attach to the isolated client PID after the fixture check and export the two tables separately. The published summary carries timings and counts from the target process. Trace bundles and full exports stay local.
+
+```sh
+xcrun xctrace record --no-prompt --template 'CPU Counters' --attach "$pid" \
+    --time-limit 20s --output cpu.trace
+xcrun xctrace export --input cpu.trace \
+    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="thread-state"]' \
+    --output thread-state.xml
+xcrun xctrace export --input cpu.trace \
+    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="MetricTableForThread"]' \
+    --output thread-metrics.xml
+python3 benchmarks/summarize-raid-cpu-trace.py thread-state.xml thread-metrics.xml "$pid"
+```
