@@ -1,8 +1,8 @@
 diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
-index 0033e65..67dea5d 100644
+index 0033e65..cb726ce 100644
 --- a/tests/unit/test_m32.c
 +++ b/tests/unit/test_m32.c
-@@ -817,6 +817,225 @@ static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
+@@ -817,6 +817,309 @@ static void bench_wmgl_mapped_writes(const char *gl, unsigned target)
             TIMED, (unsigned long long)elapsed, (double)elapsed / TIMED);
  }
  
@@ -225,10 +225,94 @@ index 0033e65..67dea5d 100644
 +    dlclose(library);
 +}
 +
++static void bench_wmgl_unpack(const char *gl)
++{
++    enum { UNPACK = 0x88EC, TEX2D = 0x0DE1, SIZE = 8 * 1024 * 1024,
++           WIDTH = 32, HEIGHT = 32, BYTES = WIDTH * HEIGHT * 4, WARMUP = 32, TIMED = 512 };
++    const char *flag = getenv("OCERZ_WMGL_GUEST_UNPACK_STORAGE");
++    const int guestBacked = flag && !strcmp(flag, "1");
++    cross(gl, "_glGenTextures", 2, (uint32_t[]){ 2, DATA + 0xd30 });
++    uint32_t textures[] = {m32_rd(DATA + 0xd30), m32_rd(DATA + 0xd34)};
++    check("allocate two Metal textures to receive unpack uploads", textures[0] && textures[1]);
++    if (!textures[0] || !textures[1]) return;
++    for (unsigned i = 0; i < 2; ++i) {
++        cross(gl, "_glBindTexture", 2, (uint32_t[]){ TEX2D, textures[i] });
++        cross(gl, "_glTexImage2D", 9, (uint32_t[]){ TEX2D, 0, 0x8058, WIDTH, HEIGHT, 0, 0x1908, 0x1401, 0 });
++    }
++
++    cross(gl, "_glGenBuffers", 2, (uint32_t[]){ 1, DATA + 0xd3c });
++    uint32_t pbo = m32_rd(DATA + 0xd3c);
++    check("allocate the 8 MiB unpack buffer", pbo != 0);
++    if (!pbo) return;
++    cross(gl, "_glBindBuffer", 2, (uint32_t[]){ UNPACK, pbo });
++    call("_glBufferData", 4, (uint32_t[]){ UNPACK, SIZE, 0, 0x88E0 /* GL_STREAM_DRAW */ });
++    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ UNPACK, 0x8A13, 0 });
++    cross(gl, "_glBufferParameteriAPPLE", 3, (uint32_t[]){ UNPACK, 0x8A12, 0 });
++    check("set the unpack buffer's explicit flush mode", cross(gl, "_glGetError", 0, NULL) == 0);
++
++    uint64_t start = 0;
++    for (unsigned i = 0; i < WARMUP + TIMED; i++) {
++        if (i == WARMUP)
++            start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++        uint32_t mapped = call("_glMapBuffer", 2, (uint32_t[]){ UNPACK, 0x88B9 });
++        if (!mapped) {
++            check("map the unpack buffer", 0);
++            return;
++        }
++        if (i == 0) {
++            check("the unpack buffer uses the selected storage path",
++                  (m32_wmgl_guest_buffer(m32_h(mapped), SIZE) == mapped) == guestBacked);
++            call("_glGetBufferPointerv", 3, (uint32_t[]){ UNPACK, 0x88BD, DATA + 0xd38 });
++            check("the unpack pointer round-trips", m32_rd(DATA + 0xd38) == mapped);
++        }
++        memset(m32_h(mapped), i & 255, BYTES);
++        call("_glFlushMappedBufferRangeAPPLE", 3, (uint32_t[]){ UNPACK, 0, BYTES });
++        if (call("_glUnmapBuffer", 1, (uint32_t[]){ UNPACK }) != 1) {
++            check("unmap during the texture upload measurement", 0);
++            return;
++        }
++    }
++    const uint64_t elapsed = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start;
++
++    // A zero pointer denotes offset zero while the unpack buffer is bound.
++    cross(gl, "_glBindTexture", 2, (uint32_t[]){ TEX2D, textures[0] });
++    cross(gl, "_glTexSubImage2D", 9, (uint32_t[]){ TEX2D, 0, 0, 0, WIDTH, HEIGHT, 0x1908, 0x1401, 0 });
++
++    // Queue another upload after the old storage is orphaned, then read
++    // back both textures. The first copy must retain the old contents.
++    call("_glBufferData", 4, (uint32_t[]){ UNPACK, SIZE, 0, 0x88E0 });
++    uint32_t second = call("_glMapBuffer", 2, (uint32_t[]){ UNPACK, 0x88B9 });
++    check("map the unpack buffer after storage replacement", second != 0);
++    if (!second) return;
++    memset(m32_h(second), 0x73, BYTES);
++    call("_glFlushMappedBufferRangeAPPLE", 3, (uint32_t[]){ UNPACK, 0, BYTES });
++    check("unmap the replacement storage", call("_glUnmapBuffer", 1, (uint32_t[]){ UNPACK }) == 1);
++    cross(gl, "_glBindTexture", 2, (uint32_t[]){ TEX2D, textures[1] });
++    cross(gl, "_glTexSubImage2D", 9, (uint32_t[]){ TEX2D, 0, 0, 0, WIDTH, HEIGHT, 0x1908, 0x1401, 0 });
++    cross(gl, "_glBindBuffer", 2, (uint32_t[]){ UNPACK, 0 });
++
++    const unsigned expected[] = {(WARMUP + TIMED - 1) & 255, 0x73};
++    unsigned matches = 0;
++    for (unsigned i = 0; i < 2; ++i) {
++        cross(gl, "_glBindTexture", 2, (uint32_t[]){ TEX2D, textures[i] });
++        unsigned char *pixels = m32_h(DATA + 0x6000);
++        memset(pixels, 0xff, BYTES);
++        cross(gl, "_glGetTexImage", 5, (uint32_t[]){ TEX2D, 0, 0x1908, 0x1401, DATA + 0x6000 });
++        for (unsigned j = 0; j < BYTES; ++j)
++            matches += pixels[j] == expected[i];
++    }
++    check("both Metal texture uploads preserve their bytes across storage replacement", matches == 2 * BYTES);
++    check("texture transfer reports no GL error", cross(gl, "_glGetError", 0, NULL) == 0);
++    printf("wmgl-unpack: %u writes in %llu ns, %u matched texture bytes\n",
++           TIMED, (unsigned long long)elapsed, matches);
++    call("_glDeleteBuffers", 2, (uint32_t[]){ 1, DATA + 0xd3c });
++    cross(gl, "_glDeleteTextures", 2, (uint32_t[]){ 2, DATA + 0xd30 });
++}
++
  static void test_wmgl_storage(void)
  {
      enum { ARRAY = 0x8892, DYNAMIC = 0x88E8, READ_WRITE = 0x88BA, SIZE = 2 * 1024 * 1024 };
-@@ -880,6 +1099,8 @@ static void test_wmgl_storage(void)
+@@ -880,6 +1183,8 @@ static void test_wmgl_storage(void)
      check("Metal draws from the guest-written vertices", m32_rd(DATA + 0xc58) == 0xff2bc911);
      if (getenv("OCERZ_WMGL_MAP_BENCH"))
          bench_wmgl_mapped_writes(gl, ARRAY);
@@ -237,3 +321,12 @@ index 0033e65..67dea5d 100644
  
      uint32_t old = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
      check("map the original buffer before replacing its storage", old != 0);
+@@ -915,6 +1220,8 @@ static void test_wmgl_storage(void)
+         check("the fallback path updates the small buffer", m32_rd(DATA + 0xc60) == 0x11223344);
+     }
+     call("_glDeleteBuffers", 2, (uint32_t[]){ 2, DATA + 0xc30 });
++    if (getenv("OCERZ_WMGL_UNPACK_BENCH"))
++        bench_wmgl_unpack(gl);
+     call("_aglSetCurrentContext", 1, (uint32_t[]){ 0 });
+     check("destroy the offscreen trial context", call("_aglDestroyContext", 1, (uint32_t[]){ ctx }) == 1);
+     call("_aglDestroyPixelFormat", 1, (uint32_t[]){ pf });

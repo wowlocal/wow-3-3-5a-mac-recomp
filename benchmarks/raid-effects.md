@@ -250,3 +250,13 @@ The opt-in capability patch advertises `GL_APPLE_flush_buffer_range` in compatib
 With the extension visible in both arms, both settings of the direct-upload trial rendered the original login at 1365 × 768 and completed a five-second GPU smoke window with consecutive sequence numbers. The guard and allocator were available at startup. Direct-upload activation remains an in-world check. The 336 GPU tests passed with both trial flags enabled. [Client capability check](results/winemetalgl-apple-buffer-capability.json)
 
 Apply `patches/winemetalgl-apple-buffer-capability-trial.patch` after the upload patch to reproduce the capability experiment. Set `OCERZ_WMGL_ADVERTISE_APPLE_BUFFER_RANGE=1` to expose the extension. The chosen cap applies to the A/B diagnostic. Set `OCERZ_WMGL_TRACE_APPLE_SUBDATA=1` to log the first eligible direct upload.
+
+## Guest-backed Metal texture uploads
+
+The opt-in unpack path places 8 MiB allocations in the guest address space using the existing Metal storage callback. The unpack flag is independent of the 2 MiB vertex flag. On a matching mapping, AArchX can hand the guest the same pages that Metal reads during the upload.
+
+Four interleaved headless runs per mode measured 512 mapped 4 KiB writes each. The median fell from **111.6 µs to 0.35 µs per mapped write**. After the timed loop, the test queued a GPU texture upload, replaced the unpack buffer storage, and queued a second upload. Both textures matched all **8,192** expected readback bytes. The timed numbers cover the map, fill, flush, and unmap path.
+
+The original login screen used this path. Over the first 128 unpack maps, the copy control copied **1 GiB** into the guest and recorded **14.70 ms** in those copies. The candidate logged 128 direct 8 MiB mappings, rendered the login screen at 1365 × 768, and recorded a consecutive five-second GPU smoke window. This evidence covers startup and texture uploads. The live raid still needs its own performance and visual verification. [Unpack storage measurements](results/winemetalgl-unpack-storage-ab.json)
+
+Apply `patches/aarchx-wmgl-unpack-storage-trial.patch` after the vertex storage patch and rebuild AArchX. Use `OCERZ_WMGL_GUEST_UNPACK_STORAGE=1` on launch. For the headless comparison, use the updated AArchX draw benchmark patch and run `tests/unit/bin/test_m32 wmgl-storage` with `OCERZ_WMGL_UNPACK_BENCH=1` while alternating the unpack storage flag.

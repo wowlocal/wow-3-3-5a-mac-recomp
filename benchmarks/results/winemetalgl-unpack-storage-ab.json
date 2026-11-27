@@ -1,0 +1,84 @@
+{
+  "prototype": "AArchX guest-backed WineMetalGL unpack storage",
+  "mapped_buffer_bytes": 8388608,
+  "explicit_flush_bytes": 4096,
+  "warmup_writes": 32,
+  "headless_runs_by_unpack_storage_toggle": {
+    "0": [
+      {
+        "writes": 512,
+        "wall_ns": 53718916,
+        "matched_texture_bytes": 8192
+      },
+      {
+        "writes": 512,
+        "wall_ns": 57155625,
+        "matched_texture_bytes": 8192
+      },
+      {
+        "writes": 512,
+        "wall_ns": 57150583,
+        "matched_texture_bytes": 8192
+      },
+      {
+        "writes": 512,
+        "wall_ns": 57927209,
+        "matched_texture_bytes": 8192
+      }
+    ],
+    "1": [
+      {
+        "writes": 512,
+        "wall_ns": 179791,
+        "matched_texture_bytes": 8192
+      },
+      {
+        "writes": 512,
+        "wall_ns": 177042,
+        "matched_texture_bytes": 8192
+      },
+      {
+        "writes": 512,
+        "wall_ns": 187375,
+        "matched_texture_bytes": 8192
+      },
+      {
+        "writes": 512,
+        "wall_ns": 178291,
+        "matched_texture_bytes": 8192
+      }
+    ]
+  },
+  "headless_median_us_per_mapped_write": {
+    "0": 111.62715625,
+    "1": 0.349689453125
+  },
+  "texture_lifetime_check": "two GPU uploads from different stores of the same buffer, both read back intact",
+  "background_login": {
+    "control_first_128_whole_unpack_copy_bytes": 1073741824,
+    "control_first_128_unpack_copy_ns": 14697000,
+    "candidate_direct_8mib_maps_witnessed": 128,
+    "candidate_gpu_smoke": {
+      "stream": 1,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 146,
+      "first_sequence": 250,
+      "last_sequence": 395,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 4973860291,
+      "measurement_duration_ns": 5000000000,
+      "average_completed_fps": 29.0,
+      "p99_gpu_completion_gap_ns": 43033875,
+      "min_draws": 86,
+      "max_draws": 93
+    }
+  },
+  "default_aarchx_checks": {
+    "general": 806,
+    "carbon": 4296
+  },
+  "unpack_only_headless_checks": 3420
+}

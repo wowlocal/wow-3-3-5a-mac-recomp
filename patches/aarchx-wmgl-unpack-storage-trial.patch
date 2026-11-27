@@ -1,0 +1,96 @@
+diff --git a/src/m32_gl.c b/src/m32_gl.c
+index fba3099..7030771 100644
+--- a/src/m32_gl.c
++++ b/src/m32_gl.c
+@@ -479,6 +479,12 @@ static int map_common(struct OcerzVM *vm, OcerzCPU *cpu, unsigned target, uint32
+             entry->direct = 1;
+             if (whole)
+                 entry->bufsize = size;
++            if (g_log_map_stats && whole && target == 0x88EC && size == 8 * 1024 * 1024) {
++                static uint64_t unpackDirectMaps;
++                uint64_t count = __atomic_add_fetch(&unpackDirectMaps, 1, __ATOMIC_RELAXED);
++                if (count == 1 || count == 128 || (count & 4095) == 0)
++                    fprintf(stderr, "ocerz: WineMetalGL guest-backed 8 MiB unpack maps=%" PRIu64 "\n", count);
++            }
+             RET(direct);
+         }
+     }
+diff --git a/src/m32_wmgl.m b/src/m32_wmgl.m
+index ba6f1bf..90da1ec 100644
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -30,6 +30,7 @@
+ } driver;
+ static int format;
+ static int guestBufferStorage;
++static int guestUnpackStorage;
+ 
+ typedef struct GuestBuffer {
+     uint32_t start;
+@@ -41,9 +42,11 @@
+ 
+ static void *allocate_guest_buffer(size_t size)
+ {
+-    // The live raid trace identified a single 2 MiB rolling vertex buffer.
+-    // Metal supplies ordinary allocations for the other sizes in this trial.
+-    if (size != 2 * 1024 * 1024 || !ocerz_guest_base)
++    // The traces identified a 2 MiB vertex store and 8 MiB texture uploads.
++    // The two sizes have independent trial flags.
++    const int vertex = size == 2 * 1024 * 1024 && guestBufferStorage;
++    const int unpack = size == 8 * 1024 * 1024 && guestUnpackStorage;
++    if ((!vertex && !unpack) || !ocerz_guest_base)
+         return NULL;
+     uint64_t start = ocerz_map_anywhere_aligned(size, PROT_READ | PROT_WRITE, 65536);
+     if (!start)
+@@ -62,9 +65,11 @@
+     *buffer = (GuestBuffer){ .start = (uint32_t)start, .size = size, .next = guestBuffers };
+     guestBuffers = buffer;
+     pthread_mutex_unlock(&guestBuffersLock);
+-    static unsigned allocations;
+-    if (__atomic_add_fetch(&allocations, 1, __ATOMIC_RELAXED) == 1)
+-        fprintf(stderr, "ocerz: WineMetalGL allocated its first guest-backed 2 MiB buffer\n");
++    static unsigned vertexAllocations, unpackAllocations;
++    unsigned *allocations = vertex ? &vertexAllocations : &unpackAllocations;
++    if (__atomic_add_fetch(allocations, 1, __ATOMIC_RELAXED) == 1)
++        fprintf(stderr, "ocerz: WineMetalGL allocated its first guest-backed %zu MiB buffer\n",
++                size / (1024 * 1024));
+     return m32_h((uint32_t)start);
+ }
+ 
+@@ -86,11 +91,11 @@ static void release_guest_buffer(void *host, size_t size)
+     }
+ }
+ 
+-int m32_wmgl_guest_storage_enabled(void) { return guestBufferStorage; }
++int m32_wmgl_guest_storage_enabled(void) { return guestBufferStorage || guestUnpackStorage; }
+ 
+ uint32_t m32_wmgl_guest_buffer(const void *host, size_t size)
+ {
+-    if (!guestBufferStorage || !host || !size)
++    if (!m32_wmgl_guest_storage_enabled() || !host || !size)
+         return 0;
+     const uint64_t address = (uintptr_t)host;
+     if (address <= ocerz_guest_base || address - ocerz_guest_base >= M32_HANDLE_LO)
+@@ -169,7 +174,10 @@ static void initialize(void)
+         exit(2);
+     }
+     const char *storage = getenv("OCERZ_WMGL_GUEST_STORAGE");
+-    if (storage && !strcmp(storage, "1")) {
++    const char *unpack = getenv("OCERZ_WMGL_GUEST_UNPACK_STORAGE");
++    guestBufferStorage = storage && !strcmp(storage, "1");
++    guestUnpackStorage = unpack && !strcmp(unpack, "1");
++    if (m32_wmgl_guest_storage_enabled()) {
+         void (*set_memory)(void *(*)(size_t), void (*)(void *, size_t)) =
+             (__typeof__(set_memory))dlsym(handle, "wmgl_set_optional_buffer_memory");
+         if (!set_memory) {
+@@ -177,8 +185,8 @@ static void initialize(void)
+             exit(2);
+         }
+         set_memory(allocate_guest_buffer, release_guest_buffer);
+-        guestBufferStorage = 1;
+-        fprintf(stderr, "ocerz: trial WineMetalGL guest buffer storage enabled\n");
++        fprintf(stderr, "ocerz: trial WineMetalGL guest buffer storage (vertex=%d, unpack=%d)\n",
++                guestBufferStorage, guestUnpackStorage);
+     }
+     fprintf(stderr, "ocerz: trial WineMetalGL core enabled (format %d)\n", format);
+ }
