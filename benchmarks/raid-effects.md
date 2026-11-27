@@ -719,3 +719,11 @@ A separate instrumented headless run counted **2.98 million** direct draws in te
 Across six warmed eight-second CPU reports, translated code accounted for **55.2–58.6%** on the sampled guest thread. Each report covered about 7.88 seconds of that thread’s CPU time. Import tracing resolved the largest runtime bucket to `_RunApplicationEventLoop`. Its callback stack can include game, bridge, and renderer work. [Guest CPU attribution](results/raid-winemetalgl-headless-vertex-path-profile.json)
 
 Apply `patches/winemetalgl-raid-lighting-profile-trial.patch` after the ARB pass-label patch. Set `WINEMETALGL_PROFILE_RAID_LIGHTING=1` and `WINEMETALGL_LOG=0,perf:info` for the diagnostic capture. For the guest CPU report, set `OCERZ_GUESTPROF=2000`, `OCERZ_GUESTPROF_PERIOD=8`, `OCERZ_GUESTPROF_HOT=1`, and `OCERZ_M32LOG=imports`. Collect throughput separately with these diagnostics disabled.
+
+### ARB vertex programs and Metal activity in the headless raid
+
+A separate 36-second draw sample ranked **24** loaded ARB vertex programs by submitted vertex references. The largest program accounted for **34.72%** of ARB vertex references with **65 assembly instructions** and **223 declared parameters**. The next largest accounted for **11.43%**, with **40 instructions** and **223 parameters**. Program resource counts describe the ARB assembly before Metal compilation. [Program metadata](results/raid-winemetalgl-headless-arb-program-profile.json)
+
+In the Metal trace from the same diagnostic launch, all **735** in-range GPU completions matched Metal fragment endpoints within **43 ns** after clock alignment. Headless trace frame tags describe individual command buffers. The analysis clips active intervals to consecutive output completion boundaries and measures their union per GPU channel. Across **734** consecutive gaps, vertex activity averaged **2.98 ms**, fragment activity **1.37 ms**, and the combined union **4.30 ms**. GPU work can overlap output boundaries. [Headless Metal trace summary](results/raid-winemetalgl-headless-arb-program-profile.json)
+
+Apply `patches/winemetalgl-raid-arb-program-profile-trial.patch` after the vertex-path profile patch and use the same diagnostics switch. The report records program identifiers and resource counts.

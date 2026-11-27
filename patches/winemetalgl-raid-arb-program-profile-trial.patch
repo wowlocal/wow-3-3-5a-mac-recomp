@@ -1,0 +1,75 @@
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -3,6 +3,7 @@
+ #include <algorithm>
+ #include <cmath>
+ #include <time.h>
++#include <map>
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+@@ -2248,7 +2249,15 @@
+     if (!enabled) return;
+
+     enum Path { PROGRAMMABLE, FIXED_UNLIT, FIXED_OTHER_LIGHT, FIXED_DIRECTIONAL, INDIRECT, PATH_COUNT };
++    struct ProgramTotal {
++        GLuint name = 0;
++        int instructions = 0, temporaries = 0, parameters = 0;
++        unsigned inputs = 0;
++        bool positionInvariant = false;
++        uint64_t draws = 0, references = 0;
++    };
+     struct Totals {
++        std::map<uint64_t, ProgramTotal> arb;
+         uint64_t draws[PATH_COUNT] = {};
+         uint64_t vertexReferences[PATH_COUNT] = {};
+         uint64_t first = 0;
+@@ -2256,10 +2265,11 @@
+     static thread_local Totals totals;
+     const auto& state = context.state;
+     const auto& fixed = state.fixed;
++    const bool arbVertex = !indirect && compat::arbVertexProgramActive(context);
+     Path path;
+     if (indirect)
+         path = INDIRECT;
+-    else if (!context.isCompat() || state.program || state.programPipeline || compat::arbVertexProgramActive(context))
++    else if (!context.isCompat() || state.program || state.programPipeline || arbVertex)
+         path = PROGRAMMABLE;
+     else if (!fixed.lighting)
+         path = FIXED_UNLIT;
+@@ -2274,6 +2284,21 @@
+     ++totals.draws[path];
+     if (!indirect && count > 0 && instances > 0)
+         totals.vertexReferences[path] += static_cast<uint64_t>(count) * instances;
++    if (arbVertex && count > 0 && instances > 0) {
++        const auto& object = compat::arbBound(context, 0);
++        auto& entry = totals.arb[object.serial];
++        if (!entry.draws) {
++            entry.name = object.name;
++            entry.instructions = object.parsed->instructions;
++            entry.temporaries = object.parsed->temporaries;
++            entry.parameters = object.parsed->parameters;
++            entry.inputs = __builtin_popcount(object.parsed->conventionalRead) +
++                           __builtin_popcount(object.parsed->genericRead);
++            entry.positionInvariant = object.parsed->positionInvariant;
++        }
++        ++entry.draws;
++        entry.references += static_cast<uint64_t>(count) * instances;
++    }
+     const uint64_t now = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+     if (!totals.first) totals.first = now;
+     if (now - totals.first >= 4'000'000'000ull) {
+@@ -2284,6 +2309,13 @@
+             WMGL_INFO(Perf, "raid lighting profile %llu %llu %s draws=%llu vertex_references=%llu",
+                       (unsigned long long)totals.first, (unsigned long long)now, names[i],
+                       (unsigned long long)totals.draws[i], (unsigned long long)totals.vertexReferences[i]);
++        for (const auto& [serial, program] : totals.arb)
++            WMGL_INFO(Perf, "raid ARB vertex profile %llu %llu name=%u serial=%llu instructions=%d "
++                      "temps=%d params=%d inputs=%u invariant=%u draws=%llu references=%llu",
++                      (unsigned long long)totals.first, (unsigned long long)now, program.name,
++                      (unsigned long long)serial, program.instructions, program.temporaries,
++                      program.parameters, program.inputs, program.positionInvariant,
++                      (unsigned long long)program.draws, (unsigned long long)program.references);
+         totals = {};
+     }
+ }

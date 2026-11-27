@@ -1,0 +1,172 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Separate instrumented run of the full live headless raid",
+  "viewport": [
+    1365,
+    768
+  ],
+  "caster_count": 24,
+  "camera": "Saved fixture anchor",
+  "trial_activation_notifications": 0,
+  "max_visible_trial_windows": 0,
+  "arb_vertex_programs": {
+    "n_intervals": 9,
+    "duration_seconds": 36.006690418,
+    "n_distinct_arb_vertex_program_loads": 24,
+    "all_arb_vertex_references": 950443869,
+    "all_arb_draws": 2333856,
+    "top_programs": [
+      {
+        "program_name": 2000013,
+        "load_serial": 14,
+        "assembly_instructions": 65,
+        "temporary_registers_declared": 4,
+        "declared_parameters": 223,
+        "conventional_and_generic_inputs_read": 5,
+        "position_invariant": false,
+        "draws": 219842,
+        "submitted_vertex_references": 329999064,
+        "share_of_arb_vertex_references": 0.3472052109160378
+      },
+      {
+        "program_name": 2000012,
+        "load_serial": 13,
+        "assembly_instructions": 40,
+        "temporary_registers_declared": 3,
+        "declared_parameters": 223,
+        "conventional_and_generic_inputs_read": 4,
+        "position_invariant": false,
+        "draws": 475218,
+        "submitted_vertex_references": 108619926,
+        "share_of_arb_vertex_references": 0.11428336753256493
+      },
+      {
+        "program_name": 2000063,
+        "load_serial": 64,
+        "assembly_instructions": 29,
+        "temporary_registers_declared": 2,
+        "declared_parameters": 24,
+        "conventional_and_generic_inputs_read": 4,
+        "position_invariant": false,
+        "draws": 130452,
+        "submitted_vertex_references": 70239084,
+        "share_of_arb_vertex_references": 0.0739013489285815
+      },
+      {
+        "program_name": 2000042,
+        "load_serial": 43,
+        "assembly_instructions": 46,
+        "temporary_registers_declared": 4,
+        "declared_parameters": 38,
+        "conventional_and_generic_inputs_read": 2,
+        "position_invariant": false,
+        "draws": 62120,
+        "submitted_vertex_references": 69176832,
+        "share_of_arb_vertex_references": 0.07278371112308159
+      },
+      {
+        "program_name": 2000023,
+        "load_serial": 24,
+        "assembly_instructions": 20,
+        "temporary_registers_declared": 2,
+        "declared_parameters": 34,
+        "conventional_and_generic_inputs_read": 3,
+        "position_invariant": false,
+        "draws": 210603,
+        "submitted_vertex_references": 53531904,
+        "share_of_arb_vertex_references": 0.05632305678011586
+      },
+      {
+        "program_name": 2000010,
+        "load_serial": 11,
+        "assembly_instructions": 26,
+        "temporary_registers_declared": 3,
+        "declared_parameters": 223,
+        "conventional_and_generic_inputs_read": 3,
+        "position_invariant": false,
+        "draws": 202662,
+        "submitted_vertex_references": 50674578,
+        "share_of_arb_vertex_references": 0.0533167498395426
+      },
+      {
+        "program_name": 2000025,
+        "load_serial": 26,
+        "assembly_instructions": 78,
+        "temporary_registers_declared": 4,
+        "declared_parameters": 223,
+        "conventional_and_generic_inputs_read": 5,
+        "position_invariant": false,
+        "draws": 44367,
+        "submitted_vertex_references": 44690790,
+        "share_of_arb_vertex_references": 0.04702096721084746
+      },
+      {
+        "program_name": 2000041,
+        "load_serial": 42,
+        "assembly_instructions": 100,
+        "temporary_registers_declared": 8,
+        "declared_parameters": 38,
+        "conventional_and_generic_inputs_read": 2,
+        "position_invariant": false,
+        "draws": 31060,
+        "submitted_vertex_references": 35781120,
+        "share_of_arb_vertex_references": 0.03764674713262841
+      },
+      {
+        "program_name": 2000055,
+        "load_serial": 56,
+        "assembly_instructions": 33,
+        "temporary_registers_declared": 2,
+        "declared_parameters": 34,
+        "conventional_and_generic_inputs_read": 4,
+        "position_invariant": false,
+        "draws": 93180,
+        "submitted_vertex_references": 30712128,
+        "share_of_arb_vertex_references": 0.03231345795550605
+      },
+      {
+        "program_name": 2000022,
+        "load_serial": 23,
+        "assembly_instructions": 36,
+        "temporary_registers_declared": 3,
+        "declared_parameters": 34,
+        "conventional_and_generic_inputs_read": 4,
+        "position_invariant": false,
+        "draws": 17660,
+        "submitted_vertex_references": 26683530,
+        "share_of_arb_vertex_references": 0.02807480890804715
+      }
+    ]
+  },
+  "metal_gpu_trace": {
+    "trace_frame_tags_refer_to_individual_command_buffers": true,
+    "matched_gpu_completions": 735,
+    "eligible_gpu_completions_between_trace_bounds": 735,
+    "first_sequence": 4163,
+    "last_sequence": 4897,
+    "max_clock_alignment_error_ns": 43,
+    "consecutive_completion_intervals": 734,
+    "active_time_within_completion_intervals": {
+      "Vertex": {
+        "mean_ns": 2976364.4782016347,
+        "p50_ns": 3098417.5,
+        "p99_ns": 7638250
+      },
+      "Fragment": {
+        "mean_ns": 1374362.5803814714,
+        "p50_ns": 1104167.5,
+        "p99_ns": 4710959
+      },
+      "Compute": {
+        "mean_ns": 48777.25068119891,
+        "p50_ns": 11875.0,
+        "p99_ns": 612292
+      },
+      "Union": {
+        "mean_ns": 4295076.065395095,
+        "p50_ns": 4372645.0,
+        "p99_ns": 10450082
+      }
+    }
+  }
+}
