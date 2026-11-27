@@ -1,0 +1,147 @@
+{
+  "hardware": "Apple M4 Pro",
+  "scope": "Live full 24-caster headless raid with direct ARB uniform segments",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "foreground_fps_limit": 0,
+  "background_fps_limit": 0,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "triangle_budget": 0,
+  "commit_draw_setting": 64,
+  "liveness_analysis_depth": 3,
+  "direct_fixed_uniform_tail": true,
+  "precise_fixed_uniform_invalidation": true,
+  "i386_forward_superblocks": false,
+  "explicit_headless_interactive_qos": false,
+  "i386_mov_base_uxtw": true,
+  "i386_fp_batch_v2": true,
+  "i386_ebp_hoist": true,
+  "pure_state_pool_omission": false,
+  "vertex_shader_uniform_segments": true,
+  "verified_script_rows_per_launch": 26,
+  "interleaved_runs": [
+    {
+      "launch": 1,
+      "post_window_rss_kib": 394400,
+      "arb_env_versions": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7257,
+      "first_sequence": 4827,
+      "last_sequence": 12083,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996705000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 120.93333333333334,
+      "p99_gpu_completion_gap_ns": 13419250,
+      "min_draws": 689,
+      "max_draws": 950
+    },
+    {
+      "launch": 2,
+      "post_window_rss_kib": 205056,
+      "arb_env_versions": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7158,
+      "first_sequence": 4827,
+      "last_sequence": 11984,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999760666,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 119.28333333333333,
+      "p99_gpu_completion_gap_ns": 13289000,
+      "min_draws": 689,
+      "max_draws": 980
+    },
+    {
+      "launch": 3,
+      "post_window_rss_kib": 377888,
+      "arb_env_versions": true,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7376,
+      "first_sequence": 4827,
+      "last_sequence": 12202,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59987208125,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 122.91666666666667,
+      "p99_gpu_completion_gap_ns": 11177875,
+      "min_draws": 684,
+      "max_draws": 953
+    },
+    {
+      "launch": 4,
+      "post_window_rss_kib": 374048,
+      "arb_env_versions": false,
+      "renderer_map_verified": true,
+      "trial_activations": 0,
+      "visible_trial_windows": 0,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7455,
+      "first_sequence": 4559,
+      "last_sequence": 12013,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997632584,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 124.23333333333333,
+      "p99_gpu_completion_gap_ns": 11021125,
+      "min_draws": 694,
+      "max_draws": 955
+    }
+  ],
+  "medians": {
+    "0": {
+      "average_completed_fps": 122.58333333333334,
+      "p99_gpu_completion_gap_ns": 12220187.5
+    },
+    "1": {
+      "average_completed_fps": 121.1,
+      "p99_gpu_completion_gap_ns": 12233437.5
+    }
+  },
+  "process_isolation": {
+    "other_trial_instances_detected": 0,
+    "isolated_timing_verified": true,
+    "guard_checkpoints": "Before the first launch and after each of the four launches"
+  },
+  "renderer_sha256": "fc43585da664dab8b31e5cb7e98de47314cf120aca77d2f8ec272023055abeeb",
+  "visual_readback_checked_per_launch": true,
+  "gpu_tests_per_arm": 338,
+  "shared_fragment_program_test_passed_per_arm": true,
+  "separate_reuse_diagnostic": {
+    "in_world_counter_rows": 190,
+    "environment_bindings_between_rows": 3096576,
+    "comparisons_skipped_between_rows": 994162,
+    "skip_fraction": 0.32105202649636244,
+    "gpu_missing_sequences": 0,
+    "visible_trial_windows": 0,
+    "focus_activations": 0
+  },
+  "reuse_counter_enabled_in_timed_runs": false,
+  "selected_arb_env_versions": false
+}

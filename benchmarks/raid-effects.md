@@ -1044,3 +1044,16 @@ The trial skips the call-local pool for the audited CPU-only setters. It keeps s
 | Pool omission | 117.43 | 13.53 ms |
 
 The pairs disagreed in direction. The result includes one RSS reading just after each measured window. Both modes passed **337** GPU tests, including the debug callback and display lists. Four isolated 60-second launches verified the camera, full cast schedule, overlapping effects, consecutive GPU completions and cleanup. [Full-raid A/B, counts and checks](results/raid-winemetalgl-headless-pure-state-pool-ab.json)
+
+### Reuse unchanged ARB environment parameters
+
+The trial versions each context's vertex and fragment environment arrays. A linked ARB program can skip the default uniform block's byte comparison when its last checked version matches. Changed arrays receive process-wide unique versions so shared programs can distinguish the state of two contexts. Apply `patches/winemetalgl-arb-env-versions-trial.patch` after the segmented ARB uniform patch and set `WINEMETALGL_ARB_ENV_VERSIONS=1`.
+
+A separate in-world diagnostic skipped **994,162 of 3,096,576** comparisons between recorded counter rows (**32.11%**). The counter and the state pool omission trial were off in every timed run. Both modes passed **338** GPU tests, including alternating environment values between two contexts that share one fragment program.
+
+| ARB environment comparisons | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Compare bytes at binding | 122.58 | 12.22 ms |
+| Reuse by version | 121.10 | 12.23 ms |
+
+Throughput fell **1.21%** and declined in both pairs. P99 moved in opposite directions across the pairs. The trial stays off. Four isolated 60-second launches verified the camera, overlapping effects, the full cast schedule, consecutive GPU completions, zero visible trial windows or activations, and process cleanup. [Full-raid A/B and reuse counts](results/raid-winemetalgl-headless-arb-env-versions-ab.json)

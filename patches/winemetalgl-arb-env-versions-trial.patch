@@ -1,0 +1,219 @@
+diff --git a/src/core/compat/arb_programs.h b/src/core/compat/arb_programs.h
+--- a/src/core/compat/arb_programs.h
++++ b/src/core/compat/arb_programs.h
+@@ -45,8 +45,9 @@
+     // Vertex, fragment; null: name 0, the context's default object of the
+     // target (created when first used, kept across bindings).
+     std::shared_ptr<ArbProgramObject> bound[2], defaults[2];
+     std::array<Vec4, arb::Limits::kEnvParameters> env[2]{};
++    uint64_t envVersion[2] = {};
+     GLint errorPosition = -1;
+     std::string errorString;
+ };
+
+@@ -54,11 +55,17 @@
+ struct ArbLinked {
+     RefPtr<Program> program;
+     int envOffset[2] = {-1, -1}, localOffset[2] = {-1, -1};  // default-block byte offsets, per stage
+     int envCount[2] = {}, localCount[2] = {};  // elements the linked program kept
++    uint64_t uploadedEnvVersion[2] = {UINT64_MAX, UINT64_MAX};
+     int matrixOffset = -1, inverseOffset = -1, matrixCount = 0, inverseCount = 0;
+     std::shared_ptr<const arb::Parsed> parsed[2];  // keeps the counts' programs alive
+ };
++
++// The draw-time cache can be shared by contexts. Changed arrays receive
++// process-wide unique versions, with zero reserved for default arrays.
++bool arbEnvVersioningEnabled();
++void arbEnvChanged(Context& ctx, int stage);
+
+ // 0 vertex, 1 fragment; -1 for another target.
+ int arbTargetIndex(GLenum target);
+
+diff --git a/src/core/compat/arb_programs.mm b/src/core/compat/arb_programs.mm
+--- a/src/core/compat/arb_programs.mm
++++ b/src/core/compat/arb_programs.mm
+@@ -1,5 +1,9 @@
+ #include "core/compat/arb_programs.h"
++
++#include <atomic>
++#include <cstdio>
++#include <cstdlib>
+
+ #include <algorithm>
+ #include <array>
+ #include <cstring>
+@@ -54,8 +58,21 @@
+     ++p.uniformVersion;
+ }
+
+ }  // namespace
++
++bool arbEnvVersioningEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_ARB_ENV_VERSIONS");
++        return value && !std::strcmp(value, "1");
++    }();
++    return enabled;
++}
++
++void arbEnvChanged(Context& ctx, int stage) {
++    static std::atomic<uint64_t> versions{0};
++    ctx.arb.envVersion[stage] = versions.fetch_add(1, std::memory_order_relaxed) + 1;
++}
+
+ int arbTargetIndex(GLenum target) {
+     return target == GL_VERTEX_PROGRAM_ARB ? 0 : target == GL_FRAGMENT_PROGRAM_ARB ? 1 : -1;
+ }
+@@ -184,11 +201,29 @@
+     ArbLinked& linked = it->second;
+     if (!linked.program) return nullptr;
+     Program& p = *linked.program;
+     if (p.uniformData.size() < p.linked->link.defaultBlockSize) p.uniformData.resize(p.linked->link.defaultBlockSize, 0);
++    static const bool traceEnvVersions = [] {
++        const char* value = std::getenv("WINEMETALGL_ARB_ENV_VERSION_COUNTS");
++        return value && !std::strcmp(value, "1");
++    }();
+     for (int i = 0; i < 2; ++i) {
+         if (!stage[i]) continue;
+-        store(p, linked.envOffset[i], ctx.arb.env[i].data(), static_cast<size_t>(linked.envCount[i]) * 16);
++        if (linked.envOffset[i] >= 0) {
++            const uint64_t version = ctx.arb.envVersion[i];
++            const bool reuse = arbEnvVersioningEnabled() && linked.uploadedEnvVersion[i] == version;
++            if (!reuse) {
++                store(p, linked.envOffset[i], ctx.arb.env[i].data(), static_cast<size_t>(linked.envCount[i]) * 16);
++                linked.uploadedEnvVersion[i] = version;
++            }
++            if (traceEnvVersions) {
++                static thread_local unsigned long long bindings = 0, reused = 0;
++                reused += reuse;
++                if ((++bindings & 16383) == 0)
++                    std::fprintf(stderr, "winemetalgl: ARB environment bindings=%llu reused=%llu\n",
++                                 bindings, reused);
++            }
++        }
+         store(p, linked.localOffset[i], stage[i]->local.data(), static_cast<size_t>(linked.localCount[i]) * 16);
+     }
+     if (linked.matrixOffset >= 0 || linked.inverseOffset >= 0) {
+         Mat4 m[FixedState::kProgramMatrices], inv[FixedState::kProgramMatrices];
+diff --git a/src/core/api/arb_program.mm b/src/core/api/arb_program.mm
+--- a/src/core/api/arb_program.mm
++++ b/src/core/api/arb_program.mm
+@@ -6,8 +6,9 @@
+ #include <algorithm>
+ #include <atomic>
+ #include <cstring>
+ #include <string>
++#include <type_traits>
+
+ #include "core/context.h"
+ #include "core/util/log.h"
+ #include "gl_api.gen.h"
+@@ -41,8 +42,32 @@
+     if (i < 0) return;
+     const GLuint limit = env ? arb::Limits::kEnvParameters : arb::Limits::kLocalParameters;
+     if (count < 0 || index >= limit || static_cast<GLuint>(count) > limit - index) return ctx.setError(GL_INVALID_VALUE);
+     Vec4* dst = env ? ctx.arb.env[i].data() : bound(ctx, i).local.data();
++    if (env && compat::arbEnvVersioningEnabled()) {
++        bool changed = false;
++        if constexpr (std::is_same_v<T, GLfloat>) {
++            static_assert(sizeof(Vec4) == sizeof(GLfloat) * 4);
++            const size_t bytes = static_cast<size_t>(count) * sizeof(Vec4);
++            if (bytes && std::memcmp(dst + index, values, bytes) != 0) {
++                std::memmove(dst + index, values, bytes);
++                changed = true;
++            }
++        } else {
++            for (GLsizei c = 0; c < count; ++c) {
++                Vec4 incoming;
++                for (int k = 0; k < 4; ++k)
++                    incoming[static_cast<size_t>(k)] = static_cast<float>(values[c * 4 + k]);
++                Vec4& parameter = dst[index + static_cast<GLuint>(c)];
++                if (std::memcmp(parameter.data(), incoming.data(), sizeof(Vec4)) != 0) {
++                    parameter = incoming;
++                    changed = true;
++                }
++            }
++        }
++        if (changed) compat::arbEnvChanged(ctx, i);
++        return;
++    }
+     for (GLsizei c = 0; c < count; ++c)
+         for (int k = 0; k < 4; ++k) dst[index + static_cast<GLuint>(c)][static_cast<size_t>(k)] = static_cast<float>(values[c * 4 + k]);
+ }
+
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -11,9 +11,9 @@
+     X(glBegin) X(glEnd) X(glVertex2f) X(glColor4f) X(glTexCoord2f) X(glMultiTexCoord4f) X(glMatrixMode)           \
+     X(glLoadIdentity) X(glTranslatef) X(glScalef) X(glVertexPointer) X(glColorPointer) X(glTexCoordPointer)        \
+     X(glEnableClientState) X(glDisableClientState) X(glClientActiveTexture) X(glIsEnabled) X(glShadeModel)          \
+     X(glTexEnvi) X(glGenProgramsARB) X(glDeleteProgramsARB) X(glBindProgramARB) X(glIsProgramARB)                 \
+-    X(glProgramStringARB) X(glGetProgramivARB) X(glGetProgramStringARB) X(glProgramEnvParameter4fARB)              \
++    X(glProgramStringARB) X(glGetProgramivARB) X(glGetProgramStringARB) X(glProgramEnvParameter4fARB) X(glProgramEnvParameter4dvARB)              \
+     X(glProgramLocalParameter4fARB) X(glProgramEnvParameters4fvEXT) X(glGetProgramEnvParameterfvARB)               \
+     X(glGetProgramLocalParameterfvARB) X(glVertexAttribPointerARB) X(glEnableVertexAttribArrayARB)                 \
+     X(glDisableVertexAttribArrayARB) X(glPushAttrib) X(glPopAttrib)
+
+@@ -199,8 +199,61 @@
+     // The vertex target's environment is separate.
+     glGetProgramEnvParameterfvARB(GL_VERTEX_PROGRAM_ARB, 7, got);
+     CHECK(got[0] == 0 && got[1] == 0 && got[3] == 0);
+     glDisable(GL_FRAGMENT_PROGRAM_ARB);
++    CHECK_GL();
++}
++
++TEST(arb_env_versions_across_shared_contexts) {
++    gpu::Fixture first(64, 64, false);
++    CHECK(first.ok);
++    if (!first.ok) return;
++    loadArb();
++    identity();
++    const GLuint id = load(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nMOV result.color, program.env[7];\nEND\n");
++    glEnable(GL_FRAGMENT_PROGRAM_ARB);
++    glProgramEnvParameter4fARB(GL_FRAGMENT_PROGRAM_ARB, 7, 1, 0, 0, 1);
++    quad(-1, 1);
++    CHECK(pixel(32, 32, kRed));
++
++    const int attributes[] = {0x2091, 3, 0x2092, 3, 0x9126, 2, 0};
++    int error = 0;
++    wmgl_context* second = wmgl_context_create(first.format, first.context, attributes, &error);
++    CHECK(second != nullptr);
++    if (!second) return;
++    const bool current = wmgl_make_current(second, first.surface, first.surface);
++    CHECK(current);
++    if (current) {
++        identity();
++        glViewport(0, 0, 64, 64);
++        glBindProgramARB(GL_FRAGMENT_PROGRAM_ARB, id);
++        glEnable(GL_FRAGMENT_PROGRAM_ARB);
++        quad(-1, 1);
++        const auto unset = gpu::readRGBA8(32, 32, 1, 1);
++        CHECK(unset.size() == 4 && unset[0] == 0 && unset[1] == 0 && unset[2] == 0);
++        const float green[4] = {0, 1, 0, 1};
++        glProgramEnvParameters4fvEXT(GL_FRAGMENT_PROGRAM_ARB, 7, 1, green);
++        quad(-1, 1);
++        CHECK(pixel(32, 32, kGreen));
++        CHECK_GL();
++
++        CHECK(wmgl_make_current(first.context, first.surface, first.surface));
++        quad(-1, 1);
++        CHECK(pixel(32, 32, kRed));
++        const double blue[4] = {0, 0, 1, 1};
++        glProgramEnvParameter4dvARB(GL_FRAGMENT_PROGRAM_ARB, 7, blue);
++        quad(-1, 1);
++        CHECK(pixel(32, 32, kBlue));
++        CHECK_GL();
++
++        CHECK(wmgl_make_current(second, first.surface, first.surface));
++        quad(-1, 1);
++        CHECK(pixel(32, 32, kGreen));
++        CHECK_GL();
++    }
++    CHECK(wmgl_make_current(first.context, first.surface, first.surface));
++    wmgl_context_destroy(second);
++    glDeleteProgramsARB(1, &id);
+     CHECK_GL();
+ }
+
+ ARB_TEST(arb_fragment_program_with_fixed_function_vertex) {
