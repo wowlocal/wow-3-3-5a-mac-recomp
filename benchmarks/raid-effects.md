@@ -1085,3 +1085,11 @@ A separate run used `OCERZ_FLIPLOG=1` to verify branch choices. After in-world r
 | Merge with observed branch direction | 118.25 | 10.92 ms |
 
 Each mode ran twice for 60 seconds in mirrored order. The profiled path reduced throughput against both controls in both pairs. Fall-through merging improved throughput by **0.61%** and moved p99 in opposite directions across the pairs. The baseline keeps both switches off. Every run verified the camera, cast schedule, overlapping effects, consecutive GPU completions, zero visible trial windows or activations, and cleanup. [Six live-raid windows and branch witness](results/raid-aarchx-headless-i386-profiled-forward-branches.json)
+
+### Measure the CPU time available to move off the game thread
+
+A separate 24-caster launch enabled WineMetalGL's per-frame timers. After the in-world readback, **4,697** consecutive renderer frames averaged **8.60 ms** between frame boundaries with about **818** draws per frame. GL calls occupied **2.46 ms** of elapsed time per frame on the calling thread. Preparing draw state took **0.22 ms**, binding it **0.31 ms**, and issuing draw commands **0.49 ms**. The renderer's explicit GPU wait counter stayed at zero.
+
+Draw encoding accounted for **5.7%** of the observed mean frame interval, and binding plus encoding accounted for **9.3%**. In a serial frame-time estimate, completely overlapping encoding with other work would raise throughput by about **6%** before the cost of a queue. A larger scheduling gain would need to overlap more of the GL work. The phase totals are elapsed times on the calling thread. They sit within GL and frame time.
+
+The diagnostic used `WINEMETALGL_STATS=1` and `WINEMETALGL_LOG=0,perf:info` with the baseline branch mode. The readback verified the 1365 × 768 raid view with overlapping effects. The realm verified all 26 timed rows and the separate 24-second GPU window had consecutive completions. The monitor observed zero visible trial windows or activations. [Renderer phase distributions](results/raid-winemetalgl-headless-render-cpu-phases.json)
