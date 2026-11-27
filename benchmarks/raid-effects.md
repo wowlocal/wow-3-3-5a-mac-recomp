@@ -631,3 +631,9 @@ python3 benchmarks/trace-frames.py TRACE PID 1365 768 \
     --wmgl-gpu-work GPU_LOG --output-buffer 'Command Buffer 2' \
     --gpu-clock-anchor 2 16901
 ```
+
+### Label ARB stages in Metal pass profiles
+
+Apply `patches/winemetalgl-arb-pass-labels-trial.patch` to the WineMetalGL trial and enable `WINEMETALGL_PASS_PROFILE=1` with `WINEMETALGL_LOG=0,perf:info` for a diagnostic capture. The pass report includes the bound ARB program name and load serial for each active stage, and marks a fixed-function stage as `fixed`. Each pass lists up to four distinct shader combinations, as in the existing pass profiler. Assess timed throughput separately with pass profiling off.
+
+The 1365 × 768 indexed stand-alone test exercised 4,500 measured frames per mode and passed all **187**, **202**, and **217** bridge checks for the fixed-function, mixed, and two-stage ARB modes. The representative framebuffer checksum was `4c7788a9d3ba3e94` in each mode. The corresponding main pass labels were `fixed function`, `vertex=1@1 fragment=fixed`, and `vertex=1@1 fragment=2@2`. Live shader attribution is pending.

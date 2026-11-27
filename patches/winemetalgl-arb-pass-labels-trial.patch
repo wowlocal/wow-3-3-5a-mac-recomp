@@ -1,0 +1,18 @@
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -1233,5 +1233,15 @@
+ std::string DrawState::profileName() const {
+     if (const Program* p = ctx_.state.program.get()) return p->label.empty() ? "program " + std::to_string(p->name) : p->label;
+     if (ctx_.state.programPipeline) return "pipeline";
++    if (compat::arbProgramsEnabled(ctx_)) {
++        const auto stage = [&](bool enabled, int index) -> std::string {
++            if (!enabled) return "fixed";
++            const compat::ArbProgramObject& program = compat::arbBound(ctx_, index);
++            return std::to_string(program.name) + "@" + std::to_string(program.serial);
++        };
++        const auto& fixed = ctx_.state.fixed;
++        return "vertex=" + stage(fixed.vertexProgram, 0) +
++               " fragment=" + stage(fixed.fragmentProgram, 1);
++    }
+     return "fixed function";
+ }
