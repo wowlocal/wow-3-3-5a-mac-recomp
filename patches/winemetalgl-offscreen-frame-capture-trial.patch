@@ -1,0 +1,151 @@
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -3,11 +3,13 @@
+ #import <MetalFX/MetalFX.h>
+ #include <dlfcn.h>
+ #include <mach/mach_time.h>
++#include <sys/stat.h>
+ #include <unistd.h>
+ #include <os/signpost.h>
+
+ #include <algorithm>
+ #include <atomic>
++#include <cerrno>
+ #include <climits>
+ #include <cmath>
+ #include <cstdio>
+@@ -24,6 +26,73 @@
+ namespace wmgl {
+
+ namespace {
++
++struct OffscreenCaptureRequest {
++    const char* trigger = std::getenv("OCERZ_WMGL_CAPTURE_REQUEST");
++    const char* path = std::getenv("OCERZ_WMGL_CAPTURE_PATH");
++    const unsigned long long minimumDraws = [] {
++        const char* value = std::getenv("OCERZ_WMGL_CAPTURE_MIN_DRAWS");
++        return value ? std::strtoull(value, nullptr, 10) : 1ull;
++    }();
++    std::mutex mutex;
++    const Surface* owner = nullptr;
++    bool attempted = false;
++};
++
++OffscreenCaptureRequest& offscreenCaptureRequest() {
++    static OffscreenCaptureRequest capture;
++    return capture;
++}
++
++void stopOffscreenCapture(const Surface* surface, uint64_t sequence, uint64_t draws) {
++    auto& capture = offscreenCaptureRequest();
++    if (!capture.trigger || !capture.path) return;
++    std::lock_guard<std::mutex> lock(capture.mutex);
++    if (capture.owner != surface) return;
++    [[MTLCaptureManager sharedCaptureManager] stopCapture];
++    capture.owner = nullptr;
++    if (sequence) {
++        std::fprintf(stderr, "WMGL_CAPTURE end sequence=%llu draws=%llu\n",
++                     (unsigned long long)sequence, (unsigned long long)draws);
++    } else {
++        std::fputs("WMGL_CAPTURE cancelled before the next swap\n", stderr);
++    }
++}
++
++void startOffscreenCapture(const Surface* surface, uint64_t recordingStream,
++                           uint64_t sequence, uint64_t draws) {
++    auto& capture = offscreenCaptureRequest();
++    if (!capture.trigger || !capture.path || !draws || draws < capture.minimumDraws) return;
++    std::lock_guard<std::mutex> lock(capture.mutex);
++    if (capture.attempted || ::access(capture.trigger, F_OK) != 0) return;
++    capture.attempted = true;
++
++    struct stat status;
++    if (::lstat(capture.path, &status) == 0 || errno != ENOENT) {
++        std::fputs("WMGL_CAPTURE output already exists or is inaccessible\n", stderr);
++        return;
++    }
++    MTLCaptureManager* manager = [MTLCaptureManager sharedCaptureManager];
++    if (manager.isCapturing || ![manager supportsDestination:MTLCaptureDestinationGPUTraceDocument]) {
++        std::fputs("WMGL_CAPTURE GPU trace destination unavailable\n", stderr);
++        return;
++    }
++    MTLCaptureDescriptor* descriptor = [MTLCaptureDescriptor new];
++    descriptor.captureObject = Device::get().mtl();
++    descriptor.destination = MTLCaptureDestinationGPUTraceDocument;
++    descriptor.outputURL = [NSURL fileURLWithFileSystemRepresentation:capture.path
++                                                          isDirectory:NO relativeToURL:nil];
++    NSError* error = nil;
++    if (!descriptor.outputURL || ![manager startCaptureWithDescriptor:descriptor error:&error]) {
++        const char* reason = error.localizedDescription.UTF8String;
++        std::fprintf(stderr, "WMGL_CAPTURE failed %s\n", reason ? reason : "invalid output path");
++        return;
++    }
++    capture.owner = surface;
++    std::fprintf(stderr, "WMGL_CAPTURE begin stream=%llu after_sequence=%llu draws=%llu\n",
++                 (unsigned long long)recordingStream, (unsigned long long)sequence,
++                 (unsigned long long)draws);
++}
+
+ uint64_t newCompletionStream() {
+     static std::atomic<uint64_t> next{1};
+@@ -261,7 +330,10 @@
+     std::thread thread;
+ };
+
+-Surface::~Surface() { stopMailbox(); }
++Surface::~Surface() {
++    if (!layer_) stopOffscreenCapture(this, 0, 0);
++    stopMailbox();
++}
+
+ void Surface::stopMailbox() {
+     if (!mailbox_) return;
+@@ -630,6 +702,8 @@
+             }];
+         }
+         stream.flush();
++        stopOffscreenCapture(this, offscreenSequence_, draws);
++        startOffscreenCapture(this, offscreenRecordingStream_, offscreenSequence_, draws);
+         return true;
+     }
+     stream.resolvePendingClear();
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -1233,6 +1233,16 @@
+ std::string DrawState::profileName() const {
+     if (const Program* p = ctx_.state.program.get()) return p->label.empty() ? "program " + std::to_string(p->name) : p->label;
+     if (ctx_.state.programPipeline) return "pipeline";
++    if (compat::arbProgramsEnabled(ctx_)) {
++        const auto stage = [&](bool enabled, int index) -> std::string {
++            if (!enabled) return "fixed";
++            const compat::ArbProgramObject& program = compat::arbBound(ctx_, index);
++            return std::to_string(program.name) + "@" + std::to_string(program.serial);
++        };
++        const auto& fixed = ctx_.state.fixed;
++        return "vertex=" + stage(fixed.vertexProgram, 0) +
++               " fragment=" + stage(fixed.fragmentProgram, 1);
++    }
+     return "fixed function";
+ }
+
+@@ -2255,7 +2265,17 @@
+         encoder = prepare(points ? GL_POINTS : mode, primitive);
+     }
+     if (!encoder) return false;
+-    if (CommandStream::passProfile()) ctx_.stream().profileNote(profileName());
++    static const bool captureLabels = std::getenv("OCERZ_WMGL_CAPTURE_PATH") != nullptr;
++    const bool captureDraw = captureLabels && [MTLCaptureManager sharedCaptureManager].isCapturing;
++    if (captureDraw || CommandStream::passProfile()) {
++        const std::string name = profileName();
++        if (captureDraw) {
++            if (NSString* label = [NSString stringWithUTF8String:name.c_str()])
++                [encoder insertDebugSignpost:label];
++            std::fprintf(stderr, "WMGL_CAPTURE_DRAW %s\n", name.c_str());
++        }
++        if (CommandStream::passProfile()) ctx_.stream().profileNote(name);
++    }
+     queriesBeforeDraw(ctx_, encoder, instances);
+     LinkedProgram& program = *current;
+     PipelineKey key = lastKey_;

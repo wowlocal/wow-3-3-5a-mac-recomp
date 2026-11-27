@@ -1347,3 +1347,29 @@ A separate 25-second in-world diagnostic enabled `OCERZ_M32_BASE_HANDOFF_LOG=1` 
 | Reuse the guarded address | 123.63 | 13.88 ms |
 
 The trial lost **1.03 FPS** in the first pair and gained **1.72 FPS** in the reverse pair. P99 rose **0.38 ms** and fell **0.23 ms**, respectively. The setting stays off for follow-up comparisons. All four warmed 60-second launches ran with the diagnostic off and verified the camera, spell effects, 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. [Full-raid A/B and link diagnostics](results/raid-aarchx-headless-i386-base-handoff-ab.json)
+
+### Capture a complete live raid frame from the offscreen drawable
+
+The trial starts Metal capture after one offscreen flush and stops after the next flush. It writes the render program label into the capture as a debug signpost for each of the original client's direct draws. The log records both GPU output sequence numbers. The trigger can wait for a previous output with a specified draw count. This selects the start boundary before the captured frame begins. [Apple programmatic capture documentation](https://developer.apple.com/documentation/xcode/capturing-a-metal-workload-programmatically)
+
+Two isolated launches recorded one-frame archives with **905 and 922 draws** at 1365 × 768. The archive command streams contained every logged shader label, covering **33 and 34 distinct combinations**. Both runs verified the saved camera and 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. The renderer passed **341** GPU tests with capture disabled. [Archive verification and shader counts](results/raid-winemetalgl-offscreen-metal-frame-capture.json)
+
+The second launch also recorded Metal System Trace. Clock alignment matched **2,462** fragment endpoints to the submission log within **41 ns**. Both command buffers in the captured output matched exactly. Their draw counts and stage time are shown below. Each command buffer contains several shader combinations.
+
+| Captured Metal command buffer | Draws | Vertex active time | Fragment active time |
+| --- | ---: | ---: | ---: |
+| First | 256 | 1.13 ms | 1.13 ms |
+| Final | 666 | 0.35 ms | 1.00 ms |
+
+The completion gaps containing the captures were **174.53 and 196.05 ms**. The stage times describe the instrumented frame. The archive format and shader labels were checked directly. The raw archives contain local GPU resources and are stored outside the tracked results. [Submission timing and shader counts](results/raid-winemetalgl-offscreen-metal-frame-capture.json)
+
+Apply `patches/winemetalgl-offscreen-frame-capture-trial.patch`. Launch with `MTL_CAPTURE_ENABLED=1`, the ordinary GPU completion log, a fresh `OCERZ_WMGL_CAPTURE_PATH` ending in `.gputrace`, and a fresh path for `OCERZ_WMGL_CAPTURE_REQUEST`. Set `OCERZ_WMGL_CAPTURE_MIN_DRAWS` to the minimum preceding draw count. Create the request file after the fixture has warmed.
+
+For the joined report, also set `OCERZ_WMGL_SUBMISSION_LOG`, record Metal System Trace for the same process, and create the request after Instruments starts recording. Export the `metal-gpu-intervals` table, then run the analyzer. Omit `--intervals-xml` for the archive and shader checks alone.
+
+```sh
+xcrun xctrace export --input CAPTURE_DIR/metal.trace --output CAPTURE_DIR/intervals.xml \
+    --xpath '/trace-toc/run/data/table[@schema="metal-gpu-intervals"]'
+python3 benchmarks/summarize-metal-frame-capture.py CAPTURE_DIR \
+    --intervals-xml CAPTURE_DIR/intervals.xml
+```
