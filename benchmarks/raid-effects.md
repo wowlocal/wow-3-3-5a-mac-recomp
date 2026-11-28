@@ -3294,3 +3294,26 @@ All repeated prefix readbacks matched their respective SHA-256 digests. All nine
 python3 benchmarks/summarize-raid-native-5k-replay-prefixes.py CAPTURE_DIR --snapshot-draw-states SESSION_ID > CAPTURE_DIR/profiling-5k/archived-draw-states.json
 python3 benchmarks/summarize-raid-native-5k-replay-prefixes.py CAPTURE_DIR
 ```
+
+### Force early depth testing for opaque ARB draws
+
+Apply `patches/winemetalgl-early-opaque-depth-trial.patch` to the selected color-only MSAA renderer and build one ARM64 library with the existing profile. The variant adds Metal's early fragment test attribute for compatibility ARB fragment programs that write one color, have no fragment kill or depth output, and use depth writes with `LEQUAL`. It requires full color writes, inactive alpha testing or `GL_ALWAYS`, and excludes blending, stencil updates, coverage variants, occlusion queries and writable shader resources. The draw order and textures remain the same.
+
+Run the GPU suite in both modes of `WINEMETALGL_EARLY_OPAQUE_DEPTH` and repeat `arb_early_opaque_depth_keeps_alpha_and_program_discard` with `WINEMETALGL_EARLY_OPAQUE_DEPTH_LOG=1`. Save the focused and full logs under `early-opaque-5k`. The 4× MSAA test checks opaque depth writes, equal-depth ordering and that draws rejected by alpha testing or an ARB `KIL` operation leave depth intact.
+
+Run `native-5k-early-opaque-5k-diagnostic` for 25 seconds with mode and logging enabled. Then time four warmed 60-second windows in modes 0, 1, 1, 0 with logging disabled under `native-5k-early-opaque-5k-ORDER-MODE`. Use the signed original runtime throughout. Retain the selected color-only policy, draw budget 2048, the highest supported quality, native 5120 × 2880, 4× MSAA, VSync off and the complete 24-caster raid.
+
+After the third and fourth timing windows, record a six-second Metal System Trace and save the recorder witness as `after-window-metal-witness.json`. Export `metal-gpu-intervals` to `gpu-intervals.xml`. The analyzer joins the trace to consecutive verified outputs in the same GPU stream.
+
+| Opaque ARB depth order | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing order | 98.73 | 13.43 ms |
+| Explicit early depth | 98.47 | 13.36 ms |
+
+The paired throughput changes were **−0.82** and **+0.28 FPS**. P99 shortened by **0.119** and **0.023 ms**. Both GPU suites passed **345** tests. The in-world diagnostic compiled **22** variants and logged **3,162,112** requests at its last sampled count, with zero shader or pipeline fallbacks. The four timing windows verified **23,668** consecutive GPU completions across their launches. The initial final control stopped at graphics-witness freshness. The retry produced a verified fourth window with the original settings.
+
+The post-window traces matched **603** consecutive outputs with explicit early depth and **612** with the existing policy, each within **42 ns**. Median fragment active time per matched completion gap was **7.95 ms** with early depth and **6.94 ms** with the existing policy. Keep the existing order as the performance reference. [Native 5K timing and stage profiles](results/raid-native-5k-early-opaque-depth-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-early-depth.py CAPTURE_ROOT --opaque --legacy-pid EARLIER_TEST_PID
+```

@@ -1,0 +1,240 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -1980,6 +1980,39 @@
+     }
+     key.depthFormat = static_cast<uint16_t>(formats.depth);
+     key.stencilFormat = static_cast<uint16_t>(formats.stencil);
++    static const bool earlyDepth = [] {
++        const char* value = std::getenv("WINEMETALGL_EARLY_OPAQUE_DEPTH");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    // Depth writes can move ahead of a legacy alpha test only when both
++    // that test and the ARB fragment program preserve raster coverage.
++    key.earlyDepth = earlyDepth && ffProgram_ && ffProgram_->linked.get() == program &&
++                     key.rasterization && key.depthFormat && formats.depthAttached && st.depthTest &&
++                     st.depthMask && st.depthFunc == GL_LEQUAL && !st.stencilTest &&
++                     key.colorFormats[0] && key.blend[0].writeMask == MTLColorWriteMaskAll && !st.blendEnable &&
++                     (!st.fixed.alphaTest || st.fixed.alphaFunc == GL_ALWAYS) &&
++                     st.fixed.fragmentProgram && compat::arbProgramsEnabled(ctx_) &&
++                     !key.sampleMask && !key.sampleShading && !key.ignoreSampleMask &&
++                     !key.alphaToCoverage && !key.alphaToOne && !key.logicOp && !key.countFragments &&
++                     !key.cull && !key.borders[1] && !st.activeQueries[kQuerySamplesPassed] &&
++                     !st.activeQueries[kQueryAnySamplesPassed] && !st.activeQueries[kQueryAnySamplesPassedConservative];
++    if (key.earlyDepth) {
++        const auto& fragment = compat::arbBound(ctx_, 1).parsed;
++        key.earlyDepth = fragment && !fragment->kills && !fragment->depthWritten &&
++                         fragment->colorOutputs == 1 && program->earlyDepthEligible();
++    }
++    if (key.earlyDepth) {
++        static const bool log = [] {
++            const char* value = std::getenv("WINEMETALGL_EARLY_OPAQUE_DEPTH_LOG");
++            return value && std::strcmp(value, "1") == 0;
++        }();
++        if (log) {
++            static thread_local uint64_t count = 0;
++            if (++count == 1 || (count & 0x3fff) == 0)
++                std::fprintf(stderr, "winemetalgl: opaque early depth requests %llu\n",
++                             static_cast<unsigned long long>(count));
++        }
++    }
+     // Depth textures drawn with colour attachments (depth pre-passes, the
+     // main view's depth) keep the full vertex function in their depth-only
+     // passes too: the same geometry's depth must match exactly there. Others
+diff --git a/src/core/metal/pipeline_cache.h b/src/core/metal/pipeline_cache.h
+--- a/src/core/metal/pipeline_cache.h
++++ b/src/core/metal/pipeline_cache.h
+@@ -51,6 +51,7 @@
+     uint8_t geometryPass;   // vertex function: the geometry emulation's pass-through (1), kernel (2), input expansion (3) or strip rotation (4)
+     uint8_t cull;           // cull distances the vertex function writes (LinkedProgram::fragmentVariant)
+     uint8_t countFragments;  // fragment function counts its invocations (FRAGMENT_SHADER_INVOCATIONS)
++    uint8_t earlyDepth;     // opaque ARB fragment shader with eligible depth writes
+     // Metal tessellation (the vertex function is the post-tessellation
+     // variant): 0 = none, else bit 0 set, bit 1 quads, bits 2-3 the
+     // MTLTessellationPartitionMode, bit 4 MTLWindingClockwise.
+diff --git a/src/core/metal/pipeline_cache.mm b/src/core/metal/pipeline_cache.mm
+--- a/src/core/metal/pipeline_cache.mm
++++ b/src/core/metal/pipeline_cache.mm
+@@ -324,7 +324,7 @@
+ bool predictableState(const PipelineKey& key) {
+     return key.rasterization && !key.geometryPass && !key.tessellation && !key.borders[0] && !key.borders[1] &&
+            !key.sampleMask && !key.logicOp && !key.ignoreSampleMask && !key.cull && !key.topologyClass &&
+-           !key.countFragments;
++           !key.countFragments && !key.earlyDepth;
+ }
+
+ constexpr size_t kMaxStates = 4096, kStatesPerSignature = 96, kMaxPredicted = 12000;
+@@ -405,6 +405,12 @@
+         NSError* error = nil;
+         MTLRenderPipelineDescriptor* desc = describe(key, program);
+         state = desc ? PipelineArchive::get().create(desc, &error) : nil;
++        if (!state && key.earlyDepth) {
++            WMGL_WARN(Pipeline, "opaque early depth pipeline fallback: %s", error.localizedDescription.UTF8String ?: "");
++            PipelineKey fallback = key;
++            fallback.earlyDepth = 0;
++            state = render(fallback, program);
++        }
+         if (desc && !state && !predicted) WMGL_ERR(Pipeline, "render pipeline creation failed: %s", error.localizedDescription.UTF8String);
+     }
+     {
+@@ -445,6 +451,9 @@
+             ? program.fragmentVariant(key.sampleMask, key.logicOp, key.colorFormats, key.sampleShading, key.ignoreSampleMask,
+                                       key.cull, key.borders[1], key.countFragments)
+             : program.function(shader::Stage::Fragment);
++    if (key.earlyDepth) {
++        if (id<MTLFunction> early = program.fragmentEarlyDepth()) fragment = early;
++    }
+     if (!vertex) return nil;
+     MTLRenderPipelineDescriptor* desc = [MTLRenderPipelineDescriptor new];
+     desc.vertexFunction = vertex;
+diff --git a/src/core/program.h b/src/core/program.h
+--- a/src/core/program.h
++++ b/src/core/program.h
+@@ -59,6 +59,8 @@
+     // The fragment stage writes gl_SampleMask.
+     bool writesSampleMask();
+     id<MTLFunction> fragmentSampleMask() { return fragmentVariant(true, 0, nullptr); }
++    bool earlyDepthEligible();
++    id<MTLFunction> fragmentEarlyDepth();
+     bool functionFailed(shader::Stage stage) const { return failed_[static_cast<int>(stage)]; }
+     // Geometry shader emulation (link.geometry): the drawing vertex function
+     // and the geometry kernel.
+@@ -136,6 +138,7 @@
+
+ private:
+     std::mutex mutex_;
++    std::atomic<int8_t> earlyDepthEligible_{-1};
+     std::atomic<int> readsVertexId_{-1};
+     // What the drawing vertex and fragment functions write, found once in
+     // their MSL (draws ask on every call): kWrites* bits.
+diff --git a/src/core/program.mm b/src/core/program.mm
+--- a/src/core/program.mm
++++ b/src/core/program.mm
+@@ -1,6 +1,7 @@
+ #include "core/program.h"
+
+ #include <algorithm>
++#include <cstdio>
+ #include <cstdlib>
+ #include <dispatch/dispatch.h>
+ #include <atomic>
+@@ -319,6 +320,41 @@
+
+ bool LinkedProgram::writesSampleMask() { return (outputFlags() & kWritesSampleMask) != 0; }
+
++bool LinkedProgram::earlyDepthEligible() {
++    int8_t eligible = earlyDepthEligible_.load(std::memory_order_relaxed);
++    if (eligible < 0) {
++        const shader::StageOutput& stage = this->stage(shader::Stage::Fragment);
++        const std::string& msl = stage.msl;
++        eligible = stage.present && msl.find("discard_fragment(") != std::string::npos &&
++                   !link.geometry.active && !link.xfbVertexCapture &&
++                   stage.storageArgs.empty() && link.images.empty() && link.atomicBuffers.empty() &&
++                   msl.find("[[depth") == std::string::npos && msl.find("[[sample_mask") == std::string::npos &&
++                   msl.find("[[sample_id") == std::string::npos && msl.find("early_fragment_tests") == std::string::npos &&
++                   msl.find("fragment main0_out main0(") != std::string::npos;
++        earlyDepthEligible_.store(eligible, std::memory_order_relaxed);
++    }
++    return eligible != 0;
++}
++
++id<MTLFunction> LinkedProgram::fragmentEarlyDepth() {
++    std::lock_guard<std::mutex> lock(mutex_);
++    static constexpr const char* key = "opaque-early-depth";
++    if (const auto cached = fragmentVariants_.find(key); cached != fragmentVariants_.end()) return cached->second;
++    const shader::StageOutput& fragment = stage(shader::Stage::Fragment);
++    std::string msl = fragment.msl;
++    const size_t entry = msl.find("fragment main0_out main0(");
++    id<MTLFunction> function = nil;
++    if (entry != std::string::npos) {
++        msl.insert(entry, "[[early_fragment_tests]] ");
++        function = compileFunction(msl, fragment.entryPoint, static_cast<int>(shader::Stage::Fragment));
++    }
++    const char* log = std::getenv("WINEMETALGL_EARLY_OPAQUE_DEPTH_LOG");
++    if (log && log[0] == '1' && !log[1])
++        std::fprintf(stderr, "winemetalgl: opaque early depth shader %llu %s\n",
++                     static_cast<unsigned long long>(uid), function ? "compiled" : "fallback");
++    return fragmentVariants_.emplace(key, function).first->second;
++}
++
+ id<MTLFunction> LinkedProgram::fragmentVariant(bool sampleMask, unsigned logicOp, const uint16_t colorFormats[8],
+                                                bool sampleRate, bool ignoreSampleMask, unsigned cull, uint16_t borders,
+                                                bool countInvocations) {
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -18,7 +18,7 @@
+     X(glProgramLocalParameter4fARB) X(glProgramEnvParameters4fvEXT) X(glGetProgramEnvParameterfvARB)               \
+     X(glGetProgramLocalParameterfvARB) X(glVertexAttribPointerARB) X(glEnableVertexAttribArrayARB)                 \
+     X(glDisableVertexAttribArrayARB) X(glPushAttrib) X(glPopAttrib) X(glTestObjectAPPLE)                              \
+-    X(glStencilMask) X(glStencilFunc) X(glStencilOp)
++    X(glStencilMask) X(glStencilFunc) X(glStencilOp) X(glAlphaFunc)
+
+ #define WMGL_ARB_DECLARE(name) static PFN_##name name;
+ WMGL_ARB_FUNCS(WMGL_ARB_DECLARE)
+@@ -120,6 +120,65 @@
+         if (fixture_.ok) name##_body();               \
+     }                                                 \
+     static void name##_body()
++
++TEST(arb_early_opaque_depth_keeps_alpha_and_program_discard) {
++    gpu::Fixture fixture(64, 64, false, 33, false, 24, false, 4);
++    CHECK(fixture.ok);
++    if (!fixture.ok) return;
++    loadArb();
++    identity();
++    GLint samples = 0;
++    glGetIntegerv(GL_SAMPLES, &samples);
++    CHECK_EQ(samples, 4);
++    const auto rectangle = [](float left, float right, float depth) {
++        glBegin(GL_QUADS);
++        glVertex3f(left, -1, depth);
++        glVertex3f(right, -1, depth);
++        glVertex3f(right, 1, depth);
++        glVertex3f(left, 1, depth);
++        glEnd();
++    };
++    const char* opaque = "!!ARBfp1.0\nMOV result.color, fragment.color;\nEND\n";
++    load(GL_FRAGMENT_PROGRAM_ARB, opaque);
++    glEnable(GL_FRAGMENT_PROGRAM_ARB);
++    glEnable(GL_DEPTH_TEST);
++    glDepthFunc(GL_LEQUAL);
++    glDepthMask(GL_TRUE);
++    glClearColor(0, 0, 0, 1);
++    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
++
++    glColor4f(0, 0, 1, 1);
++    rectangle(-1, 0, 0);
++    glColor4f(0, 1, 0, 1);
++    rectangle(-1, 1, 0.5f);
++    CHECK(pixel(16, 16, kBlue, 0));
++    CHECK(pixel(48, 16, kGreen, 0));
++
++    glEnable(GL_ALPHA_TEST);
++    glAlphaFunc(GL_GREATER, 0.5f);
++    glColor4f(1, 0, 0, 0);
++    rectangle(0, 1, -0.75f);
++    CHECK(pixel(48, 16, kGreen, 0));
++    glAlphaFunc(GL_ALWAYS, 0);
++    glColor4f(0, 0, 1, 1);
++    rectangle(0, 1, 0.25f);
++    CHECK(pixel(48, 16, kBlue, 0));
++    glDisable(GL_ALPHA_TEST);
++
++    load(GL_FRAGMENT_PROGRAM_ARB, "!!ARBfp1.0\nPARAM kill = {-1, -1, -1, -1};\n"
++                                 "KIL kill;\nMOV result.color, fragment.color;\nEND\n");
++    glColor4f(0, 1, 0, 1);
++    rectangle(0, 1, -0.5f);
++    CHECK(pixel(48, 16, kBlue, 0));
++
++    load(GL_FRAGMENT_PROGRAM_ARB, opaque);
++    rectangle(0, 1, 0.0f);
++    CHECK(pixel(48, 16, kGreen, 0));
++    glColor4f(1, 0, 0, 1);
++    rectangle(0, 1, 0.0f);
++    CHECK(pixel(48, 16, kRed, 0));
++    CHECK_GL();
++}
+
+ TEST(arb_msaa_color_pass_preserves_depth_and_stencil) {
+     gpu::Fixture fixture(64, 64, false, 33, false, 24, false, 4);
