@@ -3115,3 +3115,23 @@ The two pairs added **1.23** and **1.27 FPS**, with p99 gaps **0.212** and **0.2
 ```sh
 python3 benchmarks/summarize-raid-native-5k-color-only-msaa.py CAPTURE_ROOT
 ```
+
+### Compare native 5K with a quarter of its pixels
+
+This diagnostic keeps the camera, 24 casters, boss, cast timings, 4× MSAA, VSync, other quality settings and renderer binary fixed. Use budget 2048 and the original attachment selection for all three windows. The last control of the attachment A/B supplies the first 5120 × 2880 window.
+
+Back up the isolated client's `WTF/Config.wtf` and its cloned Carbon preferences. Set `gxResolution`, `gxWindowedResolution`, the cloned saved window bounds and `OCERZ_HEADLESS_NATIVE_SIZE` to **2560 × 1440** for `resolution-diagnostic-1440p`. Warm and record 60 seconds at that fixed size. Restore both cloned files from their original bytes and verify that their checksums match. Save that witness as `resolution-diagnostic-preferences/restoration.json`. Warm and record another 60 seconds at 5120 × 2880 under `resolution-diagnostic-restored-5k`. Verify the actual drawable, GL viewport and in-client graphics witness at each size. The native 5K runs define the acceptance settings.
+
+| Run | Verified GPU-completed FPS | P99 completion gap |
+| --- | ---: | ---: |
+| Native 5120 × 2880 before | 99.37 | 13.61 ms |
+| Native 2560 × 1440 diagnostic | 104.00 | 15.68 ms |
+| Native 5120 × 2880 restored | 98.92 | 13.35 ms |
+
+The fixed 1440p render target has one quarter as many pixels. Its throughput was **4.9%** above the bracketing 5K median and its p99 was **2.20 ms** longer. All runs matched the camera, 25 actors, 26 cast timing rows, four samples and the supported graphics settings apart from resolution. The restored launch verified 5K again. [Controlled resolution comparison](results/raid-native-resolution-diagnostic.json)
+
+After the restored 5K timing window completes, record an eight-second Time Profiler trace on its client PID. Save the recording's start and end in raw uptime nanoseconds, PID, requested duration and last verified GPU completion in `after-window-cpu-witness.json`. Export its `time-profile` table to `after-window-cpu.xml`. In the separate trace, the main thread accumulated **8.35 seconds** of running sample weight over an **8.45-second** span. Unresolved leaves under AArchX guest VM calls accounted for **5.85 seconds** of that weight. The runtime requires guest address attribution to assign those samples to individual translated routines. [Restored 5K CPU profile](results/raid-native-resolution-diagnostic.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-resolution-diagnostic.py CAPTURE_ROOT
+```
