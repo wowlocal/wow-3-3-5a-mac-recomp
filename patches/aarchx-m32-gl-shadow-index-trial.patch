@@ -1,0 +1,265 @@
+diff --git a/src/m32_gl.c b/src/m32_gl.c
+--- a/src/m32_gl.c
++++ b/src/m32_gl.c
+@@ -16,7 +16,7 @@
+  * transform feedback, glCopyBufferSubData) does not go through m32, so only array and element array buffers are
+  * mirrored and a buffer bound elsewhere is copied in at every map.
+  *
+- * ponytail: 256 shadows, a linear scan under one lock behind a one-slot hint.
++ * 256 shadows, with a one-slot hint and an optional index under the shadow lock.
+  */
+ #include <inttypes.h>
+ #include <mach/mach.h>
+@@ -47,8 +47,13 @@
+     uint32_t alias;                /* an isolated guest range while a native PBO map is live */
+     int direct;                    /* the last mapping used renderer-owned guest pages */
+ } Shadow;
+-static Shadow g_shadows[256];
++enum { SHADOW_SLOTS = 256, SHADOW_BUCKETS = 512 };
++static Shadow g_shadows[SHADOW_SLOTS];
+ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
++/* One-based slot numbers. Keys and index links change only under g_lock. */
++static uint16_t g_shadow_head[SHADOW_BUCKETS], g_shadow_next[SHADOW_SLOTS];
++static int g_shadow_index, g_shadow_index_log;
++static uint64_t g_index_hits, g_index_misses;
+ static int g_reuse_shadow_storage, g_log_map_stats, g_alias_unpack;
+ static uint64_t g_maps, g_allocations, g_reused_storage, g_copy_in_bytes;
+ static uint64_t g_evictions, g_grows, g_write_only_bytes;
+@@ -71,9 +76,61 @@
+ {
+     g_reuse_shadow_storage = getenv("OCERZ_M32_REUSE_GL_SHADOW_STORAGE") != NULL;
+     g_log_map_stats = getenv("OCERZ_M32_GL_MAP_STATS") != NULL;
++    const char *index = getenv("OCERZ_M32_GL_SHADOW_INDEX");
++    g_shadow_index = index && strcmp(index, "1") == 0;
++    g_shadow_index_log = getenv("OCERZ_M32_GL_SHADOW_INDEX_LOG") != NULL;
+     const char *unpack_alias = getenv("OCERZ_M32_UNPACK_ALIAS");
+     g_alias_unpack = unpack_alias && strcmp(unpack_alias, "1") == 0;
+     g_host_page = (size_t)getpagesize();
++}
++
++static int is(const Shadow *s, void *group, uint32_t buffer) { return s->group == group && s->buffer == buffer; }
++
++static unsigned shadow_bucket(void *group, uint32_t buffer)
++{
++    uint64_t hash = ((uintptr_t)group >> 4) + buffer * UINT64_C(0x9e3779b97f4a7c15);
++    return (unsigned)(hash ^ (hash >> 26) ^ (hash >> 45)) & (SHADOW_BUCKETS - 1);
++}
++
++static void shadow_index_remove(const Shadow *s)
++{
++    if (!g_shadow_index || !s->group || !s->buffer) return;
++    const uint16_t slot = (uint16_t)(s - g_shadows + 1);
++    uint16_t *link = &g_shadow_head[shadow_bucket(s->group, s->buffer)];
++    while (*link && *link != slot)
++        link = &g_shadow_next[*link - 1];
++    if (*link) {
++        *link = g_shadow_next[slot - 1];
++        g_shadow_next[slot - 1] = 0;
++    }
++}
++
++static void shadow_index_insert(const Shadow *s)
++{
++    if (!g_shadow_index || !s->group || !s->buffer) return;
++    const size_t slot = (size_t)(s - g_shadows);
++    const unsigned bucket = shadow_bucket(s->group, s->buffer);
++    g_shadow_next[slot] = g_shadow_head[bucket];
++    g_shadow_head[bucket] = (uint16_t)(slot + 1);
++}
++
++static Shadow *shadow_index_lookup(void *group, uint32_t buffer)
++{
++    Shadow *result = NULL;
++    for (uint16_t slot = g_shadow_head[shadow_bucket(group, buffer)]; slot; slot = g_shadow_next[slot - 1]) {
++        Shadow *s = &g_shadows[slot - 1];
++        if (is(s, group, buffer)) {
++            result = s;
++            break;
++        }
++    }
++    if (g_shadow_index_log) {
++        uint64_t count = result ? ++g_index_hits : ++g_index_misses;
++        if (count == 1 || (count & 262143) == 0)
++            fprintf(stderr, "ocerz: GL shadow index hits=%" PRIu64 " misses=%" PRIu64 "\n",
++                    g_index_hits, g_index_misses);
++    }
++    return result;
+ }
+
+ static struct {
+@@ -296,6 +353,7 @@
+             if (s->alias)
+                 release_alias(vm, s);
+             if (s->direct) {
++                shadow_index_remove(s);
+                 m32_free(s->guest);
+                 *s = (Shadow){ 0 };
+             }
+@@ -388,20 +446,26 @@
+  * mapped is the one flushed and unmapped next (and usually mapped again) */
+ static int g_hint;
+
+-static int is(const Shadow *s, void *group, uint32_t buffer) { return s->group == group && s->buffer == buffer; }
+-
+ /* whether s is the shadow of (group, buffer) with a guest copy (live) or a mapping (!live) */
+ static int has(const Shadow *s, void *group, uint32_t buffer, int live)
+ {
+     return is(s, group, buffer) && (live ? s->guest || s->alias || s->direct : s->host != NULL);
+ }
+
+-static Shadow *lookup(void *group, uint32_t buffer, int live)
++static Shadow *lookup(void *group, uint32_t buffer, int live, int locked)
+ {
+     Shadow *h = &g_shadows[__atomic_load_n(&g_hint, __ATOMIC_RELAXED)];
+     if (has(h, group, buffer, live))
+         return h;
+-    for (int i = 0; i < 256; i++)
++    if (g_shadow_index && group && buffer) {
++        if (!locked) pthread_mutex_lock(&g_lock);
++        Shadow *s = shadow_index_lookup(group, buffer);
++        if (s && !has(s, group, buffer, live)) s = NULL;
++        if (s) __atomic_store_n(&g_hint, (int)(s - g_shadows), __ATOMIC_RELAXED);
++        if (!locked) pthread_mutex_unlock(&g_lock);
++        return s;
++    }
++    for (int i = 0; i < SHADOW_SLOTS; i++)
+         if (has(&g_shadows[i], group, buffer, live)) {
+             __atomic_store_n(&g_hint, i, __ATOMIC_RELAXED);
+             return &g_shadows[i];
+@@ -410,7 +474,7 @@
+ }
+
+ /* the shadow of (group, buffer), or NULL; with g_lock held */
+-static Shadow *find(void *group, uint32_t buffer) { return lookup(group, buffer, 1); }
++static Shadow *find(void *group, uint32_t buffer) { return lookup(group, buffer, 1, 1); }
+
+ /* the shadow of (group, buffer), made or grown to size (a grown one mirrors nothing yet); NULL when there is no room */
+ static Shadow *shadow_for(void *group, uint32_t buffer, uint32_t size)
+@@ -420,13 +484,17 @@
+     Shadow *h = &g_shadows[__atomic_load_n(&g_hint, __ATOMIC_RELAXED)];
+     if (is(h, group, buffer))
+         s = h;
+-    for (int i = 0; i < 256 && !s; i++) {
++    const int indexed = g_shadow_index && group && buffer;
++    if (!s && indexed) s = shadow_index_lookup(group, buffer);
++    for (int i = 0; i < SHADOW_SLOTS && !s; i++) {
+         Shadow *candidate = &g_shadows[i];
+-        if (is(candidate, group, buffer))
++        if (!indexed && is(candidate, group, buffer))
+             s = candidate;
+         /* A direct alias can use an unassigned slot without evicting a shadow. */
+-        else if ((!spare || (!size && spare->group && !candidate->group)) && !candidate->host)
++        else if ((!spare || (!size && spare->group && !candidate->group)) && !candidate->host) {
+             spare = candidate;
++            if (indexed && (size || !spare->group)) break;
++        }
+     }
+     if (!s && spare) {
+         uint32_t guest = 0, cap = 0;
+@@ -442,7 +510,9 @@
+         } else {
+             m32_free(spare->guest);
+         }
++        shadow_index_remove(spare);
+         *spare = (Shadow){ .group = group, .buffer = buffer, .guest = guest, .cap = cap };
++        shadow_index_insert(spare);
+         s = spare;
+     }
+     if (s && s->cap < size) {
+@@ -461,7 +531,7 @@
+     return s && (!size || s->guest) ? s : NULL;
+ }
+
+-static Shadow *mapped(unsigned target) { return lookup(share_group(), bound(target), 0); }
++static Shadow *mapped(unsigned target) { return lookup(share_group(), bound(target), 0, 0); }
+
+ #define RET(v) do { m32_ret(cpu, (uint32_t)(v), 0, 0); return OCERZ_STEP_OK; } while (0)
+
+@@ -739,6 +809,7 @@
+                 continue;
+             if (s->alias)
+                 release_alias(vm, s);
++            shadow_index_remove(s);
+             m32_free(s->guest);
+             *s = (Shadow){ 0 };
+         }
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -967,6 +967,67 @@
+     dlclose(library);
+ }
+
++static void test_shadow_slots(const char *gl, uint32_t pf, uint32_t ctx)
++{
++    enum { ARRAY = 0x8892, DYNAMIC = 0x88E8, READ_WRITE = 0x88BA, SLOTS = 256, SIZE = 4096 };
++    const uint32_t names = DATA + 0x1000;
++    cross(gl, "_glGenBuffers", 2, (uint32_t[]){ SLOTS + 1, names });
++    int complete = 1;
++    for (int i = 0; i <= SLOTS; i++) {
++        uint32_t name = m32_rd(names + (uint32_t)i * 4);
++        cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, name });
++        call("_glBufferData", 4, (uint32_t[]){ ARRAY, SIZE, 0, DYNAMIC });
++        uint32_t mapped = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++        if (i == SLOTS) {
++            check("a full shadow table preserves the existing mappings", mapped == 0);
++        } else if (mapped) {
++            m32_wr(mapped, 0x13579b00u + (uint32_t)i);
++        } else {
++            complete = 0;
++        }
++    }
++    check("occupy all shadow slots at once", complete);
++    for (int i = 0; i < SLOTS; i++) {
++        cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, m32_rd(names + (uint32_t)i * 4) });
++        complete &= call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY }) == 1;
++    }
++    check("read each mapping through its buffer key after changing the binding", complete);
++
++    cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, m32_rd(names + SLOTS * 4) });
++    uint32_t mapped = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++    check("reuse a slot after all old mappings end", mapped != 0);
++    if (mapped) call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY });
++    const uint32_t first = m32_rd(names);
++    cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, first });
++    mapped = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++    check("an evicted buffer reads its own backing on remap", mapped && m32_rd(mapped) == 0x13579b00u);
++    if (mapped) call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY });
++
++    uint32_t other = call("_aglCreateContext", 2, (uint32_t[]){ pf, 0 });
++    check("create another share group", other != 0);
++    if (other) {
++        call("_aglSetCurrentContext", 1, (uint32_t[]){ other });
++        cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, first });
++        call("_glBufferData", 4, (uint32_t[]){ ARRAY, SIZE, 0, DYNAMIC });
++        mapped = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++        check("same buffer name can be mapped in another share group", mapped != 0);
++        if (mapped) m32_wr(mapped, 0x2468ace0);
++        call("_aglSetCurrentContext", 1, (uint32_t[]){ ctx });
++        cross(gl, "_glBindBuffer", 2, (uint32_t[]){ ARRAY, first });
++        uint32_t original = call("_glMapBuffer", 2, (uint32_t[]){ ARRAY, READ_WRITE });
++        check("same-numbered live mappings stay separate",
++              original && mapped && original != mapped && m32_rd(original) == 0x13579b00u &&
++              m32_rd(mapped) == 0x2468ace0u);
++        if (original) call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY });
++        call("_aglSetCurrentContext", 1, (uint32_t[]){ other });
++        if (mapped) call("_glUnmapBuffer", 1, (uint32_t[]){ ARRAY });
++        call("_glDeleteBuffers", 2, (uint32_t[]){ 1, names });
++        call("_aglSetCurrentContext", 1, (uint32_t[]){ ctx });
++        call("_aglDestroyContext", 1, (uint32_t[]){ other });
++    }
++    call("_glDeleteBuffers", 2, (uint32_t[]){ SLOTS + 1, names });
++}
++
+ static void test_wmgl_storage(void)
+ {
+     enum { ARRAY = 0x8892, DYNAMIC = 0x88E8, READ_WRITE = 0x88BA, SIZE = 2 * 1024 * 1024 };
+@@ -1078,6 +1139,8 @@
+     call("_glDeleteBuffers", 2, (uint32_t[]){ 2, DATA + 0xc30 });
+     if (wantsBinding)
+         check("deleting the bound object clears the fast query", m32_wmgl_array_buffer_binding(&name) && name == 0);
++    if (getenv("OCERZ_M32_GL_SHADOW_INDEX_TEST"))
++        test_shadow_slots(gl, pf, ctx);
+     call("_aglSetCurrentContext", 1, (uint32_t[]){ 0 });
+     check("the fast query requires a current context", !m32_wmgl_array_buffer_binding(&name));
+     check("destroy the offscreen trial context", call("_aglDestroyContext", 1, (uint32_t[]){ ctx }) == 1);

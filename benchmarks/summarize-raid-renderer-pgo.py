@@ -12,7 +12,7 @@ HERE = Path(__file__).resolve().parent
 VERIFY_WINDOW = run_path(str(HERE / "summarize-raid-shadow-reuse.py"))["read_window"]
 
 
-def verify(capture, kind, renderer_kind=None):
+def verify(capture, kind, renderer_kind=None, seconds=60):
     training = kind == "training"
     if (capture / "pgo-mode.txt").read_text().split() != [kind, str(int(training))]:
         raise ValueError(f"Wrong PGO or instrumentation setting in {capture}")
@@ -32,7 +32,7 @@ def verify(capture, kind, renderer_kind=None):
     profiles = list(capture.glob("*.profraw"))
     if len(profiles) != int(training):
         raise ValueError(f"Unexpected profiling files in {capture}")
-    window = VERIFY_WINDOW(capture, 60)
+    window = VERIFY_WINDOW(capture, seconds)
     if training:
         profile = profiles[0].read_bytes()
         if not profile:

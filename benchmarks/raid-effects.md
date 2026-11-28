@@ -2062,3 +2062,24 @@ A separate Time Profiler capture on the selected build accounted for **16.38 sec
 ```sh
 python3 benchmarks/summarize-raid-runtime-pgo.py CAPTURE_ROOT
 ```
+
+### Index OpenGL buffer shadows by share group and name
+
+The trial adds a fixed index alongside the existing 256 shadow slots. The fast one-slot hint stays in front of it. Index links are read and updated under the existing shadow mutex. Deletion and eviction unlink the old key before a slot is reused. On a key miss, allocation can stop at the first spare that satisfies the existing eviction policy. The same native buffer mappings and shadow allocations back both modes.
+
+Apply `patches/aarchx-m32-gl-shadow-index-trial.patch` to the accepted runtime source layers. Keep the profile-guided WineMetalGL library fixed. Set `OCERZ_M32_GL_SHADOW_INDEX=1` for the index arm. Train the same AArchX source snapshot for one 60-second raid window in each mode and merge the profiles before building the runtime that will be timed. Both timing arms use that one runtime with profile generation disabled. Use `OCERZ_M32_GL_SHADOW_INDEX_LOG=1` only for a separate diagnostic.
+
+The index diagnostic logged **3,670,016 key misses and zero key hits** between the first and last complete counter rows after the world readback. These calls reached the index after the one-slot hint. The counters describe key presence and include probes from both the lookup and allocation paths.
+
+| Search after the one-slot hint | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Linear scan | 141.98 | 12.40 ms |
+| Hash index | 142.78 | 12.44 ms |
+
+The paired gains were **0.97 and 0.63 FPS**. P99 rose by **0.16 ms** in the first pair and fell by **0.08 ms** in the reverse pair. Keep the previous runtime as the raid baseline. All four 60-second timing windows had logging disabled and verified the saved camera, overlapping effects, 26 timing rows, consecutive GPU completions and zero visible windows or activations.
+
+Both modes passed **806** general i386 checks and **2,728** offscreen buffer checks. The focused cases fill all 256 shadow slots, reject a further mapping while all slots are occupied, and verify remapping after eviction. Two unshared contexts keep independent contents under the same numeric buffer name. Enable the focused cases with `OCERZ_M32_GL_SHADOW_INDEX_TEST=1` in the existing `test_m32 wmgl-storage` test. [Live timing, index counters and checks](results/raid-aarchx-gl-shadow-index-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-shadow-index.py CAPTURE_ROOT
+```
