@@ -75,12 +75,21 @@ class Item:
     outside_calls: Counter = field(default_factory=Counter)
     unknown_accesses: int = 0
     unsupported_operands: int = 0
+    started_ns: int = 0
+    elapsed_ns: int = 0
+    access_times: tuple = ()
+    flag_word_touches: tuple = ()
 
-    def mark(self, address, width, access, pc):
+    def mark(self, address, width, access, pc, tick, known_clears):
         if not 1 <= width <= 16 or access not in (1, 2, 3, 4):
             raise ValueError(f"Invalid memory operand at {pc:#x}")
         self.mem_count += 1
         self.unknown_accesses += access == 4
+        if self.flag_word_touches:
+            exact_clear = pc in known_clears and access == 3 and width == 4 and address % 4 == 0
+            touched = self.flag_word_touches[0 if exact_clear else 1]
+            for offset in range(0, (address % 4) + width, 4):
+                touched.add(((address + offset) & ADDRESS_MASK) & ~3)
         for offset in range(width):
             byte = (address + offset) & ADDRESS_MASK
             # Count only dependencies outside the current and nested call stack.
@@ -92,11 +101,15 @@ class Item:
                 continue
             if access != 2 and byte not in self.writes and byte not in self.possible_writes:
                 self.reads.setdefault(byte, pc)
+                if self.access_times:
+                    self.access_times[0].setdefault(byte, tick)
             if access != 1:
                 self.writes[byte] = pc
+                if self.access_times:
+                    self.access_times[1][byte] = tick
 
 
-def completed_items(rows, swaps, first_tick, last_tick):
+def completed_items(rows, swaps, first_tick, last_tick, dispatch_access_times=False, known_clears=()):
     pending = defaultdict(dict)
     complete = range(bisect_right(swaps, first_tick) + 1, bisect_right(swaps, last_tick))
     for tick, cpu, pc, kind, words in rows:
@@ -111,7 +124,7 @@ def completed_items(rows, swaps, first_tick, last_tick):
                     if pc == PREP["DISPATCH_BEGIN"] and item.name == "dispatch_body":
                         if (address, width, access) != (item.context + 0x50, 4, 2):
                             raise ValueError("Probe disagrees with the known dispatch context store")
-                    item.mark(address, width, access, pc)
+                    item.mark(address, width, access, pc, tick, known_clears)
             continue
         eax, ebx, ecx, edx, _, _, ebp, esp = words
         if pc in PREP["STARTS"]:
@@ -121,8 +134,13 @@ def completed_items(rows, swaps, first_tick, last_tick):
                 raise ValueError("Recursively overlapping preparation scope")
             if name == "dispatch_body":
                 item = Item(name, bisect_right(swaps, tick), ebp, edx, eax, ecx, ebx)
+                if dispatch_access_times:
+                    item.access_times = ({}, {})
+                if known_clears:
+                    item.flag_word_touches = (set(), set())
             else:
                 item = Item(name, bisect_right(swaps, tick), ebp, ebx)
+            item.started_ns = tick
             items[key] = item
         elif pc in PREP["ENDS"]:
             name = PREP["ENDS"][pc]
@@ -134,6 +152,9 @@ def completed_items(rows, swaps, first_tick, last_tick):
                     # A permitted later write can replace the initial publication.
                     if item.context + 0x50 not in item.writes:
                         raise ValueError("Missing initial dispatch publication")
+                item.elapsed_ns = tick - item.started_ns
+                if item.elapsed_ns <= 0:
+                    raise ValueError("Preparation scope timestamps did not advance")
                 yield cpu, item, ebx
 
 

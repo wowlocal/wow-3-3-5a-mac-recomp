@@ -1,0 +1,318 @@
+{
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "decoded_functions": 917,
+  "runs": [
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7790,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59988546500,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 129.81666666666666,
+        "p99_gpu_completion_gap_ns": 13192334,
+        "min_draws": 680,
+        "max_draws": 993
+      },
+      "weighted_cpu_usec": {
+        "all_cpu_samples_usec": 58498915,
+        "known_local_stack_read_usec": 1941915,
+        "native_load_at_local_read_usec": 1263158,
+        "same_block_prior_access_usec": 171144,
+        "same_block_prior_store_usec": 159840,
+        "native_load_at_same_block_prior_access_usec": 163050,
+        "local_read_in_function_without_visible_frame_address_formation_usec": 320057,
+        "same_block_value_register_still_live_usec": 75476,
+        "same_block_gpr_xmm_transfer_usec": 60013,
+        "same_block_prior_load_usec": 11304
+      },
+      "weighted_cpu_usec_in_both_preparation_call_trees": {
+        "known_local_stack_read_usec": 1355795,
+        "native_load_at_local_read_usec": 925530,
+        "local_read_in_function_without_visible_frame_address_formation_usec": 231731,
+        "same_block_prior_access_usec": 125987,
+        "same_block_prior_store_usec": 120062,
+        "native_load_at_same_block_prior_access_usec": 122190,
+        "same_block_value_register_still_live_usec": 59322,
+        "same_block_gpr_xmm_transfer_usec": 46913,
+        "same_block_prior_load_usec": 5925
+      },
+      "highest_coverage_functions": [
+        {
+          "entry": "0x880c70",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 384281,
+          "native_load_at_local_read_usec": 338536,
+          "same_block_prior_access_usec": 50541,
+          "same_block_prior_store_usec": 50541,
+          "native_load_at_same_block_prior_access_usec": 50541,
+          "same_block_value_register_still_live_usec": 34078,
+          "same_block_gpr_xmm_transfer_usec": 34078
+        },
+        {
+          "entry": "0x964ca0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 142162,
+          "native_load_at_local_read_usec": 110522,
+          "same_block_prior_access_usec": 2920,
+          "same_block_prior_store_usec": 2920,
+          "native_load_at_same_block_prior_access_usec": 2920
+        },
+        {
+          "entry": "0x2856a0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 136876,
+          "native_load_at_local_read_usec": 98652
+        },
+        {
+          "entry": "0x97e390",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 92789,
+          "native_load_at_local_read_usec": 40270
+        },
+        {
+          "entry": "0x2aab20",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 65441,
+          "native_load_at_local_read_usec": 48007
+        },
+        {
+          "entry": "0x8d9710",
+          "forms_frame_address": false,
+          "known_local_stack_read_usec": 61224,
+          "local_read_in_function_without_visible_frame_address_formation_usec": 61224,
+          "native_load_at_local_read_usec": 30741
+        },
+        {
+          "entry": "0x80bf10",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 44917,
+          "native_load_at_local_read_usec": 38062,
+          "same_block_prior_access_usec": 3017,
+          "same_block_prior_store_usec": 721,
+          "native_load_at_same_block_prior_access_usec": 3017,
+          "same_block_prior_load_usec": 2296,
+          "same_block_value_register_still_live_usec": 2296
+        },
+        {
+          "entry": "0x8a1050",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 41123,
+          "native_load_at_local_read_usec": 27692,
+          "same_block_prior_access_usec": 18278,
+          "same_block_prior_store_usec": 18278,
+          "native_load_at_same_block_prior_access_usec": 18278
+        },
+        {
+          "entry": "0x957790",
+          "forms_frame_address": false,
+          "known_local_stack_read_usec": 37017,
+          "local_read_in_function_without_visible_frame_address_formation_usec": 37017,
+          "native_load_at_local_read_usec": 9842,
+          "same_block_prior_access_usec": 2605,
+          "same_block_prior_load_usec": 2605,
+          "native_load_at_same_block_prior_access_usec": 2605,
+          "same_block_value_register_still_live_usec": 2605
+        },
+        {
+          "entry": "0x967f20",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 33014,
+          "native_load_at_local_read_usec": 22950
+        },
+        {
+          "entry": "0x7057c0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 31996
+        },
+        {
+          "entry": "0x97a820",
+          "forms_frame_address": false,
+          "known_local_stack_read_usec": 30854,
+          "native_load_at_local_read_usec": 26266,
+          "local_read_in_function_without_visible_frame_address_formation_usec": 30854,
+          "same_block_prior_access_usec": 16021,
+          "same_block_prior_store_usec": 16021,
+          "native_load_at_same_block_prior_access_usec": 11724
+        },
+        {
+          "entry": "0x97c340",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 30662,
+          "native_load_at_local_read_usec": 15134,
+          "same_block_prior_access_usec": 2687,
+          "same_block_prior_store_usec": 2687,
+          "native_load_at_same_block_prior_access_usec": 2687,
+          "same_block_value_register_still_live_usec": 2687
+        },
+        {
+          "entry": "0x6e43b0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 29661,
+          "native_load_at_local_read_usec": 15000
+        },
+        {
+          "entry": "0x8f98a0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 28966,
+          "native_load_at_local_read_usec": 16285
+        }
+      ]
+    },
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 7837,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59993617084,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 130.6,
+        "p99_gpu_completion_gap_ns": 13007000,
+        "min_draws": 685,
+        "max_draws": 977
+      },
+      "weighted_cpu_usec": {
+        "all_cpu_samples_usec": 58703008,
+        "known_local_stack_read_usec": 2204226,
+        "native_load_at_local_read_usec": 1353921,
+        "same_block_prior_access_usec": 157718,
+        "same_block_prior_store_usec": 152534,
+        "native_load_at_same_block_prior_access_usec": 134670,
+        "local_read_in_function_without_visible_frame_address_formation_usec": 343891,
+        "same_block_value_register_still_live_usec": 70599,
+        "same_block_gpr_xmm_transfer_usec": 61758,
+        "same_block_prior_load_usec": 5184
+      },
+      "weighted_cpu_usec_in_both_preparation_call_trees": {
+        "known_local_stack_read_usec": 1521463,
+        "native_load_at_local_read_usec": 989322,
+        "same_block_prior_access_usec": 105310,
+        "same_block_prior_store_usec": 103147,
+        "native_load_at_same_block_prior_access_usec": 96840,
+        "local_read_in_function_without_visible_frame_address_formation_usec": 245322,
+        "same_block_value_register_still_live_usec": 57138,
+        "same_block_gpr_xmm_transfer_usec": 50909,
+        "same_block_prior_load_usec": 2163
+      },
+      "highest_coverage_functions": [
+        {
+          "entry": "0x880c70",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 448624,
+          "native_load_at_local_read_usec": 345805,
+          "same_block_prior_access_usec": 69628,
+          "same_block_prior_store_usec": 69628,
+          "native_load_at_same_block_prior_access_usec": 63509,
+          "same_block_value_register_still_live_usec": 48040,
+          "same_block_gpr_xmm_transfer_usec": 48040
+        },
+        {
+          "entry": "0x964ca0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 212252,
+          "native_load_at_local_read_usec": 186128,
+          "same_block_prior_access_usec": 264,
+          "same_block_prior_store_usec": 264,
+          "native_load_at_same_block_prior_access_usec": 264,
+          "same_block_value_register_still_live_usec": 264,
+          "same_block_gpr_xmm_transfer_usec": 264
+        },
+        {
+          "entry": "0x2856a0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 191939,
+          "native_load_at_local_read_usec": 124064,
+          "same_block_prior_access_usec": 2612,
+          "same_block_prior_store_usec": 2612,
+          "same_block_value_register_still_live_usec": 2612
+        },
+        {
+          "entry": "0x2aab20",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 86446,
+          "native_load_at_local_read_usec": 60143
+        },
+        {
+          "entry": "0x957790",
+          "forms_frame_address": false,
+          "known_local_stack_read_usec": 75904,
+          "local_read_in_function_without_visible_frame_address_formation_usec": 75904,
+          "native_load_at_local_read_usec": 4212
+        },
+        {
+          "entry": "0x97e390",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 62023,
+          "native_load_at_local_read_usec": 35902,
+          "same_block_prior_access_usec": 8834,
+          "same_block_prior_store_usec": 6671,
+          "native_load_at_same_block_prior_access_usec": 8834,
+          "same_block_value_register_still_live_usec": 8834,
+          "same_block_prior_load_usec": 2163,
+          "same_block_gpr_xmm_transfer_usec": 2605
+        },
+        {
+          "entry": "0x8d9710",
+          "forms_frame_address": false,
+          "known_local_stack_read_usec": 56046,
+          "native_load_at_local_read_usec": 5550,
+          "local_read_in_function_without_visible_frame_address_formation_usec": 56046
+        },
+        {
+          "entry": "0x80bf10",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 52919,
+          "native_load_at_local_read_usec": 36760
+        },
+        {
+          "entry": "0x8fa1b0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 44293,
+          "native_load_at_local_read_usec": 40443
+        },
+        {
+          "entry": "0x73d360",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 34983,
+          "native_load_at_local_read_usec": 7694
+        },
+        {
+          "entry": "0x92d1d0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 30597,
+          "native_load_at_local_read_usec": 13196
+        },
+        {
+          "entry": "0x6e29c0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 29429,
+          "native_load_at_local_read_usec": 29429
+        },
+        {
+          "entry": "0x6e43b0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 27892,
+          "native_load_at_local_read_usec": 19294
+        },
+        {
+          "entry": "0x97c340",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 27448,
+          "native_load_at_local_read_usec": 7908
+        },
+        {
+          "entry": "0x8f98a0",
+          "forms_frame_address": true,
+          "known_local_stack_read_usec": 26656,
+          "native_load_at_local_read_usec": 16489
+        }
+      ]
+    }
+  ]
+}

@@ -2729,3 +2729,29 @@ In the candidate diagnostic, **1,140,059** of **2,850,816** covered pipeline pre
 ```sh
 python3 benchmarks/summarize-raid-alpha-variant.py CAPTURE_ROOT
 ```
+
+### Measure the remaining stack reload and preparation scheduling opportunities
+
+The stack-slot analyzer reuses the two 60-second weighted guest and ARM64 stack recordings. It decodes **917** sampled functions from the verified original client. It recognizes fixed negative EBP offsets in functions with a frame-pointer prologue. It starts a new value history at control-flow boundaries, clears it for potential aliasing writes, and invalidates recorded values that overlap a local store. This identifies candidate reads for a register-promotion pass. It cannot establish memory ownership or precise state restoration for a candidate.
+
+Across the two captures, recognized local-slot reads accounted for **3.32% and 3.75%** of sampled CPU weight. The subset with an earlier access in the same block accounted for **0.29% and 0.27%**. Actual ARM64 loads at those candidate sites accounted for **0.28% and 0.23%**. Within the two preparation call trees, the same-block subset accounted for **0.22% and 0.18%** of total sampled CPU. Use larger work units for the next CPU optimization. [Stack slot coverage](results/raid-aarchx-i386-frame-slots.json)
+
+The scheduling analyzer reuses the explicit memory operands from the two verified item-memory captures. It groups dispatcher iterations in original index order and keeps index-changing iterations and transitions between work groups serial. The list model keeps consumers in publication order and requires an update before the consumer of that same item. It uses both equal costs and weights from the recordings for sensitivity. The timing-only costs come from **428** complete frames in the earlier, lighter probe and are grouped by the dispatch input tag.
+
+For the completed dispatcher tasks, the analyzer first schedules whole tasks using the observed read and write dependencies. A second model assumes ordered publication happens separately and keeps the read-after-write dependencies. An additional lower bound allows a task to start before an earlier task finishes if every recorded input is ready by its original read offset. Only the separate context-isolation scenario omits the observed dependencies in offsets `0x50–0x9f`. That scenario requires an equivalent producer for those fields. A production implementation must preserve the original publication order.
+
+| Dispatcher model across 13 frames | Work left using costs from the timing-only trace |
+| --- | ---: |
+| Schedule whole tasks with the observed reads and writes | 100% |
+| Use the original read offsets and assume ordered publication | 79–80% |
+| Also make the shared context fields available independently | 65–67% |
+| Also merge identical flag clears | 46–47% |
+
+The first row is the simulated four-worker schedule. The other rows are lower bounds, with zero dispatch, synchronization and merge costs. Their ranges come from the median and mean timing-only cost for each tag. Using elapsed times from the memory-instrumented run puts the last scenario at **86%** work left. All **2,341** dispatcher tasks called code outside the memory probe. Those missing accesses and callees still need to be audited before changing execution order. [Calibrated scheduling bounds](results/raid-aarchx-i386-item-critical-path.json)
+
+The ordinary access-offset model attributes **35%** of its modeled start delays to the `0x97d3b9 → 0x9791bf` edge at context offset `0x5c`. The original dispatcher copies that field from `0x58` after the item call. Once the context fields are excluded, about **70%** of the remaining delay comes from `0x97bec9 → 0x97bd8f`. Both instructions clear bit zero in the same graphics-state word. The last scenario validates six original clear instructions and merges the dependency only when the recorded accesses to the aligned word in both tasks consist entirely of those clears. A prior ordinary write to the word remains a dependency. These observations identify fields to test for early publication before building workers. [Binding edges and instruction witnesses](results/raid-aarchx-i386-item-critical-path.json)
+
+```sh
+python3 benchmarks/summarize-raid-i386-frame-slots.py I386_CLIENT STACK_CAPTURE_1 STACK_CAPTURE_2
+python3 benchmarks/summarize-raid-item-critical-path.py MEMORY_CAPTURE_ROOT I386_CLIENT TIMING_CAPTURE_ROOT
+```
