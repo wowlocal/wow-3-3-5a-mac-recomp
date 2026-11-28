@@ -1,0 +1,44 @@
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ -36,4 +36,13 @@
+ LDFLAGS := $(ARCHFLAGS)
+ LDLIBS := -lcompression -lobjc
++ifeq ($(OCERZ_PGO_GENERATE),1)
++ifneq ($(strip $(OCERZ_PGO_PROFILE)),)
++$(error Choose profile generation or profile use for each build)
++endif
++PGO_COMPILE_FLAGS := -fprofile-generate -fprofile-continuous -fprofile-update=atomic
++PGO_LINK_FLAGS := -fprofile-generate -fprofile-continuous
++else ifneq ($(strip $(OCERZ_PGO_PROFILE)),)
++PGO_COMPILE_FLAGS := -fprofile-use="$(OCERZ_PGO_PROFILE)" -Werror=profile-instr-out-of-date
++endif
+ # libSystem's sub-libraries, linked weak ahead of libSystem itself so that dyld finds each import where it lives
+ # (src/syslink.c); ocerz-umbrella is the same program linked through libSystem alone, its fallback
+@@ -80,14 +89,14 @@
+ # A rebuilt FEXCore relinks ocerz; FEX_LIBS is empty without FEX.
+ ocerz: $(OBJS) $(FEX_OBJS) $(filter %.a,$(FEX_LIBS))
+-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(FEX_OBJS) $(SYSLIBS) $(LDLIBS) $(FEX_LIBS)
+-	$(CC) $(LDFLAGS) -o ocerz-umbrella $(OBJS) $(FEX_OBJS) $(LDLIBS) $(FEX_LIBS)
++	$(CC) $(LDFLAGS) $(PGO_LINK_FLAGS) -o $@ $(OBJS) $(FEX_OBJS) $(SYSLIBS) $(LDLIBS) $(FEX_LIBS)
++	$(CC) $(LDFLAGS) $(PGO_LINK_FLAGS) -o ocerz-umbrella $(OBJS) $(FEX_OBJS) $(LDLIBS) $(FEX_LIBS)
+
+ src/%.o: src/%.c
+-	$(CC) $(CFLAGS) -c -o $@ $<
++	$(CC) $(CFLAGS) $(PGO_COMPILE_FLAGS) -c -o $@ $<
+
+ src/m32_leaf.o: CFLAGS += -mgeneral-regs-only
+
+ src/%.o: src/%.m
+-	$(CC) $(CFLAGS) -fobjc-exceptions -c -o $@ $<
++	$(CC) $(CFLAGS) $(PGO_COMPILE_FLAGS) -fobjc-exceptions -c -o $@ $<
+
+ src/%.o: src/%.s
+@@ -99,5 +108,5 @@
+ tests/unit/bin/%: tests/unit/%.c $(CORE_OBJS)
+-	@mkdir -p tests/unit/bin
++	@mkdir -p tests/unit/bin
+-	$(CC) $(CFLAGS) -Wl,-S -o $@ $< $(CORE_OBJS) $(LDLIBS)
++	$(CC) $(CFLAGS) $(PGO_LINK_FLAGS) -Wl,-S -o $@ $< $(CORE_OBJS) $(LDLIBS)
+
+ unit: $(UNIT_BINS)

@@ -2041,3 +2041,24 @@ The two pairs gained **2.20 and 4.85 FPS** and shortened p99 by **0.12 and 0.76 
 ```sh
 python3 benchmarks/summarize-raid-renderer-pgo.py CAPTURE_ROOT
 ```
+
+### Profile-guided optimization of the native AArchX runtime
+
+The comparison uses one AArchX source snapshot and the same profiled WineMetalGL library from the preceding experiment in every launch. The compiler profile covers the C and Objective-C runtime code. Its options leave the settings for dynamically generated guest code in place. Training and timing use the same dedicated headless app path and bundle identifier. The runner stages each runtime before launch and verifies its signature and hash.
+
+Apply `patches/aarchx-runtime-pgo-trial.patch` to the accepted AArchX source layers. Keep the existing `WMGL_INCLUDE`, arm64 and `-O2` flags. Rebuild with `make -B` after switching modes. Use `OCERZ_PGO_GENERATE=1` and a fresh `LLVM_PROFILE_FILE=runtime-%p%c.profraw` pattern in the training process. Merge the profiles with `llvm-profdata merge`. For timing, turn generation off and set `OCERZ_PGO_PROFILE` only for the candidate. [Clang PGO instructions](https://clang.llvm.org/docs/UsersManual.html#profile-guided-optimization)
+
+The two 60-second training windows contained **14,949** verified GPU completions. The merged profile contains **3,843** function records. All **72** native compilation commands matched once the profile-use flag and its stale-profile check were removed. These flags apply to 69 C and Objective-C units. Neither timed executable includes the profiling counters. The native machine-code section shrank from **2,540,520 to 2,312,408 bytes**.
+
+| Native AArchX build with the fixed PGO renderer | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing `-O2` build | 139.60 | 12.64 ms |
+| `-O2` with the raid profile | 140.78 | 12.28 ms |
+
+The paired gains were **1.18 and 1.17 FPS**, with p99 shortened by **0.20 and 0.52 ms**. Use the locally profiled runtime with the profiled renderer for follow-up comparisons on the same source snapshots. The two runtime builds passed **805** standalone i386 checks and **40,044** JIT-versus-interpreter cases in each of the offset and low-shadow layouts. Each of the four 60-second timings verified the saved camera, overlapping effects, 26 timing rows, consecutive GPU completions and zero visible test windows or activations. [Live A/B and build validation](results/raid-aarchx-runtime-pgo-ab.json)
+
+A separate Time Profiler capture on the selected build accounted for **16.38 seconds** of running main-thread sample weight. The i386 bridge's map and unmap routines appeared in **4.44%** of that weight. Buffer-shadow lookup or allocation appeared in **1.25%**, and guest leaf memory helpers appeared in **0.26%**. The groups use inclusive weights and can overlap. The CPU trace used the same verified fixture. It was recorded separately from the four timing windows. [Native call-group weights](results/raid-aarchx-runtime-pgo-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-runtime-pgo.py CAPTURE_ROOT
+```

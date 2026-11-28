@@ -12,7 +12,7 @@ HERE = Path(__file__).resolve().parent
 VERIFY_WINDOW = run_path(str(HERE / "summarize-raid-shadow-reuse.py"))["read_window"]
 
 
-def verify(capture, kind):
+def verify(capture, kind, renderer_kind=None):
     training = kind == "training"
     if (capture / "pgo-mode.txt").read_text().split() != [kind, str(int(training))]:
         raise ValueError(f"Wrong PGO or instrumentation setting in {capture}")
@@ -26,7 +26,8 @@ def verify(capture, kind):
         "legacy_paused": True, "legacy_completed_frames_during_launch": 0,
     }:
         raise ValueError(f"Earlier test ran during {capture}")
-    if f"/artifacts/{kind}/libwinemetalgl.dylib" not in (capture / "renderer-map.txt").read_text():
+    renderer = renderer_kind or kind
+    if f"/artifacts/{renderer}/libwinemetalgl.dylib" not in (capture / "renderer-map.txt").read_text():
         raise ValueError(f"Wrong loaded renderer in {capture}")
     profiles = list(capture.glob("*.profraw"))
     if len(profiles) != int(training):
@@ -39,6 +40,24 @@ def verify(capture, kind):
         window.update({"raw_profile_size_bytes": len(profile),
                        "raw_profile_sha256": hashlib.sha256(profile).hexdigest()})
     return window
+
+
+def summarize_timing(timed):
+    fps, p99 = "average_completed_fps", "p99_gpu_completion_gap_ns"
+    return {
+        "timed_runs": timed,
+        "comparison": {
+            mode: {
+                "median_gpu_completed_fps": median(row[fps] for row in timed if row["mode"] == mode),
+                "median_p99_completion_gap_ns": median(row[p99] for row in timed if row["mode"] == mode),
+            }
+            for mode in ("control", "candidate")
+        },
+        "paired_candidate_minus_control": [
+            {"completed_fps": timed[b][fps] - timed[a][fps], "p99_gap_ns": timed[b][p99] - timed[a][p99]}
+            for a, b in ((0, 1), (3, 2))
+        ],
+    }
 
 
 def summarize(root):
@@ -54,23 +73,7 @@ def summarize(root):
         {"order": index, "mode": mode, **verify(root / f"timed-{index}-{mode}", mode)}
         for index, mode in enumerate(order, 1)
     ]
-    fps, p99 = "average_completed_fps", "p99_gpu_completion_gap_ns"
-    return {
-        "renderer_build_validation": flags,
-        "training_captures": training,
-        "timed_runs": timed,
-        "comparison": {
-            mode: {
-                "median_gpu_completed_fps": median(row[fps] for row in timed if row["mode"] == mode),
-                "median_p99_completion_gap_ns": median(row[p99] for row in timed if row["mode"] == mode),
-            }
-            for mode in ("control", "candidate")
-        },
-        "paired_candidate_minus_control": [
-            {"completed_fps": timed[b][fps] - timed[a][fps], "p99_gap_ns": timed[b][p99] - timed[a][p99]}
-            for a, b in ((0, 1), (3, 2))
-        ],
-    }
+    return {"renderer_build_validation": flags, "training_captures": training, **summarize_timing(timed)}
 
 
 def main():
