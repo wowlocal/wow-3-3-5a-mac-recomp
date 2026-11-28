@@ -1954,3 +1954,25 @@ The Metal traces bracketed **2,180 and 2,240** consecutive output intervals with
 ```sh
 python3 benchmarks/summarize-raid-single-render-pass.py CAPTURE_ROOT
 ```
+
+### Forward the register value from an adjacent x87 float load
+
+The i386 trial recognizes a memory `FLDS` followed by `FISTPL` in the same emitted x87 run. It records the exact host-code boundary at which the load leaves the checked double in a scratch register. If conversion starts at that boundary, it reuses the register and the earlier NaN check. The load still writes the x87 stack slot and its metadata. The conversion uses the existing rounding, range checks, status updates and store path. If the load has to interpret the x87 run, that path also executes the conversion.
+
+Apply `patches/aarchx-m32-x87-forward-trial.patch` after the general base-hoist trial. Set `OCERZ_TCACHE=off` and `OCERZ_M32_X87_FORWARD=1`. Set `OCERZ_M32_X87_FORWARD_LOG=1` only for a separate compiler diagnostic.
+
+Both modes passed **806** general i386 checks and **44** focused interpreter comparisons. The focused fixture uses all four x87 rounding modes with positive and negative numbers, signed zero, the 32-bit integer boundary, an overflow, infinity and a quiet NaN. It compares the result, status and control words, and an existing x87 stack value. The trial also passed all 44 cases with forced branch veneers. Run one fresh process for each `OCERZ_TEST_JIT32_FLD_FIST` value from 0 through 43.
+
+The compiler diagnostic recorded **61** distinct forwarded pairs, including one emitted after the last world readback. All 61 matched adjacent instructions in the original i386 executable. The emitted `FISTPL` addresses accounted for **1.03% and 1.01%** of all weighted CPU samples in the two earlier raid profiles. The attribution covers the instructions' native code in those captures. The trial removes the stack reload and duplicate NaN check within that code.
+
+| x87 float operand | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Reload the x87 stack slot | 134.87 | 12.64 ms |
+| Forward the ARM64 register | 134.63 | 12.66 ms |
+
+The trial changed throughput by **−0.65 and +0.17 FPS** in the two pairs. P99 changed by **+0.13 and −0.07 ms**. Keep the ordinary reload as the benchmark baseline. The four 60-second launches and the separate diagnostic verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. The earlier trial was paused during each launch and resumed afterward. [Live A/B, emitted pairs and CPU coverage](results/raid-aarchx-i386-x87-forward-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-x87-forward.py CAPTURE_ROOT I386_CLIENT \
+    --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
+```

@@ -1,0 +1,132 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -15684,6 +15684,7 @@
+ static int g_x87_nzcv = -1, g_x87_nzcv_live;
+ static int g_x87_live, g_x87_delta;
+ static int g_x87_rc_near;   /* the open run's guard has checked RC is round to nearest */
++static const uint32_t *g_x87_fld_forward_end;
+ /*
+  * TOP as the block expects it here: the TOP the translator saw at the block's
+  * entry plus each run's pushes and pops, or -1.  A run that knows it checks
+@@ -15715,6 +15716,7 @@
+     g_n_x87_frag = 0;
+     g_x87_frag_open = 0;
+     g_x87_nzcv = -1;
++    g_x87_fld_forward_end = NULL;
+ }
+
+ static int x87_mem_ok(const X86Insn *in, const X86Operand *o, int s1, int s2, int s3)
+@@ -16298,8 +16300,12 @@
+     const X86Operand *o = &insn->ops[0];
+     int popit = insn->op != OCERZ_OP_FIST;
+     int c1_set = 0;
++    const int forward = g_x87_fld_forward_end == b->p && insn->op == OCERZ_OP_FISTP && o->size == 4;
++    if (forward && ENV_ON("OCERZ_M32_X87_FORWARD_LOG"))
++        fprintf(stderr, "ocerz: x87 float forward %#llx %#llx\n",
++                (unsigned long long)g_cur_insns[g_cur_insn_idx - 1].rip, (unsigned long long)insn->rip);
+     x87_ld(b);
+-    x87_top(b, X87P);
++    if (!forward) x87_top(b, X87P);
+     if (courier || insn->op == OCERZ_OP_FISTTP) {
+         c1_set = !(g_x87_live && g_x87_c1k);
+         x87_clear_c1(b);
+@@ -16316,15 +16322,17 @@
+         (void)a64_try_ands_imm(b, 0, A64_ZR, JTU, 0x8000);
+         a64_csneg(b, 1, X87Q, JTT, JTT, A64_EQ);
+     } else {
+-        if (!g_x87_live || g_x87_xokk[x87_rel(0)] != 2) {
+-            a64_lsrv(b, 1, JTT, X87S, X87P);
+-            (void)a64_try_ands_imm(b, 1, A64_ZR, JTT, 1ull << XS_XOK);
+-            x87_slow_if(b, A64_NE);
+-        }
+-        x87_slot(b, X87Q, X87P);
+-        x87_lane_read(b, VX0, x87_rel(0), X87Q);
+-        a64_fcmp(b, 1, VX0, VX0);
+-        x87_slow_if(b, A64_VS);
++        if (!forward) {
++            if (!g_x87_live || g_x87_xokk[x87_rel(0)] != 2) {
++                a64_lsrv(b, 1, JTT, X87S, X87P);
++                (void)a64_try_ands_imm(b, 1, A64_ZR, JTT, 1ull << XS_XOK);
++                x87_slow_if(b, A64_NE);
++            }
++            x87_slot(b, X87Q, X87P);
++            x87_lane_read(b, VX0, x87_rel(0), X87Q);
++            a64_fcmp(b, 1, VX0, VX0);
++            x87_slow_if(b, A64_VS);
++        }
+         if (insn->op == OCERZ_OP_FISTTP) a64_fcvtzs(b, 1, 1, X87Q, VX0);
+         else if (g_x87_rc_near)          a64_fcvtns(b, 1, 1, X87Q, VX0);
+         else {
+@@ -16828,6 +16836,12 @@
+     g_x87_nzcv = -1;
+     int ok = g_n_x87_site + 16 <= X87_SITE_MAX && g_n_x87_frag + 4 <= X87_FRAG_MAX &&
+              emit_x87_one(b, insn, need, exit_sites, n_exits);
++    /* A memory FLD leaves its checked double in VX0 after materializing the
++     * stack. Its NaN exit interprets to the end of the run. Reuse the register
++     * only when the next instruction starts at this exact host-code boundary. */
++    g_x87_fld_forward_end = ok && idx < r->last && g_x87_live && insn->mode32 &&
++        insn->op == OCERZ_OP_FLD && x87_mem_ok(insn, &insn->ops[0], 4, 0, 0) &&
++        ocerz_tcache_mode() == OCERZ_TC_OFF && ENV_ON("OCERZ_M32_X87_FORWARD") ? b->p : NULL;
+     x87_frag_land(b);
+     /* An out-of-line tail lands here, and the run's exits at its end, past code that may have set the address caches. */
+     ea_cache_reset();
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -53,6 +53,7 @@
+
+ #include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+
+@@ -259,6 +260,38 @@
+     run_case(name, (at), (esp), _b, sizeof _b); \
+ } while (0)
+
++static int test_fld_fist(const char *requested)
++{
++    static const uint32_t inputs[] = {
++        0x00000000, 0x80000000, 0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000,
++        0x4effffff, 0xcf000000, 0x4f000000, 0x7f800000, 0x7fc12345,
++    };
++    const size_t size = sizeof inputs / sizeof inputs[0];
++    char *end;
++    unsigned long index = strtoul(requested, &end, 10);
++    if (!*requested || *end || index >= 4 * size) return 2;
++    unsigned rc = (unsigned)(index / size);
++    size_t i = index % size;
++    uint8_t code[] = {
++                0xc7, 0x03, 0, 0, 0, 0,        /* mov dword [ebx], input */
++                0xc7, 0x43, 0x04, 0, 0, 0, 0,  /* mov dword [ebx+4], control */
++                0xd9, 0x6b, 0x04,              /* fldcw [ebx+4] */
++                0xd9, 0xe8,                    /* fld1 */
++                0xd9, 0x03,                    /* fld dword [ebx] */
++                0xdb, 0x5b, 0x08,              /* fistp dword [ebx+8] */
++                0xdf, 0xe0,                    /* fnstsw ax */
++                0xdd, 0x5b, 0x10,              /* fstp qword [ebx+16] */
++                0xd9, 0x7b, 0x18,              /* fnstcw [ebx+24] */
++    };
++    uint32_t control = 0x037f | (rc << 10);
++    memcpy(code + 2, &inputs[i], sizeof inputs[i]);
++    memcpy(code + 9, &control, sizeof control);
++    char name[80];
++    snprintf(name, sizeof name, "x87 FLD/FISTP RC %u input %08x", rc, inputs[i]);
++    run_case(name, M32_CODE, M32_STACK, code, sizeof code);
++    return g_failures ? 1 : 0;
++}
++
+ int main(void)
+ {
+     if (ocerz_mem_init(0x10000ull, 0x900000000ull) != OCERZ_OK) {
+@@ -279,6 +312,8 @@
+     }
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++    const char *test = getenv("OCERZ_TEST_JIT32_FLD_FIST");
++    if (test) return test_fld_fist(test);
+
+     static const uint8_t carry_chain[] = {
+         0xb8, 0xff, 0xff, 0xff, 0xff,
