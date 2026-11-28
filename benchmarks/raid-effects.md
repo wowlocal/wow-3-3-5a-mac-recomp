@@ -3279,3 +3279,18 @@ The archive contains one **5120 × 2880** frame with **1,037** labeled draw call
 ```sh
 python3 benchmarks/summarize-metal-frame-capture.py CAPTURE_DIR --intervals-xml CAPTURE_DIR/intervals.xml --all-stages
 ```
+
+### Profile and replay prefixes of the busiest native 5K pass
+
+Open the verified 5K archive with `gpudebug` and use the local M4 Pro. Collect `profile run --gpu-state default --exec overlapping` and `--exec serial` in separate sessions while the earlier test client is suspended. Save the profiler output and isolation witnesses under `profiling-5k`. Export the serial `/performance/encoders` and `/performance/commands` lists, the details of `/performance/encoders/re0`, and its pre-fragment and fragment counters. [Apple's Metal debugger](https://developer.apple.com/documentation/xcode/metal-debugger)
+
+The serial profile attributes **9.71 ms** of fragment activity to the 939-draw encoder and counts **164.6 million fragment shader invocations**, about **11 per output pixel**. The largest reported limiter counters are texture filtering (**34.31%**), texture read cache (**31.92%**) and texture reads (**28.02%**). The profiler reports zero command cost for all 1,037 individual draw rows.
+
+Snapshot the pipeline and depth/stencil state for all 939 draws, then fetch prefixes of 256, 512, 768 and 939 draws in ascending, descending, and mixed order. Rewind to draw 0 before every fetch. Record Metal System Trace on the replay service, log each request's raw-uptime bounds and export the `metal-gpu-intervals` and `metal-application-encoders-list` tables. Save each capture under `profiling-5k/prefix-trace-ORDER` with `toc.xml`, `gpu.xml`, `encoders.xml` and `fetch-witness.json`. The analyzer joins the encoding rows and GPU intervals and checks the full-resolution PNGs.
+
+All repeated prefix readbacks matched their respective SHA-256 digests. All nine measurements of the three longest prefixes overlapped WindowServer fragment activity. The state snapshot found four uninterrupted groups with full RGBA writes, no blending, and `LEQUAL` depth testing with depth writes. The largest spans **288** draws, starting at zero-based draw **290**. All **171** draws after the 768-draw checkpoint used blending with read-only depth. Shader discard and alpha test state require separate checks before changing depth test order. [Replay and pipeline evidence](results/raid-native-5k-replay-prefixes.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-replay-prefixes.py CAPTURE_DIR --snapshot-draw-states SESSION_ID > CAPTURE_DIR/profiling-5k/archived-draw-states.json
+python3 benchmarks/summarize-raid-native-5k-replay-prefixes.py CAPTURE_DIR
+```

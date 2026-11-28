@@ -1,0 +1,389 @@
+{
+  "viewport": [
+    5120,
+    2880
+  ],
+  "multisample_count": 4,
+  "verified_cast_rows": 26,
+  "verified_settings": {
+    "weatherDensity": "3",
+    "ffxGlow": "1",
+    "projectedTextures": "1",
+    "groundEffectDist": "140",
+    "extShadowQuality": "0",
+    "gxVSync": "0",
+    "baseMip": "0",
+    "shadowLevel": "0",
+    "maxFPSBk": "0",
+    "shadowLimit": 0,
+    "format": 3,
+    "farclip": "1277",
+    "caps": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      16,
+      1
+    ],
+    "gxDepthBits": "24",
+    "gxColorBits": "24",
+    "maxFPS": "0",
+    "formats": [
+      24,
+      24,
+      1,
+      24,
+      24,
+      2,
+      24,
+      24,
+      4
+    ],
+    "gxResolution": "5120x2880",
+    "environmentDetail": "1.5",
+    "terrainDetail": 1,
+    "terrainDetailBefore": 1,
+    "gxMultisample": "4",
+    "ffxDeath": "1",
+    "particleDensity": "1",
+    "marker": "complete",
+    "specular": "1",
+    "componentTextureLevel": "9",
+    "textureFilteringMode": "5",
+    "groundEffectDensity": "64"
+  },
+  "source_output_sequence": 6081,
+  "archive_command_stream_sha256": "042e70ba2264820018ccb7c593970ddec68ec5759c9a33895db31298169441d5",
+  "hardware_profile": {
+    "archive_encoder_path": "commands/cb1/re0",
+    "hardware": "Apple M4 Pro",
+    "profiled_mode": "serial at default GPU state",
+    "vertex_active_ms": 0.906,
+    "fragment_active_ms": 9.7148,
+    "limiter_counters": {
+      "Last Level Cache Limiter": "6.07%",
+      "Texture Filtering Limiter": "34.31%",
+      "Texture Read Cache Limiter": "31.92%",
+      "Texture Read Limiter": "28.02%",
+      "Texture Write Limiter": "10.78%"
+    },
+    "raster_and_fragment_counters": {
+      "pixels_rasterized": "320,909,400",
+      "prez_test_fails": "51.91%",
+      "fs_invocations": "164,623,000",
+      "average_pixel_overdraw": "11",
+      "fs_texture_cache_miss_rate": "5.53%",
+      "fs_texture_l1_bytes_read": "5.18 GiB"
+    },
+    "draws_with_nonzero_profiled_cost": 0,
+    "isolation": {
+      "overlapping": {
+        "session": "12",
+        "exit_code": 0,
+        "wall_seconds": 5.032720042,
+        "legacy_paused": true,
+        "legacy_completed_frames_during_replay": 0
+      },
+      "serial": {
+        "session": "15",
+        "exit_code": 0,
+        "wall_seconds": 10.392183584,
+        "legacy_paused": true,
+        "legacy_completed_frames_during_replay": 0
+      }
+    }
+  },
+  "archived_main_pass_states": {
+    "draws": 939,
+    "pipeline_states": 52,
+    "depth_stencil_states": 2,
+    "unblended_full_rgba_lequal_depth_write_runs": [
+      {
+        "first_draw": 0,
+        "draws": 147
+      },
+      {
+        "first_draw": 155,
+        "draws": 31
+      },
+      {
+        "first_draw": 198,
+        "draws": 33
+      },
+      {
+        "first_draw": 290,
+        "draws": 288
+      }
+    ],
+    "draw_ranges": [
+      {
+        "first_draw": 0,
+        "draws": 256,
+        "blended_draws": 45,
+        "unblended_full_rgba_lequal_depth_write_draws": 211
+      },
+      {
+        "first_draw": 256,
+        "draws": 256,
+        "blended_draws": 34,
+        "unblended_full_rgba_lequal_depth_write_draws": 222
+      },
+      {
+        "first_draw": 512,
+        "draws": 256,
+        "blended_draws": 189,
+        "unblended_full_rgba_lequal_depth_write_draws": 66
+      },
+      {
+        "first_draw": 768,
+        "draws": 171,
+        "blended_draws": 171,
+        "unblended_full_rgba_lequal_depth_write_draws": 0
+      }
+    ]
+  },
+  "prefix_summary": {
+    "1": {
+      "observations": 12,
+      "fragment_active_ns_median": 3838354.0,
+      "fragment_active_ns_min": 1096375,
+      "fragment_active_ns_max": 29702459,
+      "without_recorded_windowserver_overlap": 4,
+      "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+    },
+    "256": {
+      "observations": 3,
+      "fragment_active_ns_median": 4764875,
+      "fragment_active_ns_min": 4290167,
+      "fragment_active_ns_max": 13907250,
+      "without_recorded_windowserver_overlap": 1,
+      "image_sha256": "d9816962c1f1e587439701a4eb5f88211d0ba2bd2b79149de0e0bd2c52c81243"
+    },
+    "512": {
+      "observations": 3,
+      "fragment_active_ns_median": 22559333,
+      "fragment_active_ns_min": 7118083,
+      "fragment_active_ns_max": 22583292,
+      "without_recorded_windowserver_overlap": 0,
+      "image_sha256": "f358ff846d1416fa06b3f689ba7a621e40054db7f9075c50f294d4db0dcce614"
+    },
+    "768": {
+      "observations": 3,
+      "fragment_active_ns_median": 26663625,
+      "fragment_active_ns_min": 18965667,
+      "fragment_active_ns_max": 33203792,
+      "without_recorded_windowserver_overlap": 0,
+      "image_sha256": "84bb718f8e9b47c7696a0f462a658c2caaaf5f13ff27951818dabb7ae112a3a2"
+    },
+    "939": {
+      "observations": 3,
+      "fragment_active_ns_median": 29321666,
+      "fragment_active_ns_min": 21326708,
+      "fragment_active_ns_max": 29903501,
+      "without_recorded_windowserver_overlap": 0,
+      "image_sha256": "e34e746a7ebd8ae71640425789ca048175f6fbdb84a5ff487c9fe783c848138c"
+    }
+  },
+  "observations_in_request_order": [
+    [
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280384,
+        "vertex_active_ns": 35000,
+        "fragment_active_ns": 15135875,
+        "windowserver_overlap_with_fragment_ns": 11838125,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 256,
+        "render_command_buffer": 49824280390,
+        "vertex_active_ns": 361166,
+        "fragment_active_ns": 4764875,
+        "windowserver_overlap_with_fragment_ns": 972291,
+        "image_sha256": "d9816962c1f1e587439701a4eb5f88211d0ba2bd2b79149de0e0bd2c52c81243"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280411,
+        "vertex_active_ns": 411917,
+        "fragment_active_ns": 15242458,
+        "windowserver_overlap_with_fragment_ns": 15220040,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 512,
+        "render_command_buffer": 49824280417,
+        "vertex_active_ns": 5078541,
+        "fragment_active_ns": 22583292,
+        "windowserver_overlap_with_fragment_ns": 21079379,
+        "image_sha256": "f358ff846d1416fa06b3f689ba7a621e40054db7f9075c50f294d4db0dcce614"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280438,
+        "vertex_active_ns": 63458,
+        "fragment_active_ns": 5561500,
+        "windowserver_overlap_with_fragment_ns": 4233251,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 768,
+        "render_command_buffer": 49824280444,
+        "vertex_active_ns": 1119500,
+        "fragment_active_ns": 33203792,
+        "windowserver_overlap_with_fragment_ns": 31773163,
+        "image_sha256": "84bb718f8e9b47c7696a0f462a658c2caaaf5f13ff27951818dabb7ae112a3a2"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280465,
+        "vertex_active_ns": 1043625,
+        "fragment_active_ns": 29702459,
+        "windowserver_overlap_with_fragment_ns": 29590627,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 939,
+        "render_command_buffer": 49824280471,
+        "vertex_active_ns": 2060417,
+        "fragment_active_ns": 29321666,
+        "windowserver_overlap_with_fragment_ns": 27202165,
+        "image_sha256": "e34e746a7ebd8ae71640425789ca048175f6fbdb84a5ff487c9fe783c848138c"
+      }
+    ],
+    [
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280492,
+        "vertex_active_ns": 676792,
+        "fragment_active_ns": 2963333,
+        "windowserver_overlap_with_fragment_ns": 450542,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 939,
+        "render_command_buffer": 49824280498,
+        "vertex_active_ns": 1511291,
+        "fragment_active_ns": 29903501,
+        "windowserver_overlap_with_fragment_ns": 24891249,
+        "image_sha256": "e34e746a7ebd8ae71640425789ca048175f6fbdb84a5ff487c9fe783c848138c"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280519,
+        "vertex_active_ns": 33250,
+        "fragment_active_ns": 2852166,
+        "windowserver_overlap_with_fragment_ns": 0,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 768,
+        "render_command_buffer": 49824280525,
+        "vertex_active_ns": 1664208,
+        "fragment_active_ns": 26663625,
+        "windowserver_overlap_with_fragment_ns": 21324043,
+        "image_sha256": "84bb718f8e9b47c7696a0f462a658c2caaaf5f13ff27951818dabb7ae112a3a2"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280546,
+        "vertex_active_ns": 0,
+        "fragment_active_ns": 11205166,
+        "windowserver_overlap_with_fragment_ns": 10559587,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 512,
+        "render_command_buffer": 49824280552,
+        "vertex_active_ns": 677917,
+        "fragment_active_ns": 22559333,
+        "windowserver_overlap_with_fragment_ns": 19563249,
+        "image_sha256": "f358ff846d1416fa06b3f689ba7a621e40054db7f9075c50f294d4db0dcce614"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280573,
+        "vertex_active_ns": 0,
+        "fragment_active_ns": 1873167,
+        "windowserver_overlap_with_fragment_ns": 0,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 256,
+        "render_command_buffer": 49824280579,
+        "vertex_active_ns": 361791,
+        "fragment_active_ns": 4290167,
+        "windowserver_overlap_with_fragment_ns": 0,
+        "image_sha256": "d9816962c1f1e587439701a4eb5f88211d0ba2bd2b79149de0e0bd2c52c81243"
+      }
+    ],
+    [
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280600,
+        "vertex_active_ns": 439375,
+        "fragment_active_ns": 2952459,
+        "windowserver_overlap_with_fragment_ns": 1982375,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 512,
+        "render_command_buffer": 49824280606,
+        "vertex_active_ns": 3650000,
+        "fragment_active_ns": 7118083,
+        "windowserver_overlap_with_fragment_ns": 2302457,
+        "image_sha256": "f358ff846d1416fa06b3f689ba7a621e40054db7f9075c50f294d4db0dcce614"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280627,
+        "vertex_active_ns": 13625,
+        "fragment_active_ns": 1252625,
+        "windowserver_overlap_with_fragment_ns": 0,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 939,
+        "render_command_buffer": 49824280633,
+        "vertex_active_ns": 3802042,
+        "fragment_active_ns": 21326708,
+        "windowserver_overlap_with_fragment_ns": 14193748,
+        "image_sha256": "e34e746a7ebd8ae71640425789ca048175f6fbdb84a5ff487c9fe783c848138c"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280654,
+        "vertex_active_ns": 47375,
+        "fragment_active_ns": 1096375,
+        "windowserver_overlap_with_fragment_ns": 0,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 256,
+        "render_command_buffer": 49824280660,
+        "vertex_active_ns": 1461792,
+        "fragment_active_ns": 13907250,
+        "windowserver_overlap_with_fragment_ns": 10250958,
+        "image_sha256": "d9816962c1f1e587439701a4eb5f88211d0ba2bd2b79149de0e0bd2c52c81243"
+      },
+      {
+        "draws": 1,
+        "render_command_buffer": 49824280681,
+        "vertex_active_ns": 710500,
+        "fragment_active_ns": 4713375,
+        "windowserver_overlap_with_fragment_ns": 3714042,
+        "image_sha256": "61c3b37a331a2e47829e34809b3a905d2e51e85f8cdeb500267787c4777a80a4"
+      },
+      {
+        "draws": 768,
+        "render_command_buffer": 49824280687,
+        "vertex_active_ns": 1091250,
+        "fragment_active_ns": 18965667,
+        "windowserver_overlap_with_fragment_ns": 10027004,
+        "image_sha256": "84bb718f8e9b47c7696a0f462a658c2caaaf5f13ff27951818dabb7ae112a3a2"
+      }
+    ]
+  ]
+}
