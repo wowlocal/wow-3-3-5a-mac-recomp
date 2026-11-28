@@ -2000,3 +2000,25 @@ The first pair changed throughput by **+1.23 FPS** and p99 by **−0.07 ms**. Th
 python3 benchmarks/summarize-raid-i386-dependent-loads.py CAPTURE_ROOT I386_CLIENT \
     --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
 ```
+
+### Recover wrapped i386 loads through guard pages
+
+The trial reserves one inaccessible host page on each side of the offset-mapped 4 GiB i386 arena. It uses the ordinary host load for selected 32-bit MOV operands based on one unchanged register with displacements from −256 to 255. A load whose starting address crosses an arena boundary faults on a guard page. Recovery matches the emitted instruction and effective address, restores the guest registers and flags, and interprets just that load using the wrapped 32-bit address. A read that starts inside the arena keeps ordinary fault handling.
+
+The existing six-operand heuristic keeps its explicit guard when the selected prefix includes stores or SSE operands. A load-only prefix can use the guard pages. When the original selector would decline a prefix, the trial can admit it with two nonzero-displacement loads. Apply `patches/aarchx-m32-wrap-guard-loads-trial.patch` after the general base hoist with the translation cache off. Set `OCERZ_M32_WRAP_FAULT_LOADS=1`. Use `OCERZ_M32_WRAP_FAULT_LOADS_LOG=1` only for the separate compiler and fault diagnostic.
+
+Both modes passed **806** general i386 checks. Three separate `OCERZ_TEST_JIT32_WRAP_FAULT` launches use `upper`, `lower`, or `inside`. The two boundary cases verified one recovery each and correct wrapped reads. The inside case recorded no recovery. The return value also checks that an instruction preceding the first load ran only once.
+
+The three cases also passed with forced branch veneers. The live diagnostic recorded **7,716** load-only prefixes and zero recoveries. **7,694** prefixes matched the original i386 text. Of those, **7,566** contain fewer than six loads and **131** were emitted after the last world readback. Matching the selected loads to the previous two CPU profiles covered **2.58% and 2.56%** of all weighted samples. The immediate address arithmetic within those loads accounted for **1.71% and 1.73%**. All of that sampled address arithmetic was in the newly admitted short prefixes.
+
+| i386 load address policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Explicit bounds checks | 134.78 | 12.50 ms |
+| Guard pages and added short prefixes | 133.97 | 12.74 ms |
+
+Throughput changed by **−2.18 and +0.57 FPS** across the two pairs. P99 increased by **0.04 and 0.46 ms**. Keep the explicit bounds checks as the benchmark baseline. Each of the four warmed 60-second runs used logging off and checked the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible windows or activations. The earlier client was paused during each launch and resumed afterward. [Live A/B, earlier CPU coverage and boundary tests](results/raid-aarchx-i386-wrap-guard-loads-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-i386-wrap-guards.py CAPTURE_ROOT I386_CLIENT \
+    --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
+```
