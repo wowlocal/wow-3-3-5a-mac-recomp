@@ -2482,3 +2482,27 @@ python3 benchmarks/summarize-raid-matrix-boundary.py CAPTURE_ROOT
 Splitting lost **0.93 and 1.43 FPS**. Adding the empty callout lost another **2.32 and 2.70 FPS**. Running the guarded product in place of the original body lost **3.23 and 5.05 FPS** relative to decline. Chaining to the epilogue recovered **0.25 and 1.40 FPS**. The two chain runs stayed **6.23 and 7.78 FPS** below their paired controls. Keep the original translation as the benchmark baseline. [Per-run and paired timing](results/raid-aarchx-matrix-boundary-ab.json)
 
 The chain-enabled diagnostic logged a successful link to the original guest epilogue and supplied **137,710** paired calls. Both replay builds, including the sanitizer build, matched the recorded outputs and XMM contents. All ten timing windows and the diagnostic verified the saved camera, overlapping effects, 26 timing rows, consecutive GPU completions and zero visible windows or activations. The runtime passed **805** general i386 checks. [Chain witness and replay](results/raid-aarchx-matrix-boundary-ab.json)
+
+### Expand both preparation calls inside the translated caller
+
+Apply `patches/aarchx-m32-raid-prep-inline-trial.patch` to the accepted AArchX source layers. Use `OCERZ_M32_PREP_INLINE=1` and `OCERZ_TCACHE=off` for the expanded path. The compiled caller contains the original instructions at the two direct calls from `0x965473` and `0x96548f` through their returns, followed by the caller's writes to the scene item. The supported path keeps the original i386 stack slots, checks the saved return target, and applies both the four-byte return and the immediate stack adjustment. A changed target resumes through the dispatcher with the actual return address.
+
+The normal decode budget is **256** instructions. The selected preparation caller can use up to **448**. The runtime checks the direct targets and accepts the two helpers through their straight-line i386 instruction sequences. The emitted blocks use the existing invalidation tracking for the caller and the helper addresses.
+
+Use the same signed runtime and profiled WineMetalGL library for four warmed 60-second captures under `timed-1-0`, `timed-2-1`, `timed-3-1`, and `timed-4-0`. Unset the expansion switch for control. Record its setting and the logging bit in `prep-inline-mode.txt`. In the separate 25-second `diagnostic` launch, set `OCERZ_M32_PREP_INLINE_LOG=1` to record both callee lengths and the compiled block.
+
+Run `test_jit32` with `OCERZ_TEST_JIT32_PREP_INLINE=1` in both modes. Enable `OCERZ_M32_PREP_INLINE` and `OCERZ_M32_PREP_INLINE_LOG` for the candidate. Save the logs as `focused-control.log` and `focused-candidate.log`, and save the `test_m32` output as `general.log`. The focused cases compare two consecutive calls, flags, the original return slots, the immediate return adjustment, and a changed return address.
+
+```sh
+python3 benchmarks/summarize-raid-prep-inline.py CAPTURE_ROOT I386_CLIENT \
+    --cpu-profiles EARLIER_PROFILE_1 EARLIER_PROFILE_2
+```
+
+The diagnostic produced three versions of the caller with **422–431 original i386 instructions** and both expanded calls in each block. The original disassembly gives **36** instructions in the first helper and **288** in the second. The caller and those specific invocations account for **0.97–1.03%** of weighted CPU samples in the two earlier profiles. That attribution uses the innermost return address to distinguish other callers of the same helpers. [Compiler witness and CPU coverage](results/raid-aarchx-prep-inline-ab.json)
+
+| Preparation path | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing translated calls | 139.88 | 12.29 ms |
+| Both calls expanded | 140.34 | 12.33 ms |
+
+The two pairs changed by **−0.40 and +1.33 FPS**. P99 changed by **−0.08 and +0.17 ms**. Keep the original preparation path as the benchmark baseline. All four 60-second launches and the compiler diagnostic verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible trial windows or activations. The expanded path passed both focused differential cases and **805** general i386 checks. [Full-raid timing and validation](results/raid-aarchx-prep-inline-ab.json)
