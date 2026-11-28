@@ -1869,3 +1869,45 @@ python3 benchmarks/summarize-raid-ebp-guard-cache.py CAPTURE_ROOT
 The two hot i386 call trees together covered **43.20–43.59%** of sampled CPU time. Their root instructions had little exclusive weight. Summing samples by original instruction address put two conspicuous scalar matrix-copy sequences, at `0x97cfba–0x97d06c` and `0x97e3e0–0x97e44d`, below **0.02%** in each capture. The largest confirmed exclusive callee, `0x880c70`, covered **4.55–4.84%**. Recompiling the call trees as regions would only be valuable if it changes how much work their callees perform or significantly reduces their per-item cost. At 136 FPS, a serial model with fixed other costs yields about **174 FPS** for a twofold speedup across both trees. [CPU profiles](results/raid-aarchx-native-instructions-in-guest-call-trees.json)
 
 Prioritize attributing the hot trees' CPU work to repeated inputs and outputs within each frame. Use that evidence to select one self-contained per-item loop for native batching, or to identify equivalent work that can safely be reused. Compare complete output buffers and frame readbacks with the original path using the same inputs. For the GPU tail, inspect the draw groups active during slow frames while keeping the original ordering, camera, and effects. With the older client paused, median vertex activity rose from **0.56 ms** across all completion gaps to **5.93 ms** across the slowest one percent. This capture makes GPU tail work a separate requirement for the 2 ms goal. [Isolated GPU trace](results/raid-winemetalgl-legacy-load-gpu-traces.json)
+
+### Check bounds reduction and position reuse in the hot quad emitter
+
+The diagnostic records three incoming coordinate values and the six bounds words before and after each of four ordered compare-and-store groups inside `0x880c70`. The surrounding code writes the coordinates for four vertices. Each group can expand an axis's lower or upper bound. The analyzer replays the ordered comparisons on the recorded values and compares all six words bit for bit, including the old word when the comparison is equal or unordered. A separate edge-case check covers NaNs and signed zero.
+
+Across three monitored raids, **690,896** before-and-after pairs matched the scalar replay. Between **71.37% and 80.13%** had no bounds changes. On each launch, every observed adjacent group for the same bounds address and frame saw the previous group's final words. That continuity establishes the observed data dependency. Delaying stores would also require checking for intermediate readers and aliasing.
+
+| Probe recording | Complete attributed frames | Median bounds updates per frame | Quad positions aligned to the preceding frame | Identical positions |
+| --- | ---: | ---: | ---: | ---: |
+| First | 13 | 20,748 | 51,803 | 0 |
+| Second | 18 | 10,742 | 33,643 | 0 |
+| Delayed | 22 | 8,584 | 41,439 | 0 |
+
+Position comparisons align by guest CPU, bounds address and quad order within that address. The twelve recorded coordinate words describe position only. Two pairs in the second launch straddled a swap timestamp and remained in the replay counts. Their neighboring frame intervals were excluded from the frame comparison. The first trace wrapped its bounded ring and the analyzer verified the final 524,288 published rows. The delayed trace starts 3.38 seconds after its verified GPU-window anchor.
+
+The same instruction addresses in two earlier unmodified CPU profiles account for **0.51–0.52%** of weighted CPU samples across all four reductions. The larger vertex-emission region accounts for **1.89–1.98%**. Keep the original path as the benchmark baseline. The three diagnostic GPU windows verified the full caster fixture, saved camera, overlapping effects, 26 timing rows and consecutive GPU completions with zero visible windows or activations. The runtime passed **806** general i386 checks with the probe disabled. [Replay, reuse counts and CPU coverage](results/raid-aarchx-i386-vertex-bounds-profile.json)
+
+Apply `patches/aarchx-m32-raid-vertex-bounds-probe.patch` to the copied-shadow baseline with the general base hoist. Use the profiled i386 image identified by SHA-256 in the result. Set `OCERZ_TCACHE=off` and `OCERZ_M32_RAID_BOUNDS_LOG` to a fresh `vertex-bounds.bin` in the capture directory. The probe uses the host's LSE instructions and its 1 GHz virtual counter. After the in-world marker, enable capture for a short interval inside the verified 25-second GPU window.
+
+```sh
+python3 - "$CAPTURE_DIR" <<'PY'
+import json
+import mmap
+from pathlib import Path
+import struct
+import sys
+import time
+
+capture = Path(sys.argv[1])
+with (capture / "vertex-bounds.bin").open("r+b") as file, mmap.mmap(file.fileno(), 128) as header:
+    struct.pack_into("<Q", header, 8, 1)
+    try:
+        time.sleep(0.18)
+    finally:
+        struct.pack_into("<Q", header, 8, 0)
+    time.sleep(0.25)
+    rows, = struct.unpack_from("<Q", header)
+(capture / "bounds-gate.json").write_text(json.dumps({"captured_rows": rows}) + "\n")
+PY
+python3 benchmarks/summarize-raid-vertex-bounds.py "$CAPTURE_DIR" \
+    --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
+```

@@ -1,0 +1,146 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -851,6 +851,7 @@
+ #include "ocerz/m32.h"
+
+ #include <sys/mman.h>
++#include <fcntl.h>
+ #include <sys/sysctl.h>
+ #include <sys/time.h>
+ #include <mach/mach_time.h>
+@@ -19031,6 +19032,105 @@
+     return state == 1 && rip == target;
+ }
+
++/* Local diagnostic for the four bounding-box updates in one i386 client
++ * routine. Each row is published last by storing its one-based sequence. */
++enum { RAID_BOUNDS_BITS = 19, RAID_BOUNDS_STRIDE = 128 };
++
++static int raid_bounds_site(uint64_t rip)
++{
++    switch (rip) {
++    case 0x881709: case 0x8817f1: case 0x8818ec: case 0x8819cf:
++        return 1;
++    case 0x881755: case 0x88183d: case 0x881934: case 0x881a17:
++        return 2;
++    default:
++        return 0;
++    }
++}
++
++static const char *raid_bounds_path(void)
++{
++    static int checked;
++    static const char *path;
++    if (!checked) {
++        path = getenv("OCERZ_M32_RAID_BOUNDS_LOG");
++        checked = 1;
++    }
++    return path && *path ? path : NULL;
++}
++
++static void *raid_bounds_mapping(void)
++{
++    static int initialized;
++    static void *mapping;
++    if (initialized) return mapping;
++    initialized = 1;
++    int lse = 0;
++    size_t len = sizeof lse;
++    unsigned tick_hz;
++    __asm__ volatile("mrs %x0, cntfrq_el0" : "=r" (tick_hz));
++    if (tick_hz != 1000000000u ||
++        sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &len, NULL, 0) || !lse)
++        return NULL;
++    int fd = open(raid_bounds_path(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return NULL;
++    const size_t bytes = RAID_BOUNDS_STRIDE * ((1u << RAID_BOUNDS_BITS) + 1u);
++    if (ftruncate(fd, (off_t)bytes) == 0) {
++        void *p = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (p != MAP_FAILED) mapping = p;
++    }
++    close(fd);
++    return mapping;
++}
++
++static void emit_raid_bounds(A64Buf *b, const X86Insn *insn, int site)
++{
++    if ((site == 1 && insn->op != OCERZ_OP_UCOMISS) ||
++        (site == 2 && insn->op != OCERZ_OP_MOV) ||
++        g_pin_class != 3 || !jgb_usable() || !ocerz_guest_base ||
++        !xmm_is_pinned(1) || !xmm_is_pinned(2) || !xmm_is_pinned(7))
++        return;
++    void *mapping = raid_bounds_mapping();
++    if (!mapping) return;
++
++    const int bounds = pin_hreg(pin_slot(OCERZ_RBX));
++    const int frame = pin_hreg(pin_slot(OCERZ_RBP));
++    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++    a64_ldr(b, 8, JT1, JT0, 8);
++    uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
++    /* Avoid reading across a guest page boundary solely for the probe. */
++    a64_ubfx(b, 0, JT1, bounds, 0, 12);
++    a64_add_imm(b, 0, JT1, JT1, 23);
++    uint32_t *split_page = a64_label(b); a64_tbnz(b, JT1, 12, 0);
++    a64_movz(b, JT1, 1, 0);
++    /* LDADD X10, X11, [X9] reserves a unique slot without touching flags. */
++    a64_emit32(b, 0xf82a012bu);
++    a64_ubfx(b, 0, JTT, JT2, 0, RAID_BOUNDS_BITS);
++    a64_add_reg(b, 1, JT0, JT0, JTT, 7);
++    a64_add_imm(b, 1, JT0, JT0, RAID_BOUNDS_STRIDE);
++    a64_str(b, 8, A64_ZR, JT0, 0);
++    a64_emit32(b, 0xd53be04au); /* MRS X10, CNTVCT_EL0 */
++    a64_str(b, 8, JT1, JT0, 8);
++    a64_str(b, 8, 20, JT0, 16);
++    a64_mov_imm64(b, JT1, insn->rip);
++    a64_str(b, 4, JT1, JT0, 24);
++    a64_str(b, 4, bounds, JT0, 28);
++    a64_str(b, 4, frame, JT0, 32);
++    a64_str_v(b, 4, xmm_vreg(1), JT0, 36);
++    a64_str_v(b, 4, xmm_vreg(2), JT0, 40);
++    a64_str_v(b, 4, xmm_vreg(7), JT0, 44);
++    a64_mov_reg(b, 0, JTT, bounds);
++    a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++    for (unsigned i = 0; i < 6; i++) {
++        a64_ldr(b, 4, JT1, JTT, 4 * i);
++        a64_str(b, 4, JT1, JT0, 48 + 4 * i);
++    }
++    a64_add_imm(b, 1, JT2, JT2, 1);
++    a64_stlr(b, 8, JT2, JT0);
++    a64_patch_tbz(split_page, a64_label(b));
++    a64_patch_cbz(disabled, a64_label(b));
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+ static int g_ind_treg;
+@@ -25839,6 +25939,8 @@
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int bounds_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                             raid_bounds_path() != NULL;
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -25854,6 +25956,8 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && bounds_trace && raid_bounds_site(vpc))
++                    break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+                     break;
+@@ -26783,6 +26887,10 @@
+         g_ea_plain = 0;
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
++        if (i == 0 && bounds_trace) {
++            int site = raid_bounds_site(rip);
++            if (site) emit_raid_bounds(&b, insn, site);
++        }
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);

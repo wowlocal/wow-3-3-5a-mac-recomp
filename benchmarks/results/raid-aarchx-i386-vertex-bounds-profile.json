@@ -1,0 +1,279 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "2d6763e",
+  "scope": "Local probe of four ordered bounds updates and their associated vertex positions inside one i386 routine. Separate prior CPU-time-weighted samples measure the instruction coverage of that region.",
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "runtime_sha256": "70a7f49ef21d220fe9301a7afb1e231aff84a5861908e63e5ab7d6733c1fff3c",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "verified_timed_script_rows": 26,
+  "visual_readbacks_verified": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "copied_client_process_guard_passed": true,
+  "legacy_resumed_after_each_pause": true,
+  "general_i386_checks_with_probe_disabled": 806,
+  "opt_in_environment_variable": "OCERZ_M32_RAID_BOUNDS_LOG",
+  "capture_ring_row_capacity": 524288,
+  "capture_gate_requested_seconds": 0.18,
+  "matched_update_validation": "All six post-update binary32 words equal the replay of the original ordered comparisons on the recorded inputs.",
+  "candidate_position_validation": "Compare the 12 recorded binary32 words in complete four-vertex groups at equal guest CPU, bounds address and emission ordinal in consecutive complete frame intervals.",
+  "prior_cpu_profile_commit": "fec0c7e",
+  "bounds_regions": [
+    [
+      "0x881709",
+      "0x881755"
+    ],
+    [
+      "0x8817f1",
+      "0x88183d"
+    ],
+    [
+      "0x8818ec",
+      "0x881934"
+    ],
+    [
+      "0x8819cf",
+      "0x881a17"
+    ]
+  ],
+  "vertex_emission_region": [
+    "0x8816da",
+    "0x881aa0"
+  ],
+  "probe_launches": [
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3350,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24997945834,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 133.96,
+        "p99_gpu_completion_gap_ns": 13038500,
+        "min_draws": 701,
+        "max_draws": 983
+      },
+      "legacy_paused": true,
+      "capture_start_offset_ns": 344732832,
+      "capture_span_ns": 103389179,
+      "probe_rows_written": 896232,
+      "probe_rows_retained": 524288,
+      "threads": 1,
+      "matched_updates": 262144,
+      "updates_straddling_swap_timestamp": 0,
+      "unmatched_before_gate_closed": 0,
+      "unmatched_after_gate_opened": 0,
+      "updates_by_group": {
+        "1": 65536,
+        "2": 65536,
+        "3": 65536,
+        "4": 65536
+      },
+      "number_of_changed_components": {
+        "0": 210044,
+        "1": 43014,
+        "2": 5862,
+        "3": 1029,
+        "6": 2195
+      },
+      "adjacent_updates_to_same_bounds": {
+        "1->2": 65536,
+        "2->3": 65535,
+        "3->4": 65536
+      },
+      "adjacent_updates_with_continuous_bounds": {
+        "1->2": 65536,
+        "2->3": 65535,
+        "3->4": 65536
+      },
+      "quads_by_number_of_final_changed_components": {
+        "0": 36264,
+        "1": 20218,
+        "2": 4824,
+        "3": 1915,
+        "4": 46,
+        "5": 73,
+        "6": 2195
+      },
+      "individual_changed_components_in_complete_quads": 70995,
+      "complete_frame_intervals_between_first_and_last_probe": 13,
+      "median_updates_per_complete_frame": 20748,
+      "max_updates_per_complete_frame": 21400,
+      "quad_positions_compared_to_previous_complete_frame": 57336,
+      "quad_positions_aligned_by_address_and_ordinal": 51803,
+      "matching_quad_positions_by_address_and_ordinal": 0,
+      "quads_in_matching_position_streams_by_address": 0,
+      "capture_gate_requested_delay_seconds": 0.0
+    },
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3243,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24993438625,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 129.68,
+        "p99_gpu_completion_gap_ns": 13197084,
+        "min_draws": 712,
+        "max_draws": 955
+      },
+      "legacy_paused": true,
+      "capture_start_offset_ns": 208702072,
+      "capture_span_ns": 179589179,
+      "probe_rows_written": 465408,
+      "probe_rows_retained": 465408,
+      "threads": 1,
+      "matched_updates": 232704,
+      "updates_straddling_swap_timestamp": 2,
+      "unmatched_before_gate_closed": 0,
+      "unmatched_after_gate_opened": 0,
+      "updates_by_group": {
+        "1": 58176,
+        "2": 58176,
+        "3": 58176,
+        "4": 58176
+      },
+      "number_of_changed_components": {
+        "0": 166071,
+        "1": 47870,
+        "2": 12875,
+        "3": 1257,
+        "6": 4631
+      },
+      "adjacent_updates_to_same_bounds": {
+        "1->2": 58176,
+        "2->3": 58176,
+        "3->4": 58173
+      },
+      "adjacent_updates_with_continuous_bounds": {
+        "1->2": 58176,
+        "2->3": 58176,
+        "3->4": 58173
+      },
+      "quads_by_number_of_final_changed_components": {
+        "0": 25899,
+        "1": 17532,
+        "2": 5874,
+        "3": 3970,
+        "4": 230,
+        "5": 37,
+        "6": 4631
+      },
+      "individual_changed_components_in_complete_quads": 105177,
+      "complete_frame_intervals_between_first_and_last_probe": 18,
+      "median_updates_per_complete_frame": 10742.0,
+      "max_updates_per_complete_frame": 22596,
+      "quad_positions_compared_to_previous_complete_frame": 41866,
+      "quad_positions_aligned_by_address_and_ordinal": 33643,
+      "matching_quad_positions_by_address_and_ordinal": 0,
+      "quads_in_matching_position_streams_by_address": 0,
+      "capture_gate_requested_delay_seconds": 0.0
+    },
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3273,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24999624791,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 130.88,
+        "p99_gpu_completion_gap_ns": 12292125,
+        "min_draws": 697,
+        "max_draws": 960
+      },
+      "legacy_paused": true,
+      "capture_start_offset_ns": 3375512128,
+      "capture_span_ns": 181620775,
+      "probe_rows_written": 392096,
+      "probe_rows_retained": 392096,
+      "threads": 1,
+      "matched_updates": 196048,
+      "updates_straddling_swap_timestamp": 0,
+      "unmatched_before_gate_closed": 0,
+      "unmatched_after_gate_opened": 0,
+      "updates_by_group": {
+        "1": 49012,
+        "2": 49012,
+        "3": 49012,
+        "4": 49012
+      },
+      "number_of_changed_components": {
+        "0": 150111,
+        "1": 31017,
+        "2": 9622,
+        "3": 1722,
+        "6": 3576
+      },
+      "adjacent_updates_to_same_bounds": {
+        "1->2": 49012,
+        "2->3": 49012,
+        "3->4": 49012
+      },
+      "adjacent_updates_with_continuous_bounds": {
+        "1->2": 49012,
+        "2->3": 49012,
+        "3->4": 49012
+      },
+      "quads_by_number_of_final_changed_components": {
+        "0": 27476,
+        "1": 9286,
+        "2": 4807,
+        "3": 3501,
+        "4": 320,
+        "5": 46,
+        "6": 3576
+      },
+      "individual_changed_components_in_complete_quads": 76883,
+      "complete_frame_intervals_between_first_and_last_probe": 22,
+      "median_updates_per_complete_frame": 8584.0,
+      "max_updates_per_complete_frame": 12616,
+      "quad_positions_compared_to_previous_complete_frame": 44945,
+      "quad_positions_aligned_by_address_and_ordinal": 41439,
+      "matching_quad_positions_by_address_and_ordinal": 0,
+      "quads_in_matching_position_streams_by_address": 0,
+      "capture_gate_requested_delay_seconds": 3.0
+    }
+  ],
+  "prior_cpu_profiles": [
+    {
+      "all_sampled_cpu_usec": 58498915,
+      "share_in_each_bounds_update": [
+        0.0023328295917967026,
+        0.001131935523932367,
+        0.0008225964532846463,
+        0.000804869628778585
+      ],
+      "share_in_all_four_bounds_updates": 0.005092231197792301,
+      "share_in_vertex_emission_region": 0.01886621315967997
+    },
+    {
+      "all_sampled_cpu_usec": 58703008,
+      "share_in_each_bounds_update": [
+        0.002885508013490552,
+        0.0008765819972973106,
+        0.0008324104958982681,
+        0.0006437659889592029
+      ],
+      "share_in_all_four_bounds_updates": 0.005238266495645334,
+      "share_in_vertex_emission_region": 0.019759685909110484
+    }
+  ]
+}
