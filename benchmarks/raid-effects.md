@@ -3005,7 +3005,7 @@ python3 benchmarks/verify-raid-native-5k.py CAPTURE --settings CAPTURE/graphics-
 
 Use the same signed runtime, renderer, 5120 × 2880 framebuffer and in-client settings witness as the baseline. Enable the submission log for this diagnostic. After the full raid is ready and warmed, record an eight-second Time Profiler trace and a separate six-second Metal System Trace attached to the same client. Save each recording's attach PID, requested duration, uptime bounds, return code and archive status to `trace-witness.json`. Allow Instruments to save after the recording ends. An earlier 18-second Metal recording reached 2.6 GB and the recorder timed out during saving.
 
-The Metal trace matched **564** consecutive native 5K completions. Its clock alignment matched **1,165** fragment endpoints within **42 ns**. Median GPU active time in the joined completion gaps was **9.69 ms**, with **8.75 ms** median fragment activity and **0.79 ms** median vertex activity. The GPU recorded client work during **87.7%** of the joined interval. The median output used **three** draw-bearing submissions, and the median final command buffer took **6.91 ms** on the GPU. In five of the six slowest gaps, the largest increase came from the interval between final submissions. A submission interval can include time spent waiting as well as work on the producer. [Native 5K GPU timings](results/raid-native-5k-stage-profile.json)
+The Metal trace matched **564** consecutive native 5K completions. Its clock alignment matched **1,165** fragment endpoints within **42 ns**. Median GPU active time in the joined completion gaps was **9.69 ms**, with **8.75 ms** median fragment activity and **0.79 ms** median vertex activity. The GPU recorded client work during **87.7%** of the joined interval. The median output used **three** draw-bearing submissions. The median final command buffer's reported GPU start-to-end span was **6.91 ms**. In five of the six slowest gaps, the largest increase came from the interval between final submissions. A submission interval can include time spent waiting as well as work on the producer. [Native 5K GPU timings](results/raid-native-5k-stage-profile.json)
 
 Time Profiler assigned **8.245 seconds** of running sample weight to the main thread across an **8.461-second** sample span. Of that weight, **5.835 seconds** were unresolved leaves with an AArchX guest VM caller. The CPU trace and Metal trace sampled separate intervals of one launch. The capture used the baseline graphics settings and preserved the camera, actors and all 26 cast timing rows. The instrumented 60-second window averaged **87.07 FPS** and supplements the separate verified baseline. [Native 5K CPU timings](results/raid-native-5k-stage-profile.json)
 
@@ -3015,4 +3015,19 @@ xcrun xctrace export --input CAPTURE/cpu.trace --output CAPTURE/time-profile.xml
 xcrun xctrace export --input CAPTURE/metal.trace --output CAPTURE/gpu-intervals.xml \
     --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-gpu-intervals"]'
 python3 benchmarks/summarize-raid-native-5k-profile.py CAPTURE --legacy-pid EARLIER_TEST_PID
+```
+
+### Increase the continuing-pass draw budget at native 5K
+
+Use the signed baseline AArchX runtime and deferred PGO renderer for all four warmed 60-second launches. Run `WINEMETALGL_COMMIT_DRAWS` in 64, 192, 192, 64 order, with `WINEMETALGL_IDLE_FIRST_DRAWS=256` and the submission log enabled in both modes. The change raises the continuing-pass threshold from 512 to 1,536 draws. Use the same 5120 × 2880 target, 4× MSAA, graphics witness, 24 casters, boss, camera and cast schedule. Save each capture under `native-5k-draw-ORDER-BUDGET` with `pass-mode.txt` holding the draw setting and submission logging flag and `render-end-mode.txt` holding `deferred 0`.
+
+| Draw budget setting | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| 64 | 94.87 | 14.18 ms |
+| 192 | 96.21 | 13.77 ms |
+
+The paired changes were **+0.78** and **+1.90 FPS**. P99 shortened by **0.555** and **0.249 ms**. The larger budget used two render submissions in **3,140 of 11,545** joined output intervals and three in the remainder. Setting 64 used three or four. All four runs verified the same native target and supported quality maxima. They recorded **22,933** consecutive GPU completions across their respective windows. These are instrumented comparison runs. Confirm the candidate's gain with submission logging disabled before using it as a new reference. [Native 5K draw budget A/B](results/raid-native-5k-draw-budget-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-draw-budget.py CAPTURE_ROOT
 ```
