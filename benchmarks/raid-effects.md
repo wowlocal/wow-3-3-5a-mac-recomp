@@ -2104,3 +2104,28 @@ Each mode passed **806** general i386 checks and **2,728** offscreen buffer chec
 ```sh
 python3 benchmarks/summarize-raid-shadow-bucket.py CAPTURE_ROOT
 ```
+
+### Classify mapped-buffer shadow copies in the full raid
+
+Apply `patches/aarchx-m32-gl-map-policy-probe.patch` to the accepted AArchX source layers and set `OCERZ_M32_GL_MAP_POLICY_LOG=1`. Keep the accepted profile-guided WineMetalGL library. After each successful fallback map that copies incoming bytes, the probe queries the actual native map access flags. It counts bytes eligible by the write-only, nonpersistent explicit-flush or invalidation predicates. It also counts bytes copied back at unmap and at explicit flush calls.
+
+| Capture | Whole-buffer copies | Native to guest | Guest to native | Incoming bytes with an explicit-flush or invalidation flag | Incoming bytes after matching null allocation |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| First | 2,342,912 | 12.39 GB | 12.39 GB | 0 | 0.81% |
+| Second | 2,408,448 | 12.62 GB | 12.62 GB | 0 | 0.80% |
+
+The copy totals span the first and last complete counter rows after the world readback. The separate 35-second GPU windows verified **4,817** and **4,801** consecutive completions, the saved camera and effects, all 26 timing rows, and zero visible trial windows or activations. The probe records a same-thread, same-share-group, same-buffer, same-size match for a preceding `glBufferData` with a null pointer. This is a call correlation. Allocation success and intervening writes through other paths would require additional tracking. The map flags give zero coverage for either copy-skip rule in both captures. [Copy counters and verified GPU windows](results/raid-aarchx-gl-map-copy-policy.json)
+
+```sh
+python3 benchmarks/summarize-raid-map-copy-policy.py CAPTURE_ROOT
+```
+
+### Frame-time budget for a larger improvement
+
+The selected runtime's two timed runs give a median **140.78 FPS**, or **7.10 ms** between completed renders, and **12.28 ms** at p99. Reaching **500 FPS** with **2.0 ms** p99 requires about **5.10 ms** less per average completion and **10.28 ms** less at p99. Reaching **900 FPS** requires about **5.99 ms** less per average completion. These differences describe throughput and pacing budgets. CPU and GPU work overlap. [Uninstrumented full-raid baseline](results/raid-aarchx-runtime-pgo-ab.json)
+
+The main thread spent **98.55%** of a prior trace running. A serial estimate that applies the two hot guest call trees' measured **43.20–43.59%** share to the current baseline gives **180 FPS** at twice their speed, **208–209 FPS** at four times their speed, and **248–250 FPS** if their cost were eliminated. Eliminating the whole map-and-unmap call group at its sampled **4.44%** share gives about **147 FPS**. These estimates use profiles recorded separately from the timing baseline and hold other CPU costs fixed. [Scheduler profile](results/raid-winemetalgl-fast-share-lock-cpu-trace.json) · [Guest call trees](results/raid-aarchx-native-instructions-in-guest-call-trees.json) · [Runtime call groups](results/raid-aarchx-runtime-pgo-ab.json)
+
+Start with the preparation work under `0x97cef0` and `0x97e390`. Measure time and memory dependencies at the per-item boundary, including where each result is first consumed. Look for a batch of independent work that can feed the existing draw order, with a target of at least **1 ms per full raid frame** after staging and merging. A replay of identical inputs should compare all output bytes before the live A/B. The earlier quad probe measured changing positions and a bounds dependency between consecutive writes. The OpenGL command trace also showed that queueing individual calls consumed the modeled overlap savings at 200 ns per call. [Guest stack attribution](results/raid-aarchx-headless-i386-inclusive-stack-profile.json) · [Quad probe](results/raid-aarchx-i386-vertex-bounds-profile.json) · [GL timeline](results/raid-winemetalgl-command-timeline.json)
+
+Measure the GPU budget in parallel with the CPU investigation. The final render encoder took a median **2.57–4.40 ms** of vertex activity in the slowest one percent of the two labeled captures. Closely matched draw and vertex-reference counts still saw **10–12×** longer median vertex intervals, with concurrent WindowServer activity. An ordered replay of several captured full raid frames can test throughput and p99 at higher submission rates. Compare steady command queue depth and actual stage intervals against the live trace. The existing captures provide full frames with more than 900 draws at the target size. [GPU encoder attribution](results/raid-winemetalgl-encoder-vertex-tail.json) · [Full-frame captures](results/raid-winemetalgl-offscreen-metal-frame-capture.json)

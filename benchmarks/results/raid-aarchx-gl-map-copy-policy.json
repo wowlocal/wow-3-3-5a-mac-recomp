@@ -1,0 +1,92 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "fa15866",
+  "scope": "Observe fallback GL shadow copies after in-world readback with the accepted PGO renderer",
+  "artifacts_sha256": {
+    "instrumented_runtime": "516b95d2c82ff92eff5a13f675f3d5ca6bffcc1a10fef117dc5af96341f63114",
+    "signed_runtime": "d6403b9739b67ed5b95a14b8eeb685c6eeb55970618b37a55959fee6fb0fdd98",
+    "renderer": "1be67f208b2a9c5289384706d49db943470724cb2c8633cbcff48cb3a4fa94b4"
+  },
+  "verified_timed_script_rows": 26,
+  "diagnostics": [
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4817,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34993372875,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 137.6,
+        "p99_gpu_completion_gap_ns": 12579084,
+        "min_draws": 707,
+        "max_draws": 971
+      },
+      "post_readback_counter_rows": 144,
+      "post_readback_first_and_last_map_counts": [
+        196608,
+        2539520
+      ],
+      "post_readback_counter_delta": {
+        "maps": 2342912,
+        "copies": 2342912,
+        "input": 12393991264,
+        "whole": 12393991264,
+        "explicit": 0,
+        "invalidate": 0,
+        "unknown": 0,
+        "recent_null": 99915808,
+        "unmap": 12393992160,
+        "flush": 0
+      },
+      "mean_input_bytes_per_copy": 5289.994359156469,
+      "recent_null_share_of_input_bytes": 0.008061632921286525
+    },
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4801,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34997366000,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 137.14285714285714,
+        "p99_gpu_completion_gap_ns": 12576000,
+        "min_draws": 705,
+        "max_draws": 982
+      },
+      "post_readback_counter_rows": 148,
+      "post_readback_first_and_last_map_counts": [
+        212992,
+        2621440
+      ],
+      "post_readback_counter_delta": {
+        "maps": 2408448,
+        "copies": 2408448,
+        "input": 12618238592,
+        "whole": 12618238592,
+        "explicit": 0,
+        "invalidate": 0,
+        "unknown": 0,
+        "recent_null": 100832992,
+        "unmap": 12618237824,
+        "flush": 0
+      },
+      "mean_input_bytes_per_copy": 5239.157578656463,
+      "recent_null_share_of_input_bytes": 0.007991051307583328
+    }
+  ]
+}

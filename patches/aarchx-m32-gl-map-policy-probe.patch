@@ -1,0 +1,123 @@
+diff --git a/src/m32_gl.c b/src/m32_gl.c
+--- a/src/m32_gl.c
++++ b/src/m32_gl.c
+@@ -64,4 +64,12 @@
+ static uint64_t g_unpack_aliased, g_unpack_alias_released;
+ static unsigned g_live_aliases;
++static int g_copy_policy_log;
++static uint64_t g_policy_maps, g_policy_copies, g_policy_input, g_policy_whole;
++static uint64_t g_policy_explicit, g_policy_invalidate, g_policy_unknown, g_policy_recent_null;
++static uint64_t g_policy_unmap_bytes, g_policy_flush_bytes;
++static _Thread_local struct {
++    void *group;
++    uint32_t name, size;
++} g_policy_last_null;
+ static struct { void *ctx, *group; } g_alias_contexts[16];
+ static int g_alias_contexts_incomplete;
+@@ -72,4 +80,5 @@
+     g_reuse_shadow_storage = getenv("OCERZ_M32_REUSE_GL_SHADOW_STORAGE") != NULL;
+     g_log_map_stats = getenv("OCERZ_M32_GL_MAP_STATS") != NULL;
++    g_copy_policy_log = getenv("OCERZ_M32_GL_MAP_POLICY_LOG") != NULL;
+     const char *unpack_alias = getenv("OCERZ_M32_UNPACK_ALIAS");
+     g_alias_unpack = unpack_alias && strcmp(unpack_alias, "1") == 0;
+@@ -466,8 +475,50 @@
+ #define RET(v) do { m32_ret(cpu, (uint32_t)(v), 0, 0); return OCERZ_STEP_OK; } while (0)
+
++static void observe_copy_policy(unsigned target, uint32_t size, int whole, int copy, int recent_null)
++{
++    enum { ACCESS_FLAGS = 0x911f, READ = 1, WRITE = 2, INVALIDATE = 12, EXPLICIT = 16,
++           PERSISTENT_OR_COHERENT = 0xc0 };
++    if (copy && size) {
++        int access = -1;
++        if (gl.buffer_iv) gl.buffer_iv(target, ACCESS_FLAGS, &access);
++        __atomic_add_fetch(&g_policy_copies, 1, __ATOMIC_RELAXED);
++        __atomic_add_fetch(&g_policy_input, size, __ATOMIC_RELAXED);
++        if (whole) __atomic_add_fetch(&g_policy_whole, size, __ATOMIC_RELAXED);
++        if (access < 0 || !(access & (READ | WRITE))) {
++            __atomic_add_fetch(&g_policy_unknown, size, __ATOMIC_RELAXED);
++        } else if ((access & (READ | WRITE | PERSISTENT_OR_COHERENT)) == WRITE) {
++            if (access & EXPLICIT)
++                __atomic_add_fetch(&g_policy_explicit, size, __ATOMIC_RELAXED);
++            else if (access & INVALIDATE)
++                __atomic_add_fetch(&g_policy_invalidate, size, __ATOMIC_RELAXED);
++        }
++        if (recent_null) __atomic_add_fetch(&g_policy_recent_null, size, __ATOMIC_RELAXED);
++    }
++    uint64_t maps = __atomic_add_fetch(&g_policy_maps, 1, __ATOMIC_RELAXED);
++    if ((maps & 16383) == 0) {
++        fprintf(stderr, "ocerz: GL map policy maps=%" PRIu64 " copies=%" PRIu64
++                " input=%" PRIu64 " whole=%" PRIu64 " explicit=%" PRIu64 " invalidate=%" PRIu64
++                " unknown=%" PRIu64 " recent_null=%" PRIu64 " unmap=%" PRIu64 " flush=%" PRIu64 "\n",
++                maps, __atomic_load_n(&g_policy_copies, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_input, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_whole, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_explicit, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_invalidate, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_unknown, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_recent_null, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_unmap_bytes, __ATOMIC_RELAXED),
++                __atomic_load_n(&g_policy_flush_bytes, __ATOMIC_RELAXED));
++    }
++}
++
+ /* whole: the mapping is the whole buffer, of size bytes, and the shadow may be (or become) its mirror */
+ static int map_common(struct OcerzVM *vm, OcerzCPU *cpu, unsigned target, uint32_t buffer, void *group,
+                       uint8_t *host, uint32_t size, int whole, int write_only)
+ {
++    int recent_null = 0;
++    if (g_copy_policy_log && group && buffer && g_policy_last_null.group == group && g_policy_last_null.name == buffer) {
++        recent_null = whole && size == g_policy_last_null.size;
++        g_policy_last_null.group = NULL;
++    }
+     if (!host)
+         RET(0);
+@@ -515,4 +566,5 @@
+     if (copy_in)
+         memcpy(m32_h(s->guest), host, size);
++    if (g_copy_policy_log) observe_copy_policy(target, size, whole, copy_in, recent_null);
+     if (measure_copy) {
+         __atomic_add_fetch(&g_unpack_copy_ns, clock_gettime_nsec_np(CLOCK_MONOTONIC) - started, __ATOMIC_RELAXED);
+@@ -664,4 +716,5 @@
+     Shadow *lease = track ? mapped(target) : NULL;
+     gl.buffer_data(target, size, data ? m32_host(data) : NULL, m32_arg(cpu, 3));
++    if (g_copy_policy_log) g_policy_last_null.group = NULL;
+     if (lease && (lease->alias || lease->direct)) {
+         int still_mapped = 1; /* keep tracking if the native call was rejected */
+@@ -677,4 +730,9 @@
+         void *group = share_group();
+         uint32_t buffer = bound(target);
++        if (g_copy_policy_log && !data && size > 0) {
++            g_policy_last_null.group = group;
++            g_policy_last_null.name = buffer;
++            g_policy_last_null.size = (uint32_t)size;
++        }
+         pthread_mutex_lock(&g_lock);
+         Shadow *s = find(group, buffer);
+@@ -701,4 +759,5 @@
+     uint32_t data = m32_arg(cpu, 3);
+     gl.buffer_sub_data(target, off, size, data ? m32_host(data) : NULL);
++    if (g_copy_policy_log) g_policy_last_null.group = NULL;
+     if (mirrored(target)) {
+         void *group = share_group();
+@@ -722,4 +781,5 @@
+     int32_t n = (int32_t)m32_arg(cpu, 0);
+     uint32_t names = m32_arg(cpu, 1);
++    if (g_copy_policy_log) g_policy_last_null.group = NULL;
+     void *group = share_group();
+     int live = __atomic_load_n(&g_live_aliases, __ATOMIC_RELAXED) || m32_wmgl_guest_storage_enabled();
+@@ -761,6 +821,8 @@
+         if (s->alias || s->direct)
+             __atomic_thread_fence(__ATOMIC_SEQ_CST);
+-        else
++        else {
+             memcpy(s->host + off, m32_h(s->guest + off), len);
++            if (g_copy_policy_log) __atomic_add_fetch(&g_policy_flush_bytes, len, __ATOMIC_RELAXED);
++        }
+         s->flushed = 1;
+         if (g_log_map_stats && target == 0x88EC && len) {
+@@ -800,4 +862,5 @@
+         if (!s->flushed) {
+             memcpy(s->host, m32_h(s->guest), s->size);
++            if (g_copy_policy_log) __atomic_add_fetch(&g_policy_unmap_bytes, s->size, __ATOMIC_RELAXED);
+             if (g_log_map_stats && target == 0x88EC)
+                 __atomic_add_fetch(&g_unpack_copyback_bytes, s->size, __ATOMIC_RELAXED);
