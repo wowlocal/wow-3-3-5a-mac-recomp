@@ -3155,3 +3155,26 @@ The two captures verified **11,642** consecutive GPU completions across their ow
 ```sh
 python3 benchmarks/summarize-raid-native-5k-guest-profile.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
 ```
+
+### Shorten the mapped-base guard and admit five displaced MOVs
+
+Apply `patches/aarchx-m32-short-base-hoist-trial.patch` to the native 5K runtime. Use the same runtime and color-only MSAA renderer with budget 2048 for the comparison. Keep general mapped-base reuse enabled and the translation cache off. Set `OCERZ_M32_SHORT_BASE_HOIST` to `0` for the control and `1` for the candidate.
+
+The original guard rejects the lowest and highest 256 values of the guest base. A wrapped 32-bit add by 256 brings both intervals into the range 0 through 511. A shift by nine followed by a zero branch tests the same range in three ARM64 instructions without changing NZCV. The candidate also admits otherwise unselected prefixes with five displaced 32-bit MOVs on one unchanged pinned base. The original fallback handles a guard failure and preserves 32-bit wraparound.
+
+Save the general i386 suite logs as `compact-base/general-MODE.log`. Set `OCERZ_TEST_JIT32_SHORT_BASE` to each integer from 0 to 5 in a fresh process, with `OCERZ_M32_SHORT_BASE_HOIST_LOG=1`. Run each mode with ordinary layout and with `OCERZ_FORCE_VENEER=1`, saving `focused-MODE-LAYOUT-CASE.log` in `compact-base`. These cases cover dirty upper register bits, both sides of the 32-bit range, a base write, and prefixes with too few displaced operations. Both modes passed **812** general i386 checks and all **12** focused comparisons.
+
+Run `native-5k-compact-base-diagnostic` for 25 seconds with the log enabled. Then run four warmed 60-second windows in 0, 1, 1, 0 order with logging disabled, under `native-5k-compact-base-ORDER-MODE`. The CPU coverage calculation decodes matched short prefixes in the original client and checks which sampled ARM64 address instructions they contain in the two earlier native 5K profiles.
+
+| Mapped-base policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original guard | 98.33 | 13.49 ms |
+| Compact guard and five displaced MOVs | 99.47 | 13.47 ms |
+
+Throughput rose **1.22** and **1.05 FPS** across the pairs. P99 increased by **0.175 ms** in the first pair and decreased by **0.212 ms** in the second. Keep this policy opt-in. All four windows verified **23,740** consecutive GPU completions across their respective launches, the full native 5K quality profile and all 26 cast timing rows. The live control and candidate readbacks both showed the fixed view and overlapping spell effects. The original signed runtime was restored after the launches. [Native 5K short-base A/B](results/raid-native-5k-short-base-ab.json)
+
+The diagnostic emitted **472** distinct additional prefixes. The local i386 image matched **470** of them, covering **2,310** displaced MOV instructions. Exact address arithmetic at those guest addresses accounted for **0.32%** and **0.36%** of weighted CPU time in the prior native 5K samples. This estimate covers only the newly selected prefixes. The A/B also includes the shorter guard in previously eligible blocks. [Compiled prefixes and sampled coverage](results/raid-native-5k-short-base-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-short-base.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
+```

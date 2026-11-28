@@ -34,29 +34,29 @@ def read_run(case, baseline, artifacts):
     return verified, MIXED["read_samples"](case), len(hot_threads)
 
 
+def movl_address_calculation(guest, operands, host, args):
+    if guest != "movl" or host not in ("add", "sub") or not (offset := ADDRESS_IMMEDIATE.fullmatch(args)):
+        return None
+    memory = MIXED["GUEST_MEMORY"].search(operands)
+    if (not memory or memory["index"] or not memory["disp"]
+            or PINNED_BASE.get(memory["base"]) != offset[1]):
+        return None
+    displacement = int(memory["disp"], 0)
+    immediate = int(offset[2], 0) * (-1 if host == "sub" else 1)
+    prefix = operands[:memory.start()].strip()
+    if not displacement or displacement != immediate or (prefix and not prefix.endswith(",")):
+        return None
+    return "store" if prefix else "load", memory["base"]
+
+
 def instruction_weights(group, guest_ops, host_ops, denominator):
-    opcodes, addresses = Counter(), Counter()
-    address_calculations = Counter()
+    opcodes, addresses, address_calculations = Counter(), Counter(), Counter()
     for row in group:
         guest, operands = guest_ops.get(row.leaf, ("unmapped", ""))
         opcodes[guest] += row.weight
         addresses[row.leaf] += row.weight
-        if guest != "movl":
-            continue
-        host, args = host_ops[row.host_instruction]
-        if host not in ("add", "sub") or not (offset := ADDRESS_IMMEDIATE.fullmatch(args)):
-            continue
-        memory = MIXED["GUEST_MEMORY"].search(operands)
-        if (not memory or memory["index"] or not memory["disp"]
-                or PINNED_BASE.get(memory["base"]) != offset[1]):
-            continue
-        displacement = int(memory["disp"], 0)
-        immediate = int(offset[2], 0) * (-1 if host == "sub" else 1)
-        prefix = operands[:memory.start()].strip()
-        if not displacement or displacement != immediate or (prefix and not prefix.endswith(",")):
-            continue
-        direction = "store" if prefix else "load"
-        address_calculations[direction, memory["base"]] += row.weight
+        if shape := movl_address_calculation(guest, operands, *host_ops[row.host_instruction]):
+            address_calculations[shape] += row.weight
     return {
         "guest_mnemonics": [
             {"i386": mnemonic, "cpu_usec": weight, "share_of_all_sampled_cpu": weight / denominator}

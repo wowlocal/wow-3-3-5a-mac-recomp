@@ -1,0 +1,180 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -22782,9 +22782,20 @@
+     a64_b(b, 0);
+ }
+
++static int m32_short_base_enabled(void)
++{
++    static int enabled = -1;
++    if (enabled < 0) {
++        const char *option = getenv("OCERZ_M32_SHORT_BASE_HOIST");
++        enabled = option && !strcmp(option, "1");
++    }
++    return enabled;
++}
++
+ static int select_m32_base_hoist(const X86Insn *insns, int n, uint64_t rip, int *base)
+ {
+     const int general = ENV_ON("OCERZ_M32_GENERAL_BASE_HOIST");
++    const int short_base = m32_short_base_enabled();
+     if (!g_xlat_mode32 || g_pin_class != 3 || g_no_chain || !ocerz_guest_base ||
+         !mem_fast_forms_ok() || g_align_guard || g_no_ldapr || align_test_all() ||
+         ocerz_tcache_mode() != OCERZ_TC_OFF ||
+@@ -22803,6 +22814,7 @@
+                 active |= 1u << reg;
+
+     int count[OCERZ_R8] = {0};
++    int displaced_mov[OCERZ_R8] = {0};
+     int end[OCERZ_R8] = {0};
+     int i = 0;
+     for (; i < n && active; ++i) {
+@@ -22822,8 +22834,11 @@
+         if (supported_form)
+             for (int q = 0; q < insn->nops; ++q) {
+                 const X86Operand *op = &insn->ops[q];
+-                if (m32_hoisted_base_form(insn, op) && (active & (1u << op->base)))
++                if (m32_hoisted_base_form(insn, op) && (active & (1u << op->base))) {
+                     ++count[op->base];
++                    if (short_base && insn->op == OCERZ_OP_MOV && op->size == 4 && op->disp)
++                        ++displaced_mov[op->base];
++                }
+             }
+     }
+
+@@ -22832,8 +22847,15 @@
+         for (int reg = OCERZ_RAX; reg < OCERZ_R8; ++reg)
+             if (count[reg] > count[best])
+                 best = reg;
+-    if (count[best] < 6)
+-        return 0;
++    const int newly_eligible = count[best] < 6;
++    if (newly_eligible) {
++        if (!short_base) return 0;
++        if (general)
++            for (int reg = OCERZ_RAX; reg < OCERZ_R8; ++reg)
++                if (displaced_mov[reg] > displaced_mov[best])
++                    best = reg;
++        if (displaced_mov[best] < 5) return 0;
++    }
+
+     int stop = (active & (1u << best)) ? i : end[best];
+     *base = best;
+@@ -22843,6 +22865,16 @@
+     if (ENV_ON("OCERZ_M32_GENERAL_BASE_HOIST_LOG"))
+         fprintf(stderr, "ocerz: i386 base hoist rip=%#llx base=%d accesses=%d prefix=%d\n",
+                 (unsigned long long)rip, best, count[best], stop);
++    if (short_base) {
++        static int report = -1;
++        if (report < 0) {
++            const char *option = getenv("OCERZ_M32_SHORT_BASE_HOIST_LOG");
++            report = option && !strcmp(option, "1");
++        }
++        if (report)
++            fprintf(stderr, "ocerz: i386 short base hoist rip=%#llx base=%d accesses=%d displaced=%d prefix=%d added=%d\n",
++                    (unsigned long long)rip, best, count[best], displaced_mov[best], stop, newly_eligible);
++    }
+     return stop;
+ }
+
+@@ -22853,6 +22885,15 @@
+     // Reject if the base is within 256 bytes of 0 or 4 GiB. The W subtraction
+     // wraps and the X addition exposes the out-of-range bit without using NZCV.
+     int base = pin_hreg(pin_slot(g_mem_hoist_greg));
++    if (m32_short_base_enabled()) {
++        // The wrapped addition brings both rejected 256-byte intervals
++        // together at [0, 512). This leaves NZCV unchanged, like the old check.
++        a64_add_imm(b, 0, JTT, base, 256);
++        a64_lsr_imm(b, 0, JTT, JTT, 9);
++        g_llh_bail_cb[g_n_llh_bail_cb++] = a64_label(b);
++        a64_cbz(b, 0, JTT, 0);
++        return;
++    }
+     a64_sub_imm(b, 0, JTT, base, 256);
+     a64_add_imm(b, 1, JTT, JTT, 512);
+     a64_lsr_imm(b, 1, JTT, JTT, 32);
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -53,6 +53,7 @@
+
+ #include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+
+@@ -67,6 +68,8 @@
+ #define DATA_WIN   0x1000
+
+ static int g_failures;
++static int g_short_base_case = -1;
++static unsigned g_short_base_exits;
+ static OcerzVM g_vm;
+ static OcerzCPU *cpu(void) { return &g_vm.cpu; }
+
+@@ -88,6 +91,10 @@
+         cpu()->gpr[i] = (0xdead0000ull << 32) | (0x11111111ull * (unsigned)(i + 1));
+     cpu()->gpr[OCERZ_RSP] = esp;
+     cpu()->gpr[OCERZ_RBP] = M32_STACK - 0x40;
++    if (g_short_base_case >= 0) {
++        uint32_t base = g_short_base_case == 1 ? 8 : g_short_base_case == 2 ? 0xffffff80 : M32_STACK - 0x40;
++        cpu()->gpr[OCERZ_RBP] = UINT64_C(0xabc0000000000000) | base;
++    }
+     cpu()->gpr[OCERZ_RBX] = M32_DATA;
+     cpu()->gpr[OCERZ_RSI] = 0x10;
+     cpu()->gpr[OCERZ_RDI] = 0x00000004;
+@@ -216,7 +223,12 @@
+     for (int i = 0; i < 64; i++) {
+         if (cpu()->rip == DONE)
+             return 1;
+-        if (ocerz_jit_step(&g_vm, cpu()) != OCERZ_STEP_OK)
++        int step = ocerz_jit_step(&g_vm, cpu());
++        if (g_short_base_case >= 0 && step == OCERZ_STEP_PROFILE) {
++            ++g_short_base_exits;
++            continue;
++        }
++        if (step != OCERZ_STEP_OK)
+             return 0;
+     }
+     return 0;
+@@ -279,6 +291,38 @@
+     }
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++
++    const char *short_base = getenv("OCERZ_TEST_JIT32_SHORT_BASE");
++    if (short_base) {
++        if (short_base[0] < '0' || short_base[0] > '5' || short_base[1]) return 2;
++        g_short_base_case = short_base[0] - '0';
++        static const uint8_t five[] = {
++            0x8b,0x45,0xc0, 0x8b,0x4d,0xc4, 0x8b,0x55,0xc8, 0x8b,0x5d,0xcc, 0x8b,0x75,0xd0
++        };
++        if (g_short_base_case == 3) {
++            uint8_t code[sizeof five + 8];
++            memcpy(code, five, sizeof five);
++            const uint8_t update[] = {0xbd,0x00,0x00,0x50,0x00, 0x8b,0x7d,0x04};
++            memcpy(code + sizeof five, update, sizeof update);
++            run_case("5 displaced EBP loads and an EBP write", M32_CODE, M32_STACK, code, sizeof code);
++        } else if (g_short_base_case == 4) {
++            run_case("4 displaced EBP loads", M32_CODE, M32_STACK, five, sizeof five - 3);
++        } else if (g_short_base_case == 5) {
++            CASE("5 zero-displacement EBP loads", M32_CODE, M32_STACK,
++                 0x8b,0x45,0, 0x8b,0x4d,0, 0x8b,0x55,0, 0x8b,0x5d,0, 0x8b,0x75,0);
++        } else {
++            run_case("5 displaced EBP loads", M32_CODE, M32_STACK, five, sizeof five);
++        }
++        const char *feature = getenv("OCERZ_M32_SHORT_BASE_HOIST");
++        const unsigned expected = feature && !strcmp(feature, "1") &&
++                                  (g_short_base_case == 1 || g_short_base_case == 2);
++        if (g_short_base_exits != expected) {
++            fprintf(stderr, "FAIL: expected %u short-base guard exits, received %u\n", expected, g_short_base_exits);
++            ++g_failures;
++        }
++        printf("short-base case=%d guard_exits=%u\n", g_short_base_case, g_short_base_exits);
++        return g_failures != 0;
++    }
+
+     static const uint8_t carry_chain[] = {
+         0xb8, 0xff, 0xff, 0xff, 0xff,
