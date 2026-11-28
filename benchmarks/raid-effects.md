@@ -1976,3 +1976,27 @@ The trial changed throughput by **−0.65 and +0.17 FPS** in the two pairs. P99 
 python3 benchmarks/summarize-raid-x87-forward.py CAPTURE_ROOT I386_CLIENT \
     --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
 ```
+
+### Check short i386 calls and dependent pointer loads
+
+A static scan followed immediate calls in the original i386 text. It first admitted straight-line callees of at most 24 instructions ending in a plain return. It then admitted up to 64 instructions with local forward branches and one level of separately checked calls. In the two earlier CPU profiles, the first scan's callee bodies accounted for **0.82% and 0.76%** of weighted CPU samples. The expanded scan covered **1.79% and 1.64%** in the outer bodies. The direct call instructions themselves accounted for **0.20% and 0.24%** in the expanded scan. These counts describe static candidates. [Earlier CPU captures](results/raid-aarchx-native-instructions-in-guest-call-trees.json)
+
+The next trial uses the existing dependency analysis for a limited set of ordered i386 MOV loads. It checks whether the next memory operation uses the value returned by the first load as a base or index. Full-width register copies can carry the dependency between the loads. The rule stops at other operations with effects and leaves an acquire at the end of the chain. Address dependence orders the earlier load before the later one. The last acquire orders it before subsequent accesses. [Armv8-A memory model guide](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Learn%20the%20Architecture/Armv8-A%20memory%20model%20guide.pdf?revision=58b1dd0a-3800-4218-b21a-f95a0332034c)
+
+Apply `patches/aarchx-m32-dependent-loads-trial.patch` after the general base hoist. Set `OCERZ_TCACHE=off` and `OCERZ_M32_DEP_PLAIN=1`. The separate compiler diagnostic sets `OCERZ_M32_DEP_PLAIN_LOG=1` and `OCERZ_DEP_PLAIN_CHECK=1` to record the selected source and consumer and check for the terminal acquire.
+
+Both modes passed **806** general i386 checks and eight interpreter comparisons. The focused cases cover adjacent and copied dependencies, a chain of three loads, wraparound at 4 GiB, a scaled index, an independent intervening load, an immediate overwrite, and an ordinary frame-local load. Each ran in a fresh process with `OCERZ_TEST_JIT32_DEPENDENCIES` set to a value from 0 through 7.
+
+The focused machine-code dump showed that the first load changed from an address add plus `LDAPUR` to one register-offset `LDR`. The terminal load's address calculation and `LDAPUR` matched in both modes. In the live diagnostic, the compiler reported **6,013** distinct dependencies. The original client disassembly confirmed **5,951**, including **90** emitted after the last world readback. The matched source addresses represented **0.96% and 0.89%** of weighted CPU time in the two earlier raid profiles. The terminal-acquire diagnostic reported zero omissions.
+
+| i386 load ordering | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing acquire sequence | 135.15 | 12.67 ms |
+| Dependent load plus terminal acquire | 134.53 | 12.80 ms |
+
+The first pair changed throughput by **+1.23 FPS** and p99 by **−0.07 ms**. The reverse pair changed them by **−2.47 FPS** and **+0.33 ms**. Keep the existing ordering as the benchmark baseline. The four 60-second launches and compiler diagnostic checked the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. The earlier trial was paused during each launch and resumed afterward. [Live A/B, CPU coverage and focused ARM64 output](results/raid-aarchx-i386-dependent-loads-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-i386-dependent-loads.py CAPTURE_ROOT I386_CLIENT \
+    --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
+```

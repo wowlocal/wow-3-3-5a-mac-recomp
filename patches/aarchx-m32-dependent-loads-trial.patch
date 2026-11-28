@@ -1,0 +1,141 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -23011,6 +23011,56 @@
+     return d->riprel || (d->base != OCERZ_REG_NONE && (d->base & 15) != OCERZ_RSP);
+ }
+
++static int dep_m32_mov(const X86Insn *insn)
++{
++    const X86Operand *d = &insn->ops[0], *s = &insn->ops[1];
++    return insn->mode32 && insn->addrsize == 4 && insn->op == OCERZ_OP_MOV && insn->nops == 2 &&
++           insn->seg == OCERZ_SEG_NONE && !insn->rep && !insn->lock &&
++           dep_gpr(d) && d->size == 4 && !d->high8 && d->reg != OCERZ_RSP &&
++           pin_slot(d->reg) >= 0 && s->size == 4;
++}
++
++static void dep_m32_mark(const X86Insn *insns, int n)
++{
++    if (!ENV_ON("OCERZ_M32_DEP_PLAIN") || g_pin_class != 3 || !ocerz_guest_base ||
++        !mem_fast_forms_ok() || g_align_any || g_no_ldapr || align_test_all() ||
++        ocerz_tcache_mode() != OCERZ_TC_OFF)
++        return;
++    const int log = ENV_ON("OCERZ_M32_DEP_PLAIN_LOG");
++    for (int i = 0; i < n; i++) {
++        const X86Insn *first = &insns[i];
++        const X86Operand *source = &first->ops[1];
++        if (!dep_m32_mov(first) || source->kind != OCERZ_OPK_MEM || mem_plain_access_ok(source))
++            continue;
++
++        /* Preserve the emitted address dependency through whole-register
++         * copies. All other instructions with effects end the scan. */
++        unsigned carries = 1u << first->ops[0].reg;
++        for (int j = i + 1; j < n && j <= i + DEP_SCAN; j++) {
++            const X86Insn *next = &insns[j];
++            if (next->op == OCERZ_OP_NOP) continue;
++            if (!dep_m32_mov(next)) break;
++            const X86Operand *src = &next->ops[1];
++            if (src->kind == OCERZ_OPK_MEM) {
++                if (!mem_plain_access_ok(src) && dep_addr_from(src, carries)) {
++                    g_dep_plain[i] = 1;
++                    g_dep_by[i] = (int16_t)j;
++                    if (log)
++                        fprintf(stderr, "ocerz: i386 dependent load %#llx %#llx\n",
++                                (unsigned long long)first->rip, (unsigned long long)next->rip);
++                }
++                break;
++            }
++            if (!dep_gpr(src) || src->high8 || src->reg == OCERZ_RSP || pin_slot(src->reg) < 0)
++                break;
++            unsigned copied = (carries >> src->reg) & 1u;
++            unsigned dest = next->ops[0].reg;
++            carries = (carries & ~(1u << dest)) | (copied << dest);
++            if (!carries) break;
++        }
++    }
++}
++
+ static void dep_plain_mark(const X86Insn *insns, int n)
+ {
+     static int off = -1, log = -1;
+@@ -23018,6 +23068,10 @@
+     if (log < 0) log = getenv("OCERZ_DEP_PLAIN_LOG") ? 1 : 0;
+     for (int i = 0; i < n; i++) { g_dep_plain[i] = 0; g_dep_by[i] = -1; g_dep_slow[i] = 0; g_dep_at[i] = NULL; }
+     if (off || g_plain_mem || hw_tso_ordered()) return;
++    if (g_xlat_mode32) {
++        dep_m32_mark(insns, n);
++        return;
++    }
+     for (int i = 0; i < n; i++) {
+         int r = dep_load_dest(&insns[i]);
+         if (r < 0) continue;
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -53,6 +53,7 @@
+
+ #include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+
+@@ -259,6 +260,49 @@
+     run_case(name, (at), (esp), _b, sizeof _b); \
+ } while (0)
+
++static int test_m32_dependencies(const char *requested)
++{
++    char *end;
++    unsigned long index = strtoul(requested, &end, 10);
++    if (!*requested || *end || index > 7) return 2;
++    switch (index) {
++    case 0:
++        CASE("adjacent dependent reads", M32_CODE, M32_STACK,
++             0xc7,0x03,0x04,0x00,0x50,0x00, 0x8b,0x03, 0x8b,0x10);
++        break;
++    case 1:
++        CASE("dependent read through a copy", M32_CODE, M32_STACK,
++             0xc7,0x03,0x04,0x00,0x50,0x00, 0x8b,0x03, 0x89,0xc6, 0x90, 0x8b,0x16);
++        break;
++    case 2:
++        CASE("independent load before the consumer", M32_CODE, M32_STACK,
++             0xc7,0x03,0x04,0x00,0x50,0x00, 0x8b,0x03, 0x8b,0x7b,0x08, 0x8b,0x10);
++        break;
++    case 3:
++        CASE("immediate overwrite removes the dependency", M32_CODE, M32_STACK,
++             0xc7,0x03,0x04,0x00,0x50,0x00, 0x8b,0x03, 0xb8,0x08,0x00,0x50,0x00, 0x8b,0x10);
++        break;
++    case 4:
++        CASE("dependent read wraps at 4 GiB", M32_CODE, M32_STACK,
++             0xc7,0x03,0xfc,0xff,0xff,0xff, 0x8b,0x03, 0x8b,0x90,0x04,0x00,0x50,0x00);
++        break;
++    case 5:
++        CASE("three dependent reads", M32_CODE, M32_STACK,
++             0xc7,0x03,0x04,0x00,0x50,0x00, 0xc7,0x43,0x04,0x08,0x00,0x50,0x00,
++             0x8b,0x03, 0x8b,0x38, 0x8b,0x17);
++        break;
++    case 6:
++        CASE("frame local stays outside the dependency rule", M32_CODE, M32_STACK,
++             0xc7,0x03,0x04,0x00,0x50,0x00, 0x8b,0x2b, 0x8b,0x55,0xfc);
++        break;
++    case 7:
++        CASE("dependency through a scaled index", M32_CODE, M32_STACK,
++             0xc7,0x03,0x01,0x00,0x00,0x00, 0x8b,0x0b, 0x8b,0x04,0x8b);
++        break;
++    }
++    return g_failures ? 1 : 0;
++}
++
+ int main(void)
+ {
+     if (ocerz_mem_init(0x10000ull, 0x900000000ull) != OCERZ_OK) {
+@@ -279,6 +323,8 @@
+     }
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++    const char *test = getenv("OCERZ_TEST_JIT32_DEPENDENCIES");
++    if (test) return test_m32_dependencies(test);
+
+     static const uint8_t carry_chain[] = {
+         0xb8, 0xff, 0xff, 0xff, 0xff,
