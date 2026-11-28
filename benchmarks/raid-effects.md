@@ -2866,3 +2866,22 @@ xcrun clang -arch arm64 -O1 -g -ffp-contract=off -fno-fast-math -fsanitize=addre
 CAPTURE_ROOT/replay-sanitized CAPTURE_ROOT/cases.bin --verify-only > CAPTURE_ROOT/sanitizer.log
 python3 benchmarks/export-raid-rotated-quads.py report CAPTURE_ROOT/export.json CAPTURE_ROOT/replay.log CAPTURE_ROOT/sanitizer.log
 ```
+
+### Check which scene object updates can run together
+
+Apply `patches/aarchx-m32-raid-scene-footprint-probe.patch` after the item-memory probe and rebuild the diagnostic i386 runtime. Keep the selected deferred PGO renderer. The configure step uses Capstone to follow direct i386 control flow from the scene pass, the object update and the consumer. It follows nested direct calls up to the depths recorded in the result. Set `OCERZ_M32_RAID_SCENE_PCS` to the absolute path of the resulting PC table. Also set `OCERZ_M32_RAID_PREP_MEMORY=1` and point `OCERZ_M32_RAID_PREP_LOG` to a fresh `raid-prep.bin` in each capture.
+
+Run two verified 45-second launches and arm the ring for 135 ms at offsets 2, 15 and 28 seconds after the raid is ready. Record the gated row ranges in `scene-gates.json`. Keep the submission and GPU logs, the artifact and isolation witnesses, and the general i386 checks in `general.log`. The recorder limits memory logging to the guest CPU in the original scene pass. It logs explicit memory operands, the executing stack pointer and transfers whose destinations fall outside the configured table.
+
+The analyzer joins the complete scene passes to verified GPU submission intervals. It preserves dependencies between updates and accesses by the original caller between those updates. An uncovered operation ends the current wave of work. The model checks input reads before any write in the same task and all writes visible outside the task's stack. The consumer comparison identifies matching addresses between the recorded writes and later reads.
+
+The comparison with owned inputs copies only the six original 32-bit argument slots and the two three-float vectors they point to, **48 bytes** total. The copy happens at the original call boundary in the model. The analyzer checks the source addresses against the original instructions and omits the corresponding read aliases only if the observed updates never write into those input spans. Unknown accesses and transfers keep their original barriers. The four-worker estimate uses elapsed times from the instrumented trace and omits staging, delivery, synchronization and work outside the update calls.
+
+The captures covered **four complete scene passes** across the two launches, with **222** updates and **713** consumers. The original caller overwrote at least one pending input after each of the **202** updates with no uncovered operation. Every covered update read all **48** argument bytes. The original layout therefore gave only single-update waves. With those inputs copied, **200 of 222** updates entered waves with more than one item, with a maximum of **32**. The modeled proportion of update work left on the critical path was **55%** and **45%** in the two captures. The **20** updates with uncovered transfers stayed serial. Their recorded call sites target `atan2f`, `sinf` and `memmove` import stubs. The analysis also found **224** consumers reading addresses written by an earlier update, so their publication order stays part of the implementation boundary. [Scene dependencies and work estimates](results/raid-aarchx-scene-footprints.json)
+
+Both launches preserved the saved camera, overlapping effects and all 26 cast timing rows. The diagnostic produced **2,222** consecutive GPU completions across the two windows, with zero visible trial windows or activations. The runtime passed **805** general i386 checks. The instrumentation changes JIT block boundaries, and the game used its original serial update path throughout both launches. [Verified diagnostic windows](results/raid-aarchx-scene-footprints.json)
+
+```sh
+python3 benchmarks/summarize-raid-scene-footprints.py configure I386_CLIENT CAPTURE_ROOT/scene-pcs.bin
+python3 benchmarks/summarize-raid-scene-footprints.py report I386_CLIENT CAPTURE_ROOT scene-3 scene-4
+```

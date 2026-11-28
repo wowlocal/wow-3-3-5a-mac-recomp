@@ -1,0 +1,773 @@
+{
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "artifacts": {
+    "runtime_unsigned_sha256": "27074be9af4975199c237a8ef7e65bdf17c47f9419c57f8d9e49ad0256b5b02f",
+    "runtime_signed_sha256": "bf024aad7589252362794b07ca431a3f9dc3bda205aebeff87e9de50eb5b228e",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  },
+  "pc_table_sha256": "0ec385cb1abdf3b44aeb6b1c5bb3b7190fdd3aed8f7fad56d8c90690ad258a68",
+  "pc_count": 13370,
+  "closures": {
+    "scene_caller": {
+      "entry": "0x97e390",
+      "direct_call_depth": 0,
+      "decoded_pcs": 2266,
+      "potential_escape_sites": 69
+    },
+    "update": {
+      "entry": "0x964ca0",
+      "direct_call_depth": 5,
+      "decoded_pcs": 6605,
+      "potential_escape_sites": 7
+    },
+    "consumer": {
+      "entry": "0x967f20",
+      "direct_call_depth": 3,
+      "decoded_pcs": 9728,
+      "potential_escape_sites": 142
+    }
+  },
+  "general_i386_checks": 805,
+  "captures": [
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1118,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 44970634291,
+        "measurement_duration_ns": 45000000000,
+        "average_completed_fps": 24.822222222222223,
+        "p99_gpu_completion_gap_ns": 49482459,
+        "min_draws": 674,
+        "max_draws": 970
+      },
+      "gates": [
+        {
+          "rows": 2308096,
+          "complete_producer_intervals": 0,
+          "complete_scene_passes": 0
+        },
+        {
+          "rows": 3439104,
+          "complete_producer_intervals": 1,
+          "complete_scene_passes": 1
+        },
+        {
+          "rows": 2740683,
+          "complete_producer_intervals": 1,
+          "complete_scene_passes": 1
+        }
+      ],
+      "counts": {
+        "complete_passes": 2,
+        "update_calls": 111,
+        "consumer_calls": 355,
+        "update_without_uncovered_operations": 100,
+        "update_explicit_accesses": 3000247,
+        "consumer_without_uncovered_operations": 204,
+        "consumer_explicit_accesses": 977327,
+        "consumers_reading_addresses_written_by_updates": 113,
+        "updates_with_conflict_in_current_wave": 0,
+        "caller_intervals_with_dependency_on_pending_updates": 100,
+        "largest_observed_update_wave": 1,
+        "update_waves": 111,
+        "updates_in_multi_item_waves": 0,
+        "covered_nonconflicting_post_update_intervals": 0
+      },
+      "median_per_pass": {
+        "update_input_bytes": 308394.5,
+        "update_output_bytes": 347399.0,
+        "consumer_input_bytes": 164626.5,
+        "distinct_update_input_bytes": 120537.0,
+        "distinct_update_output_bytes": 347399.0,
+        "update_calls_per_pass": 55.5,
+        "consumer_calls_per_pass": 177.5,
+        "four_worker_instrumented_work_left_fraction": 1.0,
+        "largest_update_wave": 1.0
+      },
+      "uncovered_sites": [
+        {
+          "scope": "consumer",
+          "pc": "0x87eb76",
+          "kind": "uncovered_transfer",
+          "count": 656
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c4325",
+          "kind": "uncovered_transfer",
+          "count": 513
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c434e",
+          "kind": "uncovered_transfer",
+          "count": 513
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c4374",
+          "kind": "uncovered_transfer",
+          "count": 513
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x96784a",
+          "kind": "uncovered_transfer",
+          "count": 477
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x86f097",
+          "kind": "uncovered_transfer",
+          "count": 388
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x9678b9",
+          "kind": "uncovered_transfer",
+          "count": 375
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x967c60",
+          "kind": "uncovered_transfer",
+          "count": 337
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x86ef67",
+          "kind": "uncovered_transfer",
+          "count": 194
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c42f5",
+          "kind": "uncovered_transfer",
+          "count": 162
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x88a9cb",
+          "kind": "uncovered_transfer",
+          "count": 90
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x88aae9",
+          "kind": "uncovered_transfer",
+          "count": 90
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x96794a",
+          "kind": "uncovered_transfer",
+          "count": 30
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x967972",
+          "kind": "uncovered_transfer",
+          "count": 30
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x9bb23",
+          "kind": "uncovered_transfer",
+          "count": 20
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x9bb07",
+          "kind": "uncovered_transfer",
+          "count": 20
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f761",
+          "kind": "uncovered_transfer",
+          "count": 9
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f79b",
+          "kind": "uncovered_transfer",
+          "count": 9
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f7f4",
+          "kind": "uncovered_transfer",
+          "count": 9
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f9fd",
+          "kind": "uncovered_transfer",
+          "count": 9
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87fa92",
+          "kind": "uncovered_transfer",
+          "count": 9
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x958c11",
+          "kind": "uncovered_transfer",
+          "count": 4
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x958c30",
+          "kind": "uncovered_transfer",
+          "count": 4
+        },
+        {
+          "scope": "between_updates",
+          "pc": "0x9806c1",
+          "kind": "uncovered_transfer",
+          "count": 2
+        }
+      ],
+      "top_dependency_sites": [
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965be0",
+          "second_pc": "0x98064d",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965bf1",
+          "second_pc": "0x980657",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x966d2b",
+          "second_pc": "0x98069b",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b26",
+          "second_pc": "0x9806a3",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x964cac",
+          "second_pc": "0x9806ab",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b51",
+          "second_pc": "0x98067f",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965bb7",
+          "second_pc": "0x980693",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x964e33",
+          "second_pc": "0x9806a7",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b56",
+          "second_pc": "0x98066b",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b4c",
+          "second_pc": "0x980675",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965bcd",
+          "second_pc": "0x980689",
+          "count": 98
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965c00",
+          "second_pc": "0x980661",
+          "count": 98
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x966d38",
+          "second_pc": "0x96814b",
+          "count": 89
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x965ad3",
+          "second_pc": "0x967f2f",
+          "count": 76
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x95c5b0",
+          "second_pc": "0x967f2f",
+          "count": 65
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x95c595",
+          "second_pc": "0x9679d0",
+          "count": 65
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964fb6",
+          "second_pc": "0x8c2fa3",
+          "count": 53
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964f41",
+          "second_pc": "0x8c2f7d",
+          "count": 53
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964f65",
+          "second_pc": "0x8c2f99",
+          "count": 53
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964f5c",
+          "second_pc": "0x8c2f9e",
+          "count": 53
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964f4a",
+          "second_pc": "0x8c2f78",
+          "count": 53
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964f35",
+          "second_pc": "0x8c2f82",
+          "count": 53
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964f80",
+          "second_pc": "0x8c2fb8",
+          "count": 53
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x964fad",
+          "second_pc": "0x8c2fc5",
+          "count": 53
+        }
+      ],
+      "owned_argument_model": {
+        "counts": {
+          "argument_bytes_read_at_original_locations": 4800,
+          "updates_eligible_to_copy_argument_bytes": 100,
+          "updates_without_verified_argument_isolation": 11,
+          "updates_with_conflict_in_current_wave": 0,
+          "caller_intervals_with_dependency_on_pending_updates": 0,
+          "largest_observed_update_wave": 17,
+          "update_waves": 22,
+          "updates_in_multi_item_waves": 98,
+          "covered_nonconflicting_post_update_intervals": 98
+        },
+        "median_per_pass": {
+          "four_worker_instrumented_work_left_fraction": 0.5454379173284959,
+          "largest_update_wave": 16.0
+        },
+        "top_dependency_sites": []
+      }
+    },
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1104,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 44996710166,
+        "measurement_duration_ns": 45000000000,
+        "average_completed_fps": 24.511111111111113,
+        "p99_gpu_completion_gap_ns": 48967916,
+        "min_draws": 689,
+        "max_draws": 949
+      },
+      "gates": [
+        {
+          "rows": 2798848,
+          "complete_producer_intervals": 1,
+          "complete_scene_passes": 1
+        },
+        {
+          "rows": 4256843,
+          "complete_producer_intervals": 0,
+          "complete_scene_passes": 0
+        },
+        {
+          "rows": 2664117,
+          "complete_producer_intervals": 1,
+          "complete_scene_passes": 1
+        }
+      ],
+      "counts": {
+        "complete_passes": 2,
+        "update_calls": 111,
+        "consumer_calls": 358,
+        "update_without_uncovered_operations": 102,
+        "update_explicit_accesses": 2856344,
+        "consumer_without_uncovered_operations": 204,
+        "consumer_explicit_accesses": 1043788,
+        "consumers_reading_addresses_written_by_updates": 111,
+        "updates_with_conflict_in_current_wave": 0,
+        "caller_intervals_with_dependency_on_pending_updates": 102,
+        "largest_observed_update_wave": 1,
+        "update_waves": 111,
+        "updates_in_multi_item_waves": 0,
+        "covered_nonconflicting_post_update_intervals": 0
+      },
+      "median_per_pass": {
+        "update_input_bytes": 298842.0,
+        "update_output_bytes": 334817.0,
+        "consumer_input_bytes": 174123.5,
+        "distinct_update_input_bytes": 123797.0,
+        "distinct_update_output_bytes": 334817.0,
+        "update_calls_per_pass": 55.5,
+        "consumer_calls_per_pass": 179.0,
+        "four_worker_instrumented_work_left_fraction": 1.0,
+        "largest_update_wave": 1.0
+      },
+      "uncovered_sites": [
+        {
+          "scope": "consumer",
+          "pc": "0x87eb76",
+          "kind": "uncovered_transfer",
+          "count": 832
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x96784a",
+          "kind": "uncovered_transfer",
+          "count": 606
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x9678b9",
+          "kind": "uncovered_transfer",
+          "count": 500
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x86f097",
+          "kind": "uncovered_transfer",
+          "count": 400
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x967c60",
+          "kind": "uncovered_transfer",
+          "count": 367
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c4325",
+          "kind": "uncovered_transfer",
+          "count": 289
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c434e",
+          "kind": "uncovered_transfer",
+          "count": 289
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c4374",
+          "kind": "uncovered_transfer",
+          "count": 289
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x86ef67",
+          "kind": "uncovered_transfer",
+          "count": 200
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x88a9cb",
+          "kind": "uncovered_transfer",
+          "count": 105
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x88aae9",
+          "kind": "uncovered_transfer",
+          "count": 105
+        },
+        {
+          "scope": "update",
+          "pc": "0x8c42f5",
+          "kind": "uncovered_transfer",
+          "count": 77
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x96794a",
+          "kind": "uncovered_transfer",
+          "count": 40
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x967972",
+          "kind": "uncovered_transfer",
+          "count": 40
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x9bb23",
+          "kind": "uncovered_transfer",
+          "count": 35
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x9bb07",
+          "kind": "uncovered_transfer",
+          "count": 35
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f761",
+          "kind": "uncovered_transfer",
+          "count": 7
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f79b",
+          "kind": "uncovered_transfer",
+          "count": 7
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f7f4",
+          "kind": "uncovered_transfer",
+          "count": 7
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87f9fd",
+          "kind": "uncovered_transfer",
+          "count": 7
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x87fa92",
+          "kind": "uncovered_transfer",
+          "count": 7
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x958c11",
+          "kind": "uncovered_transfer",
+          "count": 4
+        },
+        {
+          "scope": "consumer",
+          "pc": "0x958c30",
+          "kind": "uncovered_transfer",
+          "count": 4
+        },
+        {
+          "scope": "between_updates",
+          "pc": "0x9806c1",
+          "kind": "uncovered_transfer",
+          "count": 2
+        }
+      ],
+      "top_dependency_sites": [
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965be0",
+          "second_pc": "0x98064d",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965bf1",
+          "second_pc": "0x980657",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x966d2b",
+          "second_pc": "0x98069b",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b26",
+          "second_pc": "0x9806a3",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x964cac",
+          "second_pc": "0x9806ab",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b51",
+          "second_pc": "0x98067f",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965bb7",
+          "second_pc": "0x980693",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x964e33",
+          "second_pc": "0x9806a7",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b56",
+          "second_pc": "0x98066b",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965bcd",
+          "second_pc": "0x980689",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965b4c",
+          "second_pc": "0x980675",
+          "count": 100
+        },
+        {
+          "kind": "caller_overwrites_update_input",
+          "first_pc": "0x965c00",
+          "second_pc": "0x980661",
+          "count": 100
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x966d38",
+          "second_pc": "0x96814b",
+          "count": 86
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x965ad3",
+          "second_pc": "0x967f2f",
+          "count": 73
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x95c5b0",
+          "second_pc": "0x967f2f",
+          "count": 64
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x95c595",
+          "second_pc": "0x9679d0",
+          "count": 64
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x965897",
+          "second_pc": "0x967a4d",
+          "count": 54
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x9658b5",
+          "second_pc": "0x967a70",
+          "count": 54
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x965891",
+          "second_pc": "0x967a46",
+          "count": 54
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x96586d",
+          "second_pc": "0x967a10",
+          "count": 54
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x96588b",
+          "second_pc": "0x967a3f",
+          "count": 54
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x9658a9",
+          "second_pc": "0x967a62",
+          "count": 54
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x965861",
+          "second_pc": "0x9679fc",
+          "count": 54
+        },
+        {
+          "kind": "consumer_reads_update",
+          "first_pc": "0x965885",
+          "second_pc": "0x967a38",
+          "count": 54
+        }
+      ],
+      "owned_argument_model": {
+        "counts": {
+          "updates_without_verified_argument_isolation": 9,
+          "argument_bytes_read_at_original_locations": 4896,
+          "updates_eligible_to_copy_argument_bytes": 102,
+          "updates_with_conflict_in_current_wave": 0,
+          "caller_intervals_with_dependency_on_pending_updates": 0,
+          "largest_observed_update_wave": 32,
+          "update_waves": 16,
+          "updates_in_multi_item_waves": 102,
+          "covered_nonconflicting_post_update_intervals": 100
+        },
+        "median_per_pass": {
+          "four_worker_instrumented_work_left_fraction": 0.4501082991290156,
+          "largest_update_wave": 25.0
+        },
+        "top_dependency_sites": []
+      }
+    }
+  ]
+}

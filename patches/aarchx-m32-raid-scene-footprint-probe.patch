@@ -1,0 +1,136 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19038,11 +19038,16 @@
+
+ static unsigned raid_prep_bits(void)
+ {
++    if (getenv("OCERZ_M32_RAID_SCENE_PCS")) return 25;
+     return ENV_ON("OCERZ_M32_RAID_PREP_MEMORY") ? 23 : RAID_PREP_BITS;
+ }
+
+ static int raid_prep_site(uint64_t pc)
+ {
++    if (getenv("OCERZ_M32_RAID_SCENE_PCS")) {
++        return pc == 0x73fdd9 || pc == 0x73fdde || pc == 0x9806ae ||
++               pc == 0x9806b3 || pc == 0x9801a7 || pc == 0x9801ac;
++    }
+     switch (pc) {
+     case 0x97d2f0: case 0x97d31d: case 0x97d3b0: case 0x97d404:
+     case 0x980636: case 0x9806ae: case 0x9806b3:
+@@ -19125,6 +19130,12 @@
+     if (g_pin_class != 3) return;
+     for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
+         if (pin_slot(registers[i]) < 0) return;
++    if ((pc == 0x73fdd9 || pc == 0x73fdde) && getenv("OCERZ_M32_RAID_SCENE_PCS")) {
++        void *mapping = raid_prep_mapping();
++        if (!mapping) return;
++        a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++        a64_str(b, 8, pc == 0x73fdd9 ? 20 : A64_ZR, JT0, 16);
++    }
+     uint32_t *disabled = emit_raid_prep_row(b, pc);
+     if (!disabled) return;
+     for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
+@@ -19133,8 +19144,45 @@
+     emit_raid_prep_publish(b, disabled);
+ }
+
++/* The optional little-endian PC table contains original instruction starts
++ * reached by the direct-call closure of the scene passes. */
++static pthread_once_t raid_scene_pcs_once = PTHREAD_ONCE_INIT;
++static const uint32_t *raid_scene_pcs;
++static size_t raid_scene_pc_count;
++
++static void raid_scene_load_pcs(void)
++{
++    const char *path = getenv("OCERZ_M32_RAID_SCENE_PCS");
++    if (!path) return;
++    int fd = open(path, O_RDONLY | O_CLOEXEC);
++    off_t bytes = fd < 0 ? -1 : lseek(fd, 0, SEEK_END);
++    if (bytes <= 0 || bytes > 1024 * 1024 || bytes % sizeof(uint32_t))
++        abort();
++    void *mapping = mmap(NULL, (size_t)bytes, PROT_READ, MAP_PRIVATE, fd, 0);
++    close(fd);
++    if (mapping == MAP_FAILED)
++        abort();
++    raid_scene_pcs = mapping;
++    raid_scene_pc_count = (size_t)bytes / sizeof(uint32_t);
++    for (size_t i = 1; i < raid_scene_pc_count; i++)
++        if (raid_scene_pcs[i - 1] >= raid_scene_pcs[i])
++            abort();
++}
++
+ static int raid_prep_memory_site(uint64_t pc)
+ {
++    pthread_once(&raid_scene_pcs_once, raid_scene_load_pcs);
++    if (raid_scene_pcs) {
++        size_t first = 0, end = raid_scene_pc_count;
++        while (first < end) {
++            size_t middle = first + (end - first) / 2;
++            if (raid_scene_pcs[middle] < pc)
++                first = middle + 1;
++            else
++                end = middle;
++        }
++        return first < raid_scene_pc_count && raid_scene_pcs[first] == pc;
++    }
+     return (pc >= 0x880c70 && pc < 0x882f20) ||
+            (pc >= 0x964ca0 && pc < 0x9677be) ||
+            (pc >= 0x967f20 && pc < 0x9689d5) ||
+@@ -19179,14 +19227,14 @@
+
+ static int raid_prep_stack_operand(const X86Operand *operand)
+ {
+-    return operand->index == OCERZ_REG_NONE &&
++    return !raid_scene_pcs && operand->index == OCERZ_REG_NONE &&
+         (operand->base == OCERZ_RBP || operand->base == OCERZ_RSP);
+ }
+
+ static int raid_prep_observed_instruction(const X86Insn *insn)
+ {
+     if (insn->op == OCERZ_OP_LEA) return 0;
+-    if (insn->op == OCERZ_OP_CALL || insn->op == OCERZ_OP_MOVS ||
++    if (insn->op == OCERZ_OP_CALL || (raid_scene_pcs && insn->op == OCERZ_OP_JMP) || insn->op == OCERZ_OP_MOVS ||
+         insn->op == OCERZ_OP_STOS || insn->op == OCERZ_OP_LODS ||
+         insn->op == OCERZ_OP_SCAS || insn->op == OCERZ_OP_CMPS)
+         return 1;
+@@ -19207,13 +19255,23 @@
+             break;
+         }
+     }
+-    const int untracked_call = insn->op == OCERZ_OP_CALL &&
++    const int untracked_call = (insn->op == OCERZ_OP_CALL ||
++                                (raid_scene_pcs && insn->op == OCERZ_OP_JMP)) &&
+         (insn->ops[0].kind != OCERZ_OPK_IMM || !raid_prep_memory_site(insn->ops[0].imm));
+     const int string_access = insn->op == OCERZ_OP_MOVS || insn->op == OCERZ_OP_STOS ||
+         insn->op == OCERZ_OP_LODS || insn->op == OCERZ_OP_SCAS || insn->op == OCERZ_OP_CMPS;
+     if (!mem && !untracked_call && !string_access) return;
+     const int flat = mem && !string_access && !mem->riprel && insn->seg == OCERZ_SEG_NONE &&
+                      insn->addrsize == 4 && mem->size && mem->size <= 16;
++    uint32_t *outside_scene = NULL;
++    if (raid_scene_pcs) {
++        void *mapping = raid_prep_mapping();
++        if (!mapping) return;
++        a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++        a64_ldr(b, 8, JT1, JT0, 16);
++        a64_eor_reg(b, 1, JT1, JT1, 20, 0);
++        outside_scene = a64_label(b); a64_cbnz(b, 1, JT1, 0);
++    }
+     uint32_t *disabled = emit_raid_prep_row(b, insn->rip);
+     if (!disabled) return;
+     if (flat) {
+@@ -19232,9 +19290,15 @@
+         a64_movz(b, JT1, raid_prep_access(insn->op, operand), 0);
+         a64_str(b, 4, JT1, JT0, 36);
+     }
++    if (raid_scene_pcs) {
++        emit_gpr_rd(b, 0, JT1, OCERZ_RSP);
++        a64_str(b, 4, JT1, JT0, 40);
++    }
+     a64_movz(b, JT1, untracked_call ? (flat ? 5 : 2) : (flat ? 1 : 3), 0);
+     a64_str(b, 4, JT1, JT0, 60);
+     emit_raid_prep_publish(b, disabled);
++    if (outside_scene)
++        a64_patch_cbz(outside_scene, a64_label(b));
+ }
+
+ static void veneer_pool_check(OcerzJit *jit);
