@@ -1,0 +1,242 @@
+diff --git a/src/m32.c b/src/m32.c
+--- a/src/m32.c
++++ b/src/m32.c
+@@ -38,7 +38,5 @@
+ {
+     m32_ret(cpu, (uint32_t)cpu->gpr[OCERZ_RAX], (uint32_t)cpu->gpr[OCERZ_RDX], 0);
+-    cpu->ftop = (cpu->ftop - 1) & 7;
+-    cpu->fpr[cpu->ftop] = v;
+-    cpu->ftw = 0xff;
++    m32_push_st0(cpu, v);
+ }
+
+diff --git a/src/m32_libsystem.c b/src/m32_libsystem.c
+--- a/src/m32_libsystem.c
++++ b/src/m32_libsystem.c
+@@ -1305,4 +1305,5 @@
+ static _Thread_local uint64_t math_swaps;
+ static unsigned math_cache_mask;
++static int math_leaf_enabled;
+ int m32_math_profile_enabled;
+
+@@ -1313,4 +1314,7 @@
+     const char *profile = getenv("OCERZ_M32_MATH_PROFILE");
+     m32_math_profile_enabled = profile && strcmp(profile, "1") == 0;
++    const char *leaf = getenv("OCERZ_M32_DIRECT_MATH_LEAF");
++    math_leaf_enabled = leaf && strcmp(leaf, "1") == 0 && !m32_math_profile_enabled && !math_cache_mask &&
++                        !getenv("OCERZ_M32_CALLLOG");
+ }
+
+@@ -1440,4 +1444,33 @@
+     return OCERZ_STEP_OK;
+ }
++static void math_leaf_call(const M32Leaf *leaf, OcerzCPU *cpu, uint32_t arg0, uint32_t arg1);
++static const M32Leaf direct_math_leaves[MATH_COUNT] = {
++    {"_sinf", math_leaf_call, 1, 0, M32_LEAF_ST0, 1, 1, 0, 1, M32_GL_NONE},
++    {"_cosf", math_leaf_call, 1, 0, M32_LEAF_ST0, 1, 1, 0, 1, M32_GL_NONE},
++    {"_floorf", math_leaf_call, 1, 0, M32_LEAF_ST0, 1, 1, 0, 1, M32_GL_NONE},
++    {"_atan2f", math_leaf_call, 2, 0, M32_LEAF_ST0, 1, 1, 0, 1, M32_GL_NONE},
++};
++
++const M32Leaf *m32_math_leaf_for(const M32Export *export)
++{
++    if (!math_leaf_enabled || !export->special)
++        return NULL;
++    static const M32Special original[MATH_COUNT] = { sp_fast_sinf, sp_fast_cosf, sp_fast_floorf, sp_fast_atan2f };
++    for (unsigned i = 0; i < MATH_COUNT; ++i)
++        if (export->special == original[i])
++            return &direct_math_leaves[i];
++    return NULL;
++}
++
++static void math_leaf_call(const M32Leaf *leaf, OcerzCPU *cpu, uint32_t arg0, uint32_t arg1)
++{
++    const enum MathCall op = (enum MathCall)(leaf - direct_math_leaves);
++    const uint64_t bits = arg0 | (op == MATH_ATAN2F ? (uint64_t)arg1 << 32 : 0);
++    uint64_t fpcr = ocerz_afp_host();
++    m32_load_errno();
++    m32_push_st0(cpu, calculate_math(op, bits));
++    ocerz_afp_restore(fpcr);
++}
++
+ static int sp_fast_fmodf(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, fmodf(argf(cpu, 0), argf(cpu, 1))); return OCERZ_STEP_OK; }
+ static int sp_fast_pow(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, pow(argd(cpu, 0), argd(cpu, 2))); return OCERZ_STEP_OK; }
+diff --git a/src/m32_leaf.c b/src/m32_leaf.c
+--- a/src/m32_leaf.c
++++ b/src/m32_leaf.c
+@@ -204,4 +204,7 @@
+         if (!strcmp(e->name, g_leaves[i].name))
+             return &g_leaves[i];
++    const M32Leaf *math = m32_math_leaf_for(e);
++    if (math)
++        return math;
+     static int no_gl = -1;
+     if (no_gl < 0) no_gl = getenv("OCERZ_NO_M32_GL_LEAF") ? 1 : 0;
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -20697,8 +20697,20 @@
+         int hs = pin_hreg(pin_slot(OCERZ_RSP)), hax = pin_hreg(pin_slot(OCERZ_RAX)),
+             hdx = pin_hreg(pin_slot(OCERZ_RDX));
++        const int math = leaf->ret == M32_LEAF_ST0;
++        uint32_t *math_pending = NULL;
++        if (math) {
++            a64_mov_imm64(b, JTA, (uint64_t)(uintptr_t)&m32_sig_pending);
++            a64_ldr(b, 4, JT0, JTA, 0);
++            a64_ldr(b, 4, JT1, 20, INT_OFF);
++            a64_orr_reg(b, 0, JT0, JT0, JT1, 0);
++            math_pending = a64_label(b);
++            a64_cbnz(b, 0, JT0, 0);
++            if (ENV_ON("OCERZ_M32_MATH_LEAF_LOG"))
++                fprintf(stderr, "ocerz: i386 math leaf %s\n", leaf->name);
++        }
+         static const int arg[8] = { JT0, 1, 2, 3, 4, 5, 6, 7 };
+         static const int targ[7] = { 1, 2, 3, 4, 5, 6, 7 };
+         for (int k = 0; k < leaf->nargs; k++) {
+-            int r = leaf->tramp ? targ[k] : arg[k];
++            int r = math ? k + 2 : leaf->tramp ? targ[k] : arg[k];
+             a64_add_imm(b, 0, JTA, hs, 4 + 4 * (uint32_t)k);
+             a64_ldr_regoff_uxtw(b, 4, r, JGB, JTA);
+@@ -20714,10 +20726,13 @@
+                     fprintf(stderr, "ocerz: i386 paired XMM bridge leaf=%s pairs=%u\n", leaf->name, pairs);
+             }
+-            if (leaf->tramp)
++            if (leaf->tramp) {
+                 a64_mov_imm64(b, 0, (uint64_t)(uintptr_t)leaf);
+-            else if (leaf->nargs)
++                if (math) a64_mov_reg(b, 1, 1, 20);
++            } else if (leaf->nargs) {
+                 a64_mov_reg(b, 1, 0, JT0);
++            }
+             g_tc_bad = 1;
+-            a64_mov_imm64(b, 16, (uint64_t)(uintptr_t)(leaf->tramp ? (void *)m32_leaf_tramp : leaf->fn));
++            void *fn = leaf->tramp && !math ? (void *)m32_leaf_tramp : leaf->fn;
++            a64_mov_imm64(b, 16, (uint64_t)(uintptr_t)fn);
+             a64_blr(b, 16);
+             g_callout_seq++;
+@@ -20730,5 +20745,8 @@
+             emit_reload_mem_base(b);
+             yc_reload_all(b);
+-            if (leaf->ret == M32_LEAF_I32) {
++            if (math) {
++                a64_mov_reg(b, 0, hax, hax);
++                a64_mov_reg(b, 0, hdx, hdx);
++            } else if (leaf->ret == M32_LEAF_I32) {
+                 a64_mov_reg(b, 0, hax, JT0);
+             } else if (leaf->ret == M32_LEAF_I64) {
+@@ -20759,4 +20777,6 @@
+         (*n_epi)++;
+         a64_patch_bcond(to_plain, a64_label(b));
++        if (math_pending)
++            a64_patch_cbz(math_pending, a64_label(b));
+         if (g_trap_block)
+             emit_trap_exit(b, insn->rip, epi_sites, n_epi);
+diff --git a/include/ocerz/m32.h b/include/ocerz/m32.h
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -92,5 +92,5 @@
+ uint64_t m32_leaf_tramp(const M32Leaf *l, uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4,
+                         uint64_t a5, uint64_t a6);
+-enum { M32_LEAF_I32, M32_LEAF_I64, M32_LEAF_ARG0, M32_LEAF_VOID };
++enum { M32_LEAF_I32, M32_LEAF_I64, M32_LEAF_ARG0, M32_LEAF_VOID, M32_LEAF_ST0 };
+ const M32Leaf *m32_leaf_for(uint32_t trap);
+ uint32_t m32_trap_slot(uint64_t trap);   /* src/m32_bridge.c: a guest word holding the trap, for a trap's block, or 0 */
+@@ -114,4 +114,10 @@
+ void m32_ret(OcerzCPU *cpu, uint32_t eax, uint32_t edx, int pop_extra);
+ void m32_ret_st0(OcerzCPU *cpu, double v);
++static inline void m32_push_st0(OcerzCPU *cpu, double v)
++{
++    cpu->ftop = (cpu->ftop - 1) & 7;
++    cpu->fpr[cpu->ftop] = v;
++    cpu->ftw = 0xff;
++}
+ static inline void m32_ret64(OcerzCPU *cpu, uint64_t v) { m32_ret(cpu, (uint32_t)v, (uint32_t)(v >> 32), 0); }
+
+@@ -134,4 +140,5 @@
+     int gl_ptr;               /* M32_GL_*: a GL call whose pointer may be a buffer offset, or that binds one */
+ } M32Export;
++const M32Leaf *m32_math_leaf_for(const M32Export *export);
+ enum { M32_EX_UNRESOLVED, M32_EX_SPECIAL, M32_EX_FN, M32_EX_BAD, M32_EX_DATA };
+
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -41,4 +41,5 @@
+ #include "ocerz/interp.h"
+ #include "ocerz/m32.h"
++#include "ocerz/jit.h"
+ #include "ocerz/m32_wmgl.h"
+ #include "ocerz/m32_image.h"
+@@ -2975,4 +2976,62 @@
+ }
+
++static void test_math_leaf(void)
++{
++    static const char *const names[] = { "_sinf", "_cosf", "_floorf", "_atan2f" };
++    static const uint32_t cases[][2] = {
++        { 0, 0x80000000 }, { 0x80000000, 0 }, { 0x3f800000, 0xbf800000 },
++        { 0xc0880000, 0x40e80000 }, { 0x00800000, 0x7f7fffff },
++        { 1, 0x80000001 }, { 0x7f800000, 0xff800000 }, { 0x7fc00023, 0x7f800005 },
++    };
++    const size_t count = sizeof cases / sizeof cases[0];
++    const uint32_t output = DATA + 64, older_st0 = output + 8;
++    m32_active = 1;
++    m32_math_trial_init();
++    ocerz_vm_install_handlers(&g_vm);
++    uint32_t errno_address = call("___error", 0, NULL);
++    const char *mode = getenv("OCERZ_M32_DIRECT_MATH_LEAF");
++    const int direct = mode && strcmp(mode, "1") == 0;
++
++    for (size_t op = 0; op < sizeof names / sizeof names[0]; ++op) {
++        uint32_t trap = m32_export("/usr/lib/libSystem.B.dylib", names[op]);
++        const M32Leaf *binding = m32_leaf_for(trap);
++        check("expected math leaf binding", (binding && binding->ret == M32_LEAF_ST0) == direct);
++        for (size_t index = 0; index < count; ++index) {
++            uint8_t instructions[] = {
++                0xd9,0xe8,                     /* fld1 below the math result */
++                0x68, 0,0,0,0,                 /* push second argument */
++                0x68, 0,0,0,0,                 /* push first argument */
++                0xb8, 0,0,0,0, 0xff,0xd0,      /* mov eax, trap; call eax */
++                0x83,0xc4,0x08,                /* add esp, 8 */
++                0xdd,0x1d,0,0,0,0,             /* fstp qword [output] */
++                0xdd,0x1d,0,0,0,0, 0xc3,       /* fstp qword [older_st0]; ret */
++            };
++            memcpy(instructions + 3, &cases[index][1], 4);
++            memcpy(instructions + 8, &cases[index][0], 4);
++            memcpy(instructions + 13, &trap, 4);
++            memcpy(instructions + 24, &output, 4);
++            memcpy(instructions + 30, &older_st0, 4);
++            uint32_t entry = CODE + 64 * (uint32_t)(op * count + index);
++            memcpy(m32_h(entry), instructions, sizeof instructions);
++            uint64_t values[2];
++            for (int use_jit = 0; use_jit < 2; ++use_jit) {
++                g_vm.jit_enabled = use_jit;
++                cpu()->ftop = 0;
++                m32_wr(errno_address, EINVAL);
++                memset(m32_h(output), 0xa5, 2 * sizeof values[0]);
++                guest_call(entry, 0, NULL);
++                memcpy(&values[use_jit], m32_h(output), sizeof values[0]);
++                check("guest math preserves the saved guest errno", m32_rd(errno_address) == EINVAL);
++                uint64_t older;
++                memcpy(&older, m32_h(older_st0), sizeof older);
++                check("guest math preserves the older x87 stack entry", older == UINT64_C(0x3ff0000000000000));
++            }
++            check("interpreted and translated math result bytes agree",
++                  values[0] == values[1] && values[0] != UINT64_C(0xa5a5a5a5a5a5a5a5));
++        }
++    }
++    check("math fixture translated guest blocks", g_vm.jit && ocerz_jit_blocks(g_vm.jit) > 0);
++}
++
+ static uint32_t cxx_sym(uint32_t lib, const char *name)
+ {
+@@ -3219,4 +3278,9 @@
+     cpu()->mode32 = 1;
+     m32_heap_init();
++    if (argc > 1 && !strcmp(argv[1], "math-leaf")) {
++        test_math_leaf();
++        printf("test_m32 math-leaf: %d checks, %d failed\n", g_checks, g_failures);
++        return g_failures != 0;
++    }
+     if (argc > 1 && !strcmp(argv[1], "math-cache")) {
+         test_math_cache();

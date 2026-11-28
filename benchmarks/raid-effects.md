@@ -2324,3 +2324,31 @@ Throughput changed by **−1.37 and −0.58 FPS**. P99 increased by **0.21 and 0
 ```sh
 python3 benchmarks/summarize-raid-trap-dispatch.py CAPTURE_ROOT PGO_LIBWINEMETALGL
 ```
+
+### Measure libm reuse and call i386 math functions directly
+
+Apply `patches/aarchx-m32-raid-math-cache-profile.patch` to the accepted source layers. Set `OCERZ_M32_MATH_PROFILE=1` and `OCERZ_M32_MATH_CACHE=0` in two separate 25-second live captures under `profile-1` and `profile-2`. The profiler models a 256-entry direct-mapped cache per function. The key carries both argument words, the input FPSR and errno. It admits ordinary binary32 values and signed zeros in the default FPCR mode. Each observed hit still executes the original function and checks the exact result bits, final FPSR and errno against its cached output. The report uses complete 256-swap intervals inside the verified GPU windows.
+
+| Operation | Calls per counted swap, range | Simulated hit rate, range | Sampled host calculation per call |
+| --- | ---: | ---: | ---: |
+| `sinf` | 991–1,227 | 38.5–39.5% | 17.0–17.3 ns |
+| `cosf` | 417–608 | 62.5–71.8% | 18.7–20.0 ns |
+| `floorf` | 1,019–1,588 | 8.8–14.2% | 15.2–15.3 ns |
+| `atan2f` | 338–356 | 40.9–42.0% | 17.6–18.2 ns |
+
+The observed hits preserved all checked output state. Host samples include the calculation and probe clock overhead. Multiplying the hit counts by the sampled mean calculation times gives **17.2–20.2 µs per swap** before charging for cache lookups. Run `test_m32 math-cache` with `OCERZ_M32_MATH_CACHE=0` and `15` to exercise both code paths. The **2,304** focused checks per mode compare math result bits, FPSR and errno across four rounding modes, preexisting sticky flags, ordinary inputs, signed zeros, subnormals, infinities and NaNs. The direct-leaf comparison measures bypassing the general i386 trap dispatch. [Math profile and tests](results/raid-aarchx-math-leaf-ab.json)
+
+Apply `patches/aarchx-m32-direct-math-leaf-trial.patch` on top of the profiling patch on a separate copy. The candidate selects the four known libSystem math handlers by their registered function identities. The translated leaf keeps the guest stack return path and uses the shared x87 result setter. It retains errno loading and host FPCR handling. A pending signal or interrupt takes the ordinary dispatcher. Keep `OCERZ_M32_MATH_CACHE=0`, `OCERZ_M32_MATH_PROFILE=0`, and `OCERZ_TCACHE=off` in both arms. Set `OCERZ_M32_DIRECT_MATH_LEAF=1` for the candidate.
+
+The **167** focused checks in each arm run i386 guest calls through the interpreter and JIT. They compare the stored x87 result bytes and guest errno and verify that the older x87 stack entry survives each call. Set `OCERZ_NO_CACHE_HOLDER=1` for the focused `test_m32 math-leaf` runs. Use `OCERZ_M32_MATH_LEAF_LOG=1` in the focused candidate and the separate 25-second in-world diagnostic. The guest fixtures and the live diagnostic compiled all four direct leaves. The timing experiment uses four warmed 60-second runs in control, candidate, candidate, control order. Keep the same signed `-O2` runtime and accepted PGO renderer with logging off in all four windows.
+
+| i386 libm dispatch | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| General trap | 135.46 | 12.64 ms |
+| Direct math leaves | 136.67 | 12.72 ms |
+
+Throughput gained **1.03 and 1.38 FPS**. P99 moved by **+0.29 and −0.12 ms**. Keep the direct leaves as a throughput option. Both modes passed **805** general i386 checks. The four timing runs, two profiling launches and direct-leaf diagnostic verified the saved camera, overlapping spell effects, all 26 cast timing rows, consecutive GPU outputs and zero trial windows or activations. [Live diagnostic and paired timing](results/raid-aarchx-math-leaf-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-math-leaf.py CAPTURE_ROOT PGO_LIBWINEMETALGL
+```

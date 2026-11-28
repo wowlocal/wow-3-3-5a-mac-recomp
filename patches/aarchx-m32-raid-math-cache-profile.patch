@@ -1,0 +1,291 @@
+diff --git a/src/m32.c b/src/m32.c
+--- a/src/m32.c
++++ b/src/m32.c
+@@ -171,4 +171,5 @@
+     }
+     m32_active = 1;
++    m32_math_trial_init();
+     const char *headless = getenv("OCERZ_M32_HEADLESS_TRIAL");
+     m32_headless_trial = headless && !strcmp(headless, "1");
+diff --git a/src/m32_libsystem.c b/src/m32_libsystem.c
+--- a/src/m32_libsystem.c
++++ b/src/m32_libsystem.c
+@@ -1286,14 +1286,158 @@
+ FAST_I(fast_memset, (A(2) ? memset(H(0), (int)A(1), A(2)) : 0, A(0)))
+ FAST_I(fast_barrier, (__atomic_thread_fence(__ATOMIC_SEQ_CST), 0))
++enum MathCall { MATH_SINF, MATH_COSF, MATH_FLOORF, MATH_ATAN2F, MATH_COUNT };
++enum { MATH_CACHE_SLOTS = 256, MATH_PROFILE_SWAPS = 256 };
++static const char *const math_names[MATH_COUNT] = { "sinf", "cosf", "floorf", "atan2f" };
++
++typedef struct {
++    uint64_t input, fpsr_in, fpsr_out;
++    double result;
++    int errno_in, errno_out;
++    int valid;
++} MathCacheEntry;
++
++static _Thread_local MathCacheEntry math_cache[MATH_COUNT][MATH_CACHE_SLOTS];
++static _Thread_local MathCacheEntry math_last[MATH_COUNT];
++static _Thread_local int *math_errno;
++static _Thread_local struct {
++    uint64_t calls, eligible, repeat, hits, mismatches, samples, sampled_ns;
++} math_profile[MATH_COUNT];
++static _Thread_local uint64_t math_swaps;
++static unsigned math_cache_mask;
++int m32_math_profile_enabled;
++
++void m32_math_trial_init(void)
++{
++    const char *mask = getenv("OCERZ_M32_MATH_CACHE");
++    math_cache_mask = mask ? (unsigned)strtoul(mask, NULL, 10) & ((1u << MATH_COUNT) - 1u) : 0;
++    const char *profile = getenv("OCERZ_M32_MATH_PROFILE");
++    m32_math_profile_enabled = profile && strcmp(profile, "1") == 0;
++}
++
++static int ordinary_float(uint32_t bits)
++{
++    uint32_t magnitude = bits & 0x7fffffffu;
++    return magnitude == 0 || (magnitude >= 0x00800000u && magnitude < 0x7f800000u);
++}
++
++static int same_math_input(const MathCacheEntry *entry, uint64_t input, uint64_t fpsr, int error)
++{
++    return entry->valid && entry->input == input && entry->fpsr_in == fpsr && entry->errno_in == error;
++}
++
++static uint64_t math_fpsr_after(double result)
++{
++    uint64_t status;
++    __asm__ volatile("mrs %0, fpsr" : "=r"(status) : "w"(result) : "memory");
++    return status;
++}
++
++static double calculate_math(enum MathCall call, uint64_t args)
++{
++    float x, y;
++    uint32_t lo = (uint32_t)args, hi = (uint32_t)(args >> 32);
++    memcpy(&x, &lo, sizeof x);
++    memcpy(&y, &hi, sizeof y);
++    switch (call) {
++    case MATH_SINF: return sinf(x);
++    case MATH_COSF: return cosf(x);
++    case MATH_FLOORF: return floorf(x);
++    case MATH_ATAN2F: return atan2f(x, y);
++    default: abort();
++    }
++}
++
++static double trial_math(enum MathCall call, uint64_t input)
++{
++    const int profiling = m32_math_profile_enabled;
++    if (profiling) ++math_profile[call].calls;
++    uint64_t fpcr;
++    __asm__ volatile("mrs %0, fpcr" : "=r"(fpcr));
++    /* Ordinary binary32 inputs in the default FP mode have no synchronous FP traps. */
++    if (fpcr || !ordinary_float((uint32_t)input) || !ordinary_float((uint32_t)(input >> 32)))
++        return calculate_math(call, input);
++    if (!math_errno) math_errno = &errno;
++    uint64_t fpsr;
++    __asm__ volatile("mrs %0, fpsr" : "=r"(fpsr) :: "memory");
++    const int error = *math_errno;
++    uint64_t hash = (input ^ (input >> 32)) * UINT64_C(11400714819323198485);
++    MathCacheEntry *entry = &math_cache[call][hash >> 56];
++    int hit = same_math_input(entry, input, fpsr, error);
++    if (hit && !profiling) {
++        if (entry->fpsr_out != fpsr)
++            __asm__ volatile("msr fpsr, %0" :: "r"(entry->fpsr_out) : "memory");
++        if (entry->errno_out != error) *math_errno = entry->errno_out;
++        return entry->result;
++    }
++    int sample = profiling && (math_profile[call].calls & 127u) == 0;
++    uint64_t begin = sample ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
++    double result = calculate_math(call, input);
++    uint64_t after_fpsr = math_fpsr_after(result);
++    int after_error = *math_errno;
++    if (profiling) {
++        ++math_profile[call].eligible;
++        math_profile[call].repeat += same_math_input(&math_last[call], input, fpsr, error);
++        math_profile[call].hits += hit;
++        if (hit && (entry->fpsr_out != after_fpsr || entry->errno_out != after_error ||
++                    memcmp(&entry->result, &result, sizeof result)))
++            ++math_profile[call].mismatches;
++        if (sample) {
++            ++math_profile[call].samples;
++            math_profile[call].sampled_ns += clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - begin;
++        }
++    }
++    *entry = (MathCacheEntry){input, fpsr, after_fpsr, result, error, after_error, 1};
++    if (profiling) math_last[call] = *entry;
++    return result;
++}
++
++void m32_math_profile_swap(void)
++{
++    if (++math_swaps % MATH_PROFILE_SWAPS)
++        return;
++    uint64_t thread = 0;
++    pthread_threadid_np(NULL, &thread);
++    fprintf(stderr, "MATH_PROFILE begin thread=%llu swaps=%llu uptime_ns=%llu\n",
++            (unsigned long long)thread, (unsigned long long)math_swaps,
++            (unsigned long long)clock_gettime_nsec_np(CLOCK_UPTIME_RAW));
++    for (unsigned call = 0; call < MATH_COUNT; ++call) {
++        fprintf(stderr, "MATH_PROFILE %s %llu %llu %llu %llu %llu %llu %llu\n", math_names[call],
++                (unsigned long long)math_profile[call].calls, (unsigned long long)math_profile[call].eligible,
++                (unsigned long long)math_profile[call].repeat, (unsigned long long)math_profile[call].hits,
++                (unsigned long long)math_profile[call].mismatches, (unsigned long long)math_profile[call].samples,
++                (unsigned long long)math_profile[call].sampled_ns);
++    }
++    memset(math_profile, 0, sizeof math_profile);
++    fprintf(stderr, "MATH_PROFILE end thread=%llu swaps=%llu\n",
++            (unsigned long long)thread, (unsigned long long)math_swaps);
++}
++
++#define TRIAL_F(name, fn, op) \
++static int sp_##name(struct OcerzVM *vm, OcerzCPU *cpu) \
++{ \
++    (void)vm; \
++    double value = m32_math_profile_enabled || (math_cache_mask & (1u << op)) \
++        ? trial_math(op, m32_arg(cpu, 0)) : fn(argf(cpu, 0)); \
++    m32_ret_st0(cpu, value); \
++    return OCERZ_STEP_OK; \
++}
++
+ #define FAST_F(name, fn) static int sp_##name(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, fn(argf(cpu, 0))); return OCERZ_STEP_OK; }
+ #define FAST_D(name, fn) static int sp_##name(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, fn(argd(cpu, 0))); return OCERZ_STEP_OK; }
+-FAST_F(fast_sinf, sinf) FAST_F(fast_cosf, cosf) FAST_F(fast_tanf, tanf) FAST_F(fast_sqrtf, sqrtf)
++TRIAL_F(fast_sinf, sinf, MATH_SINF) TRIAL_F(fast_cosf, cosf, MATH_COSF) FAST_F(fast_tanf, tanf) FAST_F(fast_sqrtf, sqrtf)
+ FAST_F(fast_logf, logf) FAST_F(fast_expf, expf) FAST_F(fast_acosf, acosf) FAST_F(fast_asinf, asinf)
+-FAST_F(fast_atanf, atanf) FAST_F(fast_floorf, floorf) FAST_F(fast_ceilf, ceilf)
++FAST_F(fast_atanf, atanf) TRIAL_F(fast_floorf, floorf, MATH_FLOORF) FAST_F(fast_ceilf, ceilf)
+ FAST_D(fast_sin, sin) FAST_D(fast_cos, cos) FAST_D(fast_tan, tan) FAST_D(fast_sqrt, sqrt) FAST_D(fast_log, log)
+ FAST_D(fast_exp, exp) FAST_D(fast_acos, acos) FAST_D(fast_asin, asin) FAST_D(fast_atan, atan)
+ FAST_D(fast_floor, floor) FAST_D(fast_ceil, ceil) FAST_D(fast_log10, log10)
+ static int sp_fast_powf(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, powf(argf(cpu, 0), argf(cpu, 1))); return OCERZ_STEP_OK; }
+-static int sp_fast_atan2f(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, atan2f(argf(cpu, 0), argf(cpu, 1))); return OCERZ_STEP_OK; }
++static int sp_fast_atan2f(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    double value = m32_math_profile_enabled || (math_cache_mask & (1u << MATH_ATAN2F))
++        ? trial_math(MATH_ATAN2F, m32_arg64(cpu, 0)) : atan2f(argf(cpu, 0), argf(cpu, 1));
++    m32_ret_st0(cpu, value);
++    return OCERZ_STEP_OK;
++}
+ static int sp_fast_fmodf(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, fmodf(argf(cpu, 0), argf(cpu, 1))); return OCERZ_STEP_OK; }
+ static int sp_fast_pow(struct OcerzVM *vm, OcerzCPU *cpu) { m32_ret_st0(cpu, pow(argd(cpu, 0), argd(cpu, 2))); return OCERZ_STEP_OK; }
+diff --git a/src/m32_agl.c b/src/m32_agl.c
+--- a/src/m32_agl.c
++++ b/src/m32_agl.c
+@@ -340,4 +340,6 @@
+         if (!m32_wmgl_swap(ctx))
+             agl.swap_buffers(ctx);
++        else if (m32_math_profile_enabled)
++            m32_math_profile_swap();
+         if (timed) {
+             uint64_t returned = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+diff --git a/include/ocerz/m32.h b/include/ocerz/m32.h
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -47,4 +47,7 @@
+ int m32_is_i386(const char *path);
+ int m32_run(struct OcerzVM *vm, const char *path, int argc, char **argv, char **envp);
++void m32_math_trial_init(void);
++void m32_math_profile_swap(void);
++extern int m32_math_profile_enabled;
+ extern int m32_active;   /* set by m32_run: the process is an i386 Mach-O program, not Wine's WoW64 */
+ int m32_trap(struct OcerzVM *vm, OcerzCPU *cpu);
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -18,4 +18,5 @@
+ #include <objc/runtime.h>
+ #include <errno.h>
++#include <math.h>
+ #include <fcntl.h>
+ #include <limits.h>
+@@ -115,4 +116,76 @@
+     check("a crossing returns to its caller", cpu()->rip == RET_ADDR && cpu()->gpr[OCERZ_RSP] == STACK + 4);
+     return (uint32_t)cpu()->gpr[OCERZ_RAX];
++}
++
++
++static double reference_math(unsigned op, const uint32_t args[2])
++{
++    float x, y;
++    memcpy(&x, &args[0], sizeof x);
++    memcpy(&y, &args[1], sizeof y);
++    switch (op) {
++    case 0: return sinf(x);
++    case 1: return cosf(x);
++    case 2: return floorf(x);
++    default: return atan2f(x, y);
++    }
++}
++
++static uint64_t test_fpsr(double value)
++{
++    uint64_t result;
++    __asm__ volatile("mrs %0, fpsr" : "=r"(result) : "w"(value) : "memory");
++    return result;
++}
++
++static void set_fp_state(uint64_t fpcr, uint64_t fpsr)
++{
++    __asm__ volatile("msr fpcr, %0; msr fpsr, %1" :: "r"(fpcr), "r"(fpsr) : "memory");
++}
++
++static void test_math_cache(void)
++{
++    static const char *const names[] = { "_sinf", "_cosf", "_floorf", "_atan2f" };
++    static const uint32_t inputs[][2] = {
++        { 0, 0x80000000 }, { 0x80000000, 0 }, { 0x3f800000, 0xbf800000 },
++        { 0xc0880000, 0x40e80000 }, { 0x40490fdb, 0xbeaaaaab }, { 0x4f000001, 0x3f800001 },
++        { 0x00800000, 0x7f7fffff }, { 1, 0x80000001 }, { 0x7f800000, 0xff800000 },
++        { 0x7fc00023, 0x7f800005 }, { 0xff800055, 0x3f800000 }, { 0x3f800000, 0x7fc00023 },
++    };
++    const uint64_t rounding_modes[] = { 0, 0x400000, 0x800000, 0xc00000 };
++    uint64_t saved_fpcr;
++    __asm__ volatile("mrs %0, fpcr" : "=r"(saved_fpcr));
++    uint64_t saved_fpsr = test_fpsr(0);
++    int saved_errno = errno;
++
++    m32_math_trial_init();
++    for (unsigned op = 0; op < sizeof names / sizeof names[0]; ++op) {
++        for (size_t index = 0; index < sizeof inputs / sizeof inputs[0]; ++index) {
++            for (size_t mode = 0; mode < sizeof rounding_modes / sizeof rounding_modes[0]; ++mode) {
++                for (unsigned sticky = 0; sticky < 2; ++sticky) {
++                    const uint64_t initial_fpsr = sticky ? 0x11 : 0;
++                    const int initial_errno = sticky ? EINVAL : 0;
++                    set_fp_state(rounding_modes[mode], initial_fpsr);
++                    errno = initial_errno;
++                    double expected = reference_math(op, inputs[index]);
++                    uint64_t expected_fpsr = test_fpsr(expected);
++                    const int expected_errno = errno;
++                    for (unsigned repeat = 0; repeat < 2; ++repeat) {
++                        set_fp_state(rounding_modes[mode], initial_fpsr);
++                        errno = initial_errno;
++                        call(names[op], op == 3 ? 2 : 1, inputs[index]);
++                        double result = cpu()->fpr[cpu()->ftop];
++                        uint64_t fpsr = test_fpsr(result);
++                        int error = errno;
++                        check("math result bits, FPSR, and errno match the host operation",
++                              !memcmp(&result, &expected, sizeof result) &&
++                              fpsr == expected_fpsr && error == expected_errno);
++                    }
++                }
++            }
++        }
++    }
++    set_fp_state(saved_fpcr, saved_fpsr);
++    errno = saved_errno;
+ }
+
+@@ -3146,4 +3219,9 @@
+     cpu()->mode32 = 1;
+     m32_heap_init();
++    if (argc > 1 && !strcmp(argv[1], "math-cache")) {
++        test_math_cache();
++        printf("test_m32 math-cache: %d checks, %d failed\n", g_checks, g_failures);
++        return g_failures != 0;
++    }
+     if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage"))) {
+         char db[PATH_MAX];
