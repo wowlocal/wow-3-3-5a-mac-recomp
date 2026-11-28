@@ -2798,3 +2798,24 @@ The two FPS changes were **+0.17** and **+0.18**, and the p99 changes were **−
 ```sh
 python3 benchmarks/summarize-raid-private-descriptor.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Build private descriptors on a worker from owned item data
+
+Apply `patches/aarchx-m32-raid-descriptor-worker-trial.patch` after the private descriptor trial. Both modes keep `OCERZ_M32_RAID_DESCRIPTOR=1` and `OCERZ_TCACHE=off`. Use the same signed ARM64 runtime and the selected deferred PGO renderer. Set `OCERZ_M32_RAID_DESCRIPTOR_WORKER=1` for the candidate.
+
+At the original dispatcher loop entry, the game thread reads the current index list and four item inputs through a bounded guest page cache. It validates memory using `mach_vm_read_overwrite`. The input records contain copied words. The worker builds the four-field rows from those records without accessing guest memory or submitting graphics commands. It publishes the completed table with release ordering. The game thread uses it only after an acquire load confirms completion and the context, frame, index, item address and tag match. The original material prefix verifies the returned material values. The existing equality gate still validates each substituted read against the original guest word.
+
+Time four warmed 60-second runs in serial, worker, worker, serial order. Turn submission and counter logging off during the timed runs. Record the worker and logging switches in `raid-worker-mode.txt`. In a separate 25-second `diagnostic-1` launch, enable the submission log and direct `OCERZ_M32_RAID_DESCRIPTOR_LOG` to `raid-descriptor.bin`. Sample the **32** counters with the same timestamp and JSON format as the private-descriptor trial. In this launch the gate samples begin two seconds after the full fixture is ready and span five seconds. Preserve the runtime, renderer, fixture and isolation witnesses and both general i386 test logs.
+
+The gate was inside the verified full-raid window and covered **686** consecutive GPU outputs. The worker completed **2,518** batches from **540,297** owned input records. It supplied **610,924** reads, or **99.2%** of all successful private reads. The original prefixes and equality gates reported zero mismatches. The producer copied **149,278** guest pages across those batches. Mean producer snapshot time was **86.3 µs** per batch, approximately **0.317 ms** per completed output in the gate. Mean worker computation was **0.35 µs** per batch. These costs identify the snapshot transport as the first part of the worker implementation to reduce. [Worker and GPU witnesses](results/raid-aarchx-descriptor-worker-ab.json)
+
+| Descriptor preparation | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Serial | 137.77 | 12.19 ms |
+| Worker from page snapshots | 131.63 | 12.53 ms |
+
+The worker path lost **5.58** and **6.68 FPS** in the two paired measurements. P99 rose by **0.320** and **0.352 ms**. Use the serial path for subsequent live controls. The four runs verified **32,332** consecutive GPU completions across their windows, all 26 timing rows, the saved camera and effects, and zero visible trial windows or activations. Both modes passed **805** general i386 checks. [Per-run measurements and validation](results/raid-aarchx-descriptor-worker-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-descriptor-worker.py CAPTURE_ROOT I386_CLIENT
+```

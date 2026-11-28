@@ -29,9 +29,9 @@ FPS = "average_completed_fps"
 P99 = "p99_gpu_completion_gap_ns"
 
 
-def verify_run(folder, mode, logging, seconds, artifacts):
+def verify_run(folder, mode, logging, seconds, artifacts, mode_file="raid-descriptor-mode.txt"):
     settings = {
-        "raid-descriptor-mode.txt": [str(mode), str(logging)],
+        mode_file: [str(mode), str(logging)],
         "pgo-mode.txt": ["candidate", "0"],
         "map-shadow-mode.txt": ["1", "0"],
         "pass-mode.txt": ["64", str(logging)],
@@ -66,8 +66,8 @@ def describe_counters(counters):
     }
 
 
-def measure_descriptor_gate(folder):
-    all_counts = struct.unpack("<16Q", (folder / "raid-descriptor.bin").read_bytes())
+def descriptor_counter_samples(folder, slots=16):
+    all_counts = struct.unpack(f"<{slots}Q", (folder / "raid-descriptor.bin").read_bytes())
     gate = json.loads((folder / "descriptor-gate.json").read_text())
     start, end = gate["start"], gate["end"]
     window = json.loads((folder / "window.json").read_text())
@@ -94,17 +94,24 @@ def measure_descriptor_gate(folder):
             any(a.final.end >= b.final.end for a, b in zip(frames, frames[1:]))):
         raise ValueError("The counter bracket is not one consecutive series of full raid outputs")
     first_counts, last_counts = start["counters"], end["counters"]
-    if (len(first_counts) != 16 or len(last_counts) != 16 or
+    if (len(first_counts) != slots or len(last_counts) != slots or
             any(not 0 <= left <= right <= total for left, right, total in zip(first_counts, last_counts, all_counts))):
         raise ValueError("Descriptor counters are not monotonic")
     counted_frames = sum(start["after_uptime_ns"] < frame.final.end < end["before_uptime_ns"] for frame in frames)
     if counted_frames < 2:
         raise ValueError("The descriptor samples do not span a warmed sequence of outputs")
-    return {
+    return ({
         "gpu_completions_between_counter_samples": counted_frames,
         "samples_inside_nominal_gpu_window": finish < source_frames[-1].final.end,
         "counter_sample_interval_ns": end["before_uptime_ns"] - start["after_uptime_ns"],
-        "counters_between_samples": describe_counters([b - a for a, b in zip(first_counts, last_counts)]),
+    }, [b - a for a, b in zip(first_counts, last_counts)], all_counts)
+
+
+def measure_descriptor_gate(folder):
+    witness, scoped_counts, all_counts = descriptor_counter_samples(folder)
+    return {
+        **witness,
+        "counters_between_samples": describe_counters(scoped_counts),
         "whole_process_counters": describe_counters(all_counts),
     }
 

@@ -1,0 +1,429 @@
+diff --git a/include/ocerz/cpu.h b/include/ocerz/cpu.h
+--- a/include/ocerz/cpu.h
++++ b/include/ocerz/cpu.h
+@@ -182,6 +182,9 @@
+         uint32_t prior_context, prior_frame, prior_next_index;
+         uint32_t prior_words[4];
+         uint32_t read_context;
++        uintptr_t worker_batch;
++        uint32_t worker_context, worker_frame;
++        uint32_t pending_from_worker, prior_from_worker, read_from_worker;
+     } raid_descriptor;         /* optional, private i386 dispatch trial */
+ } OcerzCPU;
+
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -851,6 +851,7 @@
+ #include "ocerz/m32.h"
+
+ #include <sys/mman.h>
++#include <dispatch/dispatch.h>
+ #include <fcntl.h>
+ #include <sys/sysctl.h>
+ #include <sys/time.h>
+@@ -2321,6 +2322,8 @@
+ }
+
+ __thread int ocerz_jit_exec_state;
++static int raid_batch_instruction(const X86Insn *insn);
++static void raid_batch_prepare(OcerzCPU *cpu);
+ static int jit_exec_one(struct OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn);
+ __attribute__((noinline))
+ static int jit_exec_one_parked(struct OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn, const void *ret)
+@@ -2373,6 +2376,7 @@
+     if (insn->op == OCERZ_OP_SYSCALL)
+         form = (uint64_t)insn->op | (uint64_t)(uint32_t)cpu->gpr[OCERZ_RAX] << 32;
+     cpu->slow_op = form;
++    if (raid_batch_instruction(insn)) raid_batch_prepare(cpu);
+     int r = ocerz_interp_exec(vm, cpu, insn);
+     cpu->slow_op = prev_op;
+     cpu->rip &= cpu->mode32 ? 0xffffffffull : ~0ull;
+@@ -6760,7 +6764,7 @@
+ enum {
+     RAID_DESC_BEGIN = 0x97d31d, RAID_DESC_PREFIX = 0x97d331,
+     RAID_DESC_PUBLISH = 0x97d3fe, RAID_DESC_END = 0x97d404,
+-    RAID_DESC_COUNTERS = 16,
++    RAID_DESC_COUNTERS = 32,
+ };
+
+ _Static_assert(offsetof(OcerzCPU, raid_descriptor.read_context) < 16384,
+@@ -6776,27 +6780,208 @@
+     return pc == RAID_DESC_BEGIN || pc == RAID_DESC_PREFIX || pc == RAID_DESC_PUBLISH || pc == RAID_DESC_END;
+ }
+
+-static void *raid_desc_counters(void)
+-{
+-    static int initialized;
+-    static void *mapping;
+-    if (initialized) return mapping;
+-    initialized = 1;
++static pthread_once_t raid_desc_count_once = PTHREAD_ONCE_INIT;
++static void *raid_desc_count_mapping;
++
++static void init_raid_desc_counters(void)
++{
+     const char *path = getenv("OCERZ_M32_RAID_DESCRIPTOR_LOG");
+-    if (!path || !*path) return NULL;
++    if (!path || !*path) return;
+     int lse = 0;
+     size_t length = sizeof lse;
+     if (sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &length, NULL, 0) || !lse)
+-        return NULL;
++        return;
+     int fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+-    if (fd < 0) return NULL;
++    if (fd < 0) return;
+     const size_t bytes = RAID_DESC_COUNTERS * sizeof(uint64_t);
+     if (ftruncate(fd, (off_t)bytes) == 0) {
+         void *result = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+-        if (result != MAP_FAILED) mapping = result;
++        if (result != MAP_FAILED) raid_desc_count_mapping = result;
+     }
+     close(fd);
+-    return mapping;
++}
++
++static void *raid_desc_counters(void)
++{
++    pthread_once(&raid_desc_count_once, init_raid_desc_counters);
++    return raid_desc_count_mapping;
++}
++
++enum {
++    RAID_BATCH_ENTRY = 0x97d2e1,
++    RAID_BATCH_MAX_ITEMS = 2048,
++    RAID_BATCH_READY = 1, RAID_BATCH_PROCESSING = 2, RAID_BATCH_COMPLETE = 3,
++    RAID_SNAPSHOT_PAGES = 32, RAID_SNAPSHOT_MAX_PAGE = 16384,
++    RAID_BATCH_REQUESTS = 16, RAID_BATCH_QUEUED, RAID_BATCH_FINISHED, RAID_BATCH_INPUTS,
++    RAID_BATCH_USED, RAID_BATCH_FALLBACK, RAID_BATCH_PREFIX_MISMATCH, RAID_BATCH_BUSY,
++    RAID_BATCH_SNAPSHOT_NS, RAID_BATCH_WORKER_NS, RAID_BATCH_READS,
++    RAID_BATCH_VM_PAGES, RAID_BATCH_VM_FAILURES,
++};
++
++typedef struct {
++    uint32_t item, tag, material, object_word, material_word;
++} RaidBatchInput;
++
++typedef struct {
++    uint32_t item, words[4], padding[3];
++} RaidBatchRow;
++
++typedef struct {
++    uint32_t state, count;
++    RaidBatchRow rows[RAID_BATCH_MAX_ITEMS];
++    RaidBatchInput inputs[RAID_BATCH_MAX_ITEMS];
++} RaidBatch;
++
++typedef struct {
++    uint32_t page;
++    unsigned populated, valid;
++    unsigned char bytes[RAID_SNAPSHOT_MAX_PAGE];
++} RaidSnapshotPage;
++
++_Static_assert(sizeof(RaidBatchRow) == 32, "descriptor index scaling must match the emitted code");
++
++static RaidBatch raid_batch;
++static RaidSnapshotPage raid_snapshot[RAID_SNAPSHOT_PAGES];
++static dispatch_semaphore_t raid_batch_semaphore;
++static pthread_once_t raid_batch_once = PTHREAD_ONCE_INIT;
++static uintptr_t raid_batch_owner;
++static int raid_batch_initialized;
++
++static int raid_batch_enabled(void)
++{
++    return raid_desc_enabled() && ENV_ON("OCERZ_M32_RAID_DESCRIPTOR_WORKER");
++}
++
++static int raid_batch_instruction(const X86Insn *insn)
++{
++    return insn->mode32 && insn->rip == RAID_BATCH_ENTRY && insn->op == OCERZ_OP_XOR &&
++           insn->nops == 2 && insn->ops[0].kind == OCERZ_OPK_REG && insn->ops[1].kind == OCERZ_OPK_REG &&
++           insn->ops[0].reg == OCERZ_RBX && insn->ops[1].reg == OCERZ_RBX &&
++           insn->ops[0].size == 4 && insn->ops[1].size == 4 && raid_batch_enabled();
++}
++
++static void raid_batch_count(unsigned slot, uint64_t quantity)
++{
++    uint64_t *counters = raid_desc_counters();
++    if (counters) __atomic_fetch_add(counters + slot, quantity, __ATOMIC_RELAXED);
++}
++
++static void *raid_batch_thread(void *opaque)
++{
++    RaidBatch *batch = opaque;
++    pthread_setname_np("raid-descriptor-builder");
++    for (;;) {
++        dispatch_semaphore_wait(raid_batch_semaphore, DISPATCH_TIME_FOREVER);
++        uint32_t state = RAID_BATCH_READY;
++        if (!__atomic_compare_exchange_n(&batch->state, &state, RAID_BATCH_PROCESSING, 0,
++                                         __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
++            continue;
++        uint64_t start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++        for (uint32_t index = 0; index < batch->count; index++) {
++            const RaidBatchInput *input = &batch->inputs[index];
++            RaidBatchRow *output = &batch->rows[index];
++            output->item = input->item;
++            output->words[0] = input->tag;
++            output->words[1] = input->material;
++            output->words[2] = input->tag <= 2 ? input->object_word : 0;
++            output->words[3] = input->material_word;
++        }
++        raid_batch_count(RAID_BATCH_WORKER_NS, clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start);
++        raid_batch_count(RAID_BATCH_FINISHED, 1);
++        __atomic_store_n(&batch->state, RAID_BATCH_COMPLETE, __ATOMIC_RELEASE);
++    }
++    return NULL;
++}
++
++static void raid_batch_start_thread(void)
++{
++    raid_batch_semaphore = dispatch_semaphore_create(0);
++    if (!raid_batch_semaphore) return;
++    pthread_t thread;
++    if (pthread_create(&thread, NULL, raid_batch_thread, &raid_batch) == 0) {
++        pthread_detach(thread);
++        raid_batch_initialized = 1;
++    } else {
++        dispatch_release(raid_batch_semaphore);
++    }
++}
++
++static int raid_snapshot_word(uint64_t addr, uint32_t *value)
++{
++    if (addr < 4096 || addr > UINT32_MAX - 3 || (addr & 3))
++        return 0;
++    unsigned page_size = vm_page_size;
++    uint32_t base = (uint32_t)addr & ~(page_size - 1);
++    unsigned page_number = base / page_size;
++    unsigned index = (page_number ^ (page_number >> 5)) & (RAID_SNAPSHOT_PAGES - 1);
++    RaidSnapshotPage *page = &raid_snapshot[index];
++    if (!page->populated || page->page != base) {
++        mach_vm_size_t copied = 0;
++        page->page = base;
++        page->populated = 1;
++        page->valid = mach_vm_read_overwrite(mach_task_self(), (uintptr_t)ocerz_g2h(base), page_size,
++                                             (uintptr_t)page->bytes, &copied) == KERN_SUCCESS && copied == page_size;
++        raid_batch_count(page->valid ? RAID_BATCH_VM_PAGES : RAID_BATCH_VM_FAILURES, 1);
++    }
++    if (!page->valid) return 0;
++    memcpy(value, page->bytes + (uint32_t)addr - base, sizeof *value);
++    return 1;
++}
++
++static void raid_batch_prepare(OcerzCPU *cpu)
++{
++    cpu->raid_descriptor.worker_batch = 0;
++    raid_batch_count(RAID_BATCH_REQUESTS, 1);
++    if (!ocerz_guest_base || ocerz_low_base || !vm_page_size || vm_page_size > RAID_SNAPSHOT_MAX_PAGE ||
++        (vm_page_size & (vm_page_size - 1)))
++        return;
++    uintptr_t nobody = 0;
++    __atomic_compare_exchange_n(&raid_batch_owner, &nobody, (uintptr_t)cpu, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++    if (__atomic_load_n(&raid_batch_owner, __ATOMIC_ACQUIRE) != (uintptr_t)cpu)
++        return;
++    pthread_once(&raid_batch_once, raid_batch_start_thread);
++    if (!raid_batch_initialized) return;
++    uint32_t state = __atomic_load_n(&raid_batch.state, __ATOMIC_ACQUIRE);
++    if (state == RAID_BATCH_READY || state == RAID_BATCH_PROCESSING) {
++        raid_batch_count(RAID_BATCH_BUSY, 1);
++        return;
++    }
++    uint64_t start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++    uint32_t frame = (uint32_t)cpu->gpr[OCERZ_RBP];
++    uint32_t context, table, indices, count;
++    for (unsigned i = 0; i < RAID_SNAPSHOT_PAGES; i++)
++        raid_snapshot[i].populated = 0;
++    if (!raid_snapshot_word((uint64_t)frame + 8, &context) || !context ||
++        !raid_snapshot_word((uint64_t)frame + 0x10, &table) || !table ||
++        !raid_snapshot_word((uint64_t)frame + 0x14, &indices) || !indices ||
++        !raid_snapshot_word((uint64_t)frame + 0x18, &count) || !count || count > RAID_BATCH_MAX_ITEMS)
++        return;
++
++    unsigned ready = 0;
++    for (uint32_t index = 0; index < count; index++) {
++        RaidBatchInput *slot = &raid_batch.inputs[index];
++        *slot = (RaidBatchInput){0};
++        uint32_t offset;
++        if (!raid_snapshot_word((uint64_t)indices + 4ull * index, &offset)) continue;
++        uint64_t item = (uint64_t)table + 68ull * offset;
++        if (!raid_snapshot_word(item, &slot->tag) || slot->tag > 4 ||
++            !raid_snapshot_word(item + 4, &slot->material) || !slot->material ||
++            !raid_snapshot_word((uint64_t)slot->material + 0x2c, &slot->material_word) ||
++            (slot->tag <= 2 && !raid_snapshot_word(item + 0x2c, &slot->object_word)))
++            continue;
++        slot->item = (uint32_t)item;
++        ready++;
++    }
++    if (!ready) return;
++    raid_batch.count = count;
++    cpu->raid_descriptor.worker_frame = frame;
++    cpu->raid_descriptor.worker_context = context;
++    cpu->raid_descriptor.worker_batch = (uintptr_t)&raid_batch;
++    raid_batch_count(RAID_BATCH_INPUTS, ready);
++    raid_batch_count(RAID_BATCH_QUEUED, 1);
++    raid_batch_count(RAID_BATCH_SNAPSHOT_NS, clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start);
++    __atomic_store_n(&raid_batch.state, RAID_BATCH_READY, __ATOMIC_RELEASE);
++    dispatch_semaphore_signal(raid_batch_semaphore);
+ }
+
+ static void emit_raid_desc_count(A64Buf *b, unsigned slot)
+@@ -6815,6 +7000,50 @@
+     uint32_t *failure = a64_label(b);
+     a64_cbnz(b, 0, JTT, 0);
+     return failure;
++}
++
++static uint32_t *emit_raid_worker_input(A64Buf *b, int context, int frame, int index, int item, int tag)
++{
++    a64_ldr(b, 8, JTA, 20, RAID_DESC_OFF(worker_batch));
++    uint32_t *no_batch = a64_label(b); a64_cbz(b, 1, JTA, 0);
++    uint32_t *miss_context = emit_raid_desc_check(b, RAID_DESC_OFF(worker_context), context);
++    uint32_t *miss_frame = emit_raid_desc_check(b, RAID_DESC_OFF(worker_frame), frame);
++    a64_ldar(b, 4, JTT, JTA);
++    a64_movz(b, JTU, RAID_BATCH_COMPLETE, 0);
++    a64_eor_reg(b, 0, JTT, JTT, JTU, 0);
++    uint32_t *busy = a64_label(b); a64_cbnz(b, 0, JTT, 0);
++    a64_ldr(b, 4, JTU, JTA, offsetof(RaidBatch, count));
++    a64_mov_reg(b, 0, JTT, index);
++    a64_sub_reg(b, 1, JTT, JTT, JTU, 0);
++    uint32_t *out_of_bounds = a64_label(b); a64_tbz(b, JTT, 63, 0);
++    a64_lsl_imm(b, 0, JTT, index, 5);
++    a64_add_reg(b, 1, JTA, JTA, JTT, 0);
++    a64_add_imm(b, 1, JTA, JTA, offsetof(RaidBatch, rows));
++    a64_ldr(b, 4, JTT, JTA, offsetof(RaidBatchRow, item));
++    a64_eor_reg(b, 0, JTT, JTT, item, 0);
++    uint32_t *item_changed = a64_label(b); a64_cbnz(b, 0, JTT, 0);
++    a64_ldr(b, 4, JTT, JTA, offsetof(RaidBatchRow, words[0]));
++    a64_eor_reg(b, 0, JTT, JTT, tag, 0);
++    uint32_t *tag_changed = a64_label(b); a64_cbnz(b, 0, JTT, 0);
++    for (unsigned word = 0; word < 4; ++word) {
++        a64_ldr(b, 4, JTT, JTA, offsetof(RaidBatchRow, words[0]) + 4 * word);
++        a64_str(b, 4, JTT, 20, RAID_DESC_OFF(pending_words[0]) + 4 * word);
++    }
++    a64_str(b, 4, frame, 20, RAID_DESC_OFF(pending_frame));
++    a64_str(b, 4, context, 20, RAID_DESC_OFF(pending_context));
++    a64_movz(b, JTT, 1, 0);
++    a64_str(b, 4, JTT, 20, RAID_DESC_OFF(pending_from_worker));
++    emit_raid_desc_count(b, RAID_BATCH_USED);
++    uint32_t *succeeded = a64_label(b); a64_b(b, 0);
++    a64_patch_cbz(no_batch, a64_label(b));
++    a64_patch_cbz(miss_context, a64_label(b));
++    a64_patch_cbz(miss_frame, a64_label(b));
++    a64_patch_cbz(busy, a64_label(b));
++    a64_patch_tbz(out_of_bounds, a64_label(b));
++    a64_patch_cbz(item_changed, a64_label(b));
++    a64_patch_cbz(tag_changed, a64_label(b));
++    emit_raid_desc_count(b, RAID_BATCH_FALLBACK);
++    return succeeded;
+ }
+
+ static void emit_raid_desc_begin(A64Buf *b)
+@@ -6828,15 +7057,25 @@
+     a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(read_context));
+     a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_context));
+     a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_has_prefix));
++    const int worker = raid_batch_enabled();
++    if (worker) {
++        a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(read_from_worker));
++        a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_from_worker));
++    }
+     uint32_t *miss_context = emit_raid_desc_check(b, RAID_DESC_OFF(prior_context), context);
+     uint32_t *miss_frame = emit_raid_desc_check(b, RAID_DESC_OFF(prior_frame), frame);
+     uint32_t *miss_index = emit_raid_desc_check(b, RAID_DESC_OFF(prior_next_index), index);
+     a64_str(b, 4, context, 20, RAID_DESC_OFF(read_context));
++    if (worker) {
++        a64_ldr(b, 4, JTT, 20, RAID_DESC_OFF(prior_from_worker));
++        a64_str(b, 4, JTT, 20, RAID_DESC_OFF(read_from_worker));
++    }
+     a64_patch_cbz(miss_context, a64_label(b));
+     a64_patch_cbz(miss_frame, a64_label(b));
+     a64_patch_cbz(miss_index, a64_label(b));
+     /* A skipped late publication cannot leave this descriptor eligible for a later item. */
+     a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(prior_context));
++    uint32_t *worker_done = worker ? emit_raid_worker_input(b, context, frame, index, item, tag) : NULL;
+
+     a64_ubfx(b, 0, JTT, item, 0, 12);
+     a64_add_imm(b, 0, JTT, JTT, 0x2f);
+@@ -6869,6 +7108,7 @@
+     emit_raid_desc_count(b, 1);
+     a64_patch_tbz(page, a64_label(b));
+     a64_patch_cbz(unsupported_tag, a64_label(b));
++    if (worker_done) a64_patch_b(worker_done, a64_label(b));
+ }
+
+ static void emit_raid_desc_prefix(A64Buf *b)
+@@ -6878,12 +7118,29 @@
+     int value = pin_hreg(pin_slot(OCERZ_RDX)); /* original material word already loaded */
+     uint32_t *miss_context = emit_raid_desc_check(b, RAID_DESC_OFF(pending_context), context);
+     uint32_t *miss_frame = emit_raid_desc_check(b, RAID_DESC_OFF(pending_frame), frame);
++    uint32_t *worker_failed = NULL, *use_worker_word = NULL;
++    if (raid_batch_enabled()) {
++        int material = pin_hreg(pin_slot(OCERZ_RAX));
++        a64_ldr(b, 4, JTT, 20, RAID_DESC_OFF(pending_from_worker));
++        uint32_t *not_worker = a64_label(b); a64_cbz(b, 0, JTT, 0);
++        uint32_t *changed_material = emit_raid_desc_check(b, RAID_DESC_OFF(pending_words[1]), material);
++        uint32_t *changed_word = emit_raid_desc_check(b, RAID_DESC_OFF(pending_words[3]), value);
++        use_worker_word = a64_label(b); a64_b(b, 0);
++        a64_patch_cbz(changed_material, a64_label(b));
++        a64_patch_cbz(changed_word, a64_label(b));
++        a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_context));
++        emit_raid_desc_count(b, RAID_BATCH_PREFIX_MISMATCH);
++        worker_failed = a64_label(b); a64_b(b, 0);
++        a64_patch_cbz(not_worker, a64_label(b));
++    }
+     a64_str(b, 4, value, 20, RAID_DESC_OFF(pending_words[3]));
++    if (use_worker_word) a64_patch_b(use_worker_word, a64_label(b));
+     a64_movz(b, JTT, 1, 0);
+     a64_str(b, 4, JTT, 20, RAID_DESC_OFF(pending_has_prefix));
+     emit_raid_desc_count(b, 2);
+     a64_patch_cbz(miss_context, a64_label(b));
+     a64_patch_cbz(miss_frame, a64_label(b));
++    if (worker_failed) a64_patch_b(worker_failed, a64_label(b));
+ }
+
+ static void emit_raid_desc_publish(A64Buf *b)
+@@ -6906,6 +7163,10 @@
+     a64_str(b, 4, JTT, 20, RAID_DESC_OFF(prior_next_index));
+     a64_str(b, 4, frame, 20, RAID_DESC_OFF(prior_frame));
+     a64_str(b, 4, context, 20, RAID_DESC_OFF(prior_context));
++    if (raid_batch_enabled()) {
++        a64_ldr(b, 4, JTT, 20, RAID_DESC_OFF(pending_from_worker));
++        a64_str(b, 4, JTT, 20, RAID_DESC_OFF(prior_from_worker));
++    }
+     emit_raid_desc_count(b, 3);
+
+     a64_patch_cbz(miss_context, a64_label(b));
+@@ -6989,6 +7250,12 @@
+     uint32_t *mismatch = a64_label(b); a64_cbnz(b, 0, JTU, 0);
+     a64_mov_reg(b, 0, rd, JTT);
+     emit_raid_desc_count(b, 4 + 3 * slot);
++    if (raid_batch_enabled() && raid_desc_counters()) {
++        a64_ldr(b, 4, JTT, 20, RAID_DESC_OFF(read_from_worker));
++        uint32_t *not_worker = a64_label(b); a64_cbz(b, 0, JTT, 0);
++        emit_raid_desc_count(b, RAID_BATCH_READS);
++        a64_patch_cbz(not_worker, a64_label(b));
++    }
+     uint32_t *used = a64_label(b); a64_b(b, 0);
+     a64_patch_cbz(mismatch, a64_label(b));
+     emit_raid_desc_count(b, 5 + 3 * slot);
+@@ -26107,7 +26374,7 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
+-                if (vn && prep_trace && raid_desc_marker(vpc))
++                if (vn && prep_trace && (raid_desc_marker(vpc) || (vpc == RAID_BATCH_ENTRY && raid_batch_enabled())))
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -27525,7 +27792,9 @@
+             continue;
+         }
+         if (fpb_open >= 0 && fpb_of[i] == fpb_open && g_fpb_undo_ld[i]) { g_undo_want_slot = g_fpb_undo_ld[i] - 1; g_undo_want_size = g_fpb_undo_ldsz[i]; }
+-        if (!try_inline(&b, insn, fl_need[i], exit_sites, &n_exits)) {
++        const int raid_worker_call = prep_trace && raid_batch_instruction(insn);
++        if (raid_worker_call) (void)raid_desc_counters();
++        if (raid_worker_call || !try_inline(&b, insn, fl_need[i], exit_sites, &n_exits)) {
+             emit_slowcall(&b, insn, exit_sites, &n_exits);
+             blk->n_slow++;
+             g_dep_slow[i] = 1;
