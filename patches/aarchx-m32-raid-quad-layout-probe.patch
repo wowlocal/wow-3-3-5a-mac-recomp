@@ -1,0 +1,181 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -852,4 +852,5 @@
+
+ #include <sys/mman.h>
++#include <fcntl.h>
+ #include <sys/sysctl.h>
+ #include <sys/time.h>
+@@ -19032,4 +19033,150 @@
+ }
+
++/* Record the cursor descriptor immediately before and after one quad. */
++enum { QUAD_LAYOUT_BITS = 20, QUAD_LAYOUT_STRIDE = 256 };
++
++static int quad_layout_site(uint64_t pc)
++{
++    return pc == 0x8816da || pc == 0x881aad || pc == 0x881709 ||
++           pc == 0x8817f1 || pc == 0x8818ec || pc == 0x8819cf;
++}
++
++static const char *quad_layout_path(void)
++{
++    static int checked;
++    static const char *path;
++    if (!checked) {
++        path = getenv("OCERZ_M32_QUAD_LAYOUT_LOG");
++        checked = 1;
++    }
++    return path && *path ? path : NULL;
++}
++
++static void *quad_layout_mapping(void)
++{
++    static int initialized;
++    static void *mapping;
++    if (initialized) return mapping;
++    initialized = 1;
++    int lse = 0;
++    size_t len = sizeof lse;
++    unsigned tick_hz;
++    __asm__ volatile("mrs %x0, cntfrq_el0" : "=r" (tick_hz));
++    if (tick_hz != 1000000000u ||
++        sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &len, NULL, 0) || !lse)
++        return NULL;
++    int fd = open(quad_layout_path(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return NULL;
++    const size_t bytes = QUAD_LAYOUT_STRIDE * ((1u << QUAD_LAYOUT_BITS) + 1u);
++    if (ftruncate(fd, (off_t)bytes) == 0) {
++        void *p = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (p != MAP_FAILED) mapping = p;
++    }
++    close(fd);
++    return mapping;
++}
++
++static void emit_quad_layout(A64Buf *b, uint64_t pc)
++{
++    int edge = pc == 0x8816da || pc == 0x881aad;
++    int frame = pin_slot(OCERZ_RBP);
++    int cursor = edge ? pin_slot(pc == 0x8816da ? OCERZ_RDX : OCERZ_RCX) : -1;
++    if (g_pin_class != 3 || frame < 0 || !jgb_usable() || !ocerz_guest_base)
++        return;
++    if ((edge && cursor < 0) ||
++        (!edge && (!xmm_is_pinned(1) || !xmm_is_pinned(2) || !xmm_is_pinned(7))))
++        return;
++    frame = pin_hreg(frame);
++    if (edge) cursor = pin_hreg(cursor);
++    void *mapping = quad_layout_mapping();
++    if (!mapping) return;
++
++    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++    a64_ldr(b, 8, JT1, JT0, 8);
++    uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
++    uint32_t *cursor_split = NULL, *arg_split = NULL, *frame_unaligned = NULL;
++    if (edge) {
++        a64_ubfx(b, 0, JT1, cursor, 0, 12);
++        a64_add_imm(b, 0, JT1, JT1, 35);
++        cursor_split = a64_label(b); a64_tbnz(b, JT1, 12, 0);
++        a64_ubfx(b, 0, JT1, frame, 0, 2);
++        frame_unaligned = a64_label(b); a64_cbnz(b, 0, JT1, 0);
++        a64_ubfx(b, 0, JT1, frame, 0, 12);
++        a64_add_imm(b, 0, JT1, JT1, 11);
++        arg_split = a64_label(b); a64_tbnz(b, JT1, 12, 0);
++    }
++    a64_movz(b, JT1, 1, 0);
++    a64_emit32(b, 0xf82a012bu); /* LDADD X10, X11, [X9] */
++    a64_ubfx(b, 0, JTT, JT2, 0, QUAD_LAYOUT_BITS);
++    a64_add_reg(b, 1, JT0, JT0, JTT, 8);
++    a64_add_imm(b, 1, JT0, JT0, QUAD_LAYOUT_STRIDE);
++    a64_str(b, 8, A64_ZR, JT0, 0);
++    a64_emit32(b, 0xd53be04au); /* MRS X10, CNTVCT_EL0 */
++    a64_str(b, 8, JT1, JT0, 8);
++    a64_str(b, 8, 20, JT0, 16);
++    a64_mov_imm64(b, JT1, pc);
++    a64_str(b, 4, JT1, JT0, 24);
++    a64_str(b, 4, frame, JT0, 28);
++
++    if (edge) {
++        a64_str(b, 4, cursor, JT0, 32);
++        a64_mov_reg(b, 0, JTT, frame);
++        a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++        a64_ldr(b, 4, JT1, JTT, 8);
++        a64_str(b, 4, JT1, JT0, 36);
++        a64_sub_imm(b, 0, JTT, frame, 0x1c8);
++        a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++        a64_ldr(b, 4, JT1, JTT, 0);
++        a64_str(b, 4, JT1, JT0, 40);
++        a64_mov_imm64(b, JTT, 0xf4ad00);
++        a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++        for (unsigned i = 0; i < 3; i++) {
++            a64_ldr(b, 4, JT1, JTT, 4 * i);
++            a64_str(b, 4, JT1, JT0, 80 + 4 * i);
++        }
++        a64_mov_reg(b, 0, JTT, cursor);
++        a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++        for (unsigned i = 0; i < 9; i++) {
++            a64_ldr(b, 4, JT1, JTT, 4 * i);
++            a64_str(b, 4, JT1, JT0, 44 + 4 * i);
++        }
++        if (pc == 0x881aad) {
++            /* Revisit the four position writes using the preserved stride. */
++            a64_ldr(b, 4, JTA, JTT, 16);
++            a64_ldr(b, 4, JT1, JTT, 0);
++            a64_sub_reg(b, 0, JT1, JT1, JTA, 2);
++            for (unsigned vertex = 0; vertex < 4; vertex++) {
++                unsigned offset = 104 + 16 * vertex;
++                a64_str(b, 4, A64_ZR, JT0, offset);
++                a64_ubfx(b, 0, JTT, JT1, 0, 12);
++                a64_add_imm(b, 0, JTT, JTT, 11);
++                uint32_t *position_split = a64_label(b); a64_tbnz(b, JTT, 12, 0);
++                a64_str(b, 4, JT1, JT0, offset);
++                a64_add_reg(b, 1, JTT, JGB, JT1, 0);
++                for (unsigned axis = 0; axis < 3; axis++) {
++                    a64_ldr(b, 4, JT1, JTT, 4 * axis);
++                    a64_str(b, 4, JT1, JT0, offset + 4 + 4 * axis);
++                }
++                a64_ldr(b, 4, JT1, JT0, offset);
++                a64_patch_tbz(position_split, a64_label(b));
++                a64_add_reg(b, 0, JT1, JT1, JTA, 0);
++            }
++        }
++    } else {
++        a64_str_v(b, 4, xmm_vreg(1), JT0, 92);
++        a64_str_v(b, 4, xmm_vreg(2), JT0, 96);
++        a64_str_v(b, 4, xmm_vreg(7), JT0, 100);
++    }
++
++    a64_add_imm(b, 1, JT2, JT2, 1);
++    a64_stlr(b, 8, JT2, JT0);
++    if (edge) {
++        a64_patch_tbz(arg_split, a64_label(b));
++        a64_patch_cbz(frame_unaligned, a64_label(b));
++        a64_patch_tbz(cursor_split, a64_label(b));
++    }
++    a64_patch_cbz(disabled, a64_label(b));
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+@@ -25840,4 +25987,6 @@
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int quad_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                           quad_layout_path() != NULL;
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+@@ -25855,4 +26004,6 @@
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && quad_trace && quad_layout_site(vpc))
++                    break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -26784,4 +26935,6 @@
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
++        if (i == 0 && quad_trace && quad_layout_site(rip))
++            emit_quad_layout(&b, rip);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;

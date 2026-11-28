@@ -2151,3 +2151,43 @@ python3 benchmarks/summarize-raid-preparation.py CAPTURE_ROOT LOCAL_I386_EXECUTA
     --stack-captures EARLIER_STACK_RUN_1 EARLIER_STACK_RUN_2 \
     --legacy-gpu EARLIER_CLIENT_GPU_LOG --legacy-pid EARLIER_CLIENT_PID
 ```
+
+### Replay the quad position and bounds kernel on ARM64
+
+The replay exports complete four-vertex cases from the three archived raid captures. The exporter requires all four ordered before-and-after bounds pairs, verifies each transition, and carries the original float words into the native test. The scalar and NEON paths write the same 12 coordinate words and six final bounds words. Their comparison also includes a sentinel next to each vertex position. The NEON path compares three axes together and selects each original word on an equal or unordered comparison.
+
+Both builds matched **172,720** recorded quads and **32,768** cases containing signed zeros, subnormals, infinities and NaN payloads. The address and undefined behavior sanitizer build passed the same byte checks. The timed test begins with calculated positions and measures a native kernel outside the game. It leaves guest register transitions, intermediate bounds visibility, floating-point exception status and JIT memory checks to an in-client implementation.
+
+| Native replay window | Scalar with compiler vectorization | NEON | Speedup |
+| --- | ---: | ---: | ---: |
+| All recorded cases | 5.54 ns/quad | 2.73 ns/quad | 2.03× |
+| 2,048 cached cases | 4.41 ns/quad | 2.65 ns/quad | 1.66× |
+
+Each median comes from eight pairs in alternating order. With compiler vectorization disabled, the ratios were **2.01×** and **1.68×**. The earlier sampled profile put only **1.89–1.98%** of main-thread CPU weight in the entire original vertex-emission region. Applying the native kernel speedup to that whole region would be an optimistic bound. The standalone replay is a correctness and implementation comparison for this part of the larger dispatch path. [Replay data](results/raid-aarchx-quad-native-replay.json) · [Earlier instruction coverage](results/raid-aarchx-i386-vertex-bounds-profile.json)
+
+The live layout probe checks the four stream cursors and their strides at both ends of the same quad. It reads the coordinate registers at each vertex and re-reads the resulting 12-byte position from guest memory after the quad. It checks address arithmetic and overlap with the cursor, bounds, stack, color source, and normal and texture-coordinate inputs. The 4 KiB measurement identifies how often each stream fits into a single guest page. This is an eligibility measurement for an in-client fast path.
+
+Across **293,466** complete quads, every observed cursor advanced as expected. All **1,171,709** sampled position triplets matched the register words byte for byte. The diagnostic skipped **2,155** position loads that would cross a 4 KiB guest-page boundary. The position, normal, color and texture-coordinate strides were **24, 0, 24, 24 bytes** in **172,380** quads and **36 bytes for all four streams** in the other **121,086**. The zero normal stride sends four writes to the same address. The source normal words matched at both ends of each quad.
+
+After treating repeated writes to that one normal address as one range, all sampled output ranges were disjoint from one another and from the checked inputs. In **286,252** quads (**97.5%**), each stream fit in a single guest page. Use both layouts when testing a guarded fast path. Check cross-thread observations and any intermediate reads of bounds before moving the stores. Two 35-second launches verified **4,796** and **4,699** consecutive GPU completions, the saved camera, overlapping effects, all 26 timing rows and zero trial windows or activations. [Live layout and byte checks](results/raid-aarchx-quad-native-replay.json)
+
+To reproduce the replay and collect inputs for the summary, use the three raw vertex-bounds recordings described earlier. Run each binary with the same case file and save its output under the indicated filename in the capture root.
+
+```sh
+python3 benchmarks/export-raid-quad-replay.py CAPTURE_ROOT/quads.bin \
+    VERTEX_BOUNDS_RUN_1 VERTEX_BOUNDS_RUN_2 VERTEX_BOUNDS_RUN_3 > CAPTURE_ROOT/export.json
+xcrun clang -arch arm64 -O3 -fno-vectorize -fno-slp-vectorize \
+    benchmarks/raid-quad-native-replay.c -o CAPTURE_ROOT/replay
+xcrun clang -arch arm64 -O3 benchmarks/raid-quad-native-replay.c -o CAPTURE_ROOT/replay-autovec
+xcrun clang -arch arm64 -O1 -g -fsanitize=address,undefined \
+    benchmarks/raid-quad-native-replay.c -o CAPTURE_ROOT/replay-sanitized
+CAPTURE_ROOT/replay CAPTURE_ROOT/quads.bin > CAPTURE_ROOT/replay.txt
+CAPTURE_ROOT/replay-autovec CAPTURE_ROOT/quads.bin > CAPTURE_ROOT/replay-autovec.txt
+CAPTURE_ROOT/replay-sanitized CAPTURE_ROOT/quads.bin --verify-only > CAPTURE_ROOT/replay-sanitized.txt
+```
+
+Apply `patches/aarchx-m32-raid-quad-layout-probe.patch` to the accepted runtime source layers and keep the accepted PGO renderer. Use the guest image identified in the result. Set `OCERZ_TCACHE=off` and `OCERZ_M32_QUAD_LAYOUT_LOG` to a fresh `quad-layout.bin` per run. Use a verified 35-second full-raid headless launch for `layout-1` and `layout-2`. At about 2, 12 and 24 seconds into each window, enable logging for 0.14 seconds. The first two little-endian uint64 words of the ring are the row count and enabled flag. Save the before-and-after row counts for each window in `prep-gates.json`, along with the artifact checksum witness at the capture root.
+
+```sh
+python3 benchmarks/summarize-raid-quad-layout.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
+```
