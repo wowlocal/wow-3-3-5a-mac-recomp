@@ -1935,3 +1935,22 @@ python3 benchmarks/summarize-raid-encoder-tail.py CAPTURE_DIR
 ```
 
 The two labelled captures were 17-second Metal System Traces within 35-second verified GPU windows. Both checked the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. The earlier client resumed after every capture. The renderer passed **343** GPU tests with diagnostic logging disabled.
+
+### Disable automatic render-pass splitting in the full raid
+
+Both arms use the accepted copied-shadow runtime and renderer. Set `WINEMETALGL_COMMIT_DRAWS=64` for the normal policy or `0` to bypass the draw-time submission heuristic. The same draw order reaches the renderer. Swap, explicit synchronization and resource-dependent submissions retain their normal handling.
+
+The two diagnostics used `OCERZ_WMGL_SUBMISSION_LOG` and 17-second Metal System Traces within 35-second verified GPU windows. All **4,360** control intervals contained two draw-bearing submissions. All **4,425** trial intervals contained one draw-bearing submission. One trial interval also ended with a zero-draw buffer after the buffer holding all 855 draws. The timing launches use four 60-second windows in 64, 0, 0, 64 order with submission and encoder logging disabled.
+
+| Draw-time submission policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Automatic split | 134.92 | 12.79 ms |
+| Automatic split disabled | 135.08 | 12.95 ms |
+
+Disabling the heuristic changed throughput by **−0.23 and +0.55 FPS** in the two pairs. P99 changed by **+0.38 and −0.06 ms**. Keep automatic splitting as the benchmark baseline. Six live launches verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. The earlier client was paused during each launch and resumed afterward. On the ordered offscreen replay, both policies had **161,327** colored pixels and the same framebuffer hash. [Paired results, draw counts and replay](results/raid-winemetalgl-single-render-pass-ab.json)
+
+The Metal traces bracketed **2,180 and 2,240** consecutive output intervals with clock alignment within **42 ns**. Two control and three trial intervals lacked complete encoder attribution. They enter the completion-gap percentile and drop out of the per-encoder summary. In the slowest one percent, median client vertex activity within the frame gap was **2.90 ms** with the split and **3.94 ms** with one draw-bearing buffer. Median WindowServer activity in those gaps was **7.14 and 8.89 ms**, respectively. Each instrumented arm samples one period of desktop activity. The four 60-second runs supply the policy comparison. [Aligned hardware intervals](results/raid-winemetalgl-single-render-pass-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-single-render-pass.py CAPTURE_ROOT
+```
