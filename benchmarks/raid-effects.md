@@ -2981,3 +2981,22 @@ python3 benchmarks/summarize-raid-particle-plans.py CAPTURE_ROOT I386_CLIENT --i
 ```
 
 The byte checks cover output sizes, mapped offsets and the return counts used by the original caller. Mutable emitter state, shared scratch storage and graphics publication still need separate validation before dispatching the fills concurrently.
+
+## Native 5K with maximum supported graphics quality
+
+Use a separate copy of the raid client and its preferences. Apply `patches/aarchx-wmgl-native-5k-trial.patch` to the AArchX runtime and retain the selected deferred PGO renderer. Run the existing offscreen fixture in windowed mode with `OCERZ_HEADLESS_NATIVE_SIZE=5120x2880`, `OCERZ_HEADLESS_MAX_MSAA=1`, and `OCERZ_HEADLESS_LOAD_TEST_ADDON=1`. Point the process's `HOME` and `CFFIXED_USER_HOME` at the copied preferences. Set the copied window bounds to 5120 × 2880 using `benchmarks/set-window-bounds.py`. The trial creates a native 5120 × 2880 Metal target and exposes matching dimensions through the window, QuickDraw and Core Graphics interfaces within the trial process.
+
+Apply the requested graphics profile before launching and install the witness add-on in the copy's `Interface/AddOns` directory. The profile uses the highest controls in the original 3.3.5 graphics panels, including full terrain detail, texture filtering level 5, and 4× MSAA. The original i386 getter and setter for terrain detail use `shadowLevel` with the reversed numeric direction. The client reports 0 as the upper limit for the separate `extShadowQuality` control on this setup. [Original graphics controls](https://github.com/wowgaming/3.3.5-interface-files/blob/main/VideoOptionsPanels.lua) · [Original Ultra preset](https://github.com/wowgaming/3.3.5-interface-files/blob/main/GraphicsQualityLevels.lua)
+
+```sh
+python3 benchmarks/configure-raid-native-5k.py COPIED_CLIENT/WTF/Config.wtf
+cp -R benchmarks/fixtures/native5k/WrathNative5KWitness COPIED_CLIENT/Interface/AddOns/
+```
+
+The witness add-on reads the current settings and multisample formats when the character enters the world. The isolated client uses a local `/reload` command before the benchmark to save the witness. Copy the fresh `WrathNative5KWitness.lua` from the copied user's `WTF` directory into the capture as `graphics-settings.lua`. Wait 12 seconds after the full raid and graphics witness are ready, then record 60 seconds of unique GPU completions. Preserve the usual fixture, monitor and process isolation witnesses. The verifier checks the draw viewport, default framebuffer samples, PvE fixture position and cast timings, full-resolution readback, completion sequence and supported graphics settings.
+
+The first fully verified M4 Pro baseline recorded **5,652** consecutive GPU completions in 60 seconds, averaging **94.18 FPS** with a **13.76 ms p99** completion gap. The client verified its highest listed sample format and all 21 settings checks. The viewport and completed drawable were **5120 × 2880**, with **4× MSAA** and VSync off. The full world readback showed the saved camera and overlapping effects, and the realm verified the 24 casters, boss and all 26 timing rows. The runtime passed **812** general i386 checks. [Native 5K baseline and in-client settings](results/raid-native-5k-max-baseline.json)
+
+```sh
+python3 benchmarks/verify-raid-native-5k.py CAPTURE --settings CAPTURE/graphics-settings.lua
+```

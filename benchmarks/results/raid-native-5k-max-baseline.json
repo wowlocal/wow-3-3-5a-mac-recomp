@@ -1,0 +1,113 @@
+{
+  "viewport": [
+    0,
+    0,
+    5120,
+    2880
+  ],
+  "multisample_count": 4,
+  "world_readback_sha256": "5b23d535aaa6fd597c5f149eb10e664e4a55dfc684f7680509a0d8976cd5aa19",
+  "graphics": {
+    "captured": true,
+    "actual": {
+      "weatherDensity": "3",
+      "ffxGlow": "1",
+      "projectedTextures": "1",
+      "groundEffectDist": "140",
+      "extShadowQuality": "0",
+      "gxVSync": "0",
+      "baseMip": "0",
+      "shadowLevel": "0",
+      "maxFPSBk": "0",
+      "shadowLimit": 0,
+      "format": 3,
+      "farclip": "1277",
+      "caps": [
+        1,
+        1,
+        1,
+        1,
+        0,
+        16,
+        1
+      ],
+      "gxDepthBits": "24",
+      "gxColorBits": "24",
+      "maxFPS": "0",
+      "formats": [
+        24,
+        24,
+        1,
+        24,
+        24,
+        2,
+        24,
+        24,
+        4
+      ],
+      "gxResolution": "5120x2880",
+      "environmentDetail": "1.5",
+      "terrainDetail": 1,
+      "terrainDetailBefore": 1,
+      "gxMultisample": "4",
+      "ffxDeath": "1",
+      "particleDensity": "1",
+      "marker": "complete",
+      "specular": "1",
+      "componentTextureLevel": "9",
+      "textureFilteringMode": "5",
+      "groundEffectDensity": "64"
+    },
+    "expected": {
+      "farclip": 1277,
+      "terrainDetail": 1,
+      "shadowLevel": 0,
+      "particleDensity": 1,
+      "environmentDetail": 1.5,
+      "groundEffectDensity": 64,
+      "groundEffectDist": 140,
+      "baseMip": 0,
+      "extShadowQuality": 0.0,
+      "textureFilteringMode": 5,
+      "weatherDensity": 3,
+      "componentTextureLevel": 9,
+      "specular": 1,
+      "ffxGlow": 1,
+      "ffxDeath": 1,
+      "projectedTextures": 1,
+      "gxResolution": "5120x2880",
+      "gxVSync": 0,
+      "gxMultisample": 4,
+      "maxFPS": 0,
+      "maxFPSBk": 0
+    },
+    "client_limits": {
+      "extShadowQuality": 0.0
+    },
+    "issues": []
+  },
+  "verified_cast_rows": 26,
+  "verified_gpu_window": {
+    "stream": 1,
+    "pid": 49211,
+    "window_size": [
+      5120,
+      2880
+    ],
+    "verified_completed_renders": 5652,
+    "first_sequence": 3874,
+    "last_sequence": 9525,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 59990909875,
+    "measurement_duration_ns": 60000000000,
+    "average_completed_fps": 94.18333333333334,
+    "p99_gpu_completion_gap_ns": 13761791,
+    "min_draws": 899,
+    "max_draws": 1196
+  },
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+    "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  }
+}

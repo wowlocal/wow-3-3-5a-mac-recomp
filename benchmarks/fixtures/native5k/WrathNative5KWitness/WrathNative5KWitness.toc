@@ -1,0 +1,5 @@
+## Interface: 30300
+## Title: Wrath Native 5K Witness
+## DefaultState: enabled
+## SavedVariables: WrathNative5KReport
+Witness.lua

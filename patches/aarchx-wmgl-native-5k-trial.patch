@@ -1,0 +1,318 @@
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -159,6 +159,7 @@
+ uint32_t m32_file(void *host_file);   /* src/m32_stdio.c: the guest FILE standing for a host one */
+ void m32_hud_start(void);             /* src/m32_bridge.c: OCERZ_M32_HUD's overlay */
+ extern int m32_headless_trial;
++int m32_headless_native_size(int *width, int *height);
+ void m32_activate_soon(void);         /* src/m32.c: the game's app comes to the front */
+ uint32_t m32_export_hostfn(void *fn, const char *gnote, const char *hnote);   /* host function as guest address */
+
+--- a/src/m32_carbon.c
++++ b/src/m32_carbon.c
+@@ -52,11 +52,48 @@
+ static void *headless_front;
+ static int32_t (*g_create_new_window)(uint32_t, uint32_t, const void *, void **);
+
++int m32_headless_native_size(int *width, int *height)
++{
++    static int requested_width, requested_height, parsed;
++    if (!m32_headless_trial) return 0;
++    if (!parsed) {
++        const char *size = getenv("OCERZ_HEADLESS_NATIVE_SIZE");
++        unsigned w, h;
++        char extra;
++        if (size && sscanf(size, "%ux%u%c", &w, &h, &extra) == 2 &&
++            w > 0 && h > 0 && w <= 16384 && h <= 16384) {
++            requested_width = w;
++            requested_height = h;
++        }
++        parsed = 1;
++    }
++    if (!requested_width) return 0;
++    *width = requested_width;
++    *height = requested_height;
++    return 1;
++}
++
+ static int32_t create_new_window(uint32_t window_class, uint32_t attributes, const void *bounds, void **out)
+ {
+     const int32_t status = g_create_new_window(window_class, attributes | M32_kWindowCompositingAttribute, bounds, out);
+     if (!status && m32_headless_trial)
+         headless_front = *out;
++    return status;
++}
++
++typedef struct { int16_t top, left, bottom, right; } TrialRect;
++static int32_t (*g_trial_get_bounds)(void *, uint32_t, TrialRect *);
++
++static int32_t trial_get_window_bounds(void *window, uint32_t region, TrialRect *bounds)
++{
++    int32_t status = g_trial_get_bounds(window, region, bounds);
++    int width, height;
++    if (!status && window == headless_front && region == 33 && bounds &&
++        m32_headless_native_size(&width, &height) &&
++        bounds->left + width <= 32767 && bounds->top + height <= 32767) {
++        bounds->right = bounds->left + width;
++        bounds->bottom = bounds->top + height;
++    }
+     return status;
+ }
+
+@@ -650,6 +687,10 @@
+     if (!fn || getenv("OCERZ_NO_M32_CARBON_WRAP"))
+         return fn;
+     if (m32_headless_trial) {
++        if (!strcmp(symbol, "GetWindowBounds")) {
++            g_trial_get_bounds = (void *)fn;
++            return trial_get_window_bounds;
++        }
+         if (!strcmp(symbol, "FrontWindow") || !strcmp(symbol, "ActiveNonFloatingWindow") ||
+             !strcmp(symbol, "GetUserFocusWindow"))
+             return (void *)headless_front_window;
+--- a/src/m32_cg.c
++++ b/src/m32_cg.c
+@@ -316,6 +316,73 @@
+                                                                                            "CFStringCreateWithCString");
+ }
+
++static pthread_once_t graphics_modes_once = PTHREAD_ONCE_INIT;
++
++static CFDictionaryRef native_trial_mode(uint32_t display)
++{
++    static CFDictionaryRef result;
++    if (result) return result;
++    int width, height;
++    if (!m32_headless_native_size(&width, &height)) return NULL;
++    pthread_once(&graphics_modes_once, load_modes);
++    CFDictionaryRef current = g_mode.current ? g_mode.current(display) : NULL;
++    if (!current || !g_mode.string) return NULL;
++    CFMutableDictionaryRef (*copy)(CFAllocatorRef, CFIndex, CFDictionaryRef) =
++        dlsym(RTLD_DEFAULT, "CFDictionaryCreateMutableCopy");
++    CFNumberRef (*number)(CFAllocatorRef, CFNumberType, const void *) = dlsym(RTLD_DEFAULT, "CFNumberCreate");
++    void (*set)(CFMutableDictionaryRef, const void *, const void *) = dlsym(RTLD_DEFAULT, "CFDictionarySetValue");
++    void (*release)(CFTypeRef) = dlsym(RTLD_DEFAULT, "CFRelease");
++    if (!copy || !number || !set || !release) return NULL;
++    CFMutableDictionaryRef mode = copy(NULL, 0, current);
++    if (!mode) return NULL;
++    const char *keys[] = {"Width", "Height", "PixelWidth", "PixelHeight"};
++    const int values[] = {width, height, width, height};
++    for (unsigned i = 0; i < 4; i++) {
++        CFStringRef key = g_mode.string(NULL, keys[i], kCFStringEncodingASCII);
++        CFNumberRef value = number(NULL, kCFNumberIntType, &values[i]);
++        if (!key || !value) {
++            if (key) release(key);
++            if (value) release(value);
++            release(mode);
++            return NULL;
++        }
++        set(mode, key, value);
++        release(key);
++        release(value);
++    }
++    result = mode;
++    return result;
++}
++
++static int sp_CGDisplayCurrentMode(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    pthread_once(&graphics_modes_once, load_modes);
++    CFDictionaryRef mode = native_trial_mode(A(0));
++    RET(m32_handle((void *)(mode ? mode : g_mode.current ? g_mode.current(A(0)) : NULL)));
++}
++
++static int sp_CGDisplayAvailableModes(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    pthread_once(&graphics_modes_once, load_modes);
++    CFDictionaryRef mode = native_trial_mode(A(0));
++    CFArrayRef available = g_mode.available ? g_mode.available(A(0)) : NULL;
++    if (!mode) RET(m32_handle((void *)available));
++    static CFArrayRef expanded;
++    if (!expanded) {
++        CFArrayRef (*create)(CFAllocatorRef, const void **, CFIndex, const CFArrayCallBacks *) =
++            dlsym(RTLD_DEFAULT, "CFArrayCreate");
++        CFIndex n = available && g_mode.count && g_mode.at ? g_mode.count(available) : 0;
++        const void *modes[257];
++        if (!create || n < 0 || n > 256) RET(0);
++        for (CFIndex i = 0; i < n; i++) modes[i] = g_mode.at(available, i);
++        modes[n++] = mode;
++        expanded = create(NULL, modes, n, NULL);
++    }
++    RET(m32_handle((void *)expanded));
++}
++
+ static long mode_value(CFDictionaryRef mode, CFStringRef key)
+ {
+     CFNumberRef n = key ? (CFNumberRef)g_mode.get(mode, key) : NULL;
+@@ -328,9 +395,15 @@
+ static CFDictionaryRef best_mode(uint32_t display, long bpp, long w, long h, double rate, int *exact)
+ {
+     static CFStringRef width, height, depth, refresh;
+-    static pthread_once_t once = PTHREAD_ONCE_INIT;
+-    pthread_once(&once, load_modes);
++    pthread_once(&graphics_modes_once, load_modes);
+     *exact = 0;
++    int width_pixels, height_pixels;
++    CFDictionaryRef native_mode = native_trial_mode(display);
++    if (native_mode && m32_headless_native_size(&width_pixels, &height_pixels) &&
++        w == width_pixels && h == height_pixels) {
++        *exact = 1;
++        return native_mode;
++    }
+     if (!g_mode.available || !g_mode.count || !g_mode.at || !g_mode.get || !g_mode.number || !g_mode.string)
+         return NULL;
+     if (!width) {
+@@ -390,6 +463,8 @@
+     { "_CGPathApply", sp_CGPathApply }, { "_CGContextSetCompositeOperation", sp_CGContextSetCompositeOperation },
+     { "_CGContextSetCTM", sp_CGContextSetCTM },
+     { "_CGDataProviderCreate", sp_CGDataProviderCreate },
++    { "_CGDisplayCurrentMode", sp_CGDisplayCurrentMode },
++    { "_CGDisplayAvailableModes", sp_CGDisplayAvailableModes },
+     { "_CGDisplayBestModeForParameters", sp_CGDisplayBestModeForParameters },
+     { "_CGDisplayBestModeForParametersAndRefreshRate", sp_CGDisplayBestModeForParametersAndRefreshRate },
+     { NULL, NULL }
+--- a/src/m32_qd.c
++++ b/src/m32_qd.c
+@@ -520,8 +520,12 @@
+     if (p && p->window)
+         window_size(p);
+     QdRect r = { 0, 0, 0, 0 };
+-    if (p)
+-        r = (QdRect){ p->ov, p->oh, (int16_t)(p->ov + p->h), (int16_t)(p->oh + p->w) };
++    if (p) {
++        int width = p->w, height = p->h;
++        if (p->window)
++            m32_headless_native_size(&width, &height);
++        r = (QdRect){ p->ov, p->oh, (int16_t)(p->ov + height), (int16_t)(p->oh + width) };
++    }
+     wr_rect(A(1), r);
+     RET(A(1));
+ }
+@@ -1225,6 +1229,11 @@
+     uint32_t prev = 0;
+     for (uint32_t i = 0; i < n; i++) {
+         CGRect b = CGDisplayBounds_(ids[i]);
++        int width, height;
++        if (i == 0 && m32_headless_native_size(&width, &height)) {
++            b.size.width = width + 64;
++            b.size.height = height + 64;
++        }
+         QdRect r = { (int16_t)b.origin.y, (int16_t)b.origin.x, (int16_t)(b.origin.y + b.size.height),
+                      (int16_t)(b.origin.x + b.size.width) };
+         uint32_t gd = m32_static_alloc(GDEVICE_BYTES + 4 /* the display id */, 4), hnd = m32_static_alloc(4, 4);
+@@ -1307,6 +1316,11 @@
+     CGRect b;
+     if (!ready() || !avail || avail(display_of(gdh), 1 /* kHICoordSpace72DPIGlobal */, &b) != noErr)
+         return PARAM_ERR;
++    int width, height;
++    if (m32_headless_native_size(&width, &height)) {
++        b.size.width = width + 64;
++        b.size.height = height + 64;
++    }
+     *r = (QdRect){ (int16_t)b.origin.y, (int16_t)b.origin.x, (int16_t)(b.origin.y + b.size.height),
+                    (int16_t)(b.origin.x + b.size.width) };
+     return NO_ERR;
+--- a/src/m32_wmgl.m
++++ b/src/m32_wmgl.m
+@@ -186,15 +186,23 @@
+     unsigned window_count = 0;
+     if (driver.initialize(WMGL_DRIVER_ABI_VERSION) == 0) {
+         unsigned count = driver.formats(formats, 128, &window_count);
++        const int max_aa = m32_headless_trial && getenv("OCERZ_HEADLESS_MAX_MSAA");
++        unsigned samples = 0;
+         for (unsigned i = 0; i < count && i < 128; i++) {
+             struct wmgl_pixel_format *f = &formats[i];
+             if (f->draw_to_window && f->double_buffer &&
+                 f->red_bits == 8 && f->alpha_bits == 8 && f->depth_bits == 24 &&
+-                f->stencil_bits == 8 && f->samples <= 1 && !f->srgb_capable && !f->float_components) {
+-                format = (int)i + 1;
+-                break;
++                f->stencil_bits == 8 && !f->srgb_capable && !f->float_components &&
++                (max_aa || f->samples <= 1)) {
++                if (!format || f->samples > samples) {
++                    format = (int)i + 1;
++                    samples = f->samples;
++                }
++                if (!max_aa) break;
+             }
+         }
++        if (max_aa)
++            fprintf(stderr, "ocerz: native trial chose WineMetalGL format %d with %u samples\n", format, samples);
+     }
+     if (!format) {
+         fprintf(stderr, "ocerz: WineMetalGL has no matching accelerated window format\n");
+@@ -530,6 +538,7 @@
+             return 0;
+         width = bounds.right - bounds.left;
+         height = bounds.bottom - bounds.top;
++        m32_headless_native_size(&width, &height);
+         if (width <= 0 || height <= 0)
+             return 0;
+     } else if (window) {
+@@ -719,7 +728,9 @@
+ {
+     CarbonRect bounds;
+     if (windowHost.bounds(ctx->carbon, CarbonContentRegion, &bounds)) return;
+-    const HIPoint local = { (bounds.right - bounds.left) * 0.5, (bounds.bottom - bounds.top) * vertical };
++    int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
++    m32_headless_native_size(&width, &height);
++    const HIPoint local = { width * 0.5, height * vertical };
+     const HIPoint global = { bounds.left + local.x, bounds.top + local.y };
+     const EventMouseButton button = kEventMouseButtonPrimary;
+     const UInt32 clicks = 1;
+@@ -792,10 +803,21 @@
+     trial_wipe(&field, sizeof field);
+ }
+
++static void trial_local_command(void *window, const char *command)
++{
++    TrialField enter = {0}, input = {0};
++    input.length = strlen(command);
++    if (input.length > sizeof input.bytes) return;
++    memcpy(input.bytes, command, input.length);
++    trial_type(window, enter, kVK_Return);
++    trial_type(window, input, kVK_ANSI_A);
++    trial_type(window, enter, kVK_Return);
++}
++
+ static void trial_realm_login(Sidecar *ctx)
+ {
+     enum { READ, CLICK_ACCOUNT, TYPE_ACCOUNT, CLICK_PASSWORD, TYPE_PASSWORD, SUBMIT,
+-           CHARACTER_READBACK, WAIT_FOR_ENTER, WORLD_READBACK, FINISHED };
++           CHARACTER_READBACK, WAIT_FOR_ENTER, SETTINGS_SAVE, WORLD_READBACK, FINISHED };
+     static unsigned stage;
+     static uint64_t next;
+     static TrialField account, password;
+@@ -853,11 +875,29 @@
+         TrialField empty = {0};
+         trial_type(ctx->carbon, empty, kVK_Return);
+         fprintf(stderr, "ocerz: dispatched return to the trial character screen\n");
+-        next = now + 4000000000ull;
++        if (!getenv("OCERZ_HEADLESS_LOAD_TEST_ADDON"))
++            stage++;
++        next = now + 5000000000ull;
+         break;
+     }
++    case SETTINGS_SAVE:
++        trial_local_command(ctx->carbon, "/reload");
++        next = now + 8500000000ull;
++        break;
+     case WORLD_READBACK: {
+         const char *world = getenv("OCERZ_HEADLESS_WORLD_READBACK");
++        if (getenv("OCERZ_HEADLESS_NATIVE_SIZE")) {
++            void (*read_integer)(unsigned, int *) = (__typeof__(read_integer))driver.proc("glGetIntegerv");
++            if (read_integer) {
++                int viewport[4] = {0}, samples = 0, sample_buffers = 0, framebuffer = 0;
++                read_integer(0x0ba2, viewport);
++                read_integer(0x80a9, &samples);
++                read_integer(0x80a8, &sample_buffers);
++                read_integer(0x8ca6, &framebuffer);
++                fprintf(stderr, "ocerz: native trial GL viewport %d %d %d %d draw-fbo %d samples %d buffers %d\n",
++                        viewport[0], viewport[1], viewport[2], viewport[3], framebuffer, samples, sample_buffers);
++            }
++        }
+         if (world && *world) capture_frame(ctx, world);
+         break;
+     }
