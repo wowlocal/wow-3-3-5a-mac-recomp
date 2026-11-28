@@ -1784,3 +1784,23 @@ Separate 12-second CPU Counters recordings used the Instruction Delivery Bottlen
 python3 benchmarks/summarize-raid-hot-layout.py CAPTURE_ROOT I386_CLIENT --prepare
 python3 benchmarks/summarize-raid-hot-layout.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Group contemporaneous blocks within the hot-code order
+
+Both modes pretranslate the same **1,024** i386 blocks on the same runtime. The trial starts with the frequency order and rearranges blocks within each band of **64** ranks. An edge gains weight when two blocks have samples within **12 ms**, with more weight for closer samples. Two greedy swap passes reduce the weighted distances, capped at 64 ranks, while preserving the ordering between bands.
+
+The planning score is in list positions. In the training capture, the share of proximity weight within 32 ranks rose from **15.42% to 20.85%**. In the earlier packed-profile capture it rose from **16.76% to 19.21%**. The earlier packed-profile capture helped select the restriction to bands after unrestricted chaining fared worse in that capture. The individual swaps use the training capture.
+
+| Hot-block order | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Frequency | 134.08 | 12.51 ms |
+| Temporal affinity | 132.78 | 12.98 ms |
+
+The reordered variant moved **798** blocks to another rank and pretranslated all **1,024**. It lost **1.20 and 1.42 FPS**, and p99 rose about **0.47 ms** in each pair. The four 60-second windows verified the same saved camera, overlapping effects, 26 timing rows, consecutive GPU completions and zero trial windows or activations. The earlier test process remained paused during the measurements and resumed between launches.
+
+One 12-second Instruction Delivery Bottlenecks trace per mode covered the main thread on performance cores. Instruction-cache misses accounted for **16.66%** of sustainable instruction bandwidth in the frequency capture and **15.96%** in the affinity capture. These are diagnostic samples. The minute-long pairs favor the previous frequency order for pretranslation experiments. Lazy translation remains the baseline. [Timed A/B, order scores, and instruction delivery counters](results/raid-aarchx-i386-hot-affinity-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-hot-affinity.py CAPTURE_ROOT --prepare-from EARLIER_HOT_ORDER_ROOT
+python3 benchmarks/summarize-raid-hot-affinity.py CAPTURE_ROOT
+```

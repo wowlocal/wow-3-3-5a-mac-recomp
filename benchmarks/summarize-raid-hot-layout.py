@@ -33,7 +33,7 @@ def text_range(client):
     return start, start + size
 
 
-def read_samples(capture):
+def read_timed_samples(capture):
     _, start, stop = READ_BOUNDS(capture)
     first = None
     last = None
@@ -51,10 +51,14 @@ def read_samples(capture):
                 first = timestamp
             last = timestamp
             if start <= timestamp < stop:
-                samples.append((weight, block, host))
+                samples.append((timestamp, weight, block, host))
     if not samples or first > start or last < stop:
         raise ValueError(f"Block layout samples do not cover the GPU window in {capture}")
     return samples
+
+
+def read_samples(capture):
+    return [(weight, block, host) for _, weight, block, host in read_timed_samples(capture)]
 
 
 def prepare(root, bounds):
