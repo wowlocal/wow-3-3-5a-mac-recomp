@@ -1,0 +1,146 @@
+{
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "6314ed9d98b88c3052ad2fd9d9585ab60be5b65374fa9cccd7a3aebff33517e1",
+    "runtime_signed_sha256": "24f13e917b1346c42a79783b2d69d9ccc696667ceb69a25205d5182e4627623e",
+    "renderer_sha256": "c54cbb2537ae76d40f1556d095eea69941172f46fb682642816bb475dd897f14"
+  },
+  "gpu_tests_per_mode": 343,
+  "indexed_replay": {
+    "control": {
+      "outputs": 12337,
+      "rgba_hash": "b68e77767258e7d5",
+      "colored_pixels": 161327
+    },
+    "queued": {
+      "outputs": 10072,
+      "rgba_hash": "b68e77767258e7d5",
+      "colored_pixels": 161327
+    }
+  },
+  "diagnostic_gpu_window": {
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 3325,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 24989407459,
+    "measurement_duration_ns": 25000000000,
+    "average_completed_fps": 132.96,
+    "p99_gpu_completion_gap_ns": 12482125,
+    "min_draws": 694,
+    "max_draws": 946
+  },
+  "diagnostic_pass_counters": {
+    "logged_passes": 15890,
+    "queued_commands": 21881427,
+    "batches": 235241,
+    "copied_payload_bytes": 864272288,
+    "synchronous_forwarded_calls": 0
+  },
+  "diagnostic_cpu_time_profile": {
+    "sample_time_span_ns": 9514702625,
+    "main_running_ns": 9373000000,
+    "other_running_ns": 1538000000,
+    "main_in_encoder_proxy_ns": 271000000,
+    "worker_in_batch_consumer_ns": 355000000,
+    "top_main_proxy_symbols_ns": {
+      "-[WMGLQueuedRenderEncoder record:]": 116000000,
+      "-[WMGLQueuedRenderEncoder endEncoding]": 79000000,
+      "-[WMGLQueuedRenderEncoder setVertexBytes:length:atIndex:]": 16000000,
+      "-[WMGLQueuedRenderEncoder batch]": 15000000,
+      "-[WMGLQueuedRenderEncoder setRenderPipelineState:]": 14000000,
+      "-[WMGLQueuedRenderEncoder drawIndexedPrimitives:indexCount:indexType:indexBuffer:indexBufferOffset:instanceCount:baseVertex:baseInstance:]": 9000000,
+      "-[WMGLQueuedRenderEncoder setVertexBuffer:offset:atIndex:]": 8000000,
+      "-[WMGLQueuedRenderEncoder setFragmentTexture:atIndex:]": 7000000,
+      "-[WMGLQueuedRenderEncoder setDepthBias:slopeScale:clamp:]": 2000000,
+      "-[WMGLQueuedRenderEncoder setFragmentSamplerState:atIndex:]": 2000000
+    }
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "mode": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8036,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995239500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 133.91666666666666,
+      "p99_gpu_completion_gap_ns": 12212250,
+      "min_draws": 683,
+      "max_draws": 977
+    },
+    {
+      "order": 2,
+      "mode": "candidate",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7970,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995519541,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 132.81666666666666,
+      "p99_gpu_completion_gap_ns": 12181459,
+      "min_draws": 676,
+      "max_draws": 952
+    },
+    {
+      "order": 3,
+      "mode": "candidate",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8007,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998374000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 133.43333333333334,
+      "p99_gpu_completion_gap_ns": 12429375,
+      "min_draws": 692,
+      "max_draws": 966
+    },
+    {
+      "order": 4,
+      "mode": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8022,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997782500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 133.68333333333334,
+      "p99_gpu_completion_gap_ns": 12318209,
+      "min_draws": 681,
+      "max_draws": 961
+    }
+  ],
+  "comparison": {
+    "control": {
+      "median_gpu_completed_fps": 133.8,
+      "median_p99_completion_gap_ns": 12265229.5
+    },
+    "candidate": {
+      "median_gpu_completed_fps": 133.125,
+      "median_p99_completion_gap_ns": 12305417.0
+    }
+  },
+  "paired_candidate_minus_control": [
+    {
+      "completed_fps": -1.0999999999999943,
+      "p99_gap_ns": -30791
+    },
+    {
+      "completed_fps": -0.25,
+      "p99_gap_ns": 111166
+    }
+  ]
+}

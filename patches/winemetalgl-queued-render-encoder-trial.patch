@@ -1,0 +1,358 @@
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -303,6 +303,7 @@
+     uint64_t lastCommitted_ = 0;
+     uint64_t lastCommitNanos_ = 0;
+     id<MTLRenderCommandEncoder> render_ = nil;
++    dispatch_queue_t renderQueue_ = nullptr;
+     id<MTLBlitCommandEncoder> blit_ = nil;
+     id<MTLComputeCommandEncoder> compute_ = nil;
+     id<MTLCommandBuffer> preludeRenderBuffer_ = nil, preludeComputeBuffer_ = nil;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -15,6 +15,7 @@
+ #include <unordered_map>
+
+ #include "core/metal/device.h"
++#include "core/metal/queued_render_encoder.h"
+ #include "core/util/log.h"
+
+ namespace wmgl {
+@@ -250,6 +251,12 @@
+     {
+         stats::Timer t(&stats::Frame::passFenceNanos);
+         waitForShaderWrites(render_, true);
++    }
++    if (render_ && queuedRenderEnabled()) {
++        if (!renderQueue_)
++            renderQueue_ = dispatch_queue_create("winemetalgl.render", dispatch_queue_attr_make_with_qos_class(
++                                                     DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, 0));
++        render_ = makeQueuedRenderEncoder(render_, renderQueue_);
+     }
+     stats::passStarted(target.width, target.height);
+     target_ = target;
+diff --git a/src/core/metal/queued_render_encoder.h b/src/core/metal/queued_render_encoder.h
+new file mode 100644
+--- /dev/null
++++ b/src/core/metal/queued_render_encoder.h
+@@ -0,0 +1,12 @@
++#pragma once
++
++#import <Metal/Metal.h>
++#include <dispatch/dispatch.h>
++
++namespace wmgl {
++
++bool queuedRenderEnabled();
++id<MTLRenderCommandEncoder> makeQueuedRenderEncoder(id<MTLRenderCommandEncoder> encoder,
++                                                     dispatch_queue_t queue);
++
++}  // namespace wmgl
+diff --git a/src/core/metal/queued_render_encoder.mm b/src/core/metal/queued_render_encoder.mm
+new file mode 100644
+--- /dev/null
++++ b/src/core/metal/queued_render_encoder.mm
+@@ -0,0 +1,301 @@
++#include "core/metal/queued_render_encoder.h"
++
++#include <array>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <memory>
++#include <utility>
++#include <vector>
++
++namespace {
++
++constexpr size_t kCommandsPerBatch = 96;
++constexpr size_t kInitialPayloadWords = 1024;
++
++enum class Op : uint8_t {
++    VertexBuffer, FragmentBuffer, VertexOffset, FragmentOffset,
++    VertexBytes, FragmentBytes, VertexTexture, FragmentTexture, VertexSampler, FragmentSampler,
++    Pipeline, DepthStencil, Viewports, Scissors, Cull, Winding, Fill, DepthClip, DepthBias,
++    Stencil, Blend, Visibility, Resource, Draw, Indexed, ColorStore, DepthStore, StencilStore,
++};
++
++struct Command {
++    Op op;
++    id object = nil;
++    std::array<NSUInteger, 7> args{};
++};
++
++struct Batch {
++    explicit Batch(id<MTLRenderCommandEncoder> target) : encoder(target) {
++        commands.reserve(kCommandsPerBatch);
++        payload.reserve(kInitialPayloadWords);
++    }
++
++    size_t copy(const void* source, size_t bytes) {
++        const size_t offset = payload.size();
++        if (bytes) {
++            payload.resize(offset + (bytes + sizeof(uint64_t) - 1) / sizeof(uint64_t));
++            std::memcpy(payload.data() + offset, source, bytes);
++        }
++        return offset;
++    }
++
++    id<MTLRenderCommandEncoder> encoder;
++    std::vector<Command> commands;
++    std::vector<uint64_t> payload;
++    std::vector<MTLViewport> viewports;
++    std::vector<MTLScissorRect> scissors;
++};
++
++NSUInteger floatWord(float value) {
++    uint32_t word;
++    std::memcpy(&word, &value, sizeof word);
++    return word;
++}
++
++float asFloat(NSUInteger word) {
++    const uint32_t bits = static_cast<uint32_t>(word);
++    float value;
++    std::memcpy(&value, &bits, sizeof value);
++    return value;
++}
++
++void issue(Batch& batch) {
++    id<MTLRenderCommandEncoder> encoder = batch.encoder;
++    for (const Command& command : batch.commands) {
++        const auto& a = command.args;
++        id object = command.object;
++        switch (command.op) {
++            case Op::VertexBuffer: [encoder setVertexBuffer:object offset:a[0] atIndex:a[1]]; break;
++            case Op::FragmentBuffer: [encoder setFragmentBuffer:object offset:a[0] atIndex:a[1]]; break;
++            case Op::VertexOffset: [encoder setVertexBufferOffset:a[0] atIndex:a[1]]; break;
++            case Op::FragmentOffset: [encoder setFragmentBufferOffset:a[0] atIndex:a[1]]; break;
++            case Op::VertexBytes: [encoder setVertexBytes:(a[1] ? batch.payload.data() + a[0] : nullptr)
++                                                   length:a[1] atIndex:a[2]]; break;
++            case Op::FragmentBytes: [encoder setFragmentBytes:(a[1] ? batch.payload.data() + a[0] : nullptr)
++                                                       length:a[1] atIndex:a[2]]; break;
++            case Op::VertexTexture: [encoder setVertexTexture:object atIndex:a[0]]; break;
++            case Op::FragmentTexture: [encoder setFragmentTexture:object atIndex:a[0]]; break;
++            case Op::VertexSampler: [encoder setVertexSamplerState:object atIndex:a[0]]; break;
++            case Op::FragmentSampler: [encoder setFragmentSamplerState:object atIndex:a[0]]; break;
++            case Op::Pipeline: [encoder setRenderPipelineState:object]; break;
++            case Op::DepthStencil: [encoder setDepthStencilState:object]; break;
++            case Op::Viewports:
++                [encoder setViewports:batch.viewports.data() + a[0] count:a[1]];
++                break;
++            case Op::Scissors:
++                [encoder setScissorRects:batch.scissors.data() + a[0] count:a[1]];
++                break;
++            case Op::Cull: [encoder setCullMode:static_cast<MTLCullMode>(a[0])]; break;
++            case Op::Winding: [encoder setFrontFacingWinding:static_cast<MTLWinding>(a[0])]; break;
++            case Op::Fill: [encoder setTriangleFillMode:static_cast<MTLTriangleFillMode>(a[0])]; break;
++            case Op::DepthClip: [encoder setDepthClipMode:static_cast<MTLDepthClipMode>(a[0])]; break;
++            case Op::DepthBias: [encoder setDepthBias:asFloat(a[0]) slopeScale:asFloat(a[1]) clamp:asFloat(a[2])]; break;
++            case Op::Stencil: [encoder setStencilFrontReferenceValue:a[0] backReferenceValue:a[1]]; break;
++            case Op::Blend: [encoder setBlendColorRed:asFloat(a[0]) green:asFloat(a[1]) blue:asFloat(a[2]) alpha:asFloat(a[3])]; break;
++            case Op::Visibility: [encoder setVisibilityResultMode:static_cast<MTLVisibilityResultMode>(a[0]) offset:a[1]]; break;
++            case Op::Resource: [encoder useResource:object usage:static_cast<MTLResourceUsage>(a[0])
++                                             stages:static_cast<MTLRenderStages>(a[1])]; break;
++            case Op::Draw: [encoder drawPrimitives:static_cast<MTLPrimitiveType>(a[0]) vertexStart:a[1]
++                                       vertexCount:a[2] instanceCount:a[3] baseInstance:a[4]]; break;
++            case Op::Indexed: [encoder drawIndexedPrimitives:static_cast<MTLPrimitiveType>(a[0])
++                                                  indexCount:a[1] indexType:static_cast<MTLIndexType>(a[2])
++                                                  indexBuffer:object indexBufferOffset:a[3] instanceCount:a[4]
++                                                   baseVertex:static_cast<NSInteger>(a[5]) baseInstance:a[6]]; break;
++            case Op::ColorStore: [encoder setColorStoreAction:static_cast<MTLStoreAction>(a[0]) atIndex:a[1]]; break;
++            case Op::DepthStore: [encoder setDepthStoreAction:static_cast<MTLStoreAction>(a[0])]; break;
++            case Op::StencilStore: [encoder setStencilStoreAction:static_cast<MTLStoreAction>(a[0])]; break;
++        }
++    }
++}
++
++void consume(void* opaque) {
++    @autoreleasepool {
++        std::unique_ptr<Batch> batch(static_cast<Batch*>(opaque));
++        issue(*batch);
++    }
++}
++
++FILE* encoderLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_QUEUED_RENDER_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (file) std::setvbuf(file, nullptr, _IOLBF, 0);
++        return file;
++    }();
++    return log;
++}
++
++}  // namespace
++
++@interface WMGLQueuedRenderEncoder : NSProxy
++- (instancetype)initWithEncoder:(id<MTLRenderCommandEncoder>)encoder queue:(dispatch_queue_t)queue;
++@end
++
++@implementation WMGLQueuedRenderEncoder {
++    id<MTLRenderCommandEncoder> encoder_;
++    dispatch_queue_t queue_;
++    std::unique_ptr<Batch> pending_;
++    FILE* log_;
++    size_t batches_, commands_, bytes_, synchronous_;
++}
++
++- (instancetype)initWithEncoder:(id<MTLRenderCommandEncoder>)encoder queue:(dispatch_queue_t)queue {
++    encoder_ = encoder;
++    queue_ = queue;
++    log_ = encoderLog();
++    return self;
++}
++
++- (void)flushPending {
++    if (!pending_) return;
++    if (log_) {
++        ++batches_;
++        commands_ += pending_->commands.size();
++        bytes_ += pending_->payload.size() * sizeof(uint64_t) +
++                  pending_->viewports.size() * sizeof(MTLViewport) + pending_->scissors.size() * sizeof(MTLScissorRect);
++    }
++    dispatch_async_f(queue_, pending_.release(), consume);
++}
++
++- (Batch&)batch {
++    if (!pending_) pending_ = std::make_unique<Batch>(encoder_);
++    return *pending_;
++}
++
++- (void)record:(Command)command {
++    auto& batch = [self batch];
++    batch.commands.push_back(std::move(command));
++    if (batch.commands.size() == kCommandsPerBatch) [self flushPending];
++}
++
++- (NSMethodSignature*)methodSignatureForSelector:(SEL)selector {
++    return [(NSObject*)encoder_ methodSignatureForSelector:selector];
++}
++
++- (void)forwardInvocation:(NSInvocation*)invocation {
++    if (log_) ++synchronous_;
++    [self flushPending];
++    dispatch_sync(queue_, ^{ [invocation invokeWithTarget:encoder_]; });
++}
++
++- (BOOL)respondsToSelector:(SEL)selector { return [encoder_ respondsToSelector:selector]; }
++- (BOOL)conformsToProtocol:(Protocol*)protocol { return [encoder_ conformsToProtocol:protocol]; }
++
++- (void)endEncoding {
++    [self flushPending];
++    dispatch_sync(queue_, ^{ [encoder_ endEncoding]; });
++    if (log_) std::fprintf(log_, "%zu %zu %zu %zu\n", commands_, batches_, bytes_, synchronous_);
++}
++
++#define WMGL_BUFFER_SETTER(NAME, OP) \
++- (void)NAME:(id<MTLBuffer>)buffer offset:(NSUInteger)offset atIndex:(NSUInteger)index { \
++    [self record:Command{Op::OP, buffer, {offset, index}}]; \
++}
++WMGL_BUFFER_SETTER(setVertexBuffer, VertexBuffer)
++WMGL_BUFFER_SETTER(setFragmentBuffer, FragmentBuffer)
++#undef WMGL_BUFFER_SETTER
++
++#define WMGL_OFFSET_SETTER(NAME, OP) \
++- (void)NAME:(NSUInteger)offset atIndex:(NSUInteger)index { \
++    [self record:Command{Op::OP, nil, {offset, index}}]; \
++}
++WMGL_OFFSET_SETTER(setVertexBufferOffset, VertexOffset)
++WMGL_OFFSET_SETTER(setFragmentBufferOffset, FragmentOffset)
++#undef WMGL_OFFSET_SETTER
++
++#define WMGL_BYTES_SETTER(NAME, OP) \
++- (void)NAME:(const void*)data length:(NSUInteger)bytes atIndex:(NSUInteger)index { \
++    size_t offset = [self batch].copy(data, bytes); \
++    [self record:Command{Op::OP, nil, {offset, bytes, index}}]; \
++}
++WMGL_BYTES_SETTER(setVertexBytes, VertexBytes)
++WMGL_BYTES_SETTER(setFragmentBytes, FragmentBytes)
++#undef WMGL_BYTES_SETTER
++
++#define WMGL_INDEXED_OBJECT(NAME, TYPE, OP) \
++- (void)NAME:(id<TYPE>)object atIndex:(NSUInteger)index { \
++    [self record:Command{Op::OP, object, {index}}]; \
++}
++WMGL_INDEXED_OBJECT(setVertexTexture, MTLTexture, VertexTexture)
++WMGL_INDEXED_OBJECT(setFragmentTexture, MTLTexture, FragmentTexture)
++WMGL_INDEXED_OBJECT(setVertexSamplerState, MTLSamplerState, VertexSampler)
++WMGL_INDEXED_OBJECT(setFragmentSamplerState, MTLSamplerState, FragmentSampler)
++#undef WMGL_INDEXED_OBJECT
++
++- (void)setRenderPipelineState:(id<MTLRenderPipelineState>)state { [self record:Command{Op::Pipeline, state}]; }
++- (void)setDepthStencilState:(id<MTLDepthStencilState>)state { [self record:Command{Op::DepthStencil, state}]; }
++- (void)setViewports:(const MTLViewport*)viewports count:(NSUInteger)count {
++    if (!count) { [self flushPending]; dispatch_sync(queue_, ^{ [encoder_ setViewports:viewports count:count]; }); return; }
++    auto& saved = [self batch].viewports;
++    const size_t offset = saved.size();
++    saved.insert(saved.end(), viewports, viewports + count);
++    [self record:Command{Op::Viewports, nil, {offset, count}}];
++}
++- (void)setScissorRects:(const MTLScissorRect*)rects count:(NSUInteger)count {
++    if (!count) { [self flushPending]; dispatch_sync(queue_, ^{ [encoder_ setScissorRects:rects count:count]; }); return; }
++    auto& saved = [self batch].scissors;
++    const size_t offset = saved.size();
++    saved.insert(saved.end(), rects, rects + count);
++    [self record:Command{Op::Scissors, nil, {offset, count}}];
++}
++
++#define WMGL_ENUM_SETTER(NAME, TYPE, OP) \
++- (void)NAME:(TYPE)value { [self record:Command{Op::OP, nil, {static_cast<NSUInteger>(value)}}]; }
++WMGL_ENUM_SETTER(setCullMode, MTLCullMode, Cull)
++WMGL_ENUM_SETTER(setFrontFacingWinding, MTLWinding, Winding)
++WMGL_ENUM_SETTER(setTriangleFillMode, MTLTriangleFillMode, Fill)
++WMGL_ENUM_SETTER(setDepthClipMode, MTLDepthClipMode, DepthClip)
++WMGL_ENUM_SETTER(setDepthStoreAction, MTLStoreAction, DepthStore)
++WMGL_ENUM_SETTER(setStencilStoreAction, MTLStoreAction, StencilStore)
++#undef WMGL_ENUM_SETTER
++
++- (void)setColorStoreAction:(MTLStoreAction)action atIndex:(NSUInteger)index {
++    [self record:Command{Op::ColorStore, nil, {action, index}}];
++}
++- (void)setDepthBias:(float)bias slopeScale:(float)scale clamp:(float)clamp {
++    [self record:Command{Op::DepthBias, nil, {floatWord(bias), floatWord(scale), floatWord(clamp)}}];
++}
++- (void)setStencilFrontReferenceValue:(uint32_t)front backReferenceValue:(uint32_t)back {
++    [self record:Command{Op::Stencil, nil, {front, back}}];
++}
++- (void)setBlendColorRed:(float)red green:(float)green blue:(float)blue alpha:(float)alpha {
++    [self record:Command{Op::Blend, nil, {floatWord(red), floatWord(green), floatWord(blue), floatWord(alpha)}}];
++}
++- (void)setVisibilityResultMode:(MTLVisibilityResultMode)mode offset:(NSUInteger)offset {
++    [self record:Command{Op::Visibility, nil, {mode, offset}}];
++}
++- (void)useResource:(id<MTLResource>)resource usage:(MTLResourceUsage)usage stages:(MTLRenderStages)stages {
++    [self record:Command{Op::Resource, resource, {usage, stages}}];
++}
++- (void)drawPrimitives:(MTLPrimitiveType)primitive vertexStart:(NSUInteger)first vertexCount:(NSUInteger)count
++         instanceCount:(NSUInteger)instances baseInstance:(NSUInteger)baseInstance {
++    [self record:Command{Op::Draw, nil, {primitive, first, count, instances, baseInstance}}];
++}
++- (void)drawIndexedPrimitives:(MTLPrimitiveType)primitive indexCount:(NSUInteger)count
++                    indexType:(MTLIndexType)type indexBuffer:(id<MTLBuffer>)buffer
++              indexBufferOffset:(NSUInteger)offset instanceCount:(NSUInteger)instances
++                     baseVertex:(NSInteger)base baseInstance:(NSUInteger)baseInstance {
++    [self record:Command{Op::Indexed, buffer,
++                         {primitive, count, type, offset, instances, static_cast<NSUInteger>(base), baseInstance}}];
++}
++@end
++
++namespace wmgl {
++
++bool queuedRenderEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_QUEUED_RENDER");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
++id<MTLRenderCommandEncoder> makeQueuedRenderEncoder(id<MTLRenderCommandEncoder> encoder, dispatch_queue_t queue) {
++    return (id<MTLRenderCommandEncoder>)[[WMGLQueuedRenderEncoder alloc] initWithEncoder:encoder queue:queue];
++}
++
++}  // namespace wmgl

@@ -2506,3 +2506,26 @@ The diagnostic produced three versions of the caller with **422–431 original i
 | Both calls expanded | 140.34 | 12.33 ms |
 
 The two pairs changed by **−0.40 and +1.33 FPS**. P99 changed by **−0.08 and +0.17 ms**. Keep the original preparation path as the benchmark baseline. All four 60-second launches and the compiler diagnostic verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible trial windows or activations. The expanded path passed both focused differential cases and **805** general i386 checks. [Full-raid timing and validation](results/raid-aarchx-prep-inline-ab.json)
+
+### Encode the live Metal render pass on a serial worker
+
+Apply `patches/winemetalgl-queued-render-encoder-trial.patch` to the accepted WineMetalGL source layers. Build one arm64 Release renderer with ThinLTO and PGO disabled. Both modes use that dylib and the same accepted profiled AArchX runtime. Set `WINEMETALGL_QUEUED_RENDER=1` for the candidate and `0` for control.
+
+The OpenGL thread still validates the draw and resolves its resources. Common Metal state, binding and draw calls become typed records in batches of up to **96** commands. Batches retain object arguments and copy immediate data and viewport/scissor arrays before the caller returns. A serial worker issues each record to the original Metal encoder in submission order. Other methods drain preceding records and forward synchronously. Store actions and pass closure finish before the calling thread can commit the buffer.
+
+Use four warmed 60-second windows in control, queued, queued, control order. Store the mode and logging bit in `queued-render-mode.txt`. In a separate 25-second queued launch under `diagnostic`, set `OCERZ_WMGL_QUEUED_RENDER_LOG` to `queued-encoder.tsv` and attach Time Profiler to that launch after the fixture loads. The TSV counts the whole diagnostic launch, including startup. Export the 9-second profile to `encoder-cpu.xml` with the `time-profile` table.
+
+Save the two GPU suite results under `gpu-tests-0.log` and `gpu-tests-1.log`. Record the indexed replay of `benchmarks/fixtures/raid-triangle-order.tsv` with three in-flight outputs in `replay-0.log` and `replay-1.log`.
+
+```sh
+python3 benchmarks/summarize-raid-queued-render.py CAPTURE_ROOT
+```
+
+| Render encoder | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Calling thread | 133.80 | 12.27 ms |
+| Serial worker | 133.13 | 12.31 ms |
+
+The queued mode lost **1.10 and 0.25 FPS** in the two pairs. P99 changed by **−0.03 and +0.11 ms**. The standalone indexed replay returned the same RGBA hash and **161,327** colored pixels in both modes. Both modes passed **343** GPU tests. The full-raid diagnostic and all four timing runs verified the saved camera, overlapping effects, all 26 timed rows, consecutive GPU completions and zero visible trial windows or activations. [Live timings and pixel checks](results/raid-winemetalgl-queued-render-ab.json)
+
+The diagnostic logged **21,881,427** queued commands in **235,241** batches, with zero synchronous forwards. The Time Profiler export covered **9.51 seconds** of samples. It attributed **355 ms** of running-sample weight to the worker consuming batches and **271 ms** to the proxy on the game thread. Within that main-thread total, recording commands accounted for **116 ms** and closing encoders for **79 ms**. These are observed running-sample weights from the queued mode. The uninstrumented A/B supplies the throughput comparison. The calling-thread encoder remains the benchmark baseline. [Worker and caller samples](results/raid-winemetalgl-queued-render-ab.json)
