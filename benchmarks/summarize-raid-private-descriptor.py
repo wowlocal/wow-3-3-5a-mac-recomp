@@ -29,13 +29,14 @@ FPS = "average_completed_fps"
 P99 = "p99_gpu_completion_gap_ns"
 
 
-def verify_run(folder, mode, logging, seconds, artifacts, mode_file="raid-descriptor-mode.txt"):
+def verify_run(folder, mode, logging, seconds, artifacts, mode_file="raid-descriptor-mode.txt", *,
+               counter_file="raid-descriptor.bin", render_logging=0):
     settings = {
         mode_file: [str(mode), str(logging)],
         "pgo-mode.txt": ["candidate", "0"],
         "map-shadow-mode.txt": ["1", "0"],
         "pass-mode.txt": ["64", str(logging)],
-        "render-end-mode.txt": ["deferred", "0"],
+        "render-end-mode.txt": ["deferred", str(render_logging)],
     }
     for name, expected in settings.items():
         if (folder / name).read_text().split() != expected:
@@ -44,7 +45,7 @@ def verify_run(folder, mode, logging, seconds, artifacts, mode_file="raid-descri
             json.loads((folder / "artifact-sha256.json").read_text()) != artifacts or
             json.loads((folder / "legacy.json").read_text()) != {
                 "legacy_paused": True, "legacy_completed_frames_during_launch": 0,
-            } or any((folder / name).is_file() != bool(logging) for name in ("submissions.ns", "raid-descriptor.bin"))):
+            } or any((folder / name).is_file() != bool(logging) for name in ("submissions.ns", counter_file))):
         raise ValueError(f"Different runtime, renderer or isolation in {folder}")
     return READ_WINDOW(folder, seconds)
 
@@ -66,9 +67,10 @@ def describe_counters(counters):
     }
 
 
-def descriptor_counter_samples(folder, slots=16):
-    all_counts = struct.unpack(f"<{slots}Q", (folder / "raid-descriptor.bin").read_bytes())
-    gate = json.loads((folder / "descriptor-gate.json").read_text())
+def descriptor_counter_samples(folder, slots=16, *, counter_file="raid-descriptor.bin",
+                               gate_file="descriptor-gate.json"):
+    all_counts = struct.unpack(f"<{slots}Q", (folder / counter_file).read_bytes())
+    gate = json.loads((folder / gate_file).read_text())
     start, end = gate["start"], gate["end"]
     window = json.loads((folder / "window.json").read_text())
     by_end, _ = LIFE["render_submissions"](folder / "submissions.ns", window["pid"])

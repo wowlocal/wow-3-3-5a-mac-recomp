@@ -1,0 +1,378 @@
+--- a/include/ocerz/cpu.h
++++ b/include/ocerz/cpu.h
+@@ -186,6 +186,7 @@
+         uint32_t worker_context, worker_frame;
+         uint32_t pending_from_worker, prior_from_worker, read_from_worker;
+     } raid_descriptor;         /* optional, private i386 dispatch trial */
++    struct { uint32_t original_sp, frame; } raid_scene_args;
+ } OcerzCPU;
+
+ #define OCERZ_RAS_SIZE 256
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19588,6 +19588,198 @@
+     return state == 1 && rip == target;
+ }
+
++enum {
++    SCENE_PACKET_CALL = 0x9806ae, SCENE_PACKET_RETURN = 0x9806b3,
++    SCENE_PACKET_RESERVE = 64, SCENE_PACKET_FRAME = 0x2d8,
++    SCENE_PACKET_SCALE = 0x200, SCENE_PACKET_OFFSET = 0x23c,
++};
++
++enum {
++    SCENE_ARGS_ENTRY, SCENE_ARGS_PACKED, SCENE_ARGS_FALLBACK,
++    SCENE_ARGS_RETURNED, SCENE_ARGS_UNEXPECTED_SP, SCENE_ARGS_MISMATCH,
++    SCENE_ARGS_COUNTERS,
++};
++
++#define SCENE_ARGS_OFF(field) ((uint32_t)offsetof(OcerzCPU, raid_scene_args.field))
++_Static_assert(offsetof(OcerzCPU, raid_scene_args.frame) < 16384,
++               "scene arguments must fit the scaled A64 CPU offsets");
++
++static int scene_packet_site(uint64_t pc)
++{
++    return pc == SCENE_PACKET_CALL || pc == SCENE_PACKET_RETURN;
++}
++
++static pthread_once_t scene_args_once = PTHREAD_ONCE_INIT;
++static void *scene_args_log;
++
++static void init_scene_args_log(void)
++{
++    const char *path = getenv("OCERZ_M32_SCENE_ARGS_LOG");
++    if (!path || !*path) return;
++    int lse = 0;
++    size_t len = sizeof lse;
++    if (sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &len, NULL, 0) || !lse)
++        return;
++    int fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return;
++    const size_t size = SCENE_ARGS_COUNTERS * sizeof(uint64_t);
++    if (ftruncate(fd, (off_t)size) == 0) {
++        void *mapping = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (mapping != MAP_FAILED)
++            scene_args_log = mapping;
++    }
++    close(fd);
++}
++
++static void emit_scene_args_count(A64Buf *b, unsigned index)
++{
++    if (!scene_args_log) return;
++    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)scene_args_log + 8 * index);
++    a64_movz(b, JT1, 1, 0);
++    a64_emit32(b, 0xf82a013fu); /* LDADD X10, XZR, [X9] */
++}
++
++static uint32_t *emit_scene_args_nonzero(A64Buf *b, int reg)
++{
++    uint32_t *branch = a64_label(b);
++    a64_cbnz(b, 0, reg, 0);
++    return branch;
++}
++
++static void emit_scene_args_enter(A64Buf *b)
++{
++    uint32_t *fail[7];
++    unsigned checks = 0;
++    emit_scene_args_count(b, SCENE_ARGS_ENTRY);
++    a64_ldr(b, 4, JTT, 20, SCENE_ARGS_OFF(original_sp));
++    fail[checks++] = emit_scene_args_nonzero(b, JTT);
++    emit_gpr_rd(b, 0, JT0, OCERZ_RSP);
++    emit_gpr_rd(b, 0, JT2, OCERZ_RBP);
++    a64_add_imm(b, 0, JT1, JT0, SCENE_PACKET_FRAME);
++    a64_eor_reg(b, 0, JT1, JT1, JT2, 0);
++    fail[checks++] = emit_scene_args_nonzero(b, JT1);
++    a64_ubfx(b, 0, JT1, JT0, 0, 4);
++    fail[checks++] = emit_scene_args_nonzero(b, JT1);
++
++    /* All inputs and the new packet occupy the same writable stack page.
++     * The lower half-page remains available for the original callee. */
++    a64_ubfx(b, 0, JT1, JT0, 0, 12);
++    a64_sub_imm(b, 0, JTT, JT1, 0x800);
++    a64_lsr_imm(b, 0, JTT, JTT, 31);
++    fail[checks++] = emit_scene_args_nonzero(b, JTT);
++    a64_add_imm(b, 0, JT1, JT1, SCENE_PACKET_OFFSET + 11);
++    a64_lsr_imm(b, 0, JT1, JT1, 12);
++    fail[checks++] = emit_scene_args_nonzero(b, JT1);
++    a64_add_ext_uxtw(b, JTA, JGB, JT0, 0);
++    for (int arg = 0; arg < 2; ++arg) {
++        a64_ldr(b, 4, JTT, JTA, 8 + 4 * arg);
++        a64_add_imm(b, 0, JT1, JT0, arg ? SCENE_PACKET_OFFSET : SCENE_PACKET_SCALE);
++        a64_eor_reg(b, 0, JT1, JT1, JTT, 0);
++        fail[checks++] = emit_scene_args_nonzero(b, JT1);
++    }
++
++    a64_sub_imm(b, 1, JTU, JTA, SCENE_PACKET_RESERVE);
++    for (int word = 0; word < 3; ++word) {
++        a64_ldr(b, 8, JTT, JTA, 8 * word);
++        a64_str(b, 8, JTT, JTU, 8 * word);
++    }
++    for (int word = 0; word < 3; ++word) {
++        a64_ldr(b, 4, JTT, JTA, SCENE_PACKET_SCALE + 4 * word);
++        a64_str(b, 4, JTT, JTU, 24 + 4 * word);
++        a64_ldr(b, 4, JTT, JTA, SCENE_PACKET_OFFSET + 4 * word);
++        a64_str(b, 4, JTT, JTU, 36 + 4 * word);
++    }
++    a64_str(b, 4, JT0, 20, SCENE_ARGS_OFF(original_sp));
++    a64_str(b, 4, JT2, 20, SCENE_ARGS_OFF(frame));
++    a64_sub_imm(b, 0, JT0, JT0, SCENE_PACKET_RESERVE);
++    a64_add_imm(b, 0, JTT, JT0, 24);
++    a64_str(b, 4, JTT, JTU, 8);
++    a64_add_imm(b, 0, JTT, JT0, 36);
++    a64_str(b, 4, JTT, JTU, 12);
++    emit_gpr_wr(b, JT0, OCERZ_RSP);
++    emit_scene_args_count(b, SCENE_ARGS_PACKED);
++    uint32_t *done = a64_label(b); a64_b(b, 0);
++    for (unsigned i = 0; i < checks; ++i)
++        a64_patch_cbz(fail[i], a64_label(b));
++    emit_scene_args_count(b, SCENE_ARGS_FALLBACK);
++    a64_patch_b(done, a64_label(b));
++}
++
++static void emit_scene_args_packet_check(A64Buf *b)
++{
++    /* JTA holds the original host address, JTU the copied host address.
++     * The two pointer arguments are the only intentional differences. */
++    uint32_t *fail[12];
++    unsigned checks = 0;
++    for (int word = 0; word < 6; ++word) {
++        if (word == 2 || word == 3) {
++            a64_add_imm(b, 0, JT1, JT2, word == 2 ? 24 : 36);
++        } else {
++            a64_ldr(b, 4, JT1, JTA, 4 * word);
++        }
++        a64_ldr(b, 4, JTT, JTU, 4 * word);
++        a64_eor_reg(b, 0, JTT, JTT, JT1, 0);
++        fail[checks++] = emit_scene_args_nonzero(b, JTT);
++    }
++    for (int word = 0; word < 6; ++word) {
++        a64_ldr(b, 4, JT1, JTA, word < 3 ? SCENE_PACKET_SCALE + 4 * word
++                                        : SCENE_PACKET_OFFSET + 4 * (word - 3));
++        a64_ldr(b, 4, JTT, JTU, 24 + 4 * word);
++        a64_eor_reg(b, 0, JTT, JTT, JT1, 0);
++        fail[checks++] = emit_scene_args_nonzero(b, JTT);
++    }
++    uint32_t *ok = a64_label(b); a64_b(b, 0);
++    for (unsigned i = 0; i < checks; ++i)
++        a64_patch_cbz(fail[i], a64_label(b));
++    emit_scene_args_count(b, SCENE_ARGS_MISMATCH);
++    a64_patch_b(ok, a64_label(b));
++}
++
++static void emit_scene_args_return(A64Buf *b)
++{
++    a64_ldr(b, 4, JT0, 20, SCENE_ARGS_OFF(original_sp));
++    uint32_t *idle = a64_label(b); a64_cbz(b, 0, JT0, 0);
++    a64_ldr(b, 4, JT1, 20, SCENE_ARGS_OFF(frame));
++    emit_gpr_rd(b, 0, JTT, OCERZ_RBP);
++    a64_eor_reg(b, 0, JTT, JTT, JT1, 0);
++    uint32_t *other_frame = emit_scene_args_nonzero(b, JTT);
++    a64_sub_imm(b, 0, JT2, JT0, SCENE_PACKET_RESERVE);
++    emit_gpr_rd(b, 0, JTT, OCERZ_RSP);
++    a64_eor_reg(b, 0, JTT, JTT, JT2, 0);
++    uint32_t *unexpected = emit_scene_args_nonzero(b, JTT);
++
++    if (scene_args_log) {
++        a64_add_ext_uxtw(b, JTA, JGB, JT0, 0);
++        a64_add_ext_uxtw(b, JTU, JGB, JT2, 0);
++        emit_scene_args_packet_check(b);
++        a64_ldr(b, 4, JT0, 20, SCENE_ARGS_OFF(original_sp));
++    }
++    emit_gpr_wr(b, JT0, OCERZ_RSP);
++    a64_str(b, 4, A64_ZR, 20, SCENE_ARGS_OFF(original_sp));
++    emit_scene_args_count(b, SCENE_ARGS_RETURNED);
++    uint32_t *done = a64_label(b); a64_b(b, 0);
++    a64_patch_cbz(unexpected, a64_label(b));
++    emit_scene_args_count(b, SCENE_ARGS_UNEXPECTED_SP);
++    a64_patch_b(done, a64_label(b));
++    a64_patch_cbz(other_frame, a64_label(b));
++    a64_patch_cbz(idle, a64_label(b));
++}
++
++static void emit_scene_packet(A64Buf *b, const X86Insn *insn)
++{
++    if (g_pin_class != 3 || !jgb_usable() || !ocerz_guest_base || g_lowptr)
++        return;
++    /* Recheck both original instruction encodings in the same guest page. */
++    static const unsigned char sites[] = {0xe8,0xed,0x45,0xfe,0xff,0xe9,0x68,0xff,0xff,0xff};
++    if (memcmp(ocerz_g2h(SCENE_PACKET_CALL), sites, sizeof sites))
++        return;
++    pthread_once(&scene_args_once, init_scene_args_log);
++    if (insn->rip == SCENE_PACKET_CALL)
++        emit_scene_args_enter(b);
++    else
++        emit_scene_args_return(b);
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+ static int g_ind_treg;
+@@ -26396,6 +26588,8 @@
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int scene_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                            ENV_ON("OCERZ_M32_SCENE_ARGS");
+     const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                            raid_desc_enabled();
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+@@ -26413,6 +26607,8 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && scene_trace && scene_packet_site(vpc))
++                    break;
+                 if (vn && prep_trace && (raid_desc_marker(vpc) || (vpc == RAID_BATCH_ENTRY && raid_batch_enabled())))
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+@@ -27344,6 +27540,8 @@
+         g_ea_plain = 0;
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
++        if (i == 0 && scene_trace && scene_packet_site(rip))
++            emit_scene_packet(&b, insn);
+         if (i == 0 && prep_trace && raid_desc_marker(rip))
+             emit_raid_desc_marker(&b, insn);
+         if (i == 0 && fps_watch(rip)) {
+--- /dev/null
++++ b/tests/unit/test_scene_args.c
+@@ -0,0 +1,137 @@
++#include "ocerz/cpu.h"
++#include "ocerz/flags.h"
++#include "ocerz/interp.h"
++#include "ocerz/types.h"
++
++#include "ocerz/jit.h"
++#include "ocerz/mem.h"
++#include "ocerz/syscall.h"
++#include "ocerz/vm.h"
++
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++
++enum {
++    CALL_SITE = 0x9806ae, CONTINUE_AT = 0x980620, CALLEE = 0x964ca0,
++    STACK_PAGE = 0x508000, STACK = 0x508960, DATA = 0x510000, DONE = CONTINUE_AT,
++    CS32 = 0xf, PRESERVED_FLAGS = 0x8d5,
++};
++
++static OcerzVM vm;
++
++static void write_code(uint32_t address, const uint8_t *data, size_t length)
++{
++    memcpy(ocerz_g2h(address), data, length);
++}
++
++static int check_case(const char *name, uint32_t before_sp, uint32_t base, int swap, int uses_packet)
++{
++    OcerzCPU *cpu = &vm.cpu;
++    ocerz_cpu_reset(cpu);
++    cpu->mode32 = 1;
++    cpu->seg_sel[OCERZ_SREG_CS] = cpu->cs_sel = CS32;
++    cpu->gpr[OCERZ_RSP] = before_sp;
++    cpu->gpr[OCERZ_RBP] = base;
++    cpu->gpr[OCERZ_RBX] = 0x67212700;
++    cpu->gpr[OCERZ_RSI] = 0x88320011;
++    cpu->gpr[OCERZ_RDI] = 0x12788244;
++    cpu->rflags = 0xa97;
++    cpu->rip = CALL_SITE;
++
++    memset(ocerz_g2h(STACK_PAGE), 0xe5, 0x4000);
++    memset(ocerz_g2h(DATA), 0xdc, 0x4000);
++    uint32_t a = base - 0xd8, b = base - 0x9c;
++    uint32_t vec_a[] = {0x80000000, 0x7fc02a19, 0x3d15e1c4};
++    uint32_t vec_b[] = {0xc0480000, 0x00000001, 0x7f800000};
++    uint32_t args[] = {DATA, 0x3faf8073, swap ? b : a, swap ? a : b, 0x7fffffff, 0xf016c4de};
++    memcpy(ocerz_g2h(a), vec_a, sizeof vec_a);
++    memcpy(ocerz_g2h(b), vec_b, sizeof vec_b);
++    memcpy(ocerz_g2h(before_sp), args, sizeof args);
++
++    for (unsigned step = 0; step < 64 && cpu->rip != DONE; ++step)
++        if (ocerz_jit_step(&vm, cpu) != OCERZ_STEP_OK)
++            break;
++    ocerz_flags_materialize(cpu);
++
++    const uint32_t *actual = ocerz_g2h(DATA);
++    uint32_t expected_sp = before_sp - (uses_packet ? 64 : 0);
++    uint32_t expected[] = {
++        args[1], args[4], args[5],
++        swap ? vec_b[0] : vec_a[0], swap ? vec_b[1] : vec_a[1], swap ? vec_b[2] : vec_a[2],
++        swap ? vec_a[0] : vec_b[0], swap ? vec_a[1] : vec_b[1], swap ? vec_a[2] : vec_b[2],
++        expected_sp, uses_packet ? expected_sp + 24 : args[2], uses_packet ? expected_sp + 36 : args[3],
++    };
++    if (cpu->rip != DONE || (uint32_t)cpu->gpr[OCERZ_RSP] != before_sp ||
++        (uint32_t)cpu->gpr[OCERZ_RBP] != base ||
++        (uint32_t)cpu->gpr[OCERZ_RBX] != 0x67212700 ||
++        (uint32_t)cpu->gpr[OCERZ_RSI] != 0x88320011 ||
++        (uint32_t)cpu->gpr[OCERZ_RDI] != 0x12788244 ||
++        (cpu->rflags & PRESERVED_FLAGS) != (0xa97 & PRESERVED_FLAGS) ||
++        cpu->raid_scene_args.original_sp ||
++        memcmp(actual, expected, sizeof expected) ||
++        memcmp(ocerz_g2h(before_sp), args, sizeof args) ||
++        memcmp(ocerz_g2h(a), vec_a, sizeof vec_a) ||
++        memcmp(ocerz_g2h(b), vec_b, sizeof vec_b)) {
++        fprintf(stderr, "FAIL %s eip=%#llx sp=%#llx flags=%#llx callee stack=%#x expected=%#x other=%#x\n",
++                name, (unsigned long long)cpu->rip, (unsigned long long)cpu->gpr[OCERZ_RSP],
++                (unsigned long long)cpu->rflags, actual[9], expected_sp, cpu->raid_scene_args.original_sp);
++        return 0;
++    }
++    printf("ok %s packet=%d\n", name, uses_packet);
++    return 1;
++}
++
++int main(void)
++{
++    if (ocerz_mem_init(0x10000, 0x900000000) != OCERZ_OK)
++        return 2;
++    const uint32_t pages[] = {0x980000, 0x964000, STACK_PAGE, DATA};
++    for (unsigned i = 0; i < sizeof pages / sizeof *pages; ++i)
++        if (ocerz_map_fixed(pages[i], 0x4000, PROT_READ | PROT_WRITE) != OCERZ_OK)
++            return 2;
++    ocerz_vm_init(&vm);
++    ocerz_vm_install_handlers(&vm);
++    if (!vm.jit)
++        return 2;
++    ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
++
++    static const uint8_t call[] = {0xe8,0xed,0x45,0xfe,0xff, 0xe9,0x68,0xff,0xff,0xff};
++    static const uint8_t end[] = {0xf4};
++    /* A cdecl callee copies all inputs to the result and exposes its stack
++     * and both actual pointers in three additional witness words. */
++    static const uint8_t callee[] = {
++        0x55, 0x89,0xe5, 0x57,                 /* push ebp, mov ebp,esp, push edi */
++        0x8b,0x7d,0x08,                       /* mov edi,[ebp+8] */
++        0x8b,0x45,0x0c, 0x89,0x07,            /* mov eax,[ebp+12], mov [edi],eax */
++        0x8b,0x45,0x18, 0x89,0x47,0x04,
++        0x8b,0x45,0x1c, 0x89,0x47,0x08,
++        0x8b,0x4d,0x10,                       /* vector input one */
++        0x8b,0x01, 0x89,0x47,0x0c,
++        0x8b,0x41,0x04, 0x89,0x47,0x10,
++        0x8b,0x41,0x08, 0x89,0x47,0x14,
++        0x8b,0x55,0x14,                       /* vector input two */
++        0x8b,0x02, 0x89,0x47,0x18,
++        0x8b,0x42,0x04, 0x89,0x47,0x1c,
++        0x8b,0x42,0x08, 0x89,0x47,0x20,
++        0x8d,0x45,0x08, 0x89,0x47,0x24,       /* original argument base as seen by the callee */
++        0x89,0x4f,0x28, 0x89,0x57,0x2c,
++        0x5f, 0xc9, 0xc3,                     /* pop edi, leave, ret */
++    };
++    write_code(CALL_SITE, call, sizeof call);
++    write_code(CONTINUE_AT, end, sizeof end);
++    write_code(CALLEE, callee, sizeof callee);
++    const char *mode = getenv("OCERZ_M32_SCENE_ARGS");
++    int candidate = mode && strcmp(mode, "1") == 0;
++    unsigned passes = 0;
++    passes += check_case("original-layout", STACK, STACK + 0x2d8, 0, candidate);
++    passes += check_case("unaligned-stack", STACK + 4, STACK + 4 + 0x2d8, 0, 0);
++    passes += check_case("mismatched-frame", STACK, STACK + 0x2dc, 0, 0);
++    passes += check_case("alternate-pointers", STACK, STACK + 0x2d8, 1, 0);
++    passes += check_case("low-stack-page", STACK_PAGE + 0x600, STACK_PAGE + 0x600 + 0x2d8, 0, 0);
++    passes += check_case("cross-page-vector", STACK_PAGE + 0xe00, STACK_PAGE + 0xe00 + 0x2d8, 0, 0);
++    printf("test_scene_args: %u checks, %u failed\n", passes, 6 - passes);
++    return passes == 6 ? 0 : 1;
++}

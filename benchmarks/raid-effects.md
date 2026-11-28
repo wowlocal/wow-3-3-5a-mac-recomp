@@ -2885,3 +2885,28 @@ Both launches preserved the saved camera, overlapping effects and all 26 cast ti
 python3 benchmarks/summarize-raid-scene-footprints.py configure I386_CLIENT CAPTURE_ROOT/scene-pcs.bin
 python3 benchmarks/summarize-raid-scene-footprints.py report I386_CLIENT CAPTURE_ROOT scene-3 scene-4
 ```
+
+### Run the original scene update with private argument storage
+
+Apply `patches/aarchx-m32-raid-scene-argument-packet-trial.patch` after the guarded-word snapshot trial. Leave the scene footprint recorder off. Build one signed ARM64 runtime for both modes and keep the selected deferred PGO renderer. Set `OCERZ_M32_SCENE_ARGS=1` for the candidate with `OCERZ_TCACHE=off`.
+
+At the original call to `0x964ca0`, the candidate reserves 64 bytes of its guest stack and copies the six argument words and both three-float vectors into that space. It adjusts the two vector pointers to refer to the copies. The stack checks cover the original frame size, alignment, both original pointer locations and the page containing the data. A rejected check leaves the original call setup in place. The original callee executes on the game thread. The return hook restores the caller stack at the original continuation.
+
+Run the focused `test_scene_args` binary in both modes with `OCERZ_NO_ARM_EXEC=1` and `OCERZ_TCACHE=off`. Its six cases check the result bytes, actual vector pointers, stack restoration, preserved registers and flags. Five cases exercise fallback for a different frame or pointer layout, missing alignment, or proximity to a page boundary. Save these logs as `focused-control.log` and `focused-candidate.log`. Save the general i386 logs as `general-control.log` and `general-candidate.log`.
+
+Run four warmed 60-second full-raid windows in control, candidate, candidate, control order. Keep both the packet and submission counters off and record the packet and logging switches in `scene-args-mode.txt`. In a separate 25-second launch under `diagnostic-1`, set `OCERZ_M32_SCENE_ARGS_LOG` to `scene-args.bin` and enable submission and encoder logging. Record six little-endian 64-bit counters before and after a five-second interval starting two seconds after the full scene is ready. Use the earlier uptime-bracketed counter format in `scene-args-gate.json`.
+
+The diagnostic compares the four scalar argument words and both vectors bit for bit at the original return and checks that both relocated pointers still point to their private copies. It also checks the stack pointer before restoration. The focused harness compares the outputs of a test callee. The live launches verify the scene, camera, effects and cast timing with the original game code.
+
+The five-second gate covered **714** verified GPU completions. All **37,244** updates used private packets and returned with matching data and the expected stack. The whole diagnostic recorded **303,615** successful copies, four fallbacks and zero unexpected stack pointers or packet mismatches. Both modes passed **812** general i386 checks and **six** focused checks. [Counters, checks and artifact hashes](results/raid-aarchx-scene-argument-packet-ab.json)
+
+| Argument storage | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original stack | 139.98 | 12.22 ms |
+| Private packet | 138.95 | 12.16 ms |
+
+The paired throughput changes were **+0.08** and **−2.13 FPS**. P99 changed by **−0.240** and **+0.107 ms**. The four timings verified **33,475** consecutive GPU completions across their respective windows, the saved camera, overlapping effects and all 26 cast timing rows. The monitor detected zero visible trial windows or activations. The private packet validates the input layout for handing work to a worker. This trial runs the update calls serially. [Full-raid A/B](results/raid-aarchx-scene-argument-packet-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-scene-args.py CAPTURE_ROOT I386_CLIENT
+```
