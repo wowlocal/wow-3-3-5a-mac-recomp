@@ -1,0 +1,1999 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "diagnostic_artifacts": {
+    "instrumented_runtime": "44997b16a2f5d3c62e44966d7dd69a270bc025ae3103163646dd441bff1f6f82",
+    "signed_runtime": "9ad642ee579155c7b6d5b922d2a09ac2fadfa9a37be65d4be1f587644373ecfc",
+    "renderer": "1be67f208b2a9c5289384706d49db943470724cb2c8633cbcff48cb3a4fa94b4"
+  },
+  "verified_timed_script_rows": 26,
+  "captures": [
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1689,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34985680625,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 48.22857142857143,
+        "p99_gpu_completion_gap_ns": 29752750,
+        "min_draws": 677,
+        "max_draws": 950
+      },
+      "gates": [
+        {
+          "probe_rows": 1967104,
+          "scopes": {
+            "dispatch_body": {
+              "observed_scopes": 355,
+              "memory_operands": 540801,
+              "scopes_with_untraced_calls": 355,
+              "untraced_calls": 9958,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_update": {
+              "observed_scopes": 50,
+              "memory_operands": 205656,
+              "scopes_with_untraced_calls": 50,
+              "untraced_calls": 8026,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_consumer": {
+              "observed_scopes": 171,
+              "memory_operands": 19403,
+              "scopes_with_untraced_calls": 69,
+              "untraced_calls": 1358,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            }
+          },
+          "comparisons": {
+            "dispatch_body": {
+              "pairs": 350,
+              "pairs_with_untraced_calls": 350,
+              "pairs_with_read_after_write": 324,
+              "pairs_with_write_after_write": 350,
+              "pairs_with_read_after_write_outside_dispatch_fields": 29
+            },
+            "list_update": {
+              "pairs": 48,
+              "pairs_with_untraced_calls": 48,
+              "pairs_with_read_after_write": 0,
+              "pairs_with_write_after_write": 0,
+              "pairs_with_read_after_write_outside_dispatch_fields": 0
+            },
+            "list_consumer": {
+              "pairs": 170,
+              "pairs_with_untraced_calls": 76,
+              "pairs_with_read_after_write": 168,
+              "pairs_with_write_after_write": 168,
+              "pairs_with_read_after_write_outside_dispatch_fields": 168
+            },
+            "same_item_update_to_consumer": {
+              "pairs": 18,
+              "pairs_with_untraced_calls": 18,
+              "pairs_with_read_after_write": 18,
+              "pairs_with_write_after_write": 7,
+              "pairs_with_read_after_write_outside_dispatch_fields": 18
+            }
+          },
+          "consumer_vs_later_updates_of_other_items": {
+            "consumers_with_later_updates": 17,
+            "later_update_consumer_pairs": 153,
+            "later_update_consumer_pairs_with_conflict": 0,
+            "consumers_with_conflicting_later_updates": 0
+          },
+          "dispatch_adjacent_pairs_by_input_tag": {
+            "0->0": {
+              "pairs": 282,
+              "pairs_with_read_after_write": 282
+            },
+            "0->1": {
+              "pairs": 12,
+              "pairs_with_read_after_write": 0
+            },
+            "1->0": {
+              "pairs": 11,
+              "pairs_with_read_after_write": 11
+            },
+            "1->1": {
+              "pairs": 11,
+              "pairs_with_read_after_write": 11
+            },
+            "1->4": {
+              "pairs": 1,
+              "pairs_with_read_after_write": 1
+            },
+            "2->2": {
+              "pairs": 14,
+              "pairs_with_read_after_write": 0
+            },
+            "4->0": {
+              "pairs": 2,
+              "pairs_with_read_after_write": 2
+            },
+            "4->4": {
+              "pairs": 17,
+              "pairs_with_read_after_write": 17
+            }
+          },
+          "most_frequent_untraced_call_sites": {
+            "dispatch_body": [
+              {
+                "guest_call": "0x881d9c",
+                "calls": 1740
+              },
+              {
+                "guest_call": "0x880d65",
+                "calls": 1740
+              },
+              {
+                "guest_call": "0x880ded",
+                "calls": 1740
+              },
+              {
+                "guest_call": "0x97d382",
+                "calls": 355
+              },
+              {
+                "guest_call": "0x8812a1",
+                "calls": 299
+              },
+              {
+                "guest_call": "0x97915d",
+                "calls": 297
+              },
+              {
+                "guest_call": "0x979190",
+                "calls": 297
+              },
+              {
+                "guest_call": "0x979198",
+                "calls": 297
+              }
+            ],
+            "list_update": [
+              {
+                "guest_call": "0x965473",
+                "calls": 1662
+              },
+              {
+                "guest_call": "0x96548f",
+                "calls": 1662
+              },
+              {
+                "guest_call": "0x9651b3",
+                "calls": 1498
+              },
+              {
+                "guest_call": "0x96519e",
+                "calls": 1410
+              },
+              {
+                "guest_call": "0x9653ba",
+                "calls": 756
+              },
+              {
+                "guest_call": "0x965301",
+                "calls": 244
+              },
+              {
+                "guest_call": "0x9652e6",
+                "calls": 231
+              },
+              {
+                "guest_call": "0x96597c",
+                "calls": 104
+              }
+            ],
+            "list_consumer": [
+              {
+                "guest_call": "0x9686d9",
+                "calls": 324
+              },
+              {
+                "guest_call": "0x9687e4",
+                "calls": 99
+              },
+              {
+                "guest_call": "0x96881e",
+                "calls": 99
+              },
+              {
+                "guest_call": "0x968861",
+                "calls": 99
+              },
+              {
+                "guest_call": "0x9688c2",
+                "calls": 99
+              },
+              {
+                "guest_call": "0x9688fc",
+                "calls": 99
+              },
+              {
+                "guest_call": "0x96893f",
+                "calls": 99
+              },
+              {
+                "guest_call": "0x968959",
+                "calls": 99
+              }
+            ]
+          },
+          "raw_witnesses": {
+            "dispatch_body": [
+              {
+                "previous_writer": "0x97d3b9",
+                "first_reader": "0x9791bf",
+                "region": "context+0x5c",
+                "pairs": 295
+              },
+              {
+                "previous_writer": "0x97d3bf",
+                "first_reader": "0x979523",
+                "region": "context+0x64",
+                "pairs": 282
+              },
+              {
+                "previous_writer": "0x97d3c5",
+                "first_reader": "0x979553",
+                "region": "context+0x6c",
+                "pairs": 184
+              },
+              {
+                "previous_writer": "0x97d3b0",
+                "first_reader": "0x97955c",
+                "region": "context+0x54",
+                "pairs": 131
+              },
+              {
+                "previous_writer": "0x97d3f2",
+                "first_reader": "0x979532",
+                "region": "context+0x94",
+                "pairs": 62
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 17
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 11
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 1
+              }
+            ],
+            "list_update": [],
+            "list_consumer": [
+              {
+                "previous_writer": "0x968507",
+                "first_reader": "0x968501",
+                "region": "other",
+                "pairs": 168
+              },
+              {
+                "previous_writer": "0x9689a7",
+                "first_reader": "0x96899e",
+                "region": "other",
+                "pairs": 37
+              }
+            ],
+            "same_item_update_to_consumer": [
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "same_item+0x10",
+                "pairs": 18
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "same_item+0x194",
+                "pairs": 18
+              },
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "other",
+                "pairs": 7
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "other",
+                "pairs": 7
+              }
+            ]
+          }
+        },
+        {
+          "probe_rows": 2171134,
+          "scopes": {
+            "dispatch_body": {
+              "observed_scopes": 337,
+              "memory_operands": 901575,
+              "scopes_with_untraced_calls": 337,
+              "untraced_calls": 17096,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_update": {
+              "observed_scopes": 42,
+              "memory_operands": 171062,
+              "scopes_with_untraced_calls": 42,
+              "untraced_calls": 6468,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            }
+          },
+          "comparisons": {
+            "dispatch_body": {
+              "pairs": 333,
+              "pairs_with_untraced_calls": 333,
+              "pairs_with_read_after_write": 303,
+              "pairs_with_write_after_write": 333,
+              "pairs_with_read_after_write_outside_dispatch_fields": 125
+            },
+            "list_update": {
+              "pairs": 41,
+              "pairs_with_untraced_calls": 41,
+              "pairs_with_read_after_write": 0,
+              "pairs_with_write_after_write": 0,
+              "pairs_with_read_after_write_outside_dispatch_fields": 0
+            }
+          },
+          "consumer_vs_later_updates_of_other_items": {},
+          "dispatch_adjacent_pairs_by_input_tag": {
+            "0->0": {
+              "pairs": 162,
+              "pairs_with_read_after_write": 162
+            },
+            "0->1": {
+              "pairs": 12,
+              "pairs_with_read_after_write": 0
+            },
+            "0->4": {
+              "pairs": 4,
+              "pairs_with_read_after_write": 0
+            },
+            "1->0": {
+              "pairs": 6,
+              "pairs_with_read_after_write": 6
+            },
+            "1->1": {
+              "pairs": 34,
+              "pairs_with_read_after_write": 34
+            },
+            "1->3": {
+              "pairs": 7,
+              "pairs_with_read_after_write": 7
+            },
+            "1->4": {
+              "pairs": 4,
+              "pairs_with_read_after_write": 4
+            },
+            "2->2": {
+              "pairs": 14,
+              "pairs_with_read_after_write": 0
+            },
+            "3->0": {
+              "pairs": 4,
+              "pairs_with_read_after_write": 4
+            },
+            "3->1": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "3->3": {
+              "pairs": 35,
+              "pairs_with_read_after_write": 35
+            },
+            "4->0": {
+              "pairs": 6,
+              "pairs_with_read_after_write": 6
+            },
+            "4->1": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "4->4": {
+              "pairs": 39,
+              "pairs_with_read_after_write": 39
+            }
+          },
+          "most_frequent_untraced_call_sites": {
+            "dispatch_body": [
+              {
+                "guest_call": "0x880ded",
+                "calls": 3787
+              },
+              {
+                "guest_call": "0x881d9c",
+                "calls": 3715
+              },
+              {
+                "guest_call": "0x880d65",
+                "calls": 3715
+              },
+              {
+                "guest_call": "0x8812a1",
+                "calls": 965
+              },
+              {
+                "guest_call": "0x97d382",
+                "calls": 337
+              },
+              {
+                "guest_call": "0x97c9fb",
+                "calls": 272
+              },
+              {
+                "guest_call": "0x882d4a",
+                "calls": 272
+              },
+              {
+                "guest_call": "0x97c596",
+                "calls": 258
+              }
+            ],
+            "list_update": [
+              {
+                "guest_call": "0x965473",
+                "calls": 1348
+              },
+              {
+                "guest_call": "0x96548f",
+                "calls": 1348
+              },
+              {
+                "guest_call": "0x9651b3",
+                "calls": 1238
+              },
+              {
+                "guest_call": "0x96519e",
+                "calls": 1164
+              },
+              {
+                "guest_call": "0x9653ba",
+                "calls": 643
+              },
+              {
+                "guest_call": "0x965301",
+                "calls": 159
+              },
+              {
+                "guest_call": "0x9652e6",
+                "calls": 149
+              },
+              {
+                "guest_call": "0x964e55",
+                "calls": 78
+              }
+            ]
+          },
+          "raw_witnesses": {
+            "dispatch_body": [
+              {
+                "previous_writer": "0x97d3b9",
+                "first_reader": "0x9791bf",
+                "region": "context+0x5c",
+                "pairs": 178
+              },
+              {
+                "previous_writer": "0x97d3bf",
+                "first_reader": "0x979523",
+                "region": "context+0x64",
+                "pairs": 162
+              },
+              {
+                "previous_writer": "0x97d3c5",
+                "first_reader": "0x979553",
+                "region": "context+0x6c",
+                "pairs": 91
+              },
+              {
+                "previous_writer": "0x97d3f2",
+                "first_reader": "0x979532",
+                "region": "context+0x94",
+                "pairs": 63
+              },
+              {
+                "previous_writer": "0x97d3b0",
+                "first_reader": "0x97955c",
+                "region": "context+0x54",
+                "pairs": 56
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 39
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 35
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 34
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 7
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 4
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 3
+              }
+            ],
+            "list_update": []
+          }
+        },
+        {
+          "probe_rows": 2601106,
+          "scopes": {
+            "dispatch_body": {
+              "observed_scopes": 426,
+              "memory_operands": 762977,
+              "scopes_with_untraced_calls": 426,
+              "untraced_calls": 15115,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_update": {
+              "observed_scopes": 54,
+              "memory_operands": 212573,
+              "scopes_with_untraced_calls": 54,
+              "untraced_calls": 7952,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_consumer": {
+              "observed_scopes": 173,
+              "memory_operands": 17353,
+              "scopes_with_untraced_calls": 71,
+              "untraced_calls": 1449,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            }
+          },
+          "comparisons": {
+            "dispatch_body": {
+              "pairs": 421,
+              "pairs_with_untraced_calls": 421,
+              "pairs_with_read_after_write": 394,
+              "pairs_with_write_after_write": 421,
+              "pairs_with_read_after_write_outside_dispatch_fields": 95
+            },
+            "list_update": {
+              "pairs": 52,
+              "pairs_with_untraced_calls": 52,
+              "pairs_with_read_after_write": 0,
+              "pairs_with_write_after_write": 0,
+              "pairs_with_read_after_write_outside_dispatch_fields": 0
+            },
+            "list_consumer": {
+              "pairs": 172,
+              "pairs_with_untraced_calls": 78,
+              "pairs_with_read_after_write": 171,
+              "pairs_with_write_after_write": 171,
+              "pairs_with_read_after_write_outside_dispatch_fields": 171
+            },
+            "same_item_update_to_consumer": {
+              "pairs": 11,
+              "pairs_with_untraced_calls": 11,
+              "pairs_with_read_after_write": 11,
+              "pairs_with_write_after_write": 1,
+              "pairs_with_read_after_write_outside_dispatch_fields": 11
+            }
+          },
+          "consumer_vs_later_updates_of_other_items": {
+            "consumers_with_later_updates": 10,
+            "later_update_consumer_pairs": 55,
+            "later_update_consumer_pairs_with_conflict": 0,
+            "consumers_with_conflicting_later_updates": 0
+          },
+          "dispatch_adjacent_pairs_by_input_tag": {
+            "0->0": {
+              "pairs": 286,
+              "pairs_with_read_after_write": 286
+            },
+            "0->1": {
+              "pairs": 7,
+              "pairs_with_read_after_write": 0
+            },
+            "0->4": {
+              "pairs": 6,
+              "pairs_with_read_after_write": 0
+            },
+            "1->0": {
+              "pairs": 6,
+              "pairs_with_read_after_write": 6
+            },
+            "1->1": {
+              "pairs": 26,
+              "pairs_with_read_after_write": 26
+            },
+            "1->3": {
+              "pairs": 5,
+              "pairs_with_read_after_write": 5
+            },
+            "1->4": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "2->2": {
+              "pairs": 14,
+              "pairs_with_read_after_write": 0
+            },
+            "3->0": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "3->1": {
+              "pairs": 2,
+              "pairs_with_read_after_write": 2
+            },
+            "3->3": {
+              "pairs": 25,
+              "pairs_with_read_after_write": 25
+            },
+            "4->0": {
+              "pairs": 4,
+              "pairs_with_read_after_write": 4
+            },
+            "4->1": {
+              "pairs": 5,
+              "pairs_with_read_after_write": 5
+            },
+            "4->4": {
+              "pairs": 29,
+              "pairs_with_read_after_write": 29
+            }
+          },
+          "most_frequent_untraced_call_sites": {
+            "dispatch_body": [
+              {
+                "guest_call": "0x880ded",
+                "calls": 2775
+              },
+              {
+                "guest_call": "0x881d9c",
+                "calls": 2647
+              },
+              {
+                "guest_call": "0x880d65",
+                "calls": 2647
+              },
+              {
+                "guest_call": "0x8812a1",
+                "calls": 1086
+              },
+              {
+                "guest_call": "0x97d382",
+                "calls": 426
+              },
+              {
+                "guest_call": "0x97915d",
+                "calls": 302
+              },
+              {
+                "guest_call": "0x979190",
+                "calls": 302
+              },
+              {
+                "guest_call": "0x979198",
+                "calls": 302
+              }
+            ],
+            "list_update": [
+              {
+                "guest_call": "0x965473",
+                "calls": 1639
+              },
+              {
+                "guest_call": "0x96548f",
+                "calls": 1639
+              },
+              {
+                "guest_call": "0x9651b3",
+                "calls": 1468
+              },
+              {
+                "guest_call": "0x96519e",
+                "calls": 1374
+              },
+              {
+                "guest_call": "0x9653ba",
+                "calls": 746
+              },
+              {
+                "guest_call": "0x965301",
+                "calls": 231
+              },
+              {
+                "guest_call": "0x9652e6",
+                "calls": 223
+              },
+              {
+                "guest_call": "0x96597c",
+                "calls": 126
+              }
+            ],
+            "list_consumer": [
+              {
+                "guest_call": "0x9686d9",
+                "calls": 484
+              },
+              {
+                "guest_call": "0x9687e4",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x96881e",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x968861",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x9688c2",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x9688fc",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x96893f",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x968959",
+                "calls": 93
+              }
+            ]
+          },
+          "raw_witnesses": {
+            "dispatch_body": [
+              {
+                "previous_writer": "0x97d3b9",
+                "first_reader": "0x9791bf",
+                "region": "context+0x5c",
+                "pairs": 299
+              },
+              {
+                "previous_writer": "0x97d3bf",
+                "first_reader": "0x979523",
+                "region": "context+0x64",
+                "pairs": 286
+              },
+              {
+                "previous_writer": "0x97d3c5",
+                "first_reader": "0x979553",
+                "region": "context+0x6c",
+                "pairs": 188
+              },
+              {
+                "previous_writer": "0x97d3b0",
+                "first_reader": "0x97955c",
+                "region": "context+0x54",
+                "pairs": 130
+              },
+              {
+                "previous_writer": "0x97d3f2",
+                "first_reader": "0x979532",
+                "region": "context+0x94",
+                "pairs": 62
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 29
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 26
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 25
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 5
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 5
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 2
+              }
+            ],
+            "list_update": [],
+            "list_consumer": [
+              {
+                "previous_writer": "0x968507",
+                "first_reader": "0x968501",
+                "region": "other",
+                "pairs": 171
+              },
+              {
+                "previous_writer": "0x9689a7",
+                "first_reader": "0x96899e",
+                "region": "other",
+                "pairs": 37
+              }
+            ],
+            "same_item_update_to_consumer": [
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "same_item+0x10",
+                "pairs": 11
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "same_item+0x194",
+                "pairs": 11
+              },
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "other",
+                "pairs": 1
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 1677,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34987215209,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 47.885714285714286,
+        "p99_gpu_completion_gap_ns": 29372541,
+        "min_draws": 696,
+        "max_draws": 982
+      },
+      "gates": [
+        {
+          "probe_rows": 1731317,
+          "scopes": {
+            "list_update": {
+              "observed_scopes": 25,
+              "memory_operands": 130757,
+              "scopes_with_untraced_calls": 25,
+              "untraced_calls": 4933,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_consumer": {
+              "observed_scopes": 178,
+              "memory_operands": 17846,
+              "scopes_with_untraced_calls": 76,
+              "untraced_calls": 1344,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "dispatch_body": {
+              "observed_scopes": 467,
+              "memory_operands": 853477,
+              "scopes_with_untraced_calls": 467,
+              "untraced_calls": 16423,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            }
+          },
+          "comparisons": {
+            "list_update": {
+              "pairs": 24,
+              "pairs_with_untraced_calls": 24,
+              "pairs_with_read_after_write": 0,
+              "pairs_with_write_after_write": 0,
+              "pairs_with_read_after_write_outside_dispatch_fields": 0
+            },
+            "list_consumer": {
+              "pairs": 177,
+              "pairs_with_untraced_calls": 83,
+              "pairs_with_read_after_write": 175,
+              "pairs_with_write_after_write": 175,
+              "pairs_with_read_after_write_outside_dispatch_fields": 175
+            },
+            "same_item_update_to_consumer": {
+              "pairs": 25,
+              "pairs_with_untraced_calls": 25,
+              "pairs_with_read_after_write": 25,
+              "pairs_with_write_after_write": 11,
+              "pairs_with_read_after_write_outside_dispatch_fields": 25
+            },
+            "dispatch_body": {
+              "pairs": 464,
+              "pairs_with_untraced_calls": 464,
+              "pairs_with_read_after_write": 429,
+              "pairs_with_write_after_write": 464,
+              "pairs_with_read_after_write_outside_dispatch_fields": 101
+            }
+          },
+          "consumer_vs_later_updates_of_other_items": {
+            "consumers_with_later_updates": 24,
+            "later_update_consumer_pairs": 300,
+            "later_update_consumer_pairs_with_conflict": 0,
+            "consumers_with_conflicting_later_updates": 0
+          },
+          "dispatch_adjacent_pairs_by_input_tag": {
+            "0->0": {
+              "pairs": 307,
+              "pairs_with_read_after_write": 307
+            },
+            "0->1": {
+              "pairs": 15,
+              "pairs_with_read_after_write": 0
+            },
+            "0->4": {
+              "pairs": 6,
+              "pairs_with_read_after_write": 0
+            },
+            "1->0": {
+              "pairs": 9,
+              "pairs_with_read_after_write": 9
+            },
+            "1->1": {
+              "pairs": 38,
+              "pairs_with_read_after_write": 38
+            },
+            "1->3": {
+              "pairs": 5,
+              "pairs_with_read_after_write": 5
+            },
+            "1->4": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "2->2": {
+              "pairs": 14,
+              "pairs_with_read_after_write": 0
+            },
+            "3->0": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "3->1": {
+              "pairs": 2,
+              "pairs_with_read_after_write": 2
+            },
+            "3->3": {
+              "pairs": 25,
+              "pairs_with_read_after_write": 25
+            },
+            "4->0": {
+              "pairs": 9,
+              "pairs_with_read_after_write": 9
+            },
+            "4->4": {
+              "pairs": 28,
+              "pairs_with_read_after_write": 28
+            }
+          },
+          "most_frequent_untraced_call_sites": {
+            "list_update": [
+              {
+                "guest_call": "0x965473",
+                "calls": 996
+              },
+              {
+                "guest_call": "0x96548f",
+                "calls": 996
+              },
+              {
+                "guest_call": "0x9651b3",
+                "calls": 882
+              },
+              {
+                "guest_call": "0x96519e",
+                "calls": 827
+              },
+              {
+                "guest_call": "0x9653ba",
+                "calls": 445
+              },
+              {
+                "guest_call": "0x965301",
+                "calls": 178
+              },
+              {
+                "guest_call": "0x9652e6",
+                "calls": 169
+              },
+              {
+                "guest_call": "0x96597c",
+                "calls": 90
+              }
+            ],
+            "list_consumer": [
+              {
+                "guest_call": "0x9686d9",
+                "calls": 460
+              },
+              {
+                "guest_call": "0x9687e4",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x96881e",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x968861",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x9688c2",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x9688fc",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x96893f",
+                "calls": 93
+              },
+              {
+                "guest_call": "0x968959",
+                "calls": 93
+              }
+            ],
+            "dispatch_body": [
+              {
+                "guest_call": "0x881d9c",
+                "calls": 3284
+              },
+              {
+                "guest_call": "0x880d65",
+                "calls": 3284
+              },
+              {
+                "guest_call": "0x880ded",
+                "calls": 3284
+              },
+              {
+                "guest_call": "0x97d382",
+                "calls": 467
+              },
+              {
+                "guest_call": "0x8812a1",
+                "calls": 460
+              },
+              {
+                "guest_call": "0x97915d",
+                "calls": 330
+              },
+              {
+                "guest_call": "0x979190",
+                "calls": 330
+              },
+              {
+                "guest_call": "0x979198",
+                "calls": 330
+              }
+            ]
+          },
+          "raw_witnesses": {
+            "list_update": [],
+            "list_consumer": [
+              {
+                "previous_writer": "0x968507",
+                "first_reader": "0x968501",
+                "region": "other",
+                "pairs": 175
+              },
+              {
+                "previous_writer": "0x9689a7",
+                "first_reader": "0x96899e",
+                "region": "other",
+                "pairs": 39
+              }
+            ],
+            "same_item_update_to_consumer": [
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "same_item+0x10",
+                "pairs": 25
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "same_item+0x194",
+                "pairs": 25
+              },
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "other",
+                "pairs": 11
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "other",
+                "pairs": 11
+              },
+              {
+                "previous_writer": "0x964d46",
+                "first_reader": "0x96847f",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x96585c",
+                "first_reader": "0x96838c",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x965861",
+                "first_reader": "0x968395",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x965867",
+                "first_reader": "0x96839f",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x96586d",
+                "first_reader": "0x9683a9",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x965873",
+                "first_reader": "0x9683b3",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x965879",
+                "first_reader": "0x9683bd",
+                "region": "other",
+                "pairs": 1
+              },
+              {
+                "previous_writer": "0x96587f",
+                "first_reader": "0x9683c7",
+                "region": "other",
+                "pairs": 1
+              }
+            ],
+            "dispatch_body": [
+              {
+                "previous_writer": "0x97d3b9",
+                "first_reader": "0x9791bf",
+                "region": "context+0x5c",
+                "pairs": 328
+              },
+              {
+                "previous_writer": "0x97d3bf",
+                "first_reader": "0x979523",
+                "region": "context+0x64",
+                "pairs": 307
+              },
+              {
+                "previous_writer": "0x97d3c5",
+                "first_reader": "0x979553",
+                "region": "context+0x6c",
+                "pairs": 210
+              },
+              {
+                "previous_writer": "0x97d3b0",
+                "first_reader": "0x97955c",
+                "region": "context+0x54",
+                "pairs": 146
+              },
+              {
+                "previous_writer": "0x97d3f2",
+                "first_reader": "0x979532",
+                "region": "context+0x94",
+                "pairs": 77
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 38
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 28
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 25
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 5
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 2
+              }
+            ]
+          }
+        },
+        {
+          "probe_rows": 1583819,
+          "scopes": {
+            "dispatch_body": {
+              "observed_scopes": 153,
+              "memory_operands": 532475,
+              "scopes_with_untraced_calls": 153,
+              "untraced_calls": 10784,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_update": {
+              "observed_scopes": 57,
+              "memory_operands": 218196,
+              "scopes_with_untraced_calls": 57,
+              "untraced_calls": 8279,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            }
+          },
+          "comparisons": {
+            "dispatch_body": {
+              "pairs": 151,
+              "pairs_with_untraced_calls": 151,
+              "pairs_with_read_after_write": 137,
+              "pairs_with_write_after_write": 151,
+              "pairs_with_read_after_write_outside_dispatch_fields": 91
+            },
+            "list_update": {
+              "pairs": 55,
+              "pairs_with_untraced_calls": 55,
+              "pairs_with_read_after_write": 0,
+              "pairs_with_write_after_write": 0,
+              "pairs_with_read_after_write_outside_dispatch_fields": 0
+            }
+          },
+          "consumer_vs_later_updates_of_other_items": {},
+          "dispatch_adjacent_pairs_by_input_tag": {
+            "0->0": {
+              "pairs": 31,
+              "pairs_with_read_after_write": 31
+            },
+            "0->1": {
+              "pairs": 14,
+              "pairs_with_read_after_write": 0
+            },
+            "1->0": {
+              "pairs": 9,
+              "pairs_with_read_after_write": 9
+            },
+            "1->1": {
+              "pairs": 31,
+              "pairs_with_read_after_write": 31
+            },
+            "1->3": {
+              "pairs": 4,
+              "pairs_with_read_after_write": 4
+            },
+            "1->4": {
+              "pairs": 2,
+              "pairs_with_read_after_write": 2
+            },
+            "3->0": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "3->1": {
+              "pairs": 2,
+              "pairs_with_read_after_write": 2
+            },
+            "3->3": {
+              "pairs": 24,
+              "pairs_with_read_after_write": 24
+            },
+            "4->0": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "4->4": {
+              "pairs": 28,
+              "pairs_with_read_after_write": 28
+            }
+          },
+          "most_frequent_untraced_call_sites": {
+            "dispatch_body": [
+              {
+                "guest_call": "0x881d9c",
+                "calls": 2543
+              },
+              {
+                "guest_call": "0x880d65",
+                "calls": 2543
+              },
+              {
+                "guest_call": "0x880ded",
+                "calls": 2543
+              },
+              {
+                "guest_call": "0x8812a1",
+                "calls": 530
+              },
+              {
+                "guest_call": "0x97c9fb",
+                "calls": 303
+              },
+              {
+                "guest_call": "0x882d4a",
+                "calls": 303
+              },
+              {
+                "guest_call": "0x97c596",
+                "calls": 298
+              },
+              {
+                "guest_call": "0x97d382",
+                "calls": 153
+              }
+            ],
+            "list_update": [
+              {
+                "guest_call": "0x965473",
+                "calls": 1689
+              },
+              {
+                "guest_call": "0x96548f",
+                "calls": 1689
+              },
+              {
+                "guest_call": "0x9651b3",
+                "calls": 1497
+              },
+              {
+                "guest_call": "0x96519e",
+                "calls": 1405
+              },
+              {
+                "guest_call": "0x9653ba",
+                "calls": 756
+              },
+              {
+                "guest_call": "0x965301",
+                "calls": 256
+              },
+              {
+                "guest_call": "0x9652e6",
+                "calls": 251
+              },
+              {
+                "guest_call": "0x96597c",
+                "calls": 152
+              }
+            ]
+          },
+          "raw_witnesses": {
+            "dispatch_body": [
+              {
+                "previous_writer": "0x97d3b9",
+                "first_reader": "0x9791bf",
+                "region": "context+0x5c",
+                "pairs": 46
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 31
+              },
+              {
+                "previous_writer": "0x97d3bf",
+                "first_reader": "0x979523",
+                "region": "context+0x64",
+                "pairs": 31
+              },
+              {
+                "previous_writer": "0x97d3c5",
+                "first_reader": "0x979553",
+                "region": "context+0x6c",
+                "pairs": 31
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 28
+              },
+              {
+                "previous_writer": "0x97d3b0",
+                "first_reader": "0x97955c",
+                "region": "context+0x54",
+                "pairs": 27
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 24
+              },
+              {
+                "previous_writer": "0x97d3f2",
+                "first_reader": "0x979532",
+                "region": "context+0x94",
+                "pairs": 23
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 4
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 2
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 2
+              }
+            ],
+            "list_update": []
+          }
+        },
+        {
+          "probe_rows": 2033728,
+          "scopes": {
+            "dispatch_body": {
+              "observed_scopes": 603,
+              "memory_operands": 1169225,
+              "scopes_with_untraced_calls": 603,
+              "untraced_calls": 24237,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_update": {
+              "observed_scopes": 53,
+              "memory_operands": 220501,
+              "scopes_with_untraced_calls": 53,
+              "untraced_calls": 8322,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            },
+            "list_consumer": {
+              "observed_scopes": 178,
+              "memory_operands": 19491,
+              "scopes_with_untraced_calls": 76,
+              "untraced_calls": 1675,
+              "unknown_memory_destination_operands": 0,
+              "unsupported_operands": 0
+            }
+          },
+          "comparisons": {
+            "dispatch_body": {
+              "pairs": 592,
+              "pairs_with_untraced_calls": 592,
+              "pairs_with_read_after_write": 534,
+              "pairs_with_write_after_write": 592,
+              "pairs_with_read_after_write_outside_dispatch_fields": 166
+            },
+            "list_update": {
+              "pairs": 51,
+              "pairs_with_untraced_calls": 51,
+              "pairs_with_read_after_write": 0,
+              "pairs_with_write_after_write": 0,
+              "pairs_with_read_after_write_outside_dispatch_fields": 0
+            },
+            "list_consumer": {
+              "pairs": 177,
+              "pairs_with_untraced_calls": 83,
+              "pairs_with_read_after_write": 174,
+              "pairs_with_write_after_write": 174,
+              "pairs_with_read_after_write_outside_dispatch_fields": 174
+            },
+            "same_item_update_to_consumer": {
+              "pairs": 21,
+              "pairs_with_untraced_calls": 21,
+              "pairs_with_read_after_write": 21,
+              "pairs_with_write_after_write": 10,
+              "pairs_with_read_after_write_outside_dispatch_fields": 21
+            }
+          },
+          "consumer_vs_later_updates_of_other_items": {
+            "consumers_with_later_updates": 20,
+            "later_update_consumer_pairs": 210,
+            "later_update_consumer_pairs_with_conflict": 0,
+            "consumers_with_conflicting_later_updates": 0
+          },
+          "dispatch_adjacent_pairs_by_input_tag": {
+            "0->0": {
+              "pairs": 338,
+              "pairs_with_read_after_write": 338
+            },
+            "0->1": {
+              "pairs": 21,
+              "pairs_with_read_after_write": 0
+            },
+            "0->4": {
+              "pairs": 10,
+              "pairs_with_read_after_write": 0
+            },
+            "1->0": {
+              "pairs": 13,
+              "pairs_with_read_after_write": 13
+            },
+            "1->1": {
+              "pairs": 41,
+              "pairs_with_read_after_write": 41
+            },
+            "1->3": {
+              "pairs": 8,
+              "pairs_with_read_after_write": 8
+            },
+            "1->4": {
+              "pairs": 7,
+              "pairs_with_read_after_write": 7
+            },
+            "2->2": {
+              "pairs": 27,
+              "pairs_with_read_after_write": 0
+            },
+            "3->0": {
+              "pairs": 5,
+              "pairs_with_read_after_write": 5
+            },
+            "3->1": {
+              "pairs": 3,
+              "pairs_with_read_after_write": 3
+            },
+            "3->3": {
+              "pairs": 40,
+              "pairs_with_read_after_write": 40
+            },
+            "4->0": {
+              "pairs": 12,
+              "pairs_with_read_after_write": 12
+            },
+            "4->1": {
+              "pairs": 4,
+              "pairs_with_read_after_write": 4
+            },
+            "4->4": {
+              "pairs": 63,
+              "pairs_with_read_after_write": 63
+            }
+          },
+          "most_frequent_untraced_call_sites": {
+            "dispatch_body": [
+              {
+                "guest_call": "0x880ded",
+                "calls": 4592
+              },
+              {
+                "guest_call": "0x881d9c",
+                "calls": 4496
+              },
+              {
+                "guest_call": "0x880d65",
+                "calls": 4496
+              },
+              {
+                "guest_call": "0x8812a1",
+                "calls": 1953
+              },
+              {
+                "guest_call": "0x97d382",
+                "calls": 603
+              },
+              {
+                "guest_call": "0x97c9fb",
+                "calls": 503
+              },
+              {
+                "guest_call": "0x882d4a",
+                "calls": 503
+              },
+              {
+                "guest_call": "0x97c596",
+                "calls": 476
+              }
+            ],
+            "list_update": [
+              {
+                "guest_call": "0x965473",
+                "calls": 1724
+              },
+              {
+                "guest_call": "0x96548f",
+                "calls": 1724
+              },
+              {
+                "guest_call": "0x9651b3",
+                "calls": 1532
+              },
+              {
+                "guest_call": "0x96519e",
+                "calls": 1437
+              },
+              {
+                "guest_call": "0x9653ba",
+                "calls": 786
+              },
+              {
+                "guest_call": "0x965301",
+                "calls": 231
+              },
+              {
+                "guest_call": "0x9652e6",
+                "calls": 221
+              },
+              {
+                "guest_call": "0x96597c",
+                "calls": 139
+              }
+            ],
+            "list_consumer": [
+              {
+                "guest_call": "0x9686d9",
+                "calls": 493
+              },
+              {
+                "guest_call": "0x9687e4",
+                "calls": 103
+              },
+              {
+                "guest_call": "0x96881e",
+                "calls": 103
+              },
+              {
+                "guest_call": "0x968861",
+                "calls": 103
+              },
+              {
+                "guest_call": "0x9688c2",
+                "calls": 103
+              },
+              {
+                "guest_call": "0x9688fc",
+                "calls": 103
+              },
+              {
+                "guest_call": "0x96893f",
+                "calls": 103
+              },
+              {
+                "guest_call": "0x968959",
+                "calls": 103
+              }
+            ]
+          },
+          "raw_witnesses": {
+            "dispatch_body": [
+              {
+                "previous_writer": "0x97d3b9",
+                "first_reader": "0x9791bf",
+                "region": "context+0x5c",
+                "pairs": 368
+              },
+              {
+                "previous_writer": "0x97d3bf",
+                "first_reader": "0x979523",
+                "region": "context+0x64",
+                "pairs": 338
+              },
+              {
+                "previous_writer": "0x97d3c5",
+                "first_reader": "0x979553",
+                "region": "context+0x6c",
+                "pairs": 241
+              },
+              {
+                "previous_writer": "0x97d3b0",
+                "first_reader": "0x97955c",
+                "region": "context+0x54",
+                "pairs": 162
+              },
+              {
+                "previous_writer": "0x97d3f2",
+                "first_reader": "0x979532",
+                "region": "context+0x94",
+                "pairs": 86
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 63
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 41
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 40
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c19b",
+                "region": "other",
+                "pairs": 8
+              },
+              {
+                "previous_writer": "0x97bec9",
+                "first_reader": "0x97c7e0",
+                "region": "other",
+                "pairs": 7
+              },
+              {
+                "previous_writer": "0x97c7e0",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 4
+              },
+              {
+                "previous_writer": "0x97c292",
+                "first_reader": "0x97bd8f",
+                "region": "other",
+                "pairs": 3
+              }
+            ],
+            "list_update": [],
+            "list_consumer": [
+              {
+                "previous_writer": "0x968507",
+                "first_reader": "0x968501",
+                "region": "other",
+                "pairs": 174
+              },
+              {
+                "previous_writer": "0x9689a7",
+                "first_reader": "0x96899e",
+                "region": "other",
+                "pairs": 39
+              }
+            ],
+            "same_item_update_to_consumer": [
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "same_item+0x10",
+                "pairs": 21
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "same_item+0x194",
+                "pairs": 21
+              },
+              {
+                "previous_writer": "0x965ad3",
+                "first_reader": "0x967f2f",
+                "region": "other",
+                "pairs": 10
+              },
+              {
+                "previous_writer": "0x966d38",
+                "first_reader": "0x96814b",
+                "region": "other",
+                "pairs": 10
+              },
+              {
+                "previous_writer": "0x964d46",
+                "first_reader": "0x96847f",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x96585c",
+                "first_reader": "0x96838c",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x965861",
+                "first_reader": "0x968395",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x965867",
+                "first_reader": "0x96839f",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x96586d",
+                "first_reader": "0x9683a9",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x965873",
+                "first_reader": "0x9683b3",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x965879",
+                "first_reader": "0x9683bd",
+                "region": "other",
+                "pairs": 3
+              },
+              {
+                "previous_writer": "0x96587f",
+                "first_reader": "0x9683c7",
+                "region": "other",
+                "pairs": 3
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "earlier_matrix_function_cpu_profiles": [
+    {
+      "total_cpu_usec": 58498915,
+      "functions": [
+        {
+          "entry": "0x8c17c0",
+          "return_pc": "0x8c1856",
+          "exclusive_cpu_usec": 151151,
+          "exclusive_share_of_all_weighted_cpu": 0.0025838257000151198
+        },
+        {
+          "entry": "0x8c1e90",
+          "return_pc": "0x8c23df",
+          "exclusive_cpu_usec": 1318064,
+          "exclusive_share_of_all_weighted_cpu": 0.02253142643756726
+        },
+        {
+          "entry": "0x8c2f50",
+          "return_pc": "0x8c2fde",
+          "exclusive_cpu_usec": 443695,
+          "exclusive_share_of_all_weighted_cpu": 0.007584670587480127
+        },
+        {
+          "entry": "0x8c3880",
+          "return_pc": "0x8c39a0",
+          "exclusive_cpu_usec": 106360,
+          "exclusive_share_of_all_weighted_cpu": 0.001818153379425926
+        }
+      ]
+    },
+    {
+      "total_cpu_usec": 58703008,
+      "functions": [
+        {
+          "entry": "0x8c17c0",
+          "return_pc": "0x8c1856",
+          "exclusive_cpu_usec": 132796,
+          "exclusive_share_of_all_weighted_cpu": 0.0022621668722665796
+        },
+        {
+          "entry": "0x8c1e90",
+          "return_pc": "0x8c23df",
+          "exclusive_cpu_usec": 1196726,
+          "exclusive_share_of_all_weighted_cpu": 0.020386110367632267
+        },
+        {
+          "entry": "0x8c2f50",
+          "return_pc": "0x8c2fde",
+          "exclusive_cpu_usec": 482930,
+          "exclusive_share_of_all_weighted_cpu": 0.008226665318410941
+        },
+        {
+          "entry": "0x8c3880",
+          "return_pc": "0x8c39a0",
+          "exclusive_cpu_usec": 97418,
+          "exclusive_share_of_all_weighted_cpu": 0.0016595061023108048
+        }
+      ]
+    }
+  ]
+}

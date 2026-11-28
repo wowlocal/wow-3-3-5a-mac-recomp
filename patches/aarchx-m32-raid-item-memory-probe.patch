@@ -1,0 +1,218 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19036,6 +19036,11 @@
+  * consumer reads a row only after its sequence has been published. */
+ enum { RAID_PREP_BITS = 20, RAID_PREP_STRIDE = 64 };
+
++static unsigned raid_prep_bits(void)
++{
++    return ENV_ON("OCERZ_M32_RAID_PREP_MEMORY") ? 23 : RAID_PREP_BITS;
++}
++
+ static int raid_prep_site(uint64_t pc)
+ {
+     switch (pc) {
+@@ -19074,7 +19079,7 @@
+         return NULL;
+     int fd = open(raid_prep_path(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+     if (fd < 0) return NULL;
+-    const size_t bytes = RAID_PREP_STRIDE * ((1u << RAID_PREP_BITS) + 1u);
++    const size_t bytes = RAID_PREP_STRIDE * ((1u << raid_prep_bits()) + 1u);
+     if (ftruncate(fd, (off_t)bytes) == 0) {
+         void *p = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+         if (p != MAP_FAILED) mapping = p;
+@@ -19083,24 +19088,16 @@
+     return mapping;
+ }
+
+-static void emit_raid_prep(A64Buf *b, uint64_t pc)
+-{
+-    static const int registers[] = {
+-        OCERZ_RAX, OCERZ_RBX, OCERZ_RCX, OCERZ_RDX,
+-        OCERZ_RSI, OCERZ_RDI, OCERZ_RBP, OCERZ_RSP,
+-    };
+-    if (g_pin_class != 3) return;
+-    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
+-        if (pin_slot(registers[i]) < 0) return;
++static uint32_t *emit_raid_prep_row(A64Buf *b, uint64_t pc)
++{
+     void *mapping = raid_prep_mapping();
+-    if (!mapping) return;
+-
++    if (!mapping) return NULL;
+     a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
+     a64_ldr(b, 8, JT1, JT0, 8);
+     uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
+     a64_movz(b, JT1, 1, 0);
+     a64_emit32(b, 0xf82a012bu); /* LDADD X10, X11, [X9] */
+-    a64_ubfx(b, 0, JTT, JT2, 0, RAID_PREP_BITS);
++    a64_ubfx(b, 0, JTT, JT2, 0, raid_prep_bits());
+     a64_add_reg(b, 1, JT0, JT0, JTT, 6);
+     a64_add_imm(b, 1, JT0, JT0, RAID_PREP_STRIDE);
+     a64_str(b, 8, A64_ZR, JT0, 0);
+@@ -19109,11 +19106,135 @@
+     a64_str(b, 8, 20, JT0, 16);
+     a64_mov_imm64(b, JT1, pc);
+     a64_str(b, 4, JT1, JT0, 24);
+-    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
+-        a64_str(b, 4, pin_hreg(pin_slot(registers[i])), JT0, 28 + 4 * i);
++    return disabled;
++}
++
++static void emit_raid_prep_publish(A64Buf *b, uint32_t *disabled)
++{
+     a64_add_imm(b, 1, JT2, JT2, 1);
+     a64_stlr(b, 8, JT2, JT0);
+     a64_patch_cbz(disabled, a64_label(b));
++}
++
++static void emit_raid_prep(A64Buf *b, uint64_t pc)
++{
++    static const int registers[] = {
++        OCERZ_RAX, OCERZ_RBX, OCERZ_RCX, OCERZ_RDX,
++        OCERZ_RSI, OCERZ_RDI, OCERZ_RBP, OCERZ_RSP,
++    };
++    if (g_pin_class != 3) return;
++    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
++        if (pin_slot(registers[i]) < 0) return;
++    uint32_t *disabled = emit_raid_prep_row(b, pc);
++    if (!disabled) return;
++    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
++        a64_str(b, 4, pin_hreg(pin_slot(registers[i])), JT0, 28 + 4 * i);
++    a64_str(b, 4, A64_ZR, JT0, 60);
++    emit_raid_prep_publish(b, disabled);
++}
++
++static int raid_prep_memory_site(uint64_t pc)
++{
++    return (pc >= 0x880c70 && pc < 0x882f20) ||
++           (pc >= 0x964ca0 && pc < 0x9677be) ||
++           (pc >= 0x967f20 && pc < 0x9689d5) ||
++           (pc >= 0x979130 && pc < 0x979b7a) ||
++           (pc >= 0x97b830 && pc < 0x97dbb8) ||
++           (pc >= 0x97e390 && pc < 0x980b2a);
++}
++
++/* Tag 1 rows contain a flat guest address, in bytes. Unknown memory
++ * destinations conservatively count as both a read and a write. */
++static unsigned raid_prep_access(unsigned op, unsigned operand)
++{
++    if (operand != 0) return 1;
++    switch (op) {
++    case OCERZ_OP_MOV: case OCERZ_OP_MOVSS: case OCERZ_OP_MOVSDX:
++    case OCERZ_OP_MOVAPS: case OCERZ_OP_MOVUPS: case OCERZ_OP_MOVD:
++    case OCERZ_OP_MOVDQA: case OCERZ_OP_MOVDQU: case OCERZ_OP_MOVQX:
++    case OCERZ_OP_MOVLPS: case OCERZ_OP_MOVHPS: case OCERZ_OP_MOVNTI:
++    case OCERZ_OP_POP: case OCERZ_OP_SETCC: case OCERZ_OP_FST:
++    case OCERZ_OP_FSTP: case OCERZ_OP_FIST: case OCERZ_OP_FISTP:
++    case OCERZ_OP_FNSTCW: case OCERZ_OP_FNSTSW: case OCERZ_OP_STMXCSR:
++        return 2;
++    case OCERZ_OP_CMP: case OCERZ_OP_TEST: case OCERZ_OP_PUSH:
++    case OCERZ_OP_DIV: case OCERZ_OP_IDIV: case OCERZ_OP_MUL:
++    case OCERZ_OP_IMUL: case OCERZ_OP_JMP: case OCERZ_OP_CALL:
++    case OCERZ_OP_FLD: case OCERZ_OP_FILD: case OCERZ_OP_FADD:
++    case OCERZ_OP_FMUL: case OCERZ_OP_FSUB: case OCERZ_OP_FSUBR:
++    case OCERZ_OP_FDIV: case OCERZ_OP_FDIVR: case OCERZ_OP_FCOM:
++    case OCERZ_OP_FCOMP: case OCERZ_OP_FLDCW: case OCERZ_OP_LDMXCSR:
++        return 1;
++    case OCERZ_OP_ADD: case OCERZ_OP_ADC: case OCERZ_OP_SUB:
++    case OCERZ_OP_SBB: case OCERZ_OP_AND: case OCERZ_OP_OR:
++    case OCERZ_OP_XOR: case OCERZ_OP_INC: case OCERZ_OP_DEC:
++    case OCERZ_OP_NEG: case OCERZ_OP_NOT: case OCERZ_OP_SHL:
++    case OCERZ_OP_SHR: case OCERZ_OP_SAR: case OCERZ_OP_XCHG:
++    case OCERZ_OP_XADD: case OCERZ_OP_CMPXCHG:
++        return 3;
++    default:
++        return 4;
++    }
++}
++
++static int raid_prep_stack_operand(const X86Operand *operand)
++{
++    return operand->index == OCERZ_REG_NONE &&
++        (operand->base == OCERZ_RBP || operand->base == OCERZ_RSP);
++}
++
++static int raid_prep_observed_instruction(const X86Insn *insn)
++{
++    if (insn->op == OCERZ_OP_LEA) return 0;
++    if (insn->op == OCERZ_OP_CALL || insn->op == OCERZ_OP_MOVS ||
++        insn->op == OCERZ_OP_STOS || insn->op == OCERZ_OP_LODS ||
++        insn->op == OCERZ_OP_SCAS || insn->op == OCERZ_OP_CMPS)
++        return 1;
++    for (unsigned i = 0; i < insn->nops; i++)
++        if (insn->ops[i].kind == OCERZ_OPK_MEM && !raid_prep_stack_operand(&insn->ops[i]))
++            return 1;
++    return 0;
++}
++
++static void emit_raid_prep_memory(A64Buf *b, const X86Insn *insn)
++{
++    if (g_pin_class != 3 || insn->op == OCERZ_OP_LEA) return;
++    const X86Operand *mem = NULL;
++    unsigned operand = 0;
++    for (; operand < insn->nops; operand++) {
++        if (insn->ops[operand].kind == OCERZ_OPK_MEM && !raid_prep_stack_operand(&insn->ops[operand])) {
++            mem = &insn->ops[operand];
++            break;
++        }
++    }
++    const int untracked_call = insn->op == OCERZ_OP_CALL &&
++        (insn->ops[0].kind != OCERZ_OPK_IMM || !raid_prep_memory_site(insn->ops[0].imm));
++    const int string_access = insn->op == OCERZ_OP_MOVS || insn->op == OCERZ_OP_STOS ||
++        insn->op == OCERZ_OP_LODS || insn->op == OCERZ_OP_SCAS || insn->op == OCERZ_OP_CMPS;
++    if (!mem && !untracked_call && !string_access) return;
++    const int flat = mem && !string_access && !mem->riprel && insn->seg == OCERZ_SEG_NONE &&
++                     insn->addrsize == 4 && mem->size && mem->size <= 16;
++    uint32_t *disabled = emit_raid_prep_row(b, insn->rip);
++    if (!disabled) return;
++    if (flat) {
++        a64_mov_imm64(b, JTA, (uint32_t)mem->disp);
++        if (mem->base != OCERZ_REG_NONE) {
++            emit_gpr_rd(b, 0, JTU, mem->base);
++            a64_add_reg(b, 0, JTA, JTA, JTU, 0);
++        }
++        if (mem->index != OCERZ_REG_NONE) {
++            emit_gpr_rd(b, 0, JTU, mem->index);
++            a64_add_reg(b, 0, JTA, JTA, JTU, mem->scale & 3);
++        }
++        a64_str(b, 4, JTA, JT0, 28);
++        a64_movz(b, JT1, mem->size, 0);
++        a64_str(b, 4, JT1, JT0, 32);
++        a64_movz(b, JT1, raid_prep_access(insn->op, operand), 0);
++        a64_str(b, 4, JT1, JT0, 36);
++    }
++    a64_movz(b, JT1, untracked_call ? (flat ? 5 : 2) : (flat ? 1 : 3), 0);
++    a64_str(b, 4, JT1, JT0, 60);
++    emit_raid_prep_publish(b, disabled);
+ }
+
+ static void veneer_pool_check(OcerzJit *jit);
+@@ -25926,6 +26047,7 @@
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
+     const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                            raid_prep_path() != NULL;
++    const int prep_memory = prep_trace && ENV_ON("OCERZ_M32_RAID_PREP_MEMORY");
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -25945,6 +26067,9 @@
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
++                    break;
++                if (vn && prep_memory && raid_prep_memory_site(vpc) &&
++                    raid_prep_observed_instruction(&scratch[vn]))
+                     break;
+                 unsigned op = scratch[vn].op;
+                 uint8_t len = scratch[vn].len;
+@@ -26874,6 +26999,8 @@
+         lanerec_note((uint32_t)(b.p - entry));
+         if (i == 0 && prep_trace && raid_prep_site(rip))
+             emit_raid_prep(&b, rip);
++        if (i == 0 && prep_memory && raid_prep_memory_site(rip))
++            emit_raid_prep_memory(&b, insn);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);

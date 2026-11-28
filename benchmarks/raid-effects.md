@@ -2387,3 +2387,25 @@ Apply `patches/aarchx-m32-raid-quad-batch-probe.patch` after the quad layout pro
 python3 benchmarks/summarize-raid-quad-batch.py CAPTURE_ROOT I386_CLIENT \
     --cpu-profiles EARLIER_PROFILE_1 EARLIER_PROFILE_2
 ```
+
+### Trace dependencies between raid preparation items
+
+The diagnostic records explicit flat-address memory operands in six i386 code ranges, together with the existing dispatcher and linked-list item markers. It skips unindexed stack-register operands, excludes observed addresses in the 4 KiB preceding the caller's frame pointer through its return-address word, and counts calls into other ranges separately. The analyzer matches scopes on the same guest CPU within one complete swap interval. It compares each prior item's last observed write with the next item's first read of the byte before that item has written it. The memory trace identifies specific overlap and leaves omitted accesses open.
+
+| Original order examined | Pairs | Observed read-after-write overlap |
+| --- | ---: | ---: |
+| Consecutive dispatch items with the same work context | 2,311 | 2,121 |
+| Consecutive list updates of different items | 271 | 0 |
+| Consecutive list consumers of different items | 696 | 688 |
+| List update followed by the consumer of the same item | 75 | 75 |
+
+The dispatcher had **607** adjacent pairs with overlap outside offsets `0x50–0x9f` of the work context. The most frequent context dependency was the write at `0x97d3b9` and the comparison at `0x9791bf`, both using offset `0x5c`. The consumer pass reads and replaces a linked-list head at `0x968501` and `0x968507`. Keep that publication ordered when testing independent computation. For a consumer whose own update was complete, **718** comparisons with later updates of other items had zero observed read-write or write-write conflicts. All recorded list updates called paths outside the selected ranges. These counts establish candidate work to audit before reordering. [Per-gate counts and instruction witnesses](results/raid-aarchx-i386-item-memory.json)
+
+The two most frequent calls omitted from the update pass went to `0x8c17c0` and `0x8c1e90`, **9,058** times each. The latter writes sixteen 32-bit results through one argument and performs ordered scalar SSE multiply and add operations. The decoded entry-to-return range represented **2.25% and 2.04%** of independently sampled CPU time. It is a candidate for extracting local math while preserving the shared publication order. A replay should verify all sixteen results and input-output aliasing before using a native path. [Call sites and earlier CPU coverage](results/raid-aarchx-i386-item-memory.json)
+
+Apply `patches/aarchx-m32-raid-item-memory-probe.patch` after the preparation probe. Set `OCERZ_M32_RAID_PREP_MEMORY=1`, use a fresh ring of `64 × (2²³ + 1)` bytes, and arm it for **70 ms** at offsets **2, 12 and 24 seconds** after the verified full-raid window starts. The first launch requested the timing window before the draw count reached the raid range. The next attempt filled the smaller ring. The accepted build splits at retained memory instructions and excludes direct stack-relative operands. Its two diagnostic windows verified **1,689** and **1,677** consecutive GPU completions, the saved camera, overlapping effects, and all 26 timed rows. They averaged about **48 FPS** with the diagnostic block boundaries and logging in place. The runtime passed **805** general i386 checks with logging disabled.
+
+```sh
+python3 benchmarks/summarize-raid-item-memory.py CAPTURE_ROOT I386_CLIENT \
+    --cpu-profiles EARLIER_PROFILE_1 EARLIER_PROFILE_2
+```
