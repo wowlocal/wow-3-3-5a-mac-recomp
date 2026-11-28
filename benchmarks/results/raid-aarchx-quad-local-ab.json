@@ -1,0 +1,189 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "05284a3",
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "timed_artifacts_sha256": {
+    "signed_runtime": "dc21102cff4a40e95605dc4b5a97249b742e0fb979cbe20d9fba8e02cc35b1fd",
+    "renderer": "1be67f208b2a9c5289384706d49db943470724cb2c8633cbcff48cb3a4fa94b4",
+    "unsigned_runtime": "a3f52972d65765df670099d1438d21fc618b31b73e293bfc28969b01b1dbc7ef"
+  },
+  "unit_tests": {
+    "control": {
+      "focused_interpreter_comparisons": 6,
+      "general_checks": 805
+    },
+    "candidate": {
+      "focused_interpreter_comparisons": 6,
+      "general_checks": 805
+    }
+  },
+  "diagnostic": {
+    "site_join_counts": {
+      "0x881709": 6,
+      "0x8817f1": 6,
+      "0x8818ec": 6,
+      "0x8819cf": 6
+    },
+    "runtime_sha256": "b08c352a8d9be8ad5ab77bdbba133cad58a15495d174eed9e3f45704ac05989e",
+    "signed_runtime_sha256": "57113d02f81f9e547c24b664abab5e36ecaf379f7bd334caf7ad26685c71922b",
+    "diagnostic_gpu_window": {
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 3392,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 24996057625,
+      "measurement_duration_ns": 25000000000,
+      "average_completed_fps": 135.64,
+      "p99_gpu_completion_gap_ns": 12535000,
+      "min_draws": 701,
+      "max_draws": 959
+    },
+    "legacy_paused": true,
+    "capture_start_offset_ns": 3885299718,
+    "capture_span_ns": 94755663,
+    "probe_rows_written": 403920,
+    "probe_rows_retained": 403920,
+    "threads": 1,
+    "matched_updates": 201960,
+    "updates_straddling_swap_timestamp": 1,
+    "unmatched_before_gate_closed": 0,
+    "unmatched_after_gate_opened": 0,
+    "updates_by_group": {
+      "1": 50490,
+      "2": 50490,
+      "3": 50490,
+      "4": 50490
+    },
+    "number_of_changed_components": {
+      "0": 164398,
+      "1": 30317,
+      "2": 4689,
+      "3": 720,
+      "6": 1836
+    },
+    "adjacent_updates_to_same_bounds": {
+      "1->2": 50490,
+      "2->3": 50490,
+      "3->4": 50489
+    },
+    "adjacent_updates_with_continuous_bounds": {
+      "1->2": 50490,
+      "2->3": 50490,
+      "3->4": 50489
+    },
+    "quads_by_number_of_final_changed_components": {
+      "0": 29991,
+      "1": 13727,
+      "2": 3280,
+      "3": 1566,
+      "4": 36,
+      "5": 53,
+      "6": 1836
+    },
+    "individual_changed_components_in_complete_quads": 52870,
+    "complete_frame_intervals_between_first_and_last_probe": 10,
+    "median_updates_per_complete_frame": 19342.0,
+    "max_updates_per_complete_frame": 19712,
+    "quad_positions_compared_to_previous_complete_frame": 31978,
+    "quad_positions_aligned_by_address_and_ordinal": 27062,
+    "matching_quad_positions_by_address_and_ordinal": 0,
+    "quads_in_matching_position_streams_by_address": 0
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "mode": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8414,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994624875,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 140.21666666666667,
+      "p99_gpu_completion_gap_ns": 12449875,
+      "min_draws": 695,
+      "max_draws": 978
+    },
+    {
+      "order": 2,
+      "mode": "candidate",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8410,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994237166,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 140.15,
+      "p99_gpu_completion_gap_ns": 12456500,
+      "min_draws": 687,
+      "max_draws": 976
+    },
+    {
+      "order": 3,
+      "mode": "candidate",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8393,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994277250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 139.86666666666667,
+      "p99_gpu_completion_gap_ns": 12743750,
+      "min_draws": 701,
+      "max_draws": 958
+    },
+    {
+      "order": 4,
+      "mode": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8375,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995187959,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 139.56666666666666,
+      "p99_gpu_completion_gap_ns": 12333916,
+      "min_draws": 684,
+      "max_draws": 969
+    }
+  ],
+  "comparison": {
+    "control": {
+      "median_gpu_completed_fps": 139.89166666666665,
+      "median_p99_completion_gap_ns": 12391895.5
+    },
+    "candidate": {
+      "median_gpu_completed_fps": 140.00833333333333,
+      "median_p99_completion_gap_ns": 12600125.0
+    }
+  },
+  "paired_candidate_minus_control": [
+    {
+      "completed_fps": -0.06666666666666288,
+      "p99_gap_ns": 6625
+    },
+    {
+      "completed_fps": 0.30000000000001137,
+      "p99_gap_ns": 409834
+    }
+  ]
+}

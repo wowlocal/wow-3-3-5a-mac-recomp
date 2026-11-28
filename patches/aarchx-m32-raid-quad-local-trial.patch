@@ -1,0 +1,207 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19014,4 +19014,32 @@
+ }
+
++/* The four bounds reductions each reconverge after a single optional store. */
++static uint64_t m32_quad_end(uint64_t start)
++{
++    switch (start) {
++    case 0x881709: return 0x881755;
++    case 0x8817f1: return 0x88183d;
++    case 0x8818ec: return 0x881934;
++    case 0x8819cf: return 0x881a17;
++    default: return 0;
++    }
++}
++
++static int m32_quad_store_join(const X86Insn *cmp, const X86Insn *branch, uint64_t end)
++{
++    if (cmp->op != OCERZ_OP_UCOMISS || cmp->rip + cmp->len != branch->rip ||
++        branch->op != OCERZ_OP_JCC || branch->cc != OCERZ_CC_BE ||
++        branch->ops[0].kind != OCERZ_OPK_IMM)
++        return 0;
++    uint64_t fall = branch->rip + branch->len;
++    uint64_t join = branch->ops[0].imm;
++    X86Insn store;
++    return join > fall && join <= end &&
++           jit_decode(fall, &store, 1) == OCERZ_OK && store.rip + store.len == join &&
++           store.op == OCERZ_OP_MOVSS && store.nops == 2 && store.seg == OCERZ_SEG_NONE &&
++           store.ops[0].kind == OCERZ_OPK_MEM && store.ops[0].size == 4 &&
++           store.ops[1].kind == OCERZ_OPK_XMM;
++}
++
+ static int fps_watch(uint64_t rip)
+ {
+@@ -25840,4 +25868,10 @@
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int quad_local = mode32 && !g_trap_block && !g_no_chain &&
++                           tcm == OCERZ_TC_OFF && ENV_ON("OCERZ_M32_QUAD_LOCAL");
++    const uint64_t quad_end = !quad_local ? 0 : ENV_ON("OCERZ_M32_QUAD_LOCAL_TEST") ?
++                              rip + 128 : m32_quad_end(rip);
++    uint32_t local_quad_branches = 0;
++    int quad_boundary = 0;
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+@@ -25846,4 +25880,6 @@
+         volatile int vn = 0;
+         volatile int vext = 0;
++        volatile int vquad_boundary = 0;
++        volatile uint32_t vquad_branches = 0;
+         volatile uint64_t vpc = rip;
+         sigjmp_buf db;
+@@ -25855,4 +25891,8 @@
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && quad_local && (vpc == quad_end || m32_quad_end(vpc))) {
++                    vquad_boundary = 1;
++                    break;
++                }
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -25876,4 +25916,10 @@
+                 vn++;
+                 if (is_terminator(op)) {
++                    if (quad_end && vn >= 2 && vn <= 32 &&
++                        m32_quad_store_join(&scratch[vn - 2], &scratch[vn - 1], quad_end)) {
++                        vquad_branches |= UINT32_C(1) << (vn - 1);
++                        vpc += len;
++                        continue;
++                    }
+                     if (op == OCERZ_OP_JCC && superblock_enabled() && !g_no_chain &&
+                         vext < SIDE_MAX && vn < JIT_MAX_BLOCK_INSNS - 1 &&
+@@ -25908,4 +25954,6 @@
+         n = vn;
+         pc = vpc;
++        local_quad_branches = vquad_branches;
++        quad_boundary = vquad_boundary;
+     }
+     g_xlat_n = n;
+@@ -26500,5 +26548,6 @@
+             uint64_t def, use;
+             jcc_fall_live[i] = 0;
+-            if (i < n - 1 && blk->insns[i].op == OCERZ_OP_JCC) {
++            if (i < n - 1 && blk->insns[i].op == OCERZ_OP_JCC &&
++                !(i < 32 && (local_quad_branches & (UINT32_C(1) << i)))) {
+                 uint64_t tl = (g_no_xlive || blk->insns[i].ops[0].kind != OCERZ_OPK_IMM)
+                               ? OCERZ_FL_ALL : xlive_resolve(xlive_succ_live(jit, blk->insns[i].ops[0].imm),
+@@ -26716,4 +26765,8 @@
+     int8_t fpb_of[JIT_MAX_BLOCK_INSNS];
+     fpb_scan(blk->insns, n, fpb_of);
++    if (local_quad_branches) {
++        memset(fpb_of, -1, sizeof fpb_of);
++        g_n_fpb = 0;
++    }
+     mov_sink_scan(blk->insns, n, fl_need);
+     g_scpend.valid = 0; g_scalar_merge_next = 0;
+@@ -26762,5 +26815,15 @@
+     uint32_t *regen_from = NULL;
+     dep_plain_mark(blk->insns, n);
++    uint32_t *quad_join_patch = NULL;
++    int quad_join_index = -1;
++    int quad_join_cbz = 0;
++    unsigned quad_emitted = 0;
+     for (int i = 0; i < n; i++) {
++        if (quad_join_patch && i == quad_join_index) {
++            if (quad_join_cbz) a64_patch_cbz(quad_join_patch, a64_label(&b));
++            else               a64_patch_bcond(quad_join_patch, a64_label(&b));
++            quad_join_patch = NULL;
++            ea_cache_reset();
++        }
+         const X86Insn *insn = &blk->insns[i];
+         g_dep_at[i] = b.p;
+@@ -26934,4 +26997,20 @@
+             g_cc_want_cbz = 0;
+             int cond = g_cc_direct >= 0 ? g_cc_direct : A64_NE;
++            if (i < 32 && (local_quad_branches & (UINT32_C(1) << i))) {
++                assert(!quad_join_patch);
++                quad_join_index = i + 2;
++                quad_join_cbz = g_cc_cbz_reg >= 0;
++                quad_join_patch = a64_label(&b);
++                if (quad_join_cbz) {
++                    if (g_cc_cbz_nz) a64_cbnz(&b, g_cc_cbz_sf, g_cc_cbz_reg, 0);
++                    else             a64_cbz(&b, g_cc_cbz_sf, g_cc_cbz_reg, 0);
++                } else {
++                    a64_bcond(&b, cond, 0);
++                }
++                blk->n_inlined++;
++                quad_emitted++;
++                ea_cache_reset();
++                continue;
++            }
+             if (g_n_side < SIDE_MAX) {
+                 g_side[g_n_side].site = a64_label(&b);
+@@ -27282,4 +27361,12 @@
+         dep_plain_check(blk->insns, n, b.p);
+
++    if (quad_join_patch) {
++        assert(quad_join_index == n);
++        if (quad_join_cbz) a64_patch_cbz(quad_join_patch, a64_label(&b));
++        else               a64_patch_bcond(quad_join_patch, a64_label(&b));
++    }
++    if (quad_emitted && ENV_ON("OCERZ_M32_QUAD_LOCAL_LOG"))
++        fprintf(stderr, "ocerz: quad local stores rip=%#llx joins=%u\n",
++                (unsigned long long)rip, quad_emitted);
+     g_dep_plain_op = NULL;
+     g_cur_live_after = OCERZ_FL_ALL;
+@@ -27316,5 +27403,5 @@
+         if (capchain < 0) capchain = getenv("OCERZ_NO_CAP_CHAIN") ? 0 : 1;
+         uint64_t next = mode32 ? (uint64_t)(uint32_t)pc : pc;
+-        if (capchain && !g_no_chain && n >= JIT_MAX_BLOCK_INSNS && !g_chain_target &&
++        if (capchain && !g_no_chain && (n >= JIT_MAX_BLOCK_INSNS || quad_boundary) && !g_chain_target &&
+             g_n_jcc_edges == 0 && g_n_call_edges == 0) {
+             int edge_class = body_edge_pin_class();
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -54,4 +54,5 @@
+ #include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+@@ -280,4 +281,42 @@
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++
++    static const struct {
++        const char *name;
++        uint32_t first, second, value, upper;
++        uint8_t offset;
++    } quad_cases[] = {
++        { "quad stores both taken", 0x40000000, 0x3f800000, 0x40400000, 0x3f800000, 0x40 },
++        { "quad stores both skipped", 0x3f800000, 0x40000000, 0x3f000000, 0x40800000, 0x40 },
++        { "quad stores signed zero tie", 0x80000000, 0x00000000, 0x80000000, 0x00000000, 0x41 },
++        { "quad stores unordered input", 0x7fc00013, 0x3f800000, 0x40400000, 0x7fc00017, 0x41 },
++        { "quad stores infinity", 0x7f800000, 0x40000000, 0xff800000, 0x7f800000, 0x40 },
++        { "quad stores read after write", 0x40000000, 0x3f800000, 0x40a00000, 0x3f800000, 0x41 },
++    };
++    const char *quad_test = getenv("OCERZ_TEST_JIT32_QUAD_JOIN");
++    if (quad_test) {
++        char *rest;
++        long selected = strtol(quad_test, &rest, 10);
++        if (*rest || selected < 0 || (size_t)selected >= sizeof quad_cases / sizeof quad_cases[0])
++            return 2;
++        size_t i = (size_t)selected;
++        uint8_t c[] = {
++            0xb8, 0,0,0,0, 0x66,0x0f,0x6e,0xc0,
++            0xb8, 0,0,0,0, 0x66,0x0f,0x6e,0xc8,
++            0xb8, 0,0,0,0, 0x66,0x0f,0x6e,0xd0,
++            0xb8, 0,0,0,0, 0x66,0x0f,0x6e,0xd8,
++            0x0f,0x2e,0xc1, 0x76,0x05, 0xf3,0x0f,0x11,0x53,0,
++            0xf3,0x0f,0x10,0x43,0,
++            0x0f,0x2e,0xc3, 0x76,0x05, 0xf3,0x0f,0x11,0x4b,0x48,
++            0x0f,0x92,0xc2, 0x0f,0x94,0xc1, 0x0f,0x9a,0xc0,
++        };
++        memcpy(c + 1, &quad_cases[i].first, 4);
++        memcpy(c + 10, &quad_cases[i].second, 4);
++        memcpy(c + 19, &quad_cases[i].value, 4);
++        memcpy(c + 28, &quad_cases[i].upper, 4);
++        c[45] = c[50] = quad_cases[i].offset;
++        run_case(quad_cases[i].name, M32_CODE, M32_STACK, c, sizeof c);
++        return g_failures ? 1 : 0;
++    }
+
+     static const uint8_t carry_chain[] = {

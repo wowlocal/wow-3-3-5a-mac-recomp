@@ -2191,3 +2191,22 @@ Apply `patches/aarchx-m32-raid-quad-layout-probe.patch` to the accepted runtime 
 ```sh
 python3 benchmarks/summarize-raid-quad-layout.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
 ```
+
+### Join conditional bounds stores inside the translated block
+
+The JIT recognizes a single `MOVSS` store skipped by `JBE` immediately after `UCOMISS`. At the four measured quad bounds groups, it decodes through the store and emits the join as a local ARM64 branch. Each original comparison, load, conditional write, and guest flag use stays in order. The address cache resets at each join, and the floating-point batching pass stays off for the joined region. The surrounding guest blocks use the standard direct chaining path. The four timed runs used one `-O2` runtime and the accepted PGO renderer.
+
+Apply `patches/aarchx-m32-raid-quad-local-trial.patch` to the accepted runtime source layers. Use the client image identified by SHA-256 in the result. Set `OCERZ_TCACHE=off` for both arms and `OCERZ_M32_QUAD_LOCAL=1` for the candidate. Use `OCERZ_M32_QUAD_LOCAL_LOG=1` to log code generation in the separate diagnostic. With `OCERZ_M32_QUAD_LOCAL_TEST=1`, the focused JIT test can exercise the same pattern in the test guest rather than at the four client addresses. Run a fresh `test_jit32` process with `OCERZ_TEST_JIT32_QUAD_JOIN` set to each value from 0 through 5. The six comparisons in each mode cover both store paths, unaligned addresses, signed zeros, unordered compares, infinities, and a load that reads a conditional write. Both modes passed **805** general i386 checks.
+
+For the separate in-world validation, apply `patches/aarchx-m32-raid-quad-local-validation.patch` on top of the trial. Set `OCERZ_M32_RAID_BOUNDS_LOG` to a fresh `vertex-bounds.bin` and arm the ring for approximately **90 ms** after the verified scene starts. Use the bounds-ring gate and metadata from the earlier quad probe and a 25-second GPU window. Record this launch under `in-world-bounds`. Code generation confirmed all six joins at each of the four client addresses. The scalar replay matched **201,960** observed bounds updates bit for bit, covering **10** whole frames inside the probe window.
+
+| Conditional-store strategy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing block chaining | 139.89 | 12.39 ms |
+| Local branches | 140.01 | 12.60 ms |
+
+Throughput changed by **−0.07** and **+0.30 FPS**. P99 changed by **+0.007** and **+0.410 ms**. Keep the prior benchmark baseline. The four warmed 60-second runs and the bounds diagnostic verified the saved camera, overlapping spell effects, all 26 cast timing rows, consecutive GPU completions, and zero visible windows or activations. The earlier test client resumed after every run. [Full-raid A/B and bitwise validation](results/raid-aarchx-quad-local-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-quad-local.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
+```
