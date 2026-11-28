@@ -14,7 +14,7 @@
     X(glBindBuffer) X(glBindProgramARB) X(glBufferData) X(glBufferParameteriAPPLE) X(glBufferSubData) \
     X(glClear) X(glClearColor) X(glClientWaitSync) X(glColor4ub) X(glDeleteSync) X(glDrawRangeElements) \
     X(glEnable) X(glEnableClientState) X(glFenceSync) X(glFlushMappedBufferRangeAPPLE) \
-    X(glGenBuffers) X(glGenProgramsARB) X(glGetError) X(glLightfv) X(glLoadIdentity) X(glMapBuffer) \
+    X(glGenBuffers) X(glGenProgramsARB) X(glGetError) X(glGetIntegerv) X(glLightfv) X(glLoadIdentity) X(glMapBuffer) \
     X(glMaterialf) X(glMaterialfv) X(glMatrixMode) X(glNormal3f) X(glProgramStringARB) X(glReadPixels) \
     X(glTranslatef) X(glUnmapBuffer) X(glVertexPointer) X(glViewport)
 
@@ -162,6 +162,9 @@ int main(int argc, char **argv)
     select_matrix_mode = matrix_mode && strcmp(matrix_mode, "1") == 0;
     const char *light_mode = getenv("OCERZ_WMGL_PROBE_DIRECTIONAL_LIGHTS");
     directional_lighting = light_mode && strcmp(light_mode, "1") == 0;
+    const char *native_mode = getenv("OCERZ_WMGL_PROBE_NATIVE_5K");
+    const int native_5k = native_mode && strcmp(native_mode, "1") == 0;
+    const int width = native_5k ? 5120 : WIDTH, height = native_5k ? 2880 : HEIGHT;
     load();
     struct wmgl_pixel_format formats[256];
     unsigned available = wmgl_get_pixel_formats(formats, 256, NULL);
@@ -169,7 +172,7 @@ int main(int argc, char **argv)
     for (unsigned i = 0; i < available && i < 256; i++) {
         const struct wmgl_pixel_format choice = formats[i];
         if (choice.draw_to_pbuffer && choice.red_bits == 8 && choice.alpha_bits == 8 &&
-            choice.depth_bits == 24 && choice.stencil_bits == 8 && choice.samples <= 1 &&
+            choice.depth_bits == 24 && choice.stencil_bits == 8 && (native_5k ? choice.samples == 4 : choice.samples <= 1) &&
             !choice.srgb_capable && !choice.float_components) {
             format = (int)i + 1;
             break;
@@ -178,7 +181,7 @@ int main(int argc, char **argv)
     const int attributes[] = { 0x2091, 2, 0x2092, 1, 0 };
     int error = 0;
     wmgl_context *context = format ? wmgl_context_create(format, NULL, attributes, &error) : NULL;
-    wmgl_surface *surface = context ? wmgl_surface_create_pbuffer(format, WIDTH, HEIGHT) : NULL;
+    wmgl_surface *surface = context ? wmgl_surface_create_pbuffer(format, width, height) : NULL;
     require(context && surface && wmgl_make_current(context, surface, surface), "could not make the pbuffer current");
 
     GLuint ids[2];
@@ -189,7 +192,15 @@ int main(int argc, char **argv)
     run_glBindBuffer(GL_ARRAY_BUFFER, ids[0]);
     run_glBufferParameteriAPPLE(GL_ARRAY_BUFFER, GL_BUFFER_FLUSHING_UNMAP_APPLE, GL_FALSE);
     run_glBufferParameteriAPPLE(GL_ARRAY_BUFFER, GL_BUFFER_SERIALIZED_MODIFY_APPLE, GL_FALSE);
-    run_glViewport(0, 0, WIDTH, HEIGHT);
+    run_glViewport(0, 0, width, height);
+    if (native_5k) {
+        GLint viewport[4], samples = 0;
+        run_glGetIntegerv(GL_VIEWPORT, viewport);
+        run_glGetIntegerv(GL_SAMPLES, &samples);
+        require(viewport[0] == 0 && viewport[1] == 0 && viewport[2] == width && viewport[3] == height && samples == 4,
+                "the native 5K replay is missing its viewport or four samples");
+        printf("viewport %dx%d, samples %d\n", viewport[2], viewport[3], samples);
+    }
     run_glClearColor(0.1f, 0.15f, 0.2f, 1.0f);
     run_glEnableClientState(GL_VERTEX_ARRAY);
     if (directional_lighting) {
@@ -239,12 +250,13 @@ int main(int argc, char **argv)
     }
 
     render(83);
-    unsigned char *pixels = malloc(WIDTH * HEIGHT * 4);
+    const size_t image_bytes = (size_t)width * height * 4;
+    unsigned char *pixels = malloc(image_bytes);
     require(pixels != NULL, "could not allocate framebuffer readback memory");
-    run_glReadPixels(0, 0, WIDTH, HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    run_glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     uint64_t hash = UINT64_C(14695981039346656037);
     size_t colored = 0;
-    for (size_t i = 0; i < WIDTH * HEIGHT * 4; i++) {
+    for (size_t i = 0; i < image_bytes; i++) {
         hash = (hash ^ pixels[i]) * UINT64_C(1099511628211);
         if (i % 4 == 0) {
             // The clear's 0.1 red channel quantizes to 25 or 26.

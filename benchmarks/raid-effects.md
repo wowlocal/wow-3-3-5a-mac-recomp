@@ -3041,3 +3041,20 @@ The trace matched **561** consecutive GPU completions and **1,186** fragment end
 ```sh
 python3 benchmarks/summarize-raid-native-5k-encoders.py CAPTURE --legacy-pid EARLIER_TEST_PID
 ```
+
+### Keep the native 5K scene pass together
+
+Compare `WINEMETALGL_COMMIT_DRAWS=64` with `2048` in 64, 2048, 2048, 64 order. Each launch warms the same native 5K raid and measures a 60-second window. Keep the runtime, deferred renderer, idle-first threshold of 256, effective graphics settings, camera and casts fixed. Disable submission and renderer diagnostics for the timing windows. At 2048 the ordinary continuing-pass limit is 16,384 draws and the 256-draw idle-first gate is ineligible. The elapsed-time policy can still submit at a render-target change.
+
+| Draw budget setting | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| 64 | 95.28 | 14.30 ms |
+| 2048 | 100.48 | 13.27 ms |
+
+The throughput differences were **+4.17** and **+6.23 FPS**, with p99 gaps **0.754** and **1.312 ms** shorter. All four timed launches verified the native 5120 × 2880 output, 4× MSAA, supported quality maxima, camera and all 26 cast timing rows. Use 2048 as the candidate submission policy for subsequent native 5K experiments. [Paired uninstrumented native 5K windows](results/raid-native-5k-natural-pass-ab.json)
+
+Save each capture as `native-5k-natural-ORDER-BUDGET`. Run `wmgl_gpu_tests` with each budget and the selected deferred renderer. Repeat the ordered indexed replay with `OCERZ_WMGL_PROBE_NATIVE_5K=1` and each budget, using `benchmarks/fixtures/raid-triangle-order.tsv` and the same renderer. The replay checks the actual 5120 × 2880 viewport and four samples before drawing, then hashes the full RGBA readback. The two policies passed **343** renderer tests each and matched the readback hash and **2,246,161** draw-colored pixels. Save the test and replay logs beside the captures.
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-natural-pass.py CAPTURE_ROOT
+```

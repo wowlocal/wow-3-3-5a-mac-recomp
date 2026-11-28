@@ -1,0 +1,191 @@
+{
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+    "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  },
+  "viewport": [
+    0,
+    0,
+    5120,
+    2880
+  ],
+  "multisample_count": 4,
+  "verified_settings": {
+    "weatherDensity": "3",
+    "ffxGlow": "1",
+    "projectedTextures": "1",
+    "groundEffectDist": "140",
+    "extShadowQuality": "0",
+    "gxVSync": "0",
+    "baseMip": "0",
+    "shadowLevel": "0",
+    "maxFPSBk": "0",
+    "shadowLimit": 0,
+    "format": 3,
+    "farclip": "1277",
+    "caps": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      16,
+      1
+    ],
+    "gxDepthBits": "24",
+    "gxColorBits": "24",
+    "maxFPS": "0",
+    "formats": [
+      24,
+      24,
+      1,
+      24,
+      24,
+      2,
+      24,
+      24,
+      4
+    ],
+    "gxResolution": "5120x2880",
+    "environmentDetail": "1.5",
+    "terrainDetail": 1,
+    "terrainDetailBefore": 1,
+    "gxMultisample": "4",
+    "ffxDeath": "1",
+    "particleDensity": "1",
+    "marker": "complete",
+    "specular": "1",
+    "componentTextureLevel": "9",
+    "textureFilteringMode": "5",
+    "groundEffectDensity": "64"
+  },
+  "runs_in_capture_order": [
+    {
+      "budget": 64,
+      "gpu_window": {
+        "stream": 1,
+        "pid": 57333,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5735,
+        "first_sequence": 3875,
+        "last_sequence": 9609,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59995616541,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 95.56666666666666,
+        "p99_gpu_completion_gap_ns": 14125125,
+        "min_draws": 895,
+        "max_draws": 1206
+      },
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "214e3e62c4fe49458896ffd5a6fdc3d57dfc5beb2cd08173c911cb9aa629532c"
+    },
+    {
+      "budget": 2048,
+      "gpu_window": {
+        "stream": 1,
+        "pid": 15755,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5985,
+        "first_sequence": 3869,
+        "last_sequence": 9853,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59992382750,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 99.73333333333333,
+        "p99_gpu_completion_gap_ns": 13371291,
+        "min_draws": 889,
+        "max_draws": 1226
+      },
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "f4a95b52c79dc414e59f4ba2e0a24b4f3d5c22d11fc36a3955b47c9cfc264af8"
+    },
+    {
+      "budget": 2048,
+      "gpu_window": {
+        "stream": 1,
+        "pid": 74359,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 6074,
+        "first_sequence": 3956,
+        "last_sequence": 10029,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59993467375,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 101.21666666666667,
+        "p99_gpu_completion_gap_ns": 13164375,
+        "min_draws": 883,
+        "max_draws": 1198
+      },
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "402472969baaf1afe0a640f798bed606dee304f2a80e3f74256917218600aaa7"
+    },
+    {
+      "budget": 64,
+      "gpu_window": {
+        "stream": 1,
+        "pid": 33350,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5700,
+        "first_sequence": 3700,
+        "last_sequence": 9399,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59998291625,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 94.98333333333333,
+        "p99_gpu_completion_gap_ns": 14476459,
+        "min_draws": 871,
+        "max_draws": 1203
+      },
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "2597b94a652d588ab098bd21312d9b3f5def9bf2db1ca93e935bb8dd9b88a1a1"
+    }
+  ],
+  "median_by_draw_budget": {
+    "64": {
+      "average_completed_fps": 95.275,
+      "p99_gpu_completion_gap_ns": 14300792.0
+    },
+    "2048": {
+      "average_completed_fps": 100.475,
+      "p99_gpu_completion_gap_ns": 13267833.0
+    }
+  },
+  "paired_natural_minus_reference": [
+    {
+      "average_completed_fps": 4.166666666666671,
+      "p99_gpu_completion_gap_ns": -753834
+    },
+    {
+      "average_completed_fps": 6.233333333333334,
+      "p99_gpu_completion_gap_ns": -1312084
+    }
+  ],
+  "renderer_validation": {
+    "64": {
+      "gpu_tests_passed": 343,
+      "replay_outputs": 3479,
+      "readback_hash": "020124a51b61ad1b",
+      "draw_colored_pixels": 2246161
+    },
+    "2048": {
+      "gpu_tests_passed": 343,
+      "replay_outputs": 5567,
+      "readback_hash": "020124a51b61ad1b",
+      "draw_colored_pixels": 2246161
+    }
+  }
+}
