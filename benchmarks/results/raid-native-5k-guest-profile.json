@@ -1,0 +1,3954 @@
+{
+  "viewport": [
+    0,
+    0,
+    5120,
+    2880
+  ],
+  "multisample_count": 4,
+  "verified_settings": {
+    "weatherDensity": "3",
+    "ffxGlow": "1",
+    "projectedTextures": "1",
+    "groundEffectDist": "140",
+    "extShadowQuality": "0",
+    "gxVSync": "0",
+    "baseMip": "0",
+    "shadowLevel": "0",
+    "maxFPSBk": "0",
+    "shadowLimit": 0,
+    "format": 3,
+    "farclip": "1277",
+    "caps": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      16,
+      1
+    ],
+    "gxDepthBits": "24",
+    "gxColorBits": "24",
+    "maxFPS": "0",
+    "formats": [
+      24,
+      24,
+      1,
+      24,
+      24,
+      2,
+      24,
+      24,
+      4
+    ],
+    "gxResolution": "5120x2880",
+    "environmentDetail": "1.5",
+    "terrainDetail": 1,
+    "terrainDetailBefore": 1,
+    "gxMultisample": "4",
+    "ffxDeath": "1",
+    "particleDensity": "1",
+    "marker": "complete",
+    "specular": "1",
+    "componentTextureLevel": "9",
+    "textureFilteringMode": "5",
+    "groundEffectDensity": "64"
+  },
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "07fa928fa0fb810ad32f8c3d4116dbfc1def4fa0c2e06ae2da684496239869a5",
+    "runtime_signed_sha256": "41565c64a09b0cbe034e39526f298bde181b1e110d39b076b37c700618611464",
+    "renderer_sha256": "a9cb2a6512777b98a8552b33733bea3ec12c608381ac903d03fb91b232655f05"
+  },
+  "restored_runtime_sha256": {
+    "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+    "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b"
+  },
+  "general_i386_checks_passed": 812,
+  "runs": [
+    {
+      "gpu_window": {
+        "stream": 1,
+        "pid": 51470,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5767,
+        "first_sequence": 3961,
+        "last_sequence": 9727,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59995946000,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 96.1,
+        "p99_gpu_completion_gap_ns": 13481625,
+        "min_draws": 900,
+        "max_draws": 1224
+      },
+      "world_readback_sha256": "a3b8f2c5ca0a79f78cb8de6e8a8f594c8c9609bed1d0712f0117b7e258cad523",
+      "verified_cast_rows": 26,
+      "periods_with_same_hot_guest_thread_after_world_entry": 26,
+      "weighted_cpu_ms_per_gpu_completion": {
+        "all": 10.086190220218484,
+        "translated": 6.910968961331715,
+        "in_either_known_tree": 4.518093636205999
+      },
+      "validated_stacks": {
+        "samples": 34214,
+        "total_cpu_usec": 58167059,
+        "translated_cpu_usec": 39855558,
+        "cpu_usec_by_validated_call_depth": {
+          "3": 7673,
+          "4": 10889,
+          "5": 72416,
+          "6": 107034,
+          "7": 121920,
+          "8": 509734,
+          "9": 618047,
+          "10": 501708,
+          "11": 782634,
+          "12": 1119951,
+          "13": 2944687,
+          "14": 5348816,
+          "15": 5634750,
+          "16": 22075299
+        },
+        "share_of_all_cpu_with_validated_caller": 0.6851912179365988,
+        "hottest_inclusive_unwind_ranges": [
+          {
+            "entry": "0x779bb0",
+            "inclusive_cpu_usec": 37264081,
+            "exclusive_cpu_usec": 38385,
+            "inclusive_share_of_all_sampled_cpu": 0.6406389052607937,
+            "exclusive_share_of_all_sampled_cpu": 0.0006599095890338895,
+            "top_sampled_callees": [
+              {
+                "entry": "0x868e10",
+                "cpu_usec": 33374279
+              },
+              {
+                "entry": "0x35f350",
+                "cpu_usec": 3584321
+              },
+              {
+                "entry": "0x530800",
+                "cpu_usec": 111165
+              },
+              {
+                "entry": "0x989d30",
+                "cpu_usec": 62552
+              },
+              {
+                "entry": "0x456e10",
+                "cpu_usec": 19346
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x77d510",
+            "inclusive_cpu_usec": 35832865,
+            "exclusive_cpu_usec": 13442,
+            "inclusive_share_of_all_sampled_cpu": 0.6160336385582087,
+            "exclusive_share_of_all_sampled_cpu": 0.00023109299715497048,
+            "top_sampled_callees": [
+              {
+                "entry": "0x779bb0",
+                "cpu_usec": 35751600
+              },
+              {
+                "entry": "0x782b60",
+                "cpu_usec": 20531
+              },
+              {
+                "entry": "0x778df0",
+                "cpu_usec": 19854
+              },
+              {
+                "entry": "0x456e10",
+                "cpu_usec": 6963
+              },
+              {
+                "entry": "0x119510",
+                "cpu_usec": 4160
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x868e10",
+            "inclusive_cpu_usec": 34383656,
+            "exclusive_cpu_usec": 8449,
+            "inclusive_share_of_all_sampled_cpu": 0.5911190386985183,
+            "exclusive_share_of_all_sampled_cpu": 0.00014525403459026527,
+            "top_sampled_callees": [
+              {
+                "entry": "0x8260d0",
+                "cpu_usec": 31732864
+              },
+              {
+                "entry": "0x827af0",
+                "cpu_usec": 2471214
+              },
+              {
+                "entry": "0x900000",
+                "cpu_usec": 77046
+              },
+              {
+                "entry": "0x929240",
+                "cpu_usec": 40520
+              },
+              {
+                "entry": "0xa4ee0",
+                "cpu_usec": 31194
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x77dd40",
+            "inclusive_cpu_usec": 33883449,
+            "exclusive_cpu_usec": 5120,
+            "inclusive_share_of_all_sampled_cpu": 0.5825195494240133,
+            "exclusive_share_of_all_sampled_cpu": 8.80223289267556e-05,
+            "top_sampled_callees": [
+              {
+                "entry": "0x77d510",
+                "cpu_usec": 33878329
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x77dde0",
+            "inclusive_cpu_usec": 32513609,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.5589694503894378,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x77dd40",
+                "cpu_usec": 32511056
+              },
+              {
+                "entry": "0x77d510",
+                "cpu_usec": 2553
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x8260d0",
+            "inclusive_cpu_usec": 31911384,
+            "exclusive_cpu_usec": 19570,
+            "inclusive_share_of_all_sampled_cpu": 0.5486160818273449,
+            "exclusive_share_of_all_sampled_cpu": 0.00033644472208918107,
+            "top_sampled_callees": [
+              {
+                "entry": "0x80bf10",
+                "cpu_usec": 31848452
+              },
+              {
+                "entry": "0x8f6590",
+                "cpu_usec": 7982
+              },
+              {
+                "entry": "0x931060",
+                "cpu_usec": 7378
+              },
+              {
+                "entry": "0x86c270",
+                "cpu_usec": 6479
+              },
+              {
+                "entry": "0x8fdc00",
+                "cpu_usec": 4024
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x80bf10",
+            "inclusive_cpu_usec": 31860673,
+            "exclusive_cpu_usec": 254754,
+            "inclusive_share_of_all_sampled_cpu": 0.5477442653581643,
+            "exclusive_share_of_all_sampled_cpu": 0.004379695387384121,
+            "top_sampled_callees": [
+              {
+                "entry": "0x622650",
+                "cpu_usec": 30632622
+              },
+              {
+                "entry": "0x92ed80",
+                "cpu_usec": 238372
+              },
+              {
+                "entry": "0x8f6590",
+                "cpu_usec": 233438
+              },
+              {
+                "entry": "0x57fda0",
+                "cpu_usec": 203680
+              },
+              {
+                "entry": "0x8e8ee0",
+                "cpu_usec": 89249
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x622650",
+            "inclusive_cpu_usec": 30638961,
+            "exclusive_cpu_usec": 3135,
+            "inclusive_share_of_all_sampled_cpu": 0.5267407623273509,
+            "exclusive_share_of_all_sampled_cpu": 5.38964846065193e-05,
+            "top_sampled_callees": [
+              {
+                "entry": "0x61c110",
+                "cpu_usec": 27113652
+              },
+              {
+                "entry": "0x621b20",
+                "cpu_usec": 3416284
+              },
+              {
+                "entry": "0x2a8a80",
+                "cpu_usec": 39579
+              },
+              {
+                "entry": "0x2b61a0",
+                "cpu_usec": 28438
+              },
+              {
+                "entry": "0x900ac0",
+                "cpu_usec": 4787
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x9903a0",
+            "inclusive_cpu_usec": 29578700,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.5085129024659817,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x77dde0",
+                "cpu_usec": 29578700
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 723921
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              }
+            ]
+          },
+          {
+            "entry": "0x61c110",
+            "inclusive_cpu_usec": 27180907,
+            "exclusive_cpu_usec": 19854,
+            "inclusive_share_of_all_sampled_cpu": 0.4672903782190535,
+            "exclusive_share_of_all_sampled_cpu": 0.00034132721064683704,
+            "top_sampled_callees": [
+              {
+                "entry": "0x721db0",
+                "cpu_usec": 15007690
+              },
+              {
+                "entry": "0x97dbc0",
+                "cpu_usec": 10907341
+              },
+              {
+                "entry": "0x735f60",
+                "cpu_usec": 366318
+              },
+              {
+                "entry": "0x271dc0",
+                "cpu_usec": 227870
+              },
+              {
+                "entry": "0x428ef0",
+                "cpu_usec": 204783
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 476796
+              },
+              {
+                "entry": "0x72d9f0",
+                "cpu_usec": 423444
+              }
+            ]
+          },
+          {
+            "entry": "0x99dca0",
+            "inclusive_cpu_usec": 23934823,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.411484152912046,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x9903a0",
+                "cpu_usec": 23934823
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 864036
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 518040
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 488354
+              },
+              {
+                "entry": "0x72d9f0",
+                "cpu_usec": 423444
+              }
+            ]
+          },
+          {
+            "entry": "0x73f8e0",
+            "inclusive_cpu_usec": 15122566,
+            "exclusive_cpu_usec": 14315,
+            "inclusive_share_of_all_sampled_cpu": 0.25998505442745523,
+            "exclusive_share_of_all_sampled_cpu": 0.00024610149191142705,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97e390",
+                "cpu_usec": 7559730
+              },
+              {
+                "entry": "0x73da80",
+                "cpu_usec": 2503078
+              },
+              {
+                "entry": "0x738830",
+                "cpu_usec": 2145496
+              },
+              {
+                "entry": "0x737340",
+                "cpu_usec": 1196629
+              },
+              {
+                "entry": "0x739430",
+                "cpu_usec": 506619
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 476796
+              },
+              {
+                "entry": "0x72d9f0",
+                "cpu_usec": 423444
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 421214
+              },
+              {
+                "entry": "0x72df70",
+                "cpu_usec": 302368
+              }
+            ]
+          },
+          {
+            "entry": "0x721db0",
+            "inclusive_cpu_usec": 15086871,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.25937139094483014,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x73f8e0",
+                "cpu_usec": 15082865
+              },
+              {
+                "entry": "0x979ef0",
+                "cpu_usec": 618
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 476796
+              },
+              {
+                "entry": "0x72d9f0",
+                "cpu_usec": 423444
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 421214
+              },
+              {
+                "entry": "0x72df70",
+                "cpu_usec": 302368
+              }
+            ]
+          },
+          {
+            "entry": "0x97dbc0",
+            "inclusive_cpu_usec": 10933280,
+            "exclusive_cpu_usec": 25112,
+            "inclusive_share_of_all_sampled_cpu": 0.18796343132974971,
+            "exclusive_share_of_all_sampled_cpu": 0.0004317220164079466,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97cef0",
+                "cpu_usec": 10857014
+              },
+              {
+                "entry": "0x977260",
+                "cpu_usec": 37386
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 4874
+              },
+              {
+                "entry": "0x8a1b90",
+                "cpu_usec": 3220
+              },
+              {
+                "entry": "0x97b970",
+                "cpu_usec": 2777
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 687712
+              },
+              {
+                "entry": "0x2aab20",
+                "cpu_usec": 287303
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 265067
+              },
+              {
+                "entry": "0x97c340",
+                "cpu_usec": 189905
+              }
+            ]
+          },
+          {
+            "entry": "0x97cef0",
+            "inclusive_cpu_usec": 10926724,
+            "exclusive_cpu_usec": 166468,
+            "inclusive_share_of_all_sampled_cpu": 0.1878507214882568,
+            "exclusive_share_of_all_sampled_cpu": 0.0028618947366756157,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97caa0",
+                "cpu_usec": 4659039
+              },
+              {
+                "entry": "0x97b970",
+                "cpu_usec": 3182538
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 2124752
+              },
+              {
+                "entry": "0x979670",
+                "cpu_usec": 342668
+              },
+              {
+                "entry": "0x97c040",
+                "cpu_usec": 257014
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 682838
+              },
+              {
+                "entry": "0x2aab20",
+                "cpu_usec": 287303
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 265067
+              },
+              {
+                "entry": "0x97c340",
+                "cpu_usec": 189905
+              }
+            ]
+          },
+          {
+            "entry": "0x97e390",
+            "inclusive_cpu_usec": 7564957,
+            "exclusive_cpu_usec": 271846,
+            "inclusive_share_of_all_sampled_cpu": 0.13005569011147702,
+            "exclusive_share_of_all_sampled_cpu": 0.004673538677621642,
+            "top_sampled_callees": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 2334993
+              },
+              {
+                "entry": "0x967f20",
+                "cpu_usec": 2331338
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 1164924
+              },
+              {
+                "entry": "0x977000",
+                "cpu_usec": 515834
+              },
+              {
+                "entry": "0x96a240",
+                "cpu_usec": 353404
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 878288
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 476796
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 421214
+              },
+              {
+                "entry": "0x95f7c0",
+                "cpu_usec": 246025
+              },
+              {
+                "entry": "0x88a630",
+                "cpu_usec": 216933
+              }
+            ]
+          },
+          {
+            "entry": "0x97caa0",
+            "inclusive_cpu_usec": 4659039,
+            "exclusive_cpu_usec": 7811,
+            "inclusive_share_of_all_sampled_cpu": 0.08009755143370752,
+            "exclusive_share_of_all_sampled_cpu": 0.00013428562719665783,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97c340",
+                "cpu_usec": 4629793
+              },
+              {
+                "entry": "0x882f20",
+                "cpu_usec": 10008
+              },
+              {
+                "entry": "0x8e8ee0",
+                "cpu_usec": 4901
+              },
+              {
+                "entry": "0x8fdc30",
+                "cpu_usec": 2519
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x97c340",
+                "cpu_usec": 186329
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 132569
+              },
+              {
+                "entry": "0x882c80",
+                "cpu_usec": 90907
+              },
+              {
+                "entry": "0x882f20",
+                "cpu_usec": 79063
+              }
+            ]
+          },
+          {
+            "entry": "0x97c340",
+            "inclusive_cpu_usec": 4633369,
+            "exclusive_cpu_usec": 189905,
+            "inclusive_share_of_all_sampled_cpu": 0.07965623635879544,
+            "exclusive_share_of_all_sampled_cpu": 0.003264820385710063,
+            "top_sampled_callees": [
+              {
+                "entry": "0x882f20",
+                "cpu_usec": 3844965
+              },
+              {
+                "entry": "0x87ac90",
+                "cpu_usec": 282149
+              },
+              {
+                "entry": "0x8e8ee0",
+                "cpu_usec": 146512
+              },
+              {
+                "entry": "0x979b80",
+                "cpu_usec": 108794
+              },
+              {
+                "entry": "0x8fdc30",
+                "cpu_usec": 20265
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 132569
+              },
+              {
+                "entry": "0x882c80",
+                "cpu_usec": 90907
+              },
+              {
+                "entry": "0x882f20",
+                "cpu_usec": 69055
+              },
+              {
+                "entry": "0x8783c0",
+                "cpu_usec": 64986
+              }
+            ]
+          },
+          {
+            "entry": "0x882f20",
+            "inclusive_cpu_usec": 3854973,
+            "exclusive_cpu_usec": 79063,
+            "inclusive_share_of_all_sampled_cpu": 0.0662741604315941,
+            "exclusive_share_of_all_sampled_cpu": 0.0013592401156125153,
+            "top_sampled_callees": [
+              {
+                "entry": "0x882c80",
+                "cpu_usec": 3479150
+              },
+              {
+                "entry": "0x8783c0",
+                "cpu_usec": 186270
+              },
+              {
+                "entry": "0x8c3270",
+                "cpu_usec": 29123
+              },
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 19684
+              },
+              {
+                "entry": "0x876890",
+                "cpu_usec": 18564
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2061298
+              },
+              {
+                "entry": "0x882c80",
+                "cpu_usec": 90596
+              },
+              {
+                "entry": "0x8783c0",
+                "cpu_usec": 64986
+              },
+              {
+                "entry": "0x8c3270",
+                "cpu_usec": 24782
+              },
+              {
+                "entry": "0x883590",
+                "cpu_usec": 23487
+              }
+            ]
+          },
+          {
+            "entry": "0x35f350",
+            "inclusive_cpu_usec": 3591176,
+            "exclusive_cpu_usec": 5778,
+            "inclusive_share_of_all_sampled_cpu": 0.06173899904411533,
+            "exclusive_share_of_all_sampled_cpu": 9.933457354273319e-05,
+            "top_sampled_callees": [
+              {
+                "entry": "0x35f260",
+                "cpu_usec": 3199709
+              },
+              {
+                "entry": "0x3623e0",
+                "cpu_usec": 383780
+              },
+              {
+                "entry": "0x32ae20",
+                "cpu_usec": 1909
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6c95d0",
+                "cpu_usec": 170038
+              },
+              {
+                "entry": "0x6c9a40",
+                "cpu_usec": 147261
+              },
+              {
+                "entry": "0x6b4880",
+                "cpu_usec": 122783
+              },
+              {
+                "entry": "0x6f5d90",
+                "cpu_usec": 101378
+              },
+              {
+                "entry": "0x971ef0",
+                "cpu_usec": 98623
+              }
+            ]
+          },
+          {
+            "entry": "0x882c80",
+            "inclusive_cpu_usec": 3479461,
+            "exclusive_cpu_usec": 90907,
+            "inclusive_share_of_all_sampled_cpu": 0.059818410279261325,
+            "exclusive_share_of_all_sampled_cpu": 0.0015628605187001116,
+            "top_sampled_callees": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 3220487
+              },
+              {
+                "entry": "0x883450",
+                "cpu_usec": 23137
+              },
+              {
+                "entry": "0x883590",
+                "cpu_usec": 16586
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2041614
+              },
+              {
+                "entry": "0x883450",
+                "cpu_usec": 23137
+              },
+              {
+                "entry": "0x883590",
+                "cpu_usec": 16586
+              },
+              {
+                "entry": "0x880690",
+                "cpu_usec": 7999
+              }
+            ]
+          },
+          {
+            "entry": "0x2aa0f0",
+            "inclusive_cpu_usec": 3446945,
+            "exclusive_cpu_usec": 8125,
+            "inclusive_share_of_all_sampled_cpu": 0.059259399723131954,
+            "exclusive_share_of_all_sampled_cpu": 0.000139683871587869,
+            "top_sampled_callees": [
+              {
+                "entry": "0x722490",
+                "cpu_usec": 3434332
+              },
+              {
+                "entry": "0x702db0",
+                "cpu_usec": 4488
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6e29c0",
+                "cpu_usec": 805809
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 215515
+              },
+              {
+                "entry": "0x6e43b0",
+                "cpu_usec": 98482
+              },
+              {
+                "entry": "0x6e92c0",
+                "cpu_usec": 82000
+              },
+              {
+                "entry": "0x702920",
+                "cpu_usec": 48113
+              }
+            ]
+          },
+          {
+            "entry": "0x722490",
+            "inclusive_cpu_usec": 3440404,
+            "exclusive_cpu_usec": 31,
+            "inclusive_share_of_all_sampled_cpu": 0.0591469477595558,
+            "exclusive_share_of_all_sampled_cpu": 5.329476946737156e-07,
+            "top_sampled_callees": [
+              {
+                "entry": "0x702db0",
+                "cpu_usec": 3434123
+              },
+              {
+                "entry": "0x702920",
+                "cpu_usec": 3340
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 2910
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6e29c0",
+                "cpu_usec": 805809
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 215515
+              },
+              {
+                "entry": "0x6e43b0",
+                "cpu_usec": 98482
+              },
+              {
+                "entry": "0x6e92c0",
+                "cpu_usec": 82000
+              },
+              {
+                "entry": "0x702920",
+                "cpu_usec": 48113
+              }
+            ]
+          },
+          {
+            "entry": "0x702db0",
+            "inclusive_cpu_usec": 3438611,
+            "exclusive_cpu_usec": 9745,
+            "inclusive_share_of_all_sampled_cpu": 0.05911612275257032,
+            "exclusive_share_of_all_sampled_cpu": 0.00016753468659985027,
+            "top_sampled_callees": [
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 2725036
+              },
+              {
+                "entry": "0x702920",
+                "cpu_usec": 530533
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6e29c0",
+                "cpu_usec": 805809
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 212605
+              },
+              {
+                "entry": "0x6e43b0",
+                "cpu_usec": 98482
+              },
+              {
+                "entry": "0x6e92c0",
+                "cpu_usec": 82000
+              },
+              {
+                "entry": "0x702920",
+                "cpu_usec": 44773
+              }
+            ]
+          }
+        ],
+        "compared_entries": {
+          "entries": [
+            "0x73f8e0",
+            "0x97dbc0"
+          ],
+          "inclusive_cpu_usec": [
+            15122566,
+            10933280
+          ],
+          "overlap_cpu_usec": 0,
+          "share_of_all_cpu_in_either_entry": 0.447948485757205
+        }
+      },
+      "hottest_exclusive_unwind_ranges": [
+        {
+          "entry": "0x880c70",
+          "cpu_usec": 2061298,
+          "share_of_all_sampled_cpu": 0.03543754893985615
+        },
+        {
+          "entry": "0x6e29c0",
+          "cpu_usec": 899647,
+          "share_of_all_sampled_cpu": 0.015466606279681426
+        },
+        {
+          "entry": "0x964ca0",
+          "cpu_usec": 878288,
+          "share_of_all_sampled_cpu": 0.015099405318051236
+        },
+        {
+          "entry": "0x6adfc0",
+          "cpu_usec": 723921,
+          "share_of_all_sampled_cpu": 0.012445549292770672
+        },
+        {
+          "entry": "0x979130",
+          "cpu_usec": 687712,
+          "share_of_all_sampled_cpu": 0.011823049193530654
+        },
+        {
+          "entry": "0x2856a0",
+          "cpu_usec": 518040,
+          "share_of_all_sampled_cpu": 0.008906071733831343
+        },
+        {
+          "entry": "0x957790",
+          "cpu_usec": 488354,
+          "share_of_all_sampled_cpu": 0.008395714144667344
+        },
+        {
+          "entry": "0x8d9710",
+          "cpu_usec": 468832,
+          "share_of_all_sampled_cpu": 0.008060094631911853
+        },
+        {
+          "entry": "0x8e7230",
+          "cpu_usec": 446266,
+          "share_of_all_sampled_cpu": 0.007672143093911624
+        },
+        {
+          "entry": "0x72d9f0",
+          "cpu_usec": 423444,
+          "share_of_all_sampled_cpu": 0.0072797904394650585
+        },
+        {
+          "entry": "0x9763b0",
+          "cpu_usec": 421214,
+          "share_of_all_sampled_cpu": 0.007241452589170788
+        },
+        {
+          "entry": "0x8f98a0",
+          "cpu_usec": 416358,
+          "share_of_all_sampled_cpu": 0.007157968911579319
+        }
+      ],
+      "translated_instruction_attribution": {
+        "cpu_usec": 39855558,
+        "share_of_all_sampled_cpu": 0.6851912179365988,
+        "guest_opcode_matched_cpu_usec": 39321608,
+        "distinct_host_instruction_addresses": 7545,
+        "sampled_host_code_pages": 745,
+        "host_code_pages_to_cover_cpu_weight_percent": {
+          "50": 39,
+          "80": 153,
+          "90": 278
+        },
+        "top_arm64_opcodes": [
+          {
+            "arm64": "add",
+            "cpu_usec": 8286760,
+            "share_of_all_sampled_cpu": 0.14246482704239868
+          },
+          {
+            "arm64": "ldr",
+            "cpu_usec": 7699629,
+            "share_of_all_sampled_cpu": 0.1323709524320286
+          },
+          {
+            "arm64": "mov",
+            "cpu_usec": 3695821,
+            "share_of_all_sampled_cpu": 0.0635380413508615
+          },
+          {
+            "arm64": "sub",
+            "cpu_usec": 3442194,
+            "share_of_all_sampled_cpu": 0.059177721190957926
+          },
+          {
+            "arm64": "b",
+            "cpu_usec": 2943219,
+            "share_of_all_sampled_cpu": 0.05059941228935092
+          },
+          {
+            "arm64": "str",
+            "cpu_usec": 2207837,
+            "share_of_all_sampled_cpu": 0.03795682707630104
+          },
+          {
+            "arm64": "cmp",
+            "cpu_usec": 2018133,
+            "share_of_all_sampled_cpu": 0.0346954622546758
+          },
+          {
+            "arm64": "ands",
+            "cpu_usec": 1230378,
+            "share_of_all_sampled_cpu": 0.02115248769926635
+          },
+          {
+            "arm64": "ldp",
+            "cpu_usec": 996590,
+            "share_of_all_sampled_cpu": 0.017133236872092845
+          },
+          {
+            "arm64": "ldapur",
+            "cpu_usec": 867514,
+            "share_of_all_sampled_cpu": 0.014914180206360442
+          },
+          {
+            "arm64": "stp",
+            "cpu_usec": 752243,
+            "share_of_all_sampled_cpu": 0.012932457183369026
+          },
+          {
+            "arm64": "ldur",
+            "cpu_usec": 593569,
+            "share_of_all_sampled_cpu": 0.010204555812251055
+          }
+        ],
+        "top_i386_arm64_opcode_pairs": [
+          {
+            "i386": "movl",
+            "arm64": "add",
+            "cpu_usec": 5160873,
+            "share_of_all_sampled_cpu": 0.08872501186625234
+          },
+          {
+            "i386": "movl",
+            "arm64": "mov",
+            "cpu_usec": 1568238,
+            "share_of_all_sampled_cpu": 0.026960929896765108
+          },
+          {
+            "i386": "mulss",
+            "arm64": "ldr",
+            "cpu_usec": 1409588,
+            "share_of_all_sampled_cpu": 0.02423344113031398
+          },
+          {
+            "i386": "movl",
+            "arm64": "sub",
+            "cpu_usec": 1393036,
+            "share_of_all_sampled_cpu": 0.023948881445080453
+          },
+          {
+            "i386": "cmpl",
+            "arm64": "cmp",
+            "cpu_usec": 1297567,
+            "share_of_all_sampled_cpu": 0.022307591655957713
+          },
+          {
+            "i386": "pushl",
+            "arm64": "sub",
+            "cpu_usec": 1252194,
+            "share_of_all_sampled_cpu": 0.021527545341427697
+          },
+          {
+            "i386": "testl",
+            "arm64": "ands",
+            "cpu_usec": 1134358,
+            "share_of_all_sampled_cpu": 0.01950172519466731
+          },
+          {
+            "i386": "movss",
+            "arm64": "ldr",
+            "cpu_usec": 958725,
+            "share_of_all_sampled_cpu": 0.01648226705084058
+          },
+          {
+            "i386": "retl",
+            "arm64": "ldp",
+            "cpu_usec": 838234,
+            "share_of_all_sampled_cpu": 0.014410802512810558
+          },
+          {
+            "i386": "movl",
+            "arm64": "ldr",
+            "cpu_usec": 820669,
+            "share_of_all_sampled_cpu": 0.014108827472263984
+          },
+          {
+            "i386": "addss",
+            "arm64": "ldr",
+            "cpu_usec": 794677,
+            "share_of_all_sampled_cpu": 0.013661976618071751
+          },
+          {
+            "i386": "addl",
+            "arm64": "add",
+            "cpu_usec": 773893,
+            "share_of_all_sampled_cpu": 0.013304660976584703
+          }
+        ],
+        "mov_memory_w_immediate_cpu_usec": 6332677,
+        "top_mov_memory_w_immediate_forms": [
+          {
+            "i386": "movl",
+            "i386_base": "ebp",
+            "arm64": "sub",
+            "arm64_destination": "w15",
+            "arm64_source": "w26",
+            "cpu_usec": 1383245,
+            "share_of_all_sampled_cpu": 0.023780555932869152
+          },
+          {
+            "i386": "movl",
+            "i386_base": "ebp",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w26",
+            "cpu_usec": 1031136,
+            "share_of_all_sampled_cpu": 0.017727146906292787
+          },
+          {
+            "i386": "movl",
+            "i386_base": "eax",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w21",
+            "cpu_usec": 933001,
+            "share_of_all_sampled_cpu": 0.016040023615428108
+          },
+          {
+            "i386": "movl",
+            "i386_base": "ebx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w24",
+            "cpu_usec": 542180,
+            "share_of_all_sampled_cpu": 0.009321083261232101
+          },
+          {
+            "i386": "movl",
+            "i386_base": "ecx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w22",
+            "cpu_usec": 485177,
+            "share_of_all_sampled_cpu": 0.008341095601893849
+          },
+          {
+            "i386": "movl",
+            "i386_base": "edx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w23",
+            "cpu_usec": 390643,
+            "share_of_all_sampled_cpu": 0.006715880202916912
+          },
+          {
+            "i386": "movl",
+            "i386_base": "esi",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w27",
+            "cpu_usec": 325066,
+            "share_of_all_sampled_cpu": 0.005588489526348581
+          },
+          {
+            "i386": "movl",
+            "i386_base": "esp",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w25",
+            "cpu_usec": 310688,
+            "share_of_all_sampled_cpu": 0.005341304947186688
+          },
+          {
+            "i386": "movl",
+            "i386_base": "edi",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w28",
+            "cpu_usec": 291735,
+            "share_of_all_sampled_cpu": 0.005015467603407626
+          },
+          {
+            "i386": "movss",
+            "i386_base": "ebp",
+            "arm64": "sub",
+            "arm64_destination": "w15",
+            "arm64_source": "w26",
+            "cpu_usec": 97651,
+            "share_of_all_sampled_cpu": 0.0016788024300833225
+          },
+          {
+            "i386": "movss",
+            "i386_base": "ebx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w24",
+            "cpu_usec": 85059,
+            "share_of_all_sampled_cpu": 0.001462322514879083
+          },
+          {
+            "i386": "movss",
+            "i386_base": "ecx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w22",
+            "cpu_usec": 59742,
+            "share_of_all_sampled_cpu": 0.0010270761669418425
+          }
+        ],
+        "top_mov_memory_w_immediate_bands": [
+          {
+            "i386_base": "ebp",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 2190062,
+            "share_of_all_sampled_cpu": 0.03765124174491958
+          },
+          {
+            "i386_base": "eax",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 984076,
+            "share_of_all_sampled_cpu": 0.01691809792205585
+          },
+          {
+            "i386_base": "ecx",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 591322,
+            "share_of_all_sampled_cpu": 0.01016592570031777
+          },
+          {
+            "i386_base": "ebx",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 559139,
+            "share_of_all_sampled_cpu": 0.00961264003394086
+          },
+          {
+            "i386_base": "edx",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 364586,
+            "share_of_all_sampled_cpu": 0.006267911877751976
+          },
+          {
+            "i386_base": "ebp",
+            "displacement_band": "deep_negative",
+            "indexing": "base_only",
+            "cpu_usec": 332421,
+            "share_of_all_sampled_cpu": 0.0057149356648752
+          },
+          {
+            "i386_base": "esi",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 321459,
+            "share_of_all_sampled_cpu": 0.005526478483294127
+          },
+          {
+            "i386_base": "esp",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 310962,
+            "share_of_all_sampled_cpu": 0.005346015517133159
+          },
+          {
+            "i386_base": "edi",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 296739,
+            "share_of_all_sampled_cpu": 0.005101495676444635
+          },
+          {
+            "i386_base": "ebx",
+            "displacement_band": "near",
+            "indexing": "indexed",
+            "cpu_usec": 57926,
+            "share_of_all_sampled_cpu": 0.0009958557471506338
+          },
+          {
+            "i386_base": "esi",
+            "displacement_band": "outside",
+            "indexing": "base_only",
+            "cpu_usec": 47288,
+            "share_of_all_sampled_cpu": 0.0008129687285719568
+          },
+          {
+            "i386_base": "ebx",
+            "displacement_band": "outside",
+            "indexing": "base_only",
+            "cpu_usec": 41605,
+            "share_of_all_sampled_cpu": 0.0007152673818354819
+          }
+        ],
+        "conditional_branch_cpu_state_memory_cpu_usec": 2808142,
+        "top_conditional_branch_cpu_state_memory_forms": [
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 5176,
+            "cpu_usec": 1045755,
+            "share_of_all_sampled_cpu": 0.01797847472398424
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 168,
+            "cpu_usec": 867203,
+            "share_of_all_sampled_cpu": 0.014908833537552586
+          },
+          {
+            "arm64": "stp",
+            "byte_offset_from_x20": 152,
+            "cpu_usec": 592766,
+            "share_of_all_sampled_cpu": 0.010190750747772894
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 144,
+            "cpu_usec": 73002,
+            "share_of_all_sampled_cpu": 0.0012550402453732447
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 152,
+            "cpu_usec": 70261,
+            "share_of_all_sampled_cpu": 0.001207917354047417
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 160,
+            "cpu_usec": 54893,
+            "share_of_all_sampled_cpu": 0.0009437128323782023
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 128,
+            "cpu_usec": 49825,
+            "share_of_all_sampled_cpu": 0.000856584480229609
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 168,
+            "cpu_usec": 37479,
+            "share_of_all_sampled_cpu": 0.0006443337628605221
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 320,
+            "cpu_usec": 4647,
+            "share_of_all_sampled_cpu": 7.989057861770182e-05
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 448,
+            "cpu_usec": 3983,
+            "share_of_all_sampled_cpu": 6.84751828350132e-05
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 120,
+            "cpu_usec": 3486,
+            "share_of_all_sampled_cpu": 5.993082785911524e-05
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 352,
+            "cpu_usec": 2749,
+            "share_of_all_sampled_cpu": 4.7260426214775616e-05
+          }
+        ],
+        "guest_mnemonics": [
+          {
+            "i386": "movl",
+            "cpu_usec": 10578995,
+            "share_of_all_sampled_cpu": 0.18187261281337946
+          },
+          {
+            "i386": "movss",
+            "cpu_usec": 2191796,
+            "share_of_all_sampled_cpu": 0.03768105243209907
+          },
+          {
+            "i386": "mulss",
+            "cpu_usec": 1915918,
+            "share_of_all_sampled_cpu": 0.0329381961704476
+          },
+          {
+            "i386": "je",
+            "cpu_usec": 1881055,
+            "share_of_all_sampled_cpu": 0.0323388363162731
+          },
+          {
+            "i386": "cmpl",
+            "cpu_usec": 1819489,
+            "share_of_all_sampled_cpu": 0.0312804021946511
+          },
+          {
+            "i386": "pushl",
+            "cpu_usec": 1734819,
+            "share_of_all_sampled_cpu": 0.029824767313747117
+          },
+          {
+            "i386": "addss",
+            "cpu_usec": 1606582,
+            "share_of_all_sampled_cpu": 0.02762013461949314
+          },
+          {
+            "i386": "jne",
+            "cpu_usec": 1346910,
+            "share_of_all_sampled_cpu": 0.023155889659128202
+          },
+          {
+            "i386": "retl",
+            "cpu_usec": 1310297,
+            "share_of_all_sampled_cpu": 0.022526444047996308
+          },
+          {
+            "i386": "testl",
+            "cpu_usec": 1244113,
+            "share_of_all_sampled_cpu": 0.02138861791172904
+          },
+          {
+            "i386": "addl",
+            "cpu_usec": 1213520,
+            "share_of_all_sampled_cpu": 0.02086266730453056
+          },
+          {
+            "i386": "calll",
+            "cpu_usec": 1128951,
+            "share_of_all_sampled_cpu": 0.019408768801599544
+          },
+          {
+            "i386": "jbe",
+            "cpu_usec": 1000885,
+            "share_of_all_sampled_cpu": 0.017207075915596833
+          },
+          {
+            "i386": "ucomiss",
+            "cpu_usec": 936502,
+            "share_of_all_sampled_cpu": 0.016100212321204
+          },
+          {
+            "i386": "jb",
+            "cpu_usec": 788633,
+            "share_of_all_sampled_cpu": 0.013558069009471495
+          },
+          {
+            "i386": "incl",
+            "cpu_usec": 765130,
+            "share_of_all_sampled_cpu": 0.013154008697603225
+          }
+        ],
+        "hot_guest_instructions": [
+          {
+            "guest_pc": "0x6ae088",
+            "i386": "movl",
+            "cpu_usec": 243078,
+            "share_of_all_sampled_cpu": 0.004178963216964433
+          },
+          {
+            "guest_pc": "0x8f6e9a",
+            "i386": "jp",
+            "cpu_usec": 228979,
+            "share_of_all_sampled_cpu": 0.003936575167054604
+          },
+          {
+            "guest_pc": "0x740d91",
+            "i386": "mulss",
+            "cpu_usec": 204787,
+            "share_of_all_sampled_cpu": 0.0035206696628756837
+          },
+          {
+            "guest_pc": "0x8791ca",
+            "i386": "jb",
+            "cpu_usec": 204218,
+            "share_of_all_sampled_cpu": 0.0035108874938992534
+          },
+          {
+            "guest_pc": "0x6e2aab",
+            "i386": "incl",
+            "cpu_usec": 168800,
+            "share_of_all_sampled_cpu": 0.002901986156803974
+          },
+          {
+            "guest_pc": "0x8c2fde",
+            "i386": "retl",
+            "cpu_usec": 152718,
+            "share_of_all_sampled_cpu": 0.002625506646296145
+          },
+          {
+            "guest_pc": "0x877d02",
+            "i386": "fistpl",
+            "cpu_usec": 150453,
+            "share_of_all_sampled_cpu": 0.002586567080862727
+          },
+          {
+            "guest_pc": "0x8791d5",
+            "i386": "ucomiss",
+            "cpu_usec": 133157,
+            "share_of_all_sampled_cpu": 0.0022892166509570306
+          },
+          {
+            "guest_pc": "0x877ced",
+            "i386": "cvtsi2ssl",
+            "cpu_usec": 130857,
+            "share_of_all_sampled_cpu": 0.0022496753703844644
+          },
+          {
+            "guest_pc": "0x310d6b",
+            "i386": "jne",
+            "cpu_usec": 130808,
+            "share_of_all_sampled_cpu": 0.002248832969189658
+          },
+          {
+            "guest_pc": "0x740d96",
+            "i386": "mulss",
+            "cpu_usec": 130558,
+            "share_of_all_sampled_cpu": 0.002244535003910031
+          },
+          {
+            "guest_pc": "0x979251",
+            "i386": "movl",
+            "cpu_usec": 129662,
+            "share_of_all_sampled_cpu": 0.0022291310963478486
+          },
+          {
+            "guest_pc": "0x740d89",
+            "i386": "movss",
+            "cpu_usec": 129465,
+            "share_of_all_sampled_cpu": 0.0022257442997075027
+          },
+          {
+            "guest_pc": "0x8c51e5",
+            "i386": "mulss",
+            "cpu_usec": 126092,
+            "share_of_all_sampled_cpu": 0.002167756152154779
+          },
+          {
+            "guest_pc": "0x740dd0",
+            "i386": "addss",
+            "cpu_usec": 119660,
+            "share_of_all_sampled_cpu": 0.002057178101440542
+          },
+          {
+            "guest_pc": "0x877cdd",
+            "i386": "fistpl",
+            "cpu_usec": 116233,
+            "share_of_all_sampled_cpu": 0.001998261593387419
+          },
+          {
+            "guest_pc": "0x8e76ae",
+            "i386": "seta",
+            "cpu_usec": 114653,
+            "share_of_all_sampled_cpu": 0.0019710984528201777
+          },
+          {
+            "guest_pc": "0x8c2fca",
+            "i386": "addss",
+            "cpu_usec": 112466,
+            "share_of_all_sampled_cpu": 0.001933499852554003
+          },
+          {
+            "guest_pc": "0x6e2a7e",
+            "i386": "ucomiss",
+            "cpu_usec": 111295,
+            "share_of_all_sampled_cpu": 0.0019133681831842314
+          },
+          {
+            "guest_pc": "0x740d9f",
+            "i386": "jbe",
+            "cpu_usec": 109556,
+            "share_of_all_sampled_cpu": 0.0018834715366991479
+          }
+        ],
+        "movl_address_add_sub_cpu_usec": 5553390,
+        "movl_address_add_sub_by_operand": [
+          {
+            "direction": "load",
+            "i386_base": "ebp",
+            "cpu_usec": 1970665,
+            "share_of_all_sampled_cpu": 0.033879398991102504
+          },
+          {
+            "direction": "load",
+            "i386_base": "eax",
+            "cpu_usec": 830758,
+            "share_of_all_sampled_cpu": 0.0142822761590886
+          },
+          {
+            "direction": "store",
+            "i386_base": "ebp",
+            "cpu_usec": 430673,
+            "share_of_all_sampled_cpu": 0.007404070403490746
+          },
+          {
+            "direction": "load",
+            "i386_base": "ecx",
+            "cpu_usec": 367334,
+            "share_of_all_sampled_cpu": 0.006315155112105633
+          },
+          {
+            "direction": "store",
+            "i386_base": "esp",
+            "cpu_usec": 310688,
+            "share_of_all_sampled_cpu": 0.005341304947186688
+          },
+          {
+            "direction": "load",
+            "i386_base": "edx",
+            "cpu_usec": 304465,
+            "share_of_all_sampled_cpu": 0.00523431999544622
+          },
+          {
+            "direction": "load",
+            "i386_base": "esi",
+            "cpu_usec": 286488,
+            "share_of_all_sampled_cpu": 0.00492526190811882
+          },
+          {
+            "direction": "load",
+            "i386_base": "ebx",
+            "cpu_usec": 274981,
+            "share_of_all_sampled_cpu": 0.004727435162228161
+          },
+          {
+            "direction": "store",
+            "i386_base": "ebx",
+            "cpu_usec": 204450,
+            "share_of_all_sampled_cpu": 0.0035148760056787466
+          },
+          {
+            "direction": "load",
+            "i386_base": "edi",
+            "cpu_usec": 192695,
+            "share_of_all_sampled_cpu": 0.0033127856782306977
+          },
+          {
+            "direction": "store",
+            "i386_base": "ecx",
+            "cpu_usec": 114007,
+            "share_of_all_sampled_cpu": 0.0019599925105376224
+          },
+          {
+            "direction": "store",
+            "i386_base": "edi",
+            "cpu_usec": 94674,
+            "share_of_all_sampled_cpu": 0.0016276222595335275
+          },
+          {
+            "direction": "store",
+            "i386_base": "eax",
+            "cpu_usec": 92037,
+            "share_of_all_sampled_cpu": 0.0015822873217640246
+          },
+          {
+            "direction": "store",
+            "i386_base": "edx",
+            "cpu_usec": 44732,
+            "share_of_all_sampled_cpu": 0.000769026331553053
+          },
+          {
+            "direction": "store",
+            "i386_base": "esi",
+            "cpu_usec": 34743,
+            "share_of_all_sampled_cpu": 0.0005972968308402871
+          }
+        ]
+      }
+    },
+    {
+      "gpu_window": {
+        "stream": 1,
+        "pid": 12355,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5875,
+        "first_sequence": 3784,
+        "last_sequence": 9658,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59994609166,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 97.9,
+        "p99_gpu_completion_gap_ns": 13559041,
+        "min_draws": 896,
+        "max_draws": 1188
+      },
+      "world_readback_sha256": "a7319b953e4b4baab31a3f5a65a5252573e98fcb9503439714dd7fd56e6d23e9",
+      "verified_cast_rows": 26,
+      "periods_with_same_hot_guest_thread_after_world_entry": 26,
+      "weighted_cpu_ms_per_gpu_completion": {
+        "all": 9.865324255319148,
+        "translated": 6.7070023829787235,
+        "in_either_known_tree": 4.399835404255319
+      },
+      "validated_stacks": {
+        "samples": 34270,
+        "total_cpu_usec": 57958780,
+        "translated_cpu_usec": 39403639,
+        "cpu_usec_by_validated_call_depth": {
+          "4": 34109,
+          "5": 55196,
+          "6": 105500,
+          "7": 124565,
+          "8": 443965,
+          "9": 601181,
+          "10": 495586,
+          "11": 800461,
+          "12": 1121303,
+          "13": 2747508,
+          "14": 5232024,
+          "15": 5666128,
+          "16": 21976113
+        },
+        "share_of_all_cpu_with_validated_caller": 0.6798562530129171,
+        "hottest_inclusive_unwind_ranges": [
+          {
+            "entry": "0x779bb0",
+            "inclusive_cpu_usec": 36631328,
+            "exclusive_cpu_usec": 25566,
+            "inclusive_share_of_all_sampled_cpu": 0.6320237934614911,
+            "exclusive_share_of_all_sampled_cpu": 0.00044110659334099166,
+            "top_sampled_callees": [
+              {
+                "entry": "0x868e10",
+                "cpu_usec": 32903159
+              },
+              {
+                "entry": "0x35f350",
+                "cpu_usec": 3437059
+              },
+              {
+                "entry": "0x989d30",
+                "cpu_usec": 89482
+              },
+              {
+                "entry": "0x530800",
+                "cpu_usec": 68190
+              },
+              {
+                "entry": "0x456e10",
+                "cpu_usec": 41523
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x77d510",
+            "inclusive_cpu_usec": 35059570,
+            "exclusive_cpu_usec": 29783,
+            "inclusive_share_of_all_sampled_cpu": 0.6049052447273735,
+            "exclusive_share_of_all_sampled_cpu": 0.0005138651986808556,
+            "top_sampled_callees": [
+              {
+                "entry": "0x779bb0",
+                "cpu_usec": 34965242
+              },
+              {
+                "entry": "0x778df0",
+                "cpu_usec": 19866
+              },
+              {
+                "entry": "0x77c6d0",
+                "cpu_usec": 14761
+              },
+              {
+                "entry": "0x782b60",
+                "cpu_usec": 10827
+              },
+              {
+                "entry": "0x782100",
+                "cpu_usec": 8064
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x868e10",
+            "inclusive_cpu_usec": 33997581,
+            "exclusive_cpu_usec": 13240,
+            "inclusive_share_of_all_sampled_cpu": 0.5865820674624276,
+            "exclusive_share_of_all_sampled_cpu": 0.0002284382107421861,
+            "top_sampled_callees": [
+              {
+                "entry": "0x8260d0",
+                "cpu_usec": 31460218
+              },
+              {
+                "entry": "0x827af0",
+                "cpu_usec": 2385031
+              },
+              {
+                "entry": "0x900000",
+                "cpu_usec": 48277
+              },
+              {
+                "entry": "0x929240",
+                "cpu_usec": 33654
+              },
+              {
+                "entry": "0x9a21a0",
+                "cpu_usec": 23440
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x77dd40",
+            "inclusive_cpu_usec": 33300697,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.574558280902393,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x77d510",
+                "cpu_usec": 33296371
+              },
+              {
+                "entry": "0x779bb0",
+                "cpu_usec": 4305
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x77dde0",
+            "inclusive_cpu_usec": 31759921,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.5479742844828687,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x77dd40",
+                "cpu_usec": 31759921
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x8260d0",
+            "inclusive_cpu_usec": 31659836,
+            "exclusive_cpu_usec": 11129,
+            "inclusive_share_of_all_sampled_cpu": 0.546247453793886,
+            "exclusive_share_of_all_sampled_cpu": 0.0001920157739690173,
+            "top_sampled_callees": [
+              {
+                "entry": "0x80bf10",
+                "cpu_usec": 31610497
+              },
+              {
+                "entry": "0x8f6590",
+                "cpu_usec": 6233
+              },
+              {
+                "entry": "0x622650",
+                "cpu_usec": 5492
+              },
+              {
+                "entry": "0x8e8ee0",
+                "cpu_usec": 3384
+              },
+              {
+                "entry": "0x931060",
+                "cpu_usec": 3048
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x80bf10",
+            "inclusive_cpu_usec": 31628956,
+            "exclusive_cpu_usec": 253823,
+            "inclusive_share_of_all_sampled_cpu": 0.5457146613507048,
+            "exclusive_share_of_all_sampled_cpu": 0.004379370994351503,
+            "top_sampled_callees": [
+              {
+                "entry": "0x622650",
+                "cpu_usec": 30388507
+              },
+              {
+                "entry": "0x92ed80",
+                "cpu_usec": 234781
+              },
+              {
+                "entry": "0x8f6590",
+                "cpu_usec": 229322
+              },
+              {
+                "entry": "0x57fda0",
+                "cpu_usec": 203095
+              },
+              {
+                "entry": "0x8e8ee0",
+                "cpu_usec": 104068
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x622650",
+            "inclusive_cpu_usec": 30411545,
+            "exclusive_cpu_usec": 10581,
+            "inclusive_share_of_all_sampled_cpu": 0.5247098886484498,
+            "exclusive_share_of_all_sampled_cpu": 0.00018256077853950688,
+            "top_sampled_callees": [
+              {
+                "entry": "0x61c110",
+                "cpu_usec": 26935970
+              },
+              {
+                "entry": "0x621b20",
+                "cpu_usec": 3377204
+              },
+              {
+                "entry": "0x2a8a80",
+                "cpu_usec": 36039
+              },
+              {
+                "entry": "0x2b61a0",
+                "cpu_usec": 25357
+              },
+              {
+                "entry": "0x8fff10",
+                "cpu_usec": 10322
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x9903a0",
+            "inclusive_cpu_usec": 28912186,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.49884048629042915,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x77dde0",
+                "cpu_usec": 28912186
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x6adfc0",
+                "cpu_usec": 750672
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              }
+            ]
+          },
+          {
+            "entry": "0x61c110",
+            "inclusive_cpu_usec": 27001825,
+            "exclusive_cpu_usec": 11084,
+            "inclusive_share_of_all_sampled_cpu": 0.46587980285299313,
+            "exclusive_share_of_all_sampled_cpu": 0.0001912393601107546,
+            "top_sampled_callees": [
+              {
+                "entry": "0x721db0",
+                "cpu_usec": 14911770
+              },
+              {
+                "entry": "0x97dbc0",
+                "cpu_usec": 10786735
+              },
+              {
+                "entry": "0x735f60",
+                "cpu_usec": 401701
+              },
+              {
+                "entry": "0x271dc0",
+                "cpu_usec": 227460
+              },
+              {
+                "entry": "0x428ef0",
+                "cpu_usec": 185773
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 468391
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 408701
+              }
+            ]
+          },
+          {
+            "entry": "0x99dca0",
+            "inclusive_cpu_usec": 23189461,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.40010264191206235,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x9903a0",
+                "cpu_usec": 23189461
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 860413
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2856a0",
+                "cpu_usec": 491486
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 468391
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 420394
+              }
+            ]
+          },
+          {
+            "entry": "0x73f8e0",
+            "inclusive_cpu_usec": 15039401,
+            "exclusive_cpu_usec": 4052,
+            "inclusive_share_of_all_sampled_cpu": 0.25948443014155925,
+            "exclusive_share_of_all_sampled_cpu": 6.991175452623399e-05,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97e390",
+                "cpu_usec": 7522190
+              },
+              {
+                "entry": "0x73da80",
+                "cpu_usec": 2591783
+              },
+              {
+                "entry": "0x738830",
+                "cpu_usec": 2124316
+              },
+              {
+                "entry": "0x737340",
+                "cpu_usec": 1284297
+              },
+              {
+                "entry": "0x739430",
+                "cpu_usec": 521506
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 468391
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 408701
+              },
+              {
+                "entry": "0x72d9f0",
+                "cpu_usec": 375128
+              },
+              {
+                "entry": "0x97e390",
+                "cpu_usec": 341776
+              }
+            ]
+          },
+          {
+            "entry": "0x721db0",
+            "inclusive_cpu_usec": 14996018,
+            "exclusive_cpu_usec": 2783,
+            "inclusive_share_of_all_sampled_cpu": 0.25873591542127006,
+            "exclusive_share_of_all_sampled_cpu": 4.801688372322537e-05,
+            "top_sampled_callees": [
+              {
+                "entry": "0x73f8e0",
+                "cpu_usec": 14979783
+              },
+              {
+                "entry": "0x727010",
+                "cpu_usec": 3835
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 468391
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 408701
+              },
+              {
+                "entry": "0x72d9f0",
+                "cpu_usec": 375128
+              },
+              {
+                "entry": "0x97e390",
+                "cpu_usec": 341776
+              }
+            ]
+          },
+          {
+            "entry": "0x97dbc0",
+            "inclusive_cpu_usec": 10809632,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.1865055130560029,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97cef0",
+                "cpu_usec": 10727914
+              },
+              {
+                "entry": "0x977260",
+                "cpu_usec": 68161
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 3819
+              },
+              {
+                "entry": "0x8fdc30",
+                "cpu_usec": 1918
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 547509
+              },
+              {
+                "entry": "0x2aab20",
+                "cpu_usec": 264608
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 241779
+              },
+              {
+                "entry": "0x978890",
+                "cpu_usec": 220522
+              }
+            ]
+          },
+          {
+            "entry": "0x97cef0",
+            "inclusive_cpu_usec": 10767073,
+            "exclusive_cpu_usec": 147444,
+            "inclusive_share_of_all_sampled_cpu": 0.1857712153361406,
+            "exclusive_share_of_all_sampled_cpu": 0.0025439458870597344,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97caa0",
+                "cpu_usec": 4712277
+              },
+              {
+                "entry": "0x97b970",
+                "cpu_usec": 3074131
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 2062594
+              },
+              {
+                "entry": "0x979670",
+                "cpu_usec": 284649
+              },
+              {
+                "entry": "0x97c040",
+                "cpu_usec": 274672
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x979130",
+                "cpu_usec": 543690
+              },
+              {
+                "entry": "0x2aab20",
+                "cpu_usec": 264608
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 241779
+              },
+              {
+                "entry": "0x978890",
+                "cpu_usec": 220522
+              }
+            ]
+          },
+          {
+            "entry": "0x97e390",
+            "inclusive_cpu_usec": 7542730,
+            "exclusive_cpu_usec": 341776,
+            "inclusive_share_of_all_sampled_cpu": 0.13013955780297654,
+            "exclusive_share_of_all_sampled_cpu": 0.00589688050714663,
+            "top_sampled_callees": [
+              {
+                "entry": "0x967f20",
+                "cpu_usec": 2400906
+              },
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 2343103
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 1214084
+              },
+              {
+                "entry": "0x977000",
+                "cpu_usec": 452094
+              },
+              {
+                "entry": "0x96a240",
+                "cpu_usec": 295591
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x964ca0",
+                "cpu_usec": 872493
+              },
+              {
+                "entry": "0x9763b0",
+                "cpu_usec": 468391
+              },
+              {
+                "entry": "0x957790",
+                "cpu_usec": 408701
+              },
+              {
+                "entry": "0x95f7c0",
+                "cpu_usec": 240587
+              },
+              {
+                "entry": "0x88a630",
+                "cpu_usec": 175897
+              }
+            ]
+          },
+          {
+            "entry": "0x97caa0",
+            "inclusive_cpu_usec": 4712277,
+            "exclusive_cpu_usec": 19866,
+            "inclusive_share_of_all_sampled_cpu": 0.08130393703939248,
+            "exclusive_share_of_all_sampled_cpu": 0.0003427608379610475,
+            "top_sampled_callees": [
+              {
+                "entry": "0x97c340",
+                "cpu_usec": 4672923
+              },
+              {
+                "entry": "0x8e4710",
+                "cpu_usec": 4144
+              },
+              {
+                "entry": "0x8d68b0",
+                "cpu_usec": 3914
+              },
+              {
+                "entry": "0x8e8ee0",
+                "cpu_usec": 2236
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x97c340",
+                "cpu_usec": 148679
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 128615
+              },
+              {
+                "entry": "0x882f20",
+                "cpu_usec": 89967
+              },
+              {
+                "entry": "0x8783c0",
+                "cpu_usec": 58783
+              }
+            ]
+          },
+          {
+            "entry": "0x97c340",
+            "inclusive_cpu_usec": 4672923,
+            "exclusive_cpu_usec": 148679,
+            "inclusive_share_of_all_sampled_cpu": 0.08062493723987979,
+            "exclusive_share_of_all_sampled_cpu": 0.0025652541340587223,
+            "top_sampled_callees": [
+              {
+                "entry": "0x882f20",
+                "cpu_usec": 3936638
+              },
+              {
+                "entry": "0x87ac90",
+                "cpu_usec": 277861
+              },
+              {
+                "entry": "0x8e8ee0",
+                "cpu_usec": 162787
+              },
+              {
+                "entry": "0x979b80",
+                "cpu_usec": 92843
+              },
+              {
+                "entry": "0x8fdc30",
+                "cpu_usec": 15905
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x8e7230",
+                "cpu_usec": 128615
+              },
+              {
+                "entry": "0x882f20",
+                "cpu_usec": 89967
+              },
+              {
+                "entry": "0x8783c0",
+                "cpu_usec": 58783
+              },
+              {
+                "entry": "0x882c80",
+                "cpu_usec": 54531
+              }
+            ]
+          },
+          {
+            "entry": "0x882f20",
+            "inclusive_cpu_usec": 3936638,
+            "exclusive_cpu_usec": 89967,
+            "inclusive_share_of_all_sampled_cpu": 0.06792133995919168,
+            "exclusive_share_of_all_sampled_cpu": 0.0015522583463627082,
+            "top_sampled_callees": [
+              {
+                "entry": "0x882c80",
+                "cpu_usec": 3585886
+              },
+              {
+                "entry": "0x8783c0",
+                "cpu_usec": 145046
+              },
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 35523
+              },
+              {
+                "entry": "0x8c3270",
+                "cpu_usec": 33385
+              },
+              {
+                "entry": "0x876890",
+                "cpu_usec": 16959
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2211623
+              },
+              {
+                "entry": "0x8783c0",
+                "cpu_usec": 58783
+              },
+              {
+                "entry": "0x882c80",
+                "cpu_usec": 54531
+              },
+              {
+                "entry": "0x8c3270",
+                "cpu_usec": 30504
+              },
+              {
+                "entry": "0x883590",
+                "cpu_usec": 26669
+              }
+            ]
+          },
+          {
+            "entry": "0x882c80",
+            "inclusive_cpu_usec": 3585886,
+            "exclusive_cpu_usec": 54531,
+            "inclusive_share_of_all_sampled_cpu": 0.06186959076778359,
+            "exclusive_share_of_all_sampled_cpu": 0.0009408583134427605,
+            "top_sampled_callees": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 3389773
+              },
+              {
+                "entry": "0x883590",
+                "cpu_usec": 24427
+              },
+              {
+                "entry": "0x883450",
+                "cpu_usec": 19559
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x880c70",
+                "cpu_usec": 2176100
+              },
+              {
+                "entry": "0x883590",
+                "cpu_usec": 24427
+              },
+              {
+                "entry": "0x883450",
+                "cpu_usec": 19559
+              },
+              {
+                "entry": "0x880690",
+                "cpu_usec": 15819
+              }
+            ]
+          },
+          {
+            "entry": "0x2aa0f0",
+            "inclusive_cpu_usec": 3583812,
+            "exclusive_cpu_usec": 13234,
+            "inclusive_share_of_all_sampled_cpu": 0.06183380671573832,
+            "exclusive_share_of_all_sampled_cpu": 0.00022833468889441773,
+            "top_sampled_callees": [
+              {
+                "entry": "0x722490",
+                "cpu_usec": 3570578
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6e29c0",
+                "cpu_usec": 861351
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 315808
+              },
+              {
+                "entry": "0x6e92c0",
+                "cpu_usec": 84751
+              },
+              {
+                "entry": "0x6e43b0",
+                "cpu_usec": 82666
+              },
+              {
+                "entry": "0x6e5e10",
+                "cpu_usec": 36083
+              }
+            ]
+          },
+          {
+            "entry": "0x722490",
+            "inclusive_cpu_usec": 3572825,
+            "exclusive_cpu_usec": 38,
+            "inclusive_share_of_all_sampled_cpu": 0.061644240958833155,
+            "exclusive_share_of_all_sampled_cpu": 6.556383691996277e-07,
+            "top_sampled_callees": [
+              {
+                "entry": "0x702db0",
+                "cpu_usec": 3568475
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 4312
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6e29c0",
+                "cpu_usec": 861351
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 315808
+              },
+              {
+                "entry": "0x6e92c0",
+                "cpu_usec": 84751
+              },
+              {
+                "entry": "0x6e43b0",
+                "cpu_usec": 82666
+              },
+              {
+                "entry": "0x6e5e10",
+                "cpu_usec": 36083
+              }
+            ]
+          },
+          {
+            "entry": "0x702db0",
+            "inclusive_cpu_usec": 3568475,
+            "exclusive_cpu_usec": 5070,
+            "inclusive_share_of_all_sampled_cpu": 0.0615691876192011,
+            "exclusive_share_of_all_sampled_cpu": 8.747596136426612e-05,
+            "top_sampled_callees": [
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 2861982
+              },
+              {
+                "entry": "0x702920",
+                "cpu_usec": 523983
+              },
+              {
+                "entry": "0x702620",
+                "cpu_usec": 1776
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6e29c0",
+                "cpu_usec": 861351
+              },
+              {
+                "entry": "0x702aa0",
+                "cpu_usec": 311496
+              },
+              {
+                "entry": "0x6e92c0",
+                "cpu_usec": 84751
+              },
+              {
+                "entry": "0x6e43b0",
+                "cpu_usec": 82666
+              },
+              {
+                "entry": "0x6e5e10",
+                "cpu_usec": 36083
+              }
+            ]
+          },
+          {
+            "entry": "0x35f350",
+            "inclusive_cpu_usec": 3448125,
+            "exclusive_cpu_usec": 0,
+            "inclusive_share_of_all_sampled_cpu": 0.0594927118893807,
+            "exclusive_share_of_all_sampled_cpu": 0.0,
+            "top_sampled_callees": [
+              {
+                "entry": "0x35f260",
+                "cpu_usec": 3012041
+              },
+              {
+                "entry": "0x3623e0",
+                "cpu_usec": 419946
+              },
+              {
+                "entry": "0x32db30",
+                "cpu_usec": 10196
+              },
+              {
+                "entry": "0x35eec0",
+                "cpu_usec": 4207
+              },
+              {
+                "entry": "0x32ae20",
+                "cpu_usec": 1735
+              }
+            ],
+            "top_descendant_leaves": [
+              {
+                "entry": "0x6c95d0",
+                "cpu_usec": 136668
+              },
+              {
+                "entry": "0x6c9a40",
+                "cpu_usec": 116311
+              },
+              {
+                "entry": "0x971ef0",
+                "cpu_usec": 85081
+              },
+              {
+                "entry": "0x6c4b90",
+                "cpu_usec": 82854
+              },
+              {
+                "entry": "0x315bb0",
+                "cpu_usec": 66228
+              }
+            ]
+          }
+        ],
+        "compared_entries": {
+          "entries": [
+            "0x73f8e0",
+            "0x97dbc0"
+          ],
+          "inclusive_cpu_usec": [
+            15039401,
+            10809632
+          ],
+          "overlap_cpu_usec": 0,
+          "share_of_all_cpu_in_either_entry": 0.44598994319756213
+        }
+      },
+      "hottest_exclusive_unwind_ranges": [
+        {
+          "entry": "0x880c70",
+          "cpu_usec": 2211623,
+          "share_of_all_sampled_cpu": 0.038158549921168114
+        },
+        {
+          "entry": "0x6e29c0",
+          "cpu_usec": 928118,
+          "share_of_all_sampled_cpu": 0.016013415051179477
+        },
+        {
+          "entry": "0x964ca0",
+          "cpu_usec": 872493,
+          "share_of_all_sampled_cpu": 0.015053681254160284
+        },
+        {
+          "entry": "0x6adfc0",
+          "cpu_usec": 750672,
+          "share_of_all_sampled_cpu": 0.012951825417995342
+        },
+        {
+          "entry": "0x979130",
+          "cpu_usec": 547509,
+          "share_of_all_sampled_cpu": 0.00944652389163471
+        },
+        {
+          "entry": "0x2856a0",
+          "cpu_usec": 491486,
+          "share_of_all_sampled_cpu": 0.008479923145380217
+        },
+        {
+          "entry": "0x8d9710",
+          "cpu_usec": 488482,
+          "share_of_all_sampled_cpu": 0.008428093206930857
+        },
+        {
+          "entry": "0x9763b0",
+          "cpu_usec": 468391,
+          "share_of_all_sampled_cpu": 0.008081450299678496
+        },
+        {
+          "entry": "0x957790",
+          "cpu_usec": 420394,
+          "share_of_all_sampled_cpu": 0.007253327278455481
+        },
+        {
+          "entry": "0x8f98a0",
+          "cpu_usec": 412025,
+          "share_of_all_sampled_cpu": 0.007108931554459911
+        },
+        {
+          "entry": "0x72d9f0",
+          "cpu_usec": 375128,
+          "share_of_all_sampled_cpu": 0.006472323951608367
+        },
+        {
+          "entry": "0x8e7230",
+          "cpu_usec": 350439,
+          "share_of_all_sampled_cpu": 0.006046348801682851
+        }
+      ],
+      "translated_instruction_attribution": {
+        "cpu_usec": 39403639,
+        "share_of_all_sampled_cpu": 0.6798562530129171,
+        "guest_opcode_matched_cpu_usec": 38771781,
+        "distinct_host_instruction_addresses": 7378,
+        "sampled_host_code_pages": 723,
+        "host_code_pages_to_cover_cpu_weight_percent": {
+          "50": 39,
+          "80": 150,
+          "90": 270
+        },
+        "top_arm64_opcodes": [
+          {
+            "arm64": "add",
+            "cpu_usec": 7988428,
+            "share_of_all_sampled_cpu": 0.13782947122075379
+          },
+          {
+            "arm64": "ldr",
+            "cpu_usec": 7877429,
+            "share_of_all_sampled_cpu": 0.13591433429068037
+          },
+          {
+            "arm64": "sub",
+            "cpu_usec": 3652870,
+            "share_of_all_sampled_cpu": 0.06302530867626958
+          },
+          {
+            "arm64": "mov",
+            "cpu_usec": 3616199,
+            "share_of_all_sampled_cpu": 0.062392600396350646
+          },
+          {
+            "arm64": "b",
+            "cpu_usec": 2911708,
+            "share_of_all_sampled_cpu": 0.0502375653869871
+          },
+          {
+            "arm64": "str",
+            "cpu_usec": 2049694,
+            "share_of_all_sampled_cpu": 0.035364685039954255
+          },
+          {
+            "arm64": "cmp",
+            "cpu_usec": 1768222,
+            "share_of_all_sampled_cpu": 0.030508268117444847
+          },
+          {
+            "arm64": "ands",
+            "cpu_usec": 1321098,
+            "share_of_all_sampled_cpu": 0.022793751007181312
+          },
+          {
+            "arm64": "ldp",
+            "cpu_usec": 966920,
+            "share_of_all_sampled_cpu": 0.016682890840697476
+          },
+          {
+            "arm64": "ldapur",
+            "cpu_usec": 816154,
+            "share_of_all_sampled_cpu": 0.014081628357256657
+          },
+          {
+            "arm64": "ldur",
+            "cpu_usec": 653935,
+            "share_of_all_sampled_cpu": 0.011282759920067331
+          },
+          {
+            "arm64": "stp",
+            "cpu_usec": 618968,
+            "share_of_all_sampled_cpu": 0.01067945184491461
+          }
+        ],
+        "top_i386_arm64_opcode_pairs": [
+          {
+            "i386": "movl",
+            "arm64": "add",
+            "cpu_usec": 5066964,
+            "share_of_all_sampled_cpu": 0.08742357930929533
+          },
+          {
+            "i386": "movl",
+            "arm64": "mov",
+            "cpu_usec": 1515927,
+            "share_of_all_sampled_cpu": 0.026155260686991685
+          },
+          {
+            "i386": "movl",
+            "arm64": "sub",
+            "cpu_usec": 1507782,
+            "share_of_all_sampled_cpu": 0.026014729778646134
+          },
+          {
+            "i386": "mulss",
+            "arm64": "ldr",
+            "cpu_usec": 1340489,
+            "share_of_all_sampled_cpu": 0.02312831636552736
+          },
+          {
+            "i386": "pushl",
+            "arm64": "sub",
+            "cpu_usec": 1260675,
+            "share_of_all_sampled_cpu": 0.02175123423923002
+          },
+          {
+            "i386": "cmpl",
+            "arm64": "cmp",
+            "cpu_usec": 1213062,
+            "share_of_all_sampled_cpu": 0.02092973661626418
+          },
+          {
+            "i386": "movss",
+            "arm64": "ldr",
+            "cpu_usec": 1208965,
+            "share_of_all_sampled_cpu": 0.020859048447879683
+          },
+          {
+            "i386": "testl",
+            "arm64": "ands",
+            "cpu_usec": 1183605,
+            "share_of_all_sampled_cpu": 0.020421496104645404
+          },
+          {
+            "i386": "movl",
+            "arm64": "ldr",
+            "cpu_usec": 872671,
+            "share_of_all_sampled_cpu": 0.015056752402310745
+          },
+          {
+            "i386": "addss",
+            "arm64": "ldr",
+            "cpu_usec": 869098,
+            "share_of_all_sampled_cpu": 0.014995105141964686
+          },
+          {
+            "i386": "retl",
+            "arm64": "ldp",
+            "cpu_usec": 767415,
+            "share_of_all_sampled_cpu": 0.013240703134192957
+          },
+          {
+            "i386": "je",
+            "arm64": "b",
+            "cpu_usec": 734562,
+            "share_of_all_sampled_cpu": 0.012673869256737288
+          }
+        ],
+        "mov_memory_w_immediate_cpu_usec": 6335198,
+        "top_mov_memory_w_immediate_forms": [
+          {
+            "i386": "movl",
+            "i386_base": "ebp",
+            "arm64": "sub",
+            "arm64_destination": "w15",
+            "arm64_source": "w26",
+            "cpu_usec": 1503466,
+            "share_of_all_sampled_cpu": 0.025940263062818093
+          },
+          {
+            "i386": "movl",
+            "i386_base": "ebp",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w26",
+            "cpu_usec": 1245122,
+            "share_of_all_sampled_cpu": 0.021482888356173128
+          },
+          {
+            "i386": "movl",
+            "i386_base": "eax",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w21",
+            "cpu_usec": 821186,
+            "share_of_all_sampled_cpu": 0.014168448680251723
+          },
+          {
+            "i386": "movl",
+            "i386_base": "ebx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w24",
+            "cpu_usec": 540813,
+            "share_of_all_sampled_cpu": 0.009330993509525218
+          },
+          {
+            "i386": "movl",
+            "i386_base": "edx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w23",
+            "cpu_usec": 411087,
+            "share_of_all_sampled_cpu": 0.007092747638925457
+          },
+          {
+            "i386": "movl",
+            "i386_base": "ecx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w22",
+            "cpu_usec": 379232,
+            "share_of_all_sampled_cpu": 0.006543132895481927
+          },
+          {
+            "i386": "movl",
+            "i386_base": "esi",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w27",
+            "cpu_usec": 333173,
+            "share_of_all_sampled_cpu": 0.005748447431088094
+          },
+          {
+            "i386": "movl",
+            "i386_base": "edi",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w28",
+            "cpu_usec": 308927,
+            "share_of_all_sampled_cpu": 0.005330115644256142
+          },
+          {
+            "i386": "movl",
+            "i386_base": "esp",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w25",
+            "cpu_usec": 224415,
+            "share_of_all_sampled_cpu": 0.0038719759111561698
+          },
+          {
+            "i386": "movss",
+            "i386_base": "ebp",
+            "arm64": "sub",
+            "arm64_destination": "w15",
+            "arm64_source": "w26",
+            "cpu_usec": 87610,
+            "share_of_all_sampled_cpu": 0.0015115915138310364
+          },
+          {
+            "i386": "movzwl",
+            "i386_base": "ecx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w22",
+            "cpu_usec": 75543,
+            "share_of_all_sampled_cpu": 0.0013033918243275653
+          },
+          {
+            "i386": "movss",
+            "i386_base": "ebx",
+            "arm64": "add",
+            "arm64_destination": "w15",
+            "arm64_source": "w24",
+            "cpu_usec": 66328,
+            "share_of_all_sampled_cpu": 0.0011443995197966555
+          }
+        ],
+        "top_mov_memory_w_immediate_bands": [
+          {
+            "i386_base": "ebp",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 2474719,
+            "share_of_all_sampled_cpu": 0.04269791393124562
+          },
+          {
+            "i386_base": "eax",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 829672,
+            "share_of_all_sampled_cpu": 0.014314863080278777
+          },
+          {
+            "i386_base": "ebx",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 513476,
+            "share_of_all_sampled_cpu": 0.008859330717451264
+          },
+          {
+            "i386_base": "ecx",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 493483,
+            "share_of_all_sampled_cpu": 0.008514378667045786
+          },
+          {
+            "i386_base": "edx",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 438608,
+            "share_of_all_sampled_cpu": 0.00756758510099764
+          },
+          {
+            "i386_base": "ebp",
+            "displacement_band": "deep_negative",
+            "indexing": "base_only",
+            "cpu_usec": 380417,
+            "share_of_all_sampled_cpu": 0.006563578460416179
+          },
+          {
+            "i386_base": "edi",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 309006,
+            "share_of_all_sampled_cpu": 0.005331478681918425
+          },
+          {
+            "i386_base": "esi",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 294055,
+            "share_of_all_sampled_cpu": 0.005073519490920961
+          },
+          {
+            "i386_base": "esp",
+            "displacement_band": "near",
+            "indexing": "base_only",
+            "cpu_usec": 224415,
+            "share_of_all_sampled_cpu": 0.0038719759111561698
+          },
+          {
+            "i386_base": "eax",
+            "displacement_band": "outside",
+            "indexing": "base_only",
+            "cpu_usec": 68451,
+            "share_of_all_sampled_cpu": 0.001181029000265361
+          },
+          {
+            "i386_base": "ebx",
+            "displacement_band": "near",
+            "indexing": "indexed",
+            "cpu_usec": 58822,
+            "share_of_all_sampled_cpu": 0.0010148936882384343
+          },
+          {
+            "i386_base": "ebx",
+            "displacement_band": "outside",
+            "indexing": "base_only",
+            "cpu_usec": 54685,
+            "share_of_all_sampled_cpu": 0.0009435153742021485
+          }
+        ],
+        "conditional_branch_cpu_state_memory_cpu_usec": 2475658,
+        "top_conditional_branch_cpu_state_memory_forms": [
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 5176,
+            "cpu_usec": 1033494,
+            "share_of_all_sampled_cpu": 0.017831534756252633
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 168,
+            "cpu_usec": 732735,
+            "share_of_all_sampled_cpu": 0.012642346854091822
+          },
+          {
+            "arm64": "stp",
+            "byte_offset_from_x20": 152,
+            "cpu_usec": 449556,
+            "share_of_all_sampled_cpu": 0.007756477965892312
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 160,
+            "cpu_usec": 94640,
+            "share_of_all_sampled_cpu": 0.0016328846121329676
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 144,
+            "cpu_usec": 50248,
+            "share_of_all_sampled_cpu": 0.0008669609677774446
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 152,
+            "cpu_usec": 39490,
+            "share_of_all_sampled_cpu": 0.000681346294728771
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 128,
+            "cpu_usec": 33290,
+            "share_of_all_sampled_cpu": 0.0005743737187014633
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 168,
+            "cpu_usec": 20332,
+            "share_of_all_sampled_cpu": 0.0003508010348043903
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 120,
+            "cpu_usec": 6687,
+            "share_of_all_sampled_cpu": 0.00011537509933783975
+          },
+          {
+            "arm64": "strh",
+            "byte_offset_from_x20": 5168,
+            "cpu_usec": 5244,
+            "share_of_all_sampled_cpu": 9.047809494954863e-05
+          },
+          {
+            "arm64": "ldr",
+            "byte_offset_from_x20": 72,
+            "cpu_usec": 4413,
+            "share_of_all_sampled_cpu": 7.614031903363045e-05
+          },
+          {
+            "arm64": "str",
+            "byte_offset_from_x20": 96,
+            "cpu_usec": 3773,
+            "share_of_all_sampled_cpu": 6.509798860500514e-05
+          }
+        ],
+        "guest_mnemonics": [
+          {
+            "i386": "movl",
+            "cpu_usec": 10564438,
+            "share_of_all_sampled_cpu": 0.1822750237323836
+          },
+          {
+            "i386": "movss",
+            "cpu_usec": 2483826,
+            "share_of_all_sampled_cpu": 0.0428550428425167
+          },
+          {
+            "i386": "mulss",
+            "cpu_usec": 1852710,
+            "share_of_all_sampled_cpu": 0.03196599376315375
+          },
+          {
+            "i386": "je",
+            "cpu_usec": 1734766,
+            "share_of_all_sampled_cpu": 0.02993103029428846
+          },
+          {
+            "i386": "pushl",
+            "cpu_usec": 1725944,
+            "share_of_all_sampled_cpu": 0.029778818670786376
+          },
+          {
+            "i386": "cmpl",
+            "cpu_usec": 1677872,
+            "share_of_all_sampled_cpu": 0.028949401626466257
+          },
+          {
+            "i386": "addss",
+            "cpu_usec": 1575310,
+            "share_of_all_sampled_cpu": 0.02717983366799646
+          },
+          {
+            "i386": "testl",
+            "cpu_usec": 1293909,
+            "share_of_all_sampled_cpu": 0.02232464175401898
+          },
+          {
+            "i386": "jne",
+            "cpu_usec": 1271416,
+            "share_of_all_sampled_cpu": 0.021936555600376682
+          },
+          {
+            "i386": "retl",
+            "cpu_usec": 1270273,
+            "share_of_all_sampled_cpu": 0.02191683468837681
+          },
+          {
+            "i386": "calll",
+            "cpu_usec": 1116906,
+            "share_of_all_sampled_cpu": 0.019270695483928405
+          },
+          {
+            "i386": "addl",
+            "cpu_usec": 1043116,
+            "share_of_all_sampled_cpu": 0.0179975492927905
+          },
+          {
+            "i386": "ucomiss",
+            "cpu_usec": 1008368,
+            "share_of_all_sampled_cpu": 0.017398019765081322
+          },
+          {
+            "i386": "jbe",
+            "cpu_usec": 906239,
+            "share_of_all_sampled_cpu": 0.015635922633292144
+          },
+          {
+            "i386": "incl",
+            "cpu_usec": 752115,
+            "share_of_all_sampled_cpu": 0.012976722422383631
+          },
+          {
+            "i386": "jb",
+            "cpu_usec": 711363,
+            "share_of_all_sampled_cpu": 0.012273602032340916
+          }
+        ],
+        "hot_guest_instructions": [
+          {
+            "guest_pc": "0x6ae088",
+            "i386": "movl",
+            "cpu_usec": 260174,
+            "share_of_all_sampled_cpu": 0.004488948870214314
+          },
+          {
+            "guest_pc": "0x8791ca",
+            "i386": "jb",
+            "cpu_usec": 239484,
+            "share_of_all_sampled_cpu": 0.004131971031826412
+          },
+          {
+            "guest_pc": "0x8f6e9a",
+            "i386": "jp",
+            "cpu_usec": 200943,
+            "share_of_all_sampled_cpu": 0.0034669984426863366
+          },
+          {
+            "guest_pc": "0x877d02",
+            "i386": "fistpl",
+            "cpu_usec": 182150,
+            "share_of_all_sampled_cpu": 0.0031427507618345314
+          },
+          {
+            "guest_pc": "0x6e2aab",
+            "i386": "incl",
+            "cpu_usec": 180924,
+            "share_of_all_sampled_cpu": 0.003121597797607196
+          },
+          {
+            "guest_pc": "0x877ced",
+            "i386": "cvtsi2ssl",
+            "cpu_usec": 180269,
+            "share_of_all_sampled_cpu": 0.0031102966625591497
+          },
+          {
+            "guest_pc": "0x740d91",
+            "i386": "mulss",
+            "cpu_usec": 177886,
+            "share_of_all_sampled_cpu": 0.0030691812353538152
+          },
+          {
+            "guest_pc": "0x6e2a7e",
+            "i386": "ucomiss",
+            "cpu_usec": 167666,
+            "share_of_all_sampled_cpu": 0.0028928490213217047
+          },
+          {
+            "guest_pc": "0x740d89",
+            "i386": "movss",
+            "cpu_usec": 164151,
+            "share_of_all_sampled_cpu": 0.0028322024721707394
+          },
+          {
+            "guest_pc": "0x8f6e9c",
+            "i386": "je",
+            "cpu_usec": 160297,
+            "share_of_all_sampled_cpu": 0.0027657069386208613
+          },
+          {
+            "guest_pc": "0x8c2fde",
+            "i386": "retl",
+            "cpu_usec": 157339,
+            "share_of_all_sampled_cpu": 0.002714670667671059
+          },
+          {
+            "guest_pc": "0x877cdd",
+            "i386": "fistpl",
+            "cpu_usec": 145438,
+            "share_of_all_sampled_cpu": 0.0025093350826225123
+          },
+          {
+            "guest_pc": "0x8c51fd",
+            "i386": "mulss",
+            "cpu_usec": 126318,
+            "share_of_all_sampled_cpu": 0.002179445461067331
+          },
+          {
+            "guest_pc": "0x740d96",
+            "i386": "mulss",
+            "cpu_usec": 119607,
+            "share_of_all_sampled_cpu": 0.002063656274338418
+          },
+          {
+            "guest_pc": "0x740dd0",
+            "i386": "addss",
+            "cpu_usec": 117232,
+            "share_of_all_sampled_cpu": 0.002022678876263441
+          },
+          {
+            "guest_pc": "0x8c51e5",
+            "i386": "mulss",
+            "cpu_usec": 115222,
+            "share_of_all_sampled_cpu": 0.0019879990572610395
+          },
+          {
+            "guest_pc": "0x8c2fca",
+            "i386": "addss",
+            "cpu_usec": 110336,
+            "share_of_all_sampled_cpu": 0.0019036977658950032
+          },
+          {
+            "guest_pc": "0x8e76d3",
+            "i386": "cmpl",
+            "cpu_usec": 106941,
+            "share_of_all_sampled_cpu": 0.001845121653699405
+          },
+          {
+            "guest_pc": "0x740d9f",
+            "i386": "jbe",
+            "cpu_usec": 106117,
+            "share_of_all_sampled_cpu": 0.00183090465327255
+          },
+          {
+            "guest_pc": "0x8791d5",
+            "i386": "ucomiss",
+            "cpu_usec": 103858,
+            "share_of_all_sampled_cpu": 0.0017919286775877614
+          }
+        ],
+        "movl_address_add_sub_cpu_usec": 5663079,
+        "movl_address_add_sub_by_operand": [
+          {
+            "direction": "load",
+            "i386_base": "ebp",
+            "cpu_usec": 2251091,
+            "share_of_all_sampled_cpu": 0.0388395166357884
+          },
+          {
+            "direction": "load",
+            "i386_base": "eax",
+            "cpu_usec": 680458,
+            "share_of_all_sampled_cpu": 0.011740378248127376
+          },
+          {
+            "direction": "store",
+            "i386_base": "ebp",
+            "cpu_usec": 490907,
+            "share_of_all_sampled_cpu": 0.00846993328707057
+          },
+          {
+            "direction": "load",
+            "i386_base": "edx",
+            "cpu_usec": 312821,
+            "share_of_all_sampled_cpu": 0.005397301323457809
+          },
+          {
+            "direction": "load",
+            "i386_base": "ecx",
+            "cpu_usec": 295344,
+            "share_of_all_sampled_cpu": 0.005095759434549865
+          },
+          {
+            "direction": "load",
+            "i386_base": "esi",
+            "cpu_usec": 291901,
+            "share_of_all_sampled_cpu": 0.00503635514757212
+          },
+          {
+            "direction": "load",
+            "i386_base": "ebx",
+            "cpu_usec": 283140,
+            "share_of_all_sampled_cpu": 0.004885195996189016
+          },
+          {
+            "direction": "store",
+            "i386_base": "esp",
+            "cpu_usec": 217092,
+            "share_of_all_sampled_cpu": 0.003745627495954884
+          },
+          {
+            "direction": "store",
+            "i386_base": "ebx",
+            "cpu_usec": 198851,
+            "share_of_all_sampled_cpu": 0.003430903825097768
+          },
+          {
+            "direction": "load",
+            "i386_base": "edi",
+            "cpu_usec": 187148,
+            "share_of_all_sampled_cpu": 0.003228984461025577
+          },
+          {
+            "direction": "store",
+            "i386_base": "eax",
+            "cpu_usec": 130138,
+            "share_of_all_sampled_cpu": 0.002245354370813188
+          },
+          {
+            "direction": "store",
+            "i386_base": "edi",
+            "cpu_usec": 121779,
+            "share_of_all_sampled_cpu": 0.002101131183230565
+          },
+          {
+            "direction": "store",
+            "i386_base": "edx",
+            "cpu_usec": 90071,
+            "share_of_all_sampled_cpu": 0.0015540527250573596
+          },
+          {
+            "direction": "store",
+            "i386_base": "ecx",
+            "cpu_usec": 78538,
+            "share_of_all_sampled_cpu": 0.0013550664800052728
+          },
+          {
+            "direction": "store",
+            "i386_base": "esi",
+            "cpu_usec": 26477,
+            "share_of_all_sampled_cpu": 0.00045682466056048797
+          },
+          {
+            "direction": "load",
+            "i386_base": "esp",
+            "cpu_usec": 7323,
+            "share_of_all_sampled_cpu": 0.00012634841520128614
+          }
+        ]
+      }
+    }
+  ]
+}

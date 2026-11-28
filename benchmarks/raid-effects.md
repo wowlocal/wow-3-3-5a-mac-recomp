@@ -3135,3 +3135,23 @@ After the restored 5K timing window completes, record an eight-second Time Profi
 ```sh
 python3 benchmarks/summarize-raid-native-resolution-diagnostic.py CAPTURE_ROOT
 ```
+
+### Attribute the CPU samples in the native 5K raid to guest instructions
+
+Build a diagnostic copy of the native 5K runtime with `patches/aarchx-m32-guest-stack-profile-trial.patch` followed by `patches/aarchx-m32-stack-arm64-profile-trial.patch`. Run the general i386 suite with profiling disabled and save `guest-5k-profile/general.log`. Use the verified native 5K quality profile, budget 2048 and color-only MSAA selection. Set `OCERZ_GUESTPROF=2500`, `OCERZ_GUESTPROF_PERIOD=4`, `OCERZ_GUESTPROF_HOT=1`, and `OCERZ_GUESTPROF_I386_ARM64_LOG` to a fresh `i386-arm64.ns`.
+
+Record the two 60-second diagnostics under `native-5k-guest-profile-1` and `native-5k-guest-profile-2`, weighting samples by CPU time. After the launches, restore and verify the original signed runtime in the isolated app. The analyzer checks a stable hot guest thread after world entry and validates the i386 return addresses against decoded calls and unwind ranges in the local client. The ARM64 word and corresponding i386 leaf come from the same suspension. Each captured weight can include work the translator emitted around the guest instruction. The diagnostic GPU windows establish the sampled workload and the CPU time per output.
+
+| Share of all weighted samples on the hot guest thread | First trace | Second trace |
+| --- | ---: | ---: |
+| Translated i386 | 68.52% | 67.99% |
+| Either call tree rooted at `0x73f8e0` or `0x97dbc0` | 44.79% | 44.60% |
+| ARM64 address additions and subtractions for base-only i386 `movl` memory operands | 9.55% | 9.77% |
+
+The two call trees accounted for **4.52** and **4.40 ms of weighted CPU per GPU completion**. The largest exclusive function was the quad emitter at `0x880c70`, with **3.54%** and **3.82%** of all weighted samples. The narrower address category matches the i386 displacement, the corresponding pinned ARM64 base register, and the address destination W15. That category cost **0.96 ms per completion** in both captures. The largest subcategory was EBP-relative loads, with **3.39%** and **3.88%** of all sampled CPU. These weights describe observed work in the instrumented launches. [Native 5K guest and ARM64 attribution](results/raid-native-5k-guest-profile.json)
+
+The two captures verified **11,642** consecutive GPU completions across their own windows, the maximum-quality profile, the unchanged camera and all 26 cast timing rows. The profiler build passed **812** general i386 checks. The restored runtime matched the original unsigned and signed hashes.
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-guest-profile.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
+```
