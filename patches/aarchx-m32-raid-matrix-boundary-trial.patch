@@ -1,0 +1,144 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -20753,12 +20753,13 @@
+ }
+
+ int ocerz_m32_raid_matrix(OcerzCPU *, uint32_t, uint32_t, uint32_t, uint32_t, int);
+-
+-static void emit_raid_matrix_trial(A64Buf *b, uint32_t **epi_sites, int *n_epi)
++static uint32_t *raid_matrix_link_witness;
++
++static uint32_t *emit_raid_matrix_trial(A64Buf *b, uint32_t **epi_sites, int *n_epi)
+ {
+     if (g_pin_class != 3 || !jgb_usable() || !ocerz_guest_base || ocerz_low_base ||
+         g_l0_fixed || !raid_matrix_body_matches())
+-        return;
++        return NULL;
+     a64_mov_imm64(b, JTA, (uint64_t)(uintptr_t)&m32_sig_pending);
+     a64_ldr(b, 4, JT0, JTA, 0);
+     a64_ldr(b, 4, JT1, 20, INT_OFF);
+@@ -20771,7 +20772,9 @@
+     a64_mov_reg(b, 0, 2, pin_hreg(pin_slot(OCERZ_RCX)));
+     a64_mov_reg(b, 0, 3, pin_hreg(pin_slot(OCERZ_RDX)));
+     a64_mov_reg(b, 0, 4, pin_hreg(pin_slot(OCERZ_RBP)));
+-    a64_movz(b, 5, ENV_ON("OCERZ_M32_RAID_MATRIX_WITNESS") != 0, 0);
++    int options = (ENV_ON("OCERZ_M32_RAID_MATRIX_WITNESS") ? 1 : 0) |
++                  (ENV_ON("OCERZ_M32_RAID_MATRIX_DECLINE") ? 2 : 0);
++    a64_movz(b, 5, options, 0);
+     a64_mov_reg(b, 1, 0, 20);
+     a64_mov_imm64(b, 16, (uint64_t)(uintptr_t)ocerz_m32_raid_matrix);
+     a64_blr(b, 16);
+@@ -20785,13 +20788,19 @@
+     a64_ldp_post(b, JT1, 30, 31, 16);
+     a64_emit32(b, 0xd51b4200u | JT1); /* MSR NZCV, X10 */
+     uint32_t *declined = a64_label(b); a64_cbz(b, 0, JT0, 0);
+-    a64_mov_imm64(b, JT1, 0x8c23de);
+-    a64_str(b, 8, JT1, 20, RIP_OFF);
+-    a64_mov_imm64(b, 0, OCERZ_STEP_OK);
+-    epi_sites[(*n_epi)++] = a64_label(b);
+-    a64_b(b, 0);
++    uint32_t *patch = NULL;
++    if (ENV_ON("OCERZ_M32_RAID_MATRIX_CHAIN") && !g_no_chain) {
++        patch = emit_body_chain_tail(b, 0x8c23de, 1, epi_sites, n_epi);
++    } else {
++        a64_mov_imm64(b, JT1, 0x8c23de);
++        a64_str(b, 8, JT1, 20, RIP_OFF);
++        a64_mov_imm64(b, 0, OCERZ_STEP_OK);
++        epi_sites[(*n_epi)++] = a64_label(b);
++        a64_b(b, 0);
++    }
+     a64_patch_cbz(declined, a64_label(b));
+     a64_patch_cbz(pending, a64_label(b));
++    return patch;
+ }
+
+ static int emit_bridge_fastcall32_body(A64Buf *b, const X86Insn *insns, int i, uint32_t **epi_sites, int *n_epi);
+@@ -21495,6 +21504,9 @@
+         }
+         sys_icache_invalidate(patch_b, 4);
+     }
++    if (ok && ENV_ON("OCERZ_M32_RAID_MATRIX_WITNESS") &&
++        __atomic_load_n(&raid_matrix_link_witness, __ATOMIC_RELAXED) == patch_b)
++        fprintf(stderr, "ocerz: raid matrix chained to guest epilogue\n");
+     if (ocerz_perfstat > 0) {
+         if (veneered)
+             ps_chain_veneer++;
+@@ -26004,6 +26016,8 @@
+                            raid_matrix_capture_path() != NULL;
+     const int matrix_trial = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                              ENV_ON("OCERZ_M32_RAID_MATRIX");
++    const int matrix_split = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                             (matrix_trial || ENV_ON("OCERZ_M32_RAID_MATRIX_SPLIT"));
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -26021,7 +26035,7 @@
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
+                 if (vn && matrix_capture && raid_matrix_capture_site(vpc))
+                     break;
+-                if (vn && matrix_trial && vpc == 0x8c1e9f)
++                if (vn && matrix_split && vpc == 0x8c1e9f)
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -26882,6 +26896,7 @@
+     uint32_t *epi_sites[2 * JIT_MAX_BLOCK_INSNS + 64];
+     int n_exits = 0;
+     int n_epi = 0;
++    uint32_t *matrix_resume = NULL;
+     int8_t fpb_of[JIT_MAX_BLOCK_INSNS];
+     fpb_scan(blk->insns, n, fpb_of);
+     mov_sink_scan(blk->insns, n, fl_need);
+@@ -26955,7 +26970,7 @@
+         if (i == 0 && matrix_capture && raid_matrix_capture_site(rip))
+             emit_raid_matrix_capture(&b, rip);
+         if (i == 0 && matrix_trial && rip == 0x8c1e9f)
+-            emit_raid_matrix_trial(&b, epi_sites, &n_epi);
++            matrix_resume = emit_raid_matrix_trial(&b, epi_sites, &n_epi);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);
+@@ -27975,6 +27990,16 @@
+         blk->edges[e].jcc_rip = g_side[k].jcc_rip;
+         blk->edges[e].probing = (uint8_t)(g_side[k].probe && blk->prof != NULL);
+     }
++    if (matrix_resume && blk->n_edges < 8) {
++        int e = blk->n_edges++;
++        blk->edges[e].target_rip = 0x8c23de;
++        blk->edges[e].patch_b = matrix_resume;
++        blk->edges[e].cond_site = NULL;
++        blk->edges[e].kind = EDGE_BODY;
++        blk->edges[e].pin_class = 3;
++        if (ENV_ON("OCERZ_M32_RAID_MATRIX_WITNESS"))
++            __atomic_store_n(&raid_matrix_link_witness, matrix_resume, __ATOMIC_RELAXED);
++    }
+     for (int i = 0; i < blk->n_edges; i++) {
+         blk->edges[i].fallback_insn = *blk->edges[i].patch_b;
+         blk->edges[i].cond_orig = blk->edges[i].cond_site ? *blk->edges[i].cond_site : 0;
+diff --git a/src/mem.c b/src/mem.c
+--- a/src/mem.c
++++ b/src/mem.c
+@@ -2569,8 +2569,11 @@
+     return 1;
+ }
+
+-int ocerz_m32_raid_matrix(OcerzCPU *cpu, uint32_t dst, uint32_t left, uint32_t right, uint32_t frame, int log)
+-{
++int ocerz_m32_raid_matrix(OcerzCPU *cpu, uint32_t dst, uint32_t left, uint32_t right, uint32_t frame, int options)
++{
++    /* The empty callout uses the same entry and ABI, then declines. */
++    if (options & 2)
++        return 0;
+     if ((cpu->mxcsr & ~UINT32_C(63)) != UINT32_C(0x1f80) ||
+         ((dst | left | right | frame) & 3) || frame < 104)
+         return 0;
+@@ -2603,7 +2606,7 @@
+         }
+     }
+     map_lock_release();
+-    if (use_native && log) {
++    if (use_native && (options & 1)) {
+         static _Thread_local unsigned hits;
+         if (++hits == 1 || (hits & 32767) == 0)
+             fprintf(stderr, "ocerz: raid matrix native calls=%u\n", hits);

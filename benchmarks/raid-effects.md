@@ -2446,3 +2446,39 @@ The replay matched all 16 outputs and 128 XMM bytes in **241,908** original call
 The native helper lost **15.97 and 17.28 FPS** in the two pairs. P99 increased by **1.02 and 1.20 ms**. The timed comparison covers the complete path through the helper, including register transfers, mapping checks, the lock and the return to translated execution. The diagnostic logged over **25.9 million** successful native calls on one thread. All four timed launches, the native diagnostic and the two original recordings verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. The original translation remains the benchmark baseline. The trial runtime passed **805** general i386 checks. [Replays, per-run timings and artifact hashes](results/raid-aarchx-matrix-native-ab.json)
 
 In the original recordings, **7.64%** of inputs matched the immediately preceding complete call on the same CPU. **21.06%** matched one of its preceding 64 distinct pairs within a recording gate. The comparison uses exact input bytes and MXCSR controls. These rates bound potential reuse for this helper before staging or cache costs. [Observed input recurrence](results/raid-aarchx-matrix-native-ab.json)
+
+### Split the matrix block, decline the callout and chain the native return
+
+Apply `patches/aarchx-m32-raid-matrix-boundary-trial.patch` after the matrix capture and native helper patches. Build one runtime and use the same signed executable and profiled WineMetalGL library for each mode. Keep `OCERZ_TCACHE=off`.
+
+| Timing mode | Launch switches |
+| --- | --- |
+| Control | Default translation |
+| Split | `OCERZ_M32_RAID_MATRIX_SPLIT=1` |
+| Decline | `OCERZ_M32_RAID_MATRIX=1 OCERZ_M32_RAID_MATRIX_DECLINE=1` |
+| Native | `OCERZ_M32_RAID_MATRIX=1` |
+| Chain | `OCERZ_M32_RAID_MATRIX=1 OCERZ_M32_RAID_MATRIX_CHAIN=1` |
+
+Split changes the generated block boundary at `0x8c1e9f`. Decline also performs the native ABI transition and returns immediately to the original translated body. Native executes the guarded matrix helper and resumes at `0x8c23de` through the dispatcher. Chain uses the existing interrupt-aware body edge to enter the same epilogue. Retirement and an unavailable target still use the dispatcher. The decline-to-native comparison includes both the removed scalar body and the new guards, calculation and return path.
+
+Time each mode for **60 seconds** in the table order and then the reverse order. Store launches under `timed-1-control` through `timed-10-control`. Record the mode and logging bit in `matrix-boundary-mode.txt`. Leave both logging switches unset during timing. In a separate 25-second chain launch under `diagnostic`, enable `OCERZ_M32_RAID_MATRIX_WITNESS=1` and the existing matrix capture ring. Record `chain 1` in `matrix-boundary-mode.txt` and `1 1` in `matrix-mode.txt` for the shared exporter. Export its data with `--native`, check scalar and NEON replay in the ordinary and sanitizer builds, and retain the replay files at the same paths used by the matrix experiment.
+
+```sh
+python3 benchmarks/export-raid-matrix-replay.py CAPTURE_ROOT I386_CLIENT \
+    CAPTURE_ROOT/matrix-cases.bin --native > CAPTURE_ROOT/matrix-export.json
+REPLAY_BINARY CAPTURE_ROOT/matrix-cases.bin --verify-only > CAPTURE_ROOT/matrix-replay.txt
+SANITIZER_REPLAY_BINARY CAPTURE_ROOT/matrix-cases.bin --verify-only > CAPTURE_ROOT/matrix-sanitized.txt
+python3 benchmarks/summarize-raid-matrix-boundary.py CAPTURE_ROOT
+```
+
+| Timing mode | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Control | 139.17 | 12.48 ms |
+| Split | 137.98 | 12.38 ms |
+| Decline | 135.48 | 12.81 ms |
+| Native | 131.33 | 12.93 ms |
+| Chain | 132.16 | 12.94 ms |
+
+Splitting lost **0.93 and 1.43 FPS**. Adding the empty callout lost another **2.32 and 2.70 FPS**. Running the guarded product in place of the original body lost **3.23 and 5.05 FPS** relative to decline. Chaining to the epilogue recovered **0.25 and 1.40 FPS**. The two chain runs stayed **6.23 and 7.78 FPS** below their paired controls. Keep the original translation as the benchmark baseline. [Per-run and paired timing](results/raid-aarchx-matrix-boundary-ab.json)
+
+The chain-enabled diagnostic logged a successful link to the original guest epilogue and supplied **137,710** paired calls. Both replay builds, including the sanitizer build, matched the recorded outputs and XMM contents. All ten timing windows and the diagnostic verified the saved camera, overlapping effects, 26 timing rows, consecutive GPU completions and zero visible windows or activations. The runtime passed **805** general i386 checks. [Chain witness and replay](results/raid-aarchx-matrix-boundary-ab.json)
