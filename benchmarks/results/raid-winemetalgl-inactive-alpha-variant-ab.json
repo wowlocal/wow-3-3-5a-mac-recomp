@@ -1,0 +1,181 @@
+{
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "6314ed9d98b88c3052ad2fd9d9585ab60be5b65374fa9cccd7a3aebff33517e1",
+    "runtime_signed_sha256": "07ede7554147ea7271b885d1558512b74c48b0da1d88667f764d9832807caef4",
+    "renderer_sha256": "4217c76612b8848a15ab722bd7d927c814d9bd388f5cfc171c0ea41aaf8fd493"
+  },
+  "focused_color_depth_and_user_discard_checks": "passed in both modes",
+  "gpu_tests_per_mode": 344,
+  "indexed_replay": {
+    "0": {
+      "outputs": 11120,
+      "rgba_hash": "b68e77767258e7d5",
+      "colored_pixels": 161327
+    },
+    "1": {
+      "outputs": 11118,
+      "rgba_hash": "b68e77767258e7d5",
+      "colored_pixels": 161327
+    }
+  },
+  "diagnostics": {
+    "0": {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3462,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24993066000,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 138.44,
+        "p99_gpu_completion_gap_ns": 12413125,
+        "min_draws": 693,
+        "max_draws": 980
+      },
+      "prepared_draws": 2859008,
+      "legacy_fragment_wrapper": 2859008,
+      "inactive_alpha_eligible": 1142248,
+      "variant_selected": 0,
+      "fraction_of_all_preparations_eligible": 0.3995259894340974,
+      "fraction_of_wrapped_preparations_eligible": 0.3995259894340974,
+      "compiled_variants_in_process": 0,
+      "counter_samples_within_gpu_window": 699,
+      "joined_completion_gaps": 3461,
+      "final_gpu_span_ns": {
+        "mean": 1680307.271597804,
+        "median": 1217709,
+        "p99": 6495000
+      },
+      "tail_median_final_gpu_span_ns": 7068375,
+      "producer_submit_interval_ns": {
+        "mean": 7222401.654146201,
+        "median": 7195667,
+        "p99": 9264417
+      }
+    },
+    "1": {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3438,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24997530000,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 137.48,
+        "p99_gpu_completion_gap_ns": 12734500,
+        "min_draws": 692,
+        "max_draws": 970
+      },
+      "prepared_draws": 2850816,
+      "legacy_fragment_wrapper": 2850816,
+      "inactive_alpha_eligible": 1140059,
+      "variant_selected": 1140059,
+      "fraction_of_all_preparations_eligible": 0.39990620229436064,
+      "fraction_of_wrapped_preparations_eligible": 0.39990620229436064,
+      "compiled_variants_in_process": 12,
+      "counter_samples_within_gpu_window": 697,
+      "joined_completion_gaps": 3437,
+      "final_gpu_span_ns": {
+        "mean": 1693103.5455338957,
+        "median": 1189125,
+        "p99": 6587125
+      },
+      "tail_median_final_gpu_span_ns": 7146250,
+      "producer_submit_interval_ns": {
+        "mean": 7272691.203665988,
+        "median": 7231208,
+        "p99": 9093292
+      }
+    }
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "specialized_inactive_alpha": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8353,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998171041,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 139.2,
+      "p99_gpu_completion_gap_ns": 12128709,
+      "min_draws": 684,
+      "max_draws": 967
+    },
+    {
+      "order": 2,
+      "specialized_inactive_alpha": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8291,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997771000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 138.16666666666666,
+      "p99_gpu_completion_gap_ns": 12117834,
+      "min_draws": 700,
+      "max_draws": 963
+    },
+    {
+      "order": 3,
+      "specialized_inactive_alpha": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8290,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996096916,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 138.15,
+      "p99_gpu_completion_gap_ns": 12175041,
+      "min_draws": 699,
+      "max_draws": 971
+    },
+    {
+      "order": 4,
+      "specialized_inactive_alpha": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8425,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999997000,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 140.4,
+      "p99_gpu_completion_gap_ns": 12166750,
+      "min_draws": 689,
+      "max_draws": 983
+    }
+  ],
+  "comparison": {
+    "dynamic_alpha": {
+      "median_gpu_completed_fps": 139.8,
+      "median_p99_completion_gap_ns": 12147729.5
+    },
+    "specialized_inactive_alpha": {
+      "median_gpu_completed_fps": 138.15833333333333,
+      "median_p99_completion_gap_ns": 12146437.5
+    }
+  },
+  "paired_specialized_minus_dynamic": [
+    {
+      "gpu_completed_fps": -1.0333333333333314,
+      "p99_completion_gap_ns": -10875
+    },
+    {
+      "gpu_completed_fps": -2.25,
+      "p99_completion_gap_ns": 8291
+    }
+  ]
+}

@@ -2706,3 +2706,26 @@ In the diagnostic pair the most frequent first split moved from **256** to **224
 ```sh
 python3 benchmarks/summarize-raid-triangle-split.py CAPTURE_ROOT
 ```
+
+### Specialize the compatibility fragment shader for inactive alpha testing
+
+Apply `patches/winemetalgl-inactive-compat-alpha-variant-trial.patch` to the selected deferred PGO renderer source. Build an arm64 Release ThinLTO renderer with the existing merged profile, allowing stale-profile warnings in the trial checkout. Both timing modes use the same library and the selected PGO AArchX executable.
+
+The generated legacy fragment wrapper declares a Metal function constant for the compatibility alpha check. The ordinary function explicitly specializes it to true. With `WINEMETALGL_ALPHA_VARIANT=1`, the pipeline can specialize it to false for draws with disabled alpha testing or `GL_ALWAYS`. The cached pipeline key includes that choice. The shader's own discard, the fixed-function uniform layout, depth and stencil state, and draw order use the existing paths. Keep the ordinary function as fallback if creating the specialized function fails.
+
+Measure four warmed 60-second raid windows in control, variant, variant, control order with logging disabled. In two separate 25-second diagnostic launches, set `WINEMETALGL_ALPHA_VARIANT_LOG` to `alpha-variant.tsv` and enable the existing submission log. Record the mode and logging switches in `alpha-variant-mode.txt`. The counters sample each 4,096th pipeline preparation on the calling thread. They count total preparations, use of the legacy fragment wrapper, inactive alpha eligibility, and selection of the variant. The diagnostic joins the covered counter samples to verified GPU completions.
+
+Run `compat_alpha_variant_keeps_color_depth_and_user_discard` in both modes with compilation logging enabled. It checks color and depth for disabled alpha testing, `GL_NEVER`, `GL_ALWAYS`, and a discard from the shader itself. Save those logs as `focus-0.log` and `focus-1.log`. Save both complete suites as `gpu-tests-MODE.log` and the ordered indexed replays with three outputs in flight as `replay-MODE.log`. Both modes passed **344** GPU tests and matched the replay's **161,327** colored pixels and RGBA hash.
+
+| Compatibility alpha path | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Ordinary uniform-controlled check | 139.80 | 12.15 ms |
+| Specialized inactive check | 138.16 | 12.15 ms |
+
+The variant lost **1.03** and **2.25 FPS** in the two pairs. P99 changed by **−0.011** and **+0.008 ms**. Use the previous deferred PGO library for subsequent raid trials. The four timing windows verified **33,359** consecutive GPU completions across their four launches, the saved camera and effects, all 26 timing rows, and zero trial windows or activations. [Paired timings and replay verification](results/raid-winemetalgl-inactive-alpha-variant-ab.json)
+
+In the candidate diagnostic, **1,140,059** of **2,850,816** covered pipeline preparations selected the specialized function, or **40.0%**. Twelve variants compiled during that launch. The median final buffer's GPU span changed from **1.218 to 1.189 ms**, and the median in the one-percent completion tail moved from **7.068 to 7.146 ms**. These spans include scheduling and come from separate diagnostic windows. [Shader selection and GPU spans](results/raid-winemetalgl-inactive-alpha-variant-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-alpha-variant.py CAPTURE_ROOT
+```

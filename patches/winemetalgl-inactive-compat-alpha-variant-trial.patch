@@ -1,0 +1,292 @@
+diff --git a/src/core/shader/glsl_upgrade.cpp b/src/core/shader/glsl_upgrade.cpp
+--- a/src/core/shader/glsl_upgrade.cpp
++++ b/src/core/shader/glsl_upgrade.cpp
+@@ -596,7 +596,8 @@
+                             std::to_string(i) + "]);\n";
+         }
+     }
+-    if (fragment && (used.count("gl_FragColor") || used.count("gl_FragData"))) {
++    const bool alphaWrapper = fragment && hasMain && (used.count("gl_FragColor") || used.count("gl_FragData"));
++    if (alphaWrapper) {
+         result.usesFixedFunctionState = true;
+         epilogue += std::string("    wmgl_alphaTest(") + (used.count("gl_FragColor") ? "wmgl_FragColor" : "wmgl_FragData[0]") +
+                     ".a);\n";
+@@ -637,9 +638,11 @@
+             "};\n";
+         // Only the object with main calls it (from the generated main), and
+         // a stage may have several objects.
+-        if (fragment && hasMain)
++        if (alphaWrapper)
+             decls +=
++                "layout(constant_id = 0) const bool wmgl_CompatAlphaGate = true;\n"
+                 "void wmgl_alphaTest(float a) {\n"
++                "  if (!wmgl_CompatAlphaGate) return;\n"
+                 "  int f = int(wmgl_AlphaTest.x); float r = wmgl_AlphaTest.y;\n"
+                 "  if (f != 0 && !(f == 8 || (f == 2 && a < r) || (f == 3 && a == r) || (f == 4 && a <= r) ||\n"
+                 "      (f == 5 && a > r) || (f == 6 && a != r) || (f == 7 && a >= r))) discard;\n"
+diff --git a/src/core/program.h b/src/core/program.h
+--- a/src/core/program.h
++++ b/src/core/program.h
+@@ -49,7 +49,7 @@
+     // `countInvocations`: FRAGMENT_SHADER_INVOCATIONS (shader::fragmentCountingInvocations).
+     id<MTLFunction> fragmentVariant(bool sampleMask, unsigned logicOp, const uint16_t colorFormats[8],
+                                     bool sampleRate = false, bool ignoreSampleMask = false, unsigned cull = 0,
+-                                    uint16_t borders = 0, bool countInvocations = false);
++                                    uint16_t borders = 0, bool countInvocations = false, bool skipCompatAlpha = false);
+     // The vertex function (with rasterization, with or without [[point_size]],
+     // or without rasterization) with clamp-to-border emulation variant `borders`.
+     id<MTLFunction> vertexWithBorders(bool rasterization, bool pointSize, uint16_t borders);
+@@ -58,6 +58,7 @@
+     id<MTLComputePipelineState> kernelWithBorders(const shader::StageOutput& output, int stage, uint16_t borders);
+     // The fragment stage writes gl_SampleMask.
+     bool writesSampleMask();
++    bool hasCompatAlphaGate() const { return (outputFlags() & kCompatAlphaGate) != 0; }
+     id<MTLFunction> fragmentSampleMask() { return fragmentVariant(true, 0, nullptr); }
+     bool functionFailed(shader::Stage stage) const { return failed_[static_cast<int>(stage)]; }
+     // Geometry shader emulation (link.geometry): the drawing vertex function
+@@ -139,7 +140,7 @@
+     std::atomic<int> readsVertexId_{-1};
+     // What the drawing vertex and fragment functions write, found once in
+     // their MSL (draws ask on every call): kWrites* bits.
+-    enum : int { kWritesViewport = 1, kWritesLayer = 2, kWritesSampleMask = 4, kCullShift = 4 };
++    enum : int { kWritesViewport = 1, kWritesLayer = 2, kWritesSampleMask = 4, kCompatAlphaGate = 8, kCullShift = 4 };
+     mutable std::atomic<int> outputFlags_{-1};
+     int outputFlags() const;
+     id<MTLFunction> functions_[shader::kStageCount] = {};
+diff --git a/src/core/program.mm b/src/core/program.mm
+--- a/src/core/program.mm
++++ b/src/core/program.mm
+@@ -89,12 +89,18 @@
+     return cache;
+ }
+
+-id<MTLFunction> compileFunctionUncached(const std::string& msl, const std::string& entryPoint, int stage);
+-
+-id<MTLFunction> compileFunction(const std::string& msl, const std::string& entryPoint, int stage) {
++constexpr char kCompatAlphaConstant[] = "wmgl_CompatAlphaGate_tmp";
++constexpr char kCompatAlphaDeclaration[] = "constant bool wmgl_CompatAlphaGate_tmp [[function_constant(0)]];";
++
++id<MTLFunction> compileFunctionUncached(const std::string& msl, const std::string& entryPoint, int stage,
++                                       bool skipCompatAlpha);
++
++id<MTLFunction> compileFunction(const std::string& msl, const std::string& entryPoint, int stage,
++                               bool skipCompatAlpha = false) {
+     FunctionCache& cache = functionCache();
+     std::string key = entryPoint;
+     key += '\0';
++    key += skipCompatAlpha ? '\1' : '\0';
+     key += msl;
+     std::promise<id<MTLFunction>> promise;
+     std::shared_future<id<MTLFunction>> function;
+@@ -117,7 +123,7 @@
+         }
+     }
+     if (!compiles) return function.get();
+-    id<MTLFunction> compiled = compileFunctionUncached(msl, entryPoint, stage);
++    id<MTLFunction> compiled = compileFunctionUncached(msl, entryPoint, stage, skipCompatAlpha);
+     promise.set_value(compiled);
+     if (!compiled) {
+         // Failures are not kept: each program remembers its own.
+@@ -131,7 +137,8 @@
+     return compiled;
+ }
+
+-id<MTLFunction> compileFunctionUncached(const std::string& msl, const std::string& entryPoint, int stage) {
++id<MTLFunction> compileFunctionUncached(const std::string& msl, const std::string& entryPoint, int stage,
++                                       bool skipCompatAlpha) {
+     MTLCompileOptions* options = [MTLCompileOptions new];
+     options.languageVersion = MTLLanguageVersion3_1;  // texture atomics
+     // Relaxed math without reassociation: arithmetic in the order the shader
+@@ -174,7 +181,28 @@
+                  msl.c_str());
+         return nil;
+     }
+-    id<MTLFunction> function = [library newFunctionWithName:[NSString stringWithUTF8String:entryPoint.c_str()]];
++    NSString* name = [NSString stringWithUTF8String:entryPoint.c_str()];
++    if (msl.find(kCompatAlphaDeclaration) != std::string::npos) {
++        MTLFunctionConstantValues* constants = [MTLFunctionConstantValues new];
++        NSString* constantName = [NSString stringWithUTF8String:kCompatAlphaConstant];
++        bool enabled = !skipCompatAlpha;
++        [constants setConstantValue:&enabled type:MTLDataTypeBool withName:constantName];
++        id<MTLFunction> function = [library newFunctionWithName:name constantValues:constants error:&error];
++        if (function) {
++            if (skipCompatAlpha && std::getenv("WINEMETALGL_ALPHA_VARIANT_LOG"))
++                std::fprintf(stderr, "wmgl compatibility alpha variant compiled\n");
++            return function;
++        }
++        if (skipCompatAlpha) {
++            WMGL_WARN(Shader, "Could not disable the inactive compatibility alpha check: %s", error.localizedDescription.UTF8String);
++            enabled = true;
++            [constants setConstantValue:&enabled type:MTLDataTypeBool withName:constantName];
++            function = [library newFunctionWithName:name constantValues:constants error:&error];
++        }
++        if (!function) WMGL_ERR(Shader, "Could not create the compatibility alpha function: %s", error.localizedDescription.UTF8String);
++        return function;
++    }
++    id<MTLFunction> function = [library newFunctionWithName:name];
+     if (!function) WMGL_ERR(Shader, "entry point %s missing", entryPoint.c_str());
+     return function;
+ }
+@@ -306,8 +334,11 @@
+     if (pipeline) {
+         const auto& fs = stageExecutable[static_cast<int>(shader::Stage::Fragment)];
+         if (fs && fs->writesSampleMask()) flags |= kWritesSampleMask;
++        if (fs && fs->hasCompatAlphaGate()) flags |= kCompatAlphaGate;
+     } else {
+         const shader::StageOutput& output = link.stages[static_cast<int>(shader::Stage::Fragment)];
++        if (output.present && output.msl.find(kCompatAlphaDeclaration) != std::string::npos)
++            flags |= kCompatAlphaGate;
+         // A [[sample_mask]] member of the output (a parameter is gl_SampleMaskIn).
+         const size_t structAt = output.present ? output.msl.find("struct main0_out\n{") : std::string::npos;
+         const size_t mask = structAt == std::string::npos ? std::string::npos : output.msl.find("[[sample_mask]]", structAt);
+@@ -321,15 +352,16 @@
+
+ id<MTLFunction> LinkedProgram::fragmentVariant(bool sampleMask, unsigned logicOp, const uint16_t colorFormats[8],
+                                                bool sampleRate, bool ignoreSampleMask, unsigned cull, uint16_t borders,
+-                                               bool countInvocations) {
++                                               bool countInvocations, bool skipCompatAlpha) {
+     if (pipeline) {
+         const auto& fs = stageExecutable[static_cast<int>(shader::Stage::Fragment)];
+         return fs ? fs->fragmentVariant(sampleMask, logicOp, colorFormats, sampleRate, ignoreSampleMask, cull, borders,
+-                                        countInvocations)
++                                        countInvocations, skipCompatAlpha)
+                   : nil;
+     }
+     std::string key = std::string(sampleMask ? "m" : "-") + (sampleRate ? "s" : "-") + (ignoreSampleMask ? "i" : "-") +
+-                      (countInvocations ? "n" : "-") + std::to_string(logicOp) + "c" + std::to_string(cull) + "b" +
++                      (countInvocations ? "n" : "-") + (skipCompatAlpha ? "a" : "-") +
++                      std::to_string(logicOp) + "c" + std::to_string(cull) + "b" +
+                       std::to_string(borders);
+     if (logicOp)
+         for (int i = 0; i < 8; ++i) key += "/" + std::to_string(colorFormats[i]);
+@@ -352,7 +384,7 @@
+     if (!msl.empty() && sampleRate) msl = shader::fragmentAtSampleRate(msl);
+     if (!msl.empty() && ignoreSampleMask) msl = shader::fragmentIgnoringSampleMask(msl);
+     id<MTLFunction> function =
+-        msl.empty() ? nil : compileFunction(msl, output.entryPoint, static_cast<int>(shader::Stage::Fragment));
++        msl.empty() ? nil : compileFunction(msl, output.entryPoint, static_cast<int>(shader::Stage::Fragment), skipCompatAlpha);
+     fragmentVariants_[key] = function;
+     return function;
+ }
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -1921,6 +1921,32 @@
+     key.borders[1] = key.rasterization ? borders[1] : 0;
+     // FRAGMENT_SHADER_INVOCATIONS: a fragment function variant counts them.
+     key.countFragments = key.rasterization && queriesCounting(ctx_, kStatFragmentShaderInvocations);
++    static const bool specializeInactiveAlpha = [] {
++        const char* value = std::getenv("WINEMETALGL_ALPHA_VARIANT");
++        return value && value[0] == '1';
++    }();
++    static FILE* const alphaLog = []() -> FILE* {
++        const char* path = std::getenv("WINEMETALGL_ALPHA_VARIANT_LOG");
++        return path && *path ? std::fopen(path, "w") : nullptr;
++    }();
++    if (specializeInactiveAlpha || alphaLog) {
++        const bool wrapped = key.rasterization && program->hasCompatAlphaGate();
++        const bool inactive = !st.fixed.alphaTest || st.fixed.alphaFunc == GL_ALWAYS;
++        key.skipCompatAlpha = specializeInactiveAlpha && wrapped && inactive;
++        if (alphaLog) {
++            static thread_local uint64_t prepared = 0, wrappedCount = 0, eligible = 0, selected = 0;
++            wrappedCount += wrapped;
++            eligible += wrapped && inactive;
++            selected += key.skipCompatAlpha;
++            if ((++prepared & 4095) == 0)
++                std::fprintf(alphaLog, "%llu %llu %llu %llu %llu\n",
++                             static_cast<unsigned long long>(stats::nowNanos()),
++                             static_cast<unsigned long long>(prepared),
++                             static_cast<unsigned long long>(wrappedCount),
++                             static_cast<unsigned long long>(eligible),
++                             static_cast<unsigned long long>(selected));
++        }
++    }
+     for (int i = 0; i < 8; ++i) key.colorFormats[i] = static_cast<uint16_t>(formats.color[i]);
+     // GL_COLOR_LOGIC_OP replaces blending on unsigned normalized and integer
+     // attachments; the fragment function applies the operation (framebuffer
+diff --git a/src/core/metal/pipeline_cache.h b/src/core/metal/pipeline_cache.h
+--- a/src/core/metal/pipeline_cache.h
++++ b/src/core/metal/pipeline_cache.h
+@@ -51,6 +51,7 @@
+     uint8_t geometryPass;   // vertex function: the geometry emulation's pass-through (1), kernel (2), input expansion (3) or strip rotation (4)
+     uint8_t cull;           // cull distances the vertex function writes (LinkedProgram::fragmentVariant)
+     uint8_t countFragments;  // fragment function counts its invocations (FRAGMENT_SHADER_INVOCATIONS)
++    uint8_t skipCompatAlpha;  // the compatibility alpha test is disabled or always passes
+     // Metal tessellation (the vertex function is the post-tessellation
+     // variant): 0 = none, else bit 0 set, bit 1 quads, bits 2-3 the
+     // MTLTessellationPartitionMode, bit 4 MTLWindingClockwise.
+diff --git a/src/core/metal/pipeline_cache.mm b/src/core/metal/pipeline_cache.mm
+--- a/src/core/metal/pipeline_cache.mm
++++ b/src/core/metal/pipeline_cache.mm
+@@ -441,9 +441,9 @@
+                                                   : program.function(shader::Stage::Vertex);
+     id<MTLFunction> fragment =
+         key.sampleMask || key.logicOp || key.sampleShading || key.ignoreSampleMask || key.cull || key.borders[1] ||
+-                key.countFragments
++                key.countFragments || key.skipCompatAlpha
+             ? program.fragmentVariant(key.sampleMask, key.logicOp, key.colorFormats, key.sampleShading, key.ignoreSampleMask,
+-                                      key.cull, key.borders[1], key.countFragments)
++                                      key.cull, key.borders[1], key.countFragments, key.skipCompatAlpha)
+             : program.function(shader::Stage::Fragment);
+     if (!vertex) return nil;
+     MTLRenderPipelineDescriptor* desc = [MTLRenderPipelineDescriptor new];
+diff --git a/tests/gpu/compat_tests.cpp b/tests/gpu/compat_tests.cpp
+--- a/tests/gpu/compat_tests.cpp
++++ b/tests/gpu/compat_tests.cpp
+@@ -365,5 +365,56 @@
+     glGetIntegerv(GL_ALPHA_TEST_FUNC, &func);
+     CHECK_EQ(func, GL_GREATER);
+     glDisable(GL_ALPHA_TEST);
++    CHECK_GL();
++}
++
++COMPAT_TEST(compat_alpha_variant_keeps_color_depth_and_user_discard) {
++    GLuint program = gpu::program(R"(#version 120
++void main() { gl_Position = ftransform(); gl_FrontColor = gl_Color; })",
++                                  R"(#version 120
++uniform bool discardRed;
++void main() {
++    if (discardRed && gl_Color.r > 0.5) discard;
++    gl_FragColor = gl_Color;
++})");
++    glUseProgram(program);
++    const GLint discardRed = glGetUniformLocation(program, "discardRed");
++    CHECK(discardRed >= 0);
++    pixelProjection();
++    glClearDepth(1.0);
++    clear();
++    glEnable(GL_DEPTH_TEST);
++    glDepthFunc(GL_LESS);
++    const auto rectangle = [](float left, float right, float z, bool red) {
++        glColor3f(red ? 1.0f : 0.0f, 0.0f, red ? 0.0f : 1.0f);
++        glBegin(GL_QUADS);
++        glVertex3f(left, 0, z);
++        glVertex3f(right, 0, z);
++        glVertex3f(right, 64, z);
++        glVertex3f(left, 64, z);
++        glEnd();
++    };
++    glDisable(GL_ALPHA_TEST);
++    rectangle(0, 20, 0.5f, true);  // this near fragment must write depth
++    glEnable(GL_ALPHA_TEST);
++    glAlphaFunc(GL_NEVER, 0.0f);
++    rectangle(20, 42, 0.5f, true);  // compatibility discard on the same program
++    glAlphaFunc(GL_ALWAYS, 0.0f);
++    rectangle(0, 64, -0.5f, false);  // passes the alpha test
++    glDisable(GL_ALPHA_TEST);
++    glUniform1i(discardRed, 1);
++    rectangle(42, 64, 0.5f, true);  // shader discard survives specialization
++
++    CHECK(pixel(10, 32, kRed));
++    CHECK(pixel(31, 32, kBlue));
++    CHECK(pixel(52, 32, kBlue));
++    for (int x : {10, 31, 52}) {
++        float depth = -1.0f;
++        glReadPixels(x, 32, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
++        CHECK(std::fabs(depth - (x == 10 ? 0.25f : 0.75f)) < 1e-5f);
++    }
++    glDisable(GL_DEPTH_TEST);
++    glUseProgram(0);
++    glDeleteProgram(program);
+     CHECK_GL();
+ }
