@@ -23,7 +23,7 @@ LIMIT = 1 << 32
 STORE_WIDTHS = (12, 12, 4, 8)
 
 
-def read_gates(capture, start, end):
+def read_gates(capture, start, end, sites=WINDOWS):
     raw = (capture / "quad-layout.bin").read_bytes()
     count, enabled = struct.unpack_from("<QQ", raw)
     if len(raw) != (CAPACITY + 1) * STRIDE or enabled or not 0 < count < CAPACITY:
@@ -39,9 +39,9 @@ def read_gates(capture, start, end):
         rows = []
         for index in range(first, after):
             seq, tick, cpu, *data = ROW.unpack_from(raw, (index + 1) * STRIDE)
-            if seq != index + 1 or not last_tick <= tick < end or not cpu or data[0] not in WINDOWS:
+            if seq != index + 1 or not last_tick <= tick < end or not cpu or data[0] not in sites:
                 raise ValueError(f"Invalid quad row {index} in {capture}")
-            rows.append((cpu, data))
+            rows.append((tick, cpu, data))
             last_tick = tick
         yield rows
         previous = after
@@ -118,7 +118,7 @@ def summarize_gate(rows):
     pending = {}
     counts = Counter()
     strides = Counter()
-    for cpu, data in rows:
+    for _, cpu, data in rows:
         pc, stack = data[:2]
         key = cpu, stack
         if pc == BEGIN:

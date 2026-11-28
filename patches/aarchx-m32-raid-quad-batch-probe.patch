@@ -1,0 +1,98 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19035,9 +19035,22 @@
+ /* Record the cursor descriptor immediately before and after one quad. */
+ enum { QUAD_LAYOUT_BITS = 20, QUAD_LAYOUT_STRIDE = 256 };
+
++static int quad_batch_site(uint64_t pc)
++{
++    switch (pc) {
++    case 0x882c89: case 0x882cb9: case 0x882e1a:
++    case 0x882ce8: case 0x882ced:
++    case 0x882d1c: case 0x882d21:
++    case 0x882efe: case 0x882f03:
++        return 1;
++    default:
++        return 0;
++    }
++}
++
+ static int quad_layout_site(uint64_t pc)
+ {
+-    return pc == 0x8816da || pc == 0x881aad || pc == 0x881709 ||
++    return quad_batch_site(pc) || pc == 0x8816da || pc == 0x881aad || pc == 0x881709 ||
+            pc == 0x8817f1 || pc == 0x8818ec || pc == 0x8819cf;
+ }
+
+@@ -19078,13 +19091,17 @@
+
+ static void emit_quad_layout(A64Buf *b, uint64_t pc)
+ {
++    const int batch = quad_batch_site(pc);
++    const int call = pc == 0x882ce8 || pc == 0x882d1c || pc == 0x882efe;
+     int edge = pc == 0x8816da || pc == 0x881aad;
+     int frame = pin_slot(OCERZ_RBP);
+     int cursor = edge ? pin_slot(pc == 0x8816da ? OCERZ_RDX : OCERZ_RCX) : -1;
++    int sp = call ? pin_slot(OCERZ_RSP) : -1;
++    int index = call ? pin_slot(OCERZ_RBX) : -1;
+     if (g_pin_class != 3 || frame < 0 || !jgb_usable() || !ocerz_guest_base)
+         return;
+-    if ((edge && cursor < 0) ||
+-        (!edge && (!xmm_is_pinned(1) || !xmm_is_pinned(2) || !xmm_is_pinned(7))))
++    if ((edge && cursor < 0) || (call && (sp < 0 || index < 0)) ||
++        (!batch && !edge && (!xmm_is_pinned(1) || !xmm_is_pinned(2) || !xmm_is_pinned(7))))
+         return;
+     frame = pin_hreg(frame);
+     if (edge) cursor = pin_hreg(cursor);
+@@ -19099,10 +19116,12 @@
+         a64_ubfx(b, 0, JT1, cursor, 0, 12);
+         a64_add_imm(b, 0, JT1, JT1, 35);
+         cursor_split = a64_label(b); a64_tbnz(b, JT1, 12, 0);
++    }
++    if (edge || batch) {
+         a64_ubfx(b, 0, JT1, frame, 0, 2);
+         frame_unaligned = a64_label(b); a64_cbnz(b, 0, JT1, 0);
+         a64_ubfx(b, 0, JT1, frame, 0, 12);
+-        a64_add_imm(b, 0, JT1, JT1, 11);
++        a64_add_imm(b, 0, JT1, JT1, batch ? 19 : 11);
+         arg_split = a64_label(b); a64_tbnz(b, JT1, 12, 0);
+     }
+     a64_movz(b, JT1, 1, 0);
+@@ -19118,7 +19137,21 @@
+     a64_str(b, 4, JT1, JT0, 24);
+     a64_str(b, 4, frame, JT0, 28);
+
+-    if (edge) {
++    if (batch) {
++        a64_mov_reg(b, 0, JTT, frame);
++        a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++        for (unsigned i = 0; i < 3; i++) {
++            a64_ldr(b, 4, JT1, JTT, 8 + 4 * i);
++            a64_str(b, 4, JT1, JT0, 32 + 4 * i);
++        }
++        if (call) {
++            a64_add_imm(b, 0, JTT, pin_hreg(sp), 4);
++            a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++            a64_ldr(b, 4, JT1, JTT, 0);
++            a64_str(b, 4, JT1, JT0, 44);
++            a64_str(b, 4, pin_hreg(index), JT0, 48);
++        }
++    } else if (edge) {
+         a64_str(b, 4, cursor, JT0, 32);
+         a64_mov_reg(b, 0, JTT, frame);
+         a64_add_reg(b, 1, JTT, JGB, JTT, 0);
+@@ -19170,10 +19203,10 @@
+
+     a64_add_imm(b, 1, JT2, JT2, 1);
+     a64_stlr(b, 8, JT2, JT0);
+-    if (edge) {
++    if (edge || batch) {
+         a64_patch_tbz(arg_split, a64_label(b));
+         a64_patch_cbz(frame_unaligned, a64_label(b));
+-        a64_patch_tbz(cursor_split, a64_label(b));
+-    }
++    }
++    if (edge) a64_patch_tbz(cursor_split, a64_label(b));
+     a64_patch_cbz(disabled, a64_label(b));
+ }

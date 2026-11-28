@@ -2372,3 +2372,18 @@ If all the modeled savings reached the critical path, **0.68–1.35 ms** at the 
 python3 benchmarks/summarize-raid-preparation-budget.py PREPARATION_CAPTURE_ROOT \
     GL_CAPTURE_1 GL_CAPTURE_2 GL_CAPTURE_3 GL_CAPTURE_WITH_DRAW_REASONS
 ```
+
+### Trace all emitter calls in a quad batch
+
+The diagnostic records the arguments and elapsed ticks for the original wrapper at `0x882c80` and each call to the emitter at `0x880c70`. It retains the four stream starts, strides and cursor counts at both ends of the tracked write path. For each whole wrapper, the analyzer checks the original call count, the output byte ranges, and their overlap with the tracked particle arguments, color words, normal source, shared context and cursor. It treats repeated zero-stride normal writes to one address as one range when every recorded normal word agrees. Cursor publication, bounds updates and other effects still require an ordering and dependency check.
+
+Six recording gates contain **15,758** complete nonempty batches and **202,768** emitter calls. The gate medians range from **3 to 7** calls per batch. The largest contains **374** calls. **10,776** batches recorded exactly one tracked write interval per call, with continuously advancing cursors and no overlap in the tracked byte ranges. Another **4,982** wrappers had one or more calls outside that recorded write shape or missing a probe boundary. **553** qualifying batches contain at least 32 calls and account for **55.3%** of all recorded emitter call time. [Batch counts and timing](results/raid-aarchx-quad-batch-layout.json)
+
+Time before the tracked writes in qualifying batches accounts for **13.54 ms** of the recorded **76.23 ms** in emitter calls. It includes any work done by callees before the first recorded write boundary. The four-worker model bounds each eligible batch by the larger of one fourth of that elapsed time and its longest call prefix. It gives **8.90 ms** of ideal savings across the six gates, or **5.30 ms** with a hypothetical **2 μs** overhead for each batch selected by the model. A separate pair of weighted CPU profiles places emitter call returns in **6.93% and 7.22%** of all samples by weight. Applying the ideal prefix savings fraction to those profiles puts this prefix alone at roughly **0.8% of whole-thread time**. Actual speedup requires independent inputs and measured staging costs. [Worker model](results/raid-aarchx-quad-batch-layout.json) · [Earlier CPU captures](results/raid-aarchx-native-instructions-in-guest-call-trees.json)
+
+Apply `patches/aarchx-m32-raid-quad-batch-probe.patch` after the quad layout probe. Keep the profiled renderer and use the same headless launch and registry witness as the layout captures. Arm the ring for **70 ms** at 2, 12 and 24 seconds into each verified GPU window. An initial 140 ms configuration filled the bounded ring and was discarded. The two accepted 35-second diagnostics verified **4,654** and **4,693** consecutive GPU outputs, the saved camera, overlapping effects, all 26 timing rows, and zero visible windows or activations. The runtime passed **805** general i386 checks with the probe disabled.
+
+```sh
+python3 benchmarks/summarize-raid-quad-batch.py CAPTURE_ROOT I386_CLIENT \
+    --cpu-profiles EARLIER_PROFILE_1 EARLIER_PROFILE_2
+```

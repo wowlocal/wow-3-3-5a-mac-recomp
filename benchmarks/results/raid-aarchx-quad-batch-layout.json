@@ -1,0 +1,296 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "camera": "Saved fixture anchor",
+  "caster_count": 24,
+  "boss_count": 1,
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "diagnostic_artifacts": {
+    "instrumented_runtime": "1e6efd7372e5431c81c981ee028c6d7c60a258eca96fc2274b5947ad2fcaef39",
+    "signed_runtime": "f0d9e916bdd2f880c6302e0ebd70b0640a3733b1efe8c27226116a91aedcc86b",
+    "renderer": "1be67f208b2a9c5289384706d49db943470724cb2c8633cbcff48cb3a4fa94b4"
+  },
+  "verified_timed_script_rows": 26,
+  "captures": [
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4654,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34998746291,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 132.94285714285715,
+        "p99_gpu_completion_gap_ns": 13167750,
+        "min_draws": 681,
+        "max_draws": 958
+      },
+      "gates": [
+        {
+          "recorded_rows": 307172,
+          "nonempty_batches": 1818,
+          "median_emitter_calls_per_batch": 7.0,
+          "max_emitter_calls_per_batch": 374,
+          "batches_by_layout_class": {
+            "disjoint_tracked_ranges": 1120,
+            "incomplete_layout_coverage": 698
+          },
+          "emitter_thread_ns_by_layout_class": {
+            "disjoint_tracked_ranges": 16142015,
+            "incomplete_layout_coverage": 2428904
+          },
+          "emitter_calls_by_site": {
+            "0x882ce8": 47907,
+            "0x882efe": 342
+          },
+          "four_worker_ideal_prefix_ns_saved_by_batch_overhead_ns": {
+            "0": 2524487.0,
+            "1000": 1930390.75,
+            "2000": 1770751.0,
+            "4000": 1479616.0
+          },
+          "before_tracked_writes_in_disjoint_batches_ns": 3472105,
+          "disjoint_batches_at_least_16": 159,
+          "disjoint_batches_at_least_32": 121,
+          "disjoint_batches_at_least_64": 121,
+          "disjoint_batches_at_least_8": 292,
+          "disjoint_batches_with_contiguous_cursor": 1120,
+          "disjoint_emitter_ns_in_batches_at_least_16": 12341478,
+          "disjoint_emitter_ns_in_batches_at_least_32": 11818717,
+          "disjoint_emitter_ns_in_batches_at_least_64": 11818717,
+          "disjoint_emitter_ns_in_batches_at_least_8": 12833649,
+          "emitter_calls": 48249,
+          "observed_emitter_thread_elapsed_ns": 18570919,
+          "observed_wrapper_thread_elapsed_ns": 25682990,
+          "paired_emission_layouts": 34506
+        },
+        {
+          "recorded_rows": 201252,
+          "nonempty_batches": 2692,
+          "median_emitter_calls_per_batch": 5.0,
+          "max_emitter_calls_per_batch": 191,
+          "batches_by_layout_class": {
+            "disjoint_tracked_ranges": 1779,
+            "incomplete_layout_coverage": 913
+          },
+          "emitter_thread_ns_by_layout_class": {
+            "disjoint_tracked_ranges": 12282895,
+            "incomplete_layout_coverage": 2030235
+          },
+          "emitter_calls_by_site": {
+            "0x882ce8": 32387,
+            "0x882efe": 216
+          },
+          "four_worker_ideal_prefix_ns_saved_by_batch_overhead_ns": {
+            "0": 1488398.0,
+            "1000": 976766.5,
+            "2000": 863635.0,
+            "4000": 702386.5
+          },
+          "before_tracked_writes_in_disjoint_batches_ns": 2239884,
+          "disjoint_batches_at_least_16": 80,
+          "disjoint_batches_at_least_32": 80,
+          "disjoint_batches_at_least_64": 80,
+          "disjoint_batches_at_least_8": 129,
+          "disjoint_batches_with_contiguous_cursor": 1779,
+          "disjoint_emitter_ns_in_batches_at_least_16": 7795639,
+          "disjoint_emitter_ns_in_batches_at_least_32": 7795639,
+          "disjoint_emitter_ns_in_batches_at_least_64": 7795639,
+          "disjoint_emitter_ns_in_batches_at_least_8": 8216051,
+          "emitter_calls": 32603,
+          "observed_emitter_thread_elapsed_ns": 14313130,
+          "observed_wrapper_thread_elapsed_ns": 19249079,
+          "paired_emission_layouts": 21777
+        },
+        {
+          "recorded_rows": 137008,
+          "nonempty_batches": 2743,
+          "median_emitter_calls_per_batch": 5,
+          "max_emitter_calls_per_batch": 167,
+          "batches_by_layout_class": {
+            "disjoint_tracked_ranges": 1912,
+            "incomplete_layout_coverage": 831
+          },
+          "emitter_thread_ns_by_layout_class": {
+            "disjoint_tracked_ranges": 7380328,
+            "incomplete_layout_coverage": 1592024
+          },
+          "emitter_calls_by_site": {
+            "0x882ce8": 21370
+          },
+          "four_worker_ideal_prefix_ns_saved_by_batch_overhead_ns": {
+            "0": 932490.0,
+            "1000": 468758.75,
+            "2000": 405168.5,
+            "4000": 314689.5
+          },
+          "before_tracked_writes_in_disjoint_batches_ns": 1487655,
+          "disjoint_batches_at_least_16": 60,
+          "disjoint_batches_at_least_32": 45,
+          "disjoint_batches_at_least_64": 45,
+          "disjoint_batches_at_least_8": 85,
+          "disjoint_batches_with_contiguous_cursor": 1912,
+          "disjoint_emitter_ns_in_batches_at_least_16": 3715509,
+          "disjoint_emitter_ns_in_batches_at_least_32": 3511774,
+          "disjoint_emitter_ns_in_batches_at_least_64": 3511774,
+          "disjoint_emitter_ns_in_batches_at_least_8": 3847524,
+          "emitter_calls": 21370,
+          "observed_emitter_thread_elapsed_ns": 8972352,
+          "observed_wrapper_thread_elapsed_ns": 12275656,
+          "paired_emission_layouts": 14797
+        }
+      ]
+    },
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4693,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34998750875,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 134.05714285714285,
+        "p99_gpu_completion_gap_ns": 12793416,
+        "min_draws": 690,
+        "max_draws": 970
+      },
+      "gates": [
+        {
+          "recorded_rows": 251378,
+          "nonempty_batches": 2050,
+          "median_emitter_calls_per_batch": 6.0,
+          "max_emitter_calls_per_batch": 294,
+          "batches_by_layout_class": {
+            "disjoint_tracked_ranges": 1488,
+            "incomplete_layout_coverage": 562
+          },
+          "emitter_thread_ns_by_layout_class": {
+            "disjoint_tracked_ranges": 15900626,
+            "incomplete_layout_coverage": 1774178
+          },
+          "emitter_calls_by_site": {
+            "0x882ce8": 38676,
+            "0x882efe": 24
+          },
+          "four_worker_ideal_prefix_ns_saved_by_batch_overhead_ns": {
+            "0": 2004655.0,
+            "1000": 1538484.75,
+            "2000": 1418484.75,
+            "4000": 1178484.75
+          },
+          "before_tracked_writes_in_disjoint_batches_ns": 2961650,
+          "disjoint_batches_at_least_16": 120,
+          "disjoint_batches_at_least_32": 120,
+          "disjoint_batches_at_least_64": 120,
+          "disjoint_batches_at_least_8": 120,
+          "disjoint_batches_with_contiguous_cursor": 1488,
+          "disjoint_emitter_ns_in_batches_at_least_16": 12568806,
+          "disjoint_emitter_ns_in_batches_at_least_32": 12568806,
+          "disjoint_emitter_ns_in_batches_at_least_64": 12568806,
+          "disjoint_emitter_ns_in_batches_at_least_8": 12568806,
+          "emitter_calls": 38700,
+          "observed_emitter_thread_elapsed_ns": 17674804,
+          "observed_wrapper_thread_elapsed_ns": 25987115,
+          "paired_emission_layouts": 28313
+        },
+        {
+          "recorded_rows": 143800,
+          "nonempty_batches": 2910,
+          "median_emitter_calls_per_batch": 3.0,
+          "max_emitter_calls_per_batch": 159,
+          "batches_by_layout_class": {
+            "disjoint_tracked_ranges": 2027,
+            "incomplete_layout_coverage": 883
+          },
+          "emitter_thread_ns_by_layout_class": {
+            "disjoint_tracked_ranges": 5137188,
+            "incomplete_layout_coverage": 2109875
+          },
+          "emitter_calls_by_site": {
+            "0x882ce8": 26711,
+            "0x882efe": 72
+          },
+          "four_worker_ideal_prefix_ns_saved_by_batch_overhead_ns": {
+            "0": 873772.25,
+            "1000": 439709.75,
+            "2000": 350709.75,
+            "4000": 172709.75
+          },
+          "before_tracked_writes_in_disjoint_batches_ns": 1494802,
+          "disjoint_batches_at_least_16": 89,
+          "disjoint_batches_at_least_32": 89,
+          "disjoint_batches_at_least_64": 89,
+          "disjoint_batches_at_least_8": 89,
+          "disjoint_batches_with_contiguous_cursor": 2027,
+          "disjoint_emitter_ns_in_batches_at_least_16": 2721458,
+          "disjoint_emitter_ns_in_batches_at_least_32": 2721458,
+          "disjoint_emitter_ns_in_batches_at_least_64": 2721458,
+          "disjoint_emitter_ns_in_batches_at_least_8": 2721458,
+          "emitter_calls": 26783,
+          "observed_emitter_thread_elapsed_ns": 7247063,
+          "observed_wrapper_thread_elapsed_ns": 9554095,
+          "paired_emission_layouts": 14069
+        },
+        {
+          "recorded_rows": 178746,
+          "nonempty_batches": 3545,
+          "median_emitter_calls_per_batch": 3,
+          "max_emitter_calls_per_batch": 159,
+          "batches_by_layout_class": {
+            "disjoint_tracked_ranges": 2450,
+            "incomplete_layout_coverage": 1095
+          },
+          "emitter_thread_ns_by_layout_class": {
+            "disjoint_tracked_ranges": 6590882,
+            "incomplete_layout_coverage": 2860166
+          },
+          "emitter_calls_by_site": {
+            "0x882ce8": 34853,
+            "0x882efe": 210
+          },
+          "four_worker_ideal_prefix_ns_saved_by_batch_overhead_ns": {
+            "0": 1077545.75,
+            "1000": 603958.75,
+            "2000": 490202.75,
+            "4000": 302528.25
+          },
+          "before_tracked_writes_in_disjoint_batches_ns": 1880894,
+          "disjoint_batches_at_least_16": 98,
+          "disjoint_batches_at_least_32": 98,
+          "disjoint_batches_at_least_64": 59,
+          "disjoint_batches_at_least_8": 98,
+          "disjoint_batches_with_contiguous_cursor": 2450,
+          "disjoint_emitter_ns_in_batches_at_least_16": 3710140,
+          "disjoint_emitter_ns_in_batches_at_least_32": 3710140,
+          "disjoint_emitter_ns_in_batches_at_least_64": 2965352,
+          "disjoint_emitter_ns_in_batches_at_least_8": 3710140,
+          "emitter_calls": 35063,
+          "observed_emitter_thread_elapsed_ns": 9451048,
+          "observed_wrapper_thread_elapsed_ns": 12567378,
+          "paired_emission_layouts": 16905
+        }
+      ]
+    }
+  ],
+  "earlier_guest_cpu_profiles": [
+    {
+      "all_weighted_cpu_usec": 58498915,
+      "sample_weight_with_emitter_return_fraction": 0.06932456781463382,
+      "exclusive_emitter_fraction": 0.04547381776226106
+    },
+    {
+      "all_weighted_cpu_usec": 58703008,
+      "sample_weight_with_emitter_return_fraction": 0.07217856706763646,
+      "exclusive_emitter_fraction": 0.04842119845034176
+    }
+  ]
+}
