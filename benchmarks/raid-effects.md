@@ -1911,3 +1911,27 @@ PY
 python3 benchmarks/summarize-raid-vertex-bounds.py "$CAPTURE_DIR" \
     --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
 ```
+
+### Join the vertex-stage tail to each Metal render encoder
+
+The analyzer matches fragment endpoints from Metal System Trace to application command-buffer submissions, then joins active vertex intervals and the application encoder list by command-buffer and encoder ID. Each joined output has two render submissions and their draws add up to the verified draw count. The archive uses the original copied-shadow renderer. In two separate recordings, the diagnostic renderer labels each render encoder and records its target, clear flag, draws and submitted vertex references by program. The labels join that work to the measured encoder.
+
+| Capture with the earlier client paused | Joined output gaps | First encoder vertex activity, all / tail | Final encoder vertex activity, all / tail | Tail gaps with longer final vertex activity |
+| --- | ---: | ---: | ---: | ---: |
+| Archived unlabelled | 1,840 | 0.26 / 0.26 ms | 0.28 / 3.81 ms | 15 / 19 |
+| Labelled 1 | 2,195 | 0.30 / 0.30 ms | 0.32 / 4.40 ms | 18 / 22 |
+| Labelled 2 | 2,188 | 0.26 / 0.26 ms | 0.28 / 2.57 ms | 16 / 22 |
+
+The figures are medians of active vertex intervals by render submission. A submission has one measured vertex encoder at the median in every capture. Three endpoint-matched gaps per capture lacked active vertex rows for one of the buffers. They still enter the completion-gap p99 calculation. Every gap at or above p99 had both vertex records. Median vertex activity in those gaps outside the current output's two command buffers was **0.56–0.89 ms**.
+
+The labelled final pass had one color attachment and depth at 1365 × 768 and recorded no pending clear. The dominant ARB vertex-program shape in that pass shifted from **65 instructions and 223 parameters** to **40 instructions and 223 parameters** across the recordings. Match each tail buffer to a non-tail buffer from the same capture and submission position with the same draw count, choosing the closest number of submitted vertex references per program. For the final pass, **20 of 22** and **14 of 22** tail buffers matched within **1%** summed reference distance. Their median vertex-active durations were **12.28× and 10.16×** those of their matches. Counts can hide changes in index reuse, shader inputs and primitive data.
+
+In the fixed **500 µs** before the final vertex stage, median WindowServer GPU activity was **499.1–499.9 µs** for the slowest gaps and **0 µs** across all attributed gaps. This is a timing association with another GPU workload. The result supports testing how the client splits its render pass while keeping draw order and measuring WindowServer activity in both arms. [Encoder attribution and matched work](results/raid-winemetalgl-encoder-vertex-tail.json)
+
+Apply `patches/winemetalgl-encoder-vertex-work-trial.patch` to the copied-shadow baseline. Set `OCERZ_WMGL_SUBMISSION_LOG` to `submissions.ns` and `OCERZ_WMGL_ENCODER_WORK_LOG` to `encoder-work.tsv`. Attach the Metal System Trace template to the isolated in-world client and export `metal-gpu-intervals` and `metal-application-encoders-list` as `gpu-intervals.xml` and `encoders.xml`. Keep the same verified GPU window and desktop monitor. The M4 Pro reported stage-boundary timestamp sampling. Its draw-boundary sampling query returned false. [Apple Metal counter sampling](https://developer.apple.com/documentation/metal/sampling-gpu-data-into-counter-sample-buffers)
+
+```sh
+python3 benchmarks/summarize-raid-encoder-tail.py CAPTURE_DIR
+```
+
+The two labelled captures were 17-second Metal System Traces within 35-second verified GPU windows. Both checked the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. The earlier client resumed after every capture. The renderer passed **343** GPU tests with diagnostic logging disabled.

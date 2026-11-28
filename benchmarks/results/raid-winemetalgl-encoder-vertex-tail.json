@@ -1,0 +1,769 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "b9fd2c1",
+  "scope": "GPU vertex intervals joined to render encoder identities in one archived and two new full-raid diagnostic traces.",
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "archive_renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "labelled_renderer_sha256": "aae966591997ad20746c1b339ecb831ee998b5d2cdcf261901d8e266fa002b42",
+  "gpu_tests_with_probe_disabled": 343,
+  "verified_timed_script_rows": 26,
+  "visual_readbacks_verified": true,
+  "visible_test_windows": 0,
+  "test_focus_activations": 0,
+  "copied_client_process_guard_passed": true,
+  "legacy_resumed_after_each_pause": true,
+  "sampling_capabilities": {
+    "stage_boundary": true,
+    "draw_boundary": false,
+    "counter_sets": [
+      "timestamp"
+    ]
+  },
+  "encoder_work_log_variable": "OCERZ_WMGL_ENCODER_WORK_LOG",
+  "nearest_work_matching": "Equal draw count in the same submission position. Minimize summed absolute per-program vertex-reference count differences, breaking ties by frame sequence proximity.",
+  "captures": [
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3792,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 29995100084,
+        "measurement_duration_ns": 30000000000,
+        "average_completed_fps": 126.36666666666666,
+        "p99_gpu_completion_gap_ns": 14102500,
+        "min_draws": 695,
+        "max_draws": 977
+      },
+      "joined_clock_alignment": {
+        "matched_endpoints": 3682,
+        "maximum_error_ns": 43
+      },
+      "endpoint_matched_frames": 1840,
+      "endpoint_matched_tail_frames": 19,
+      "endpoint_matched_frames_missing_vertex_intervals": 3,
+      "joined_p99_completion_gap_ns": 13363000,
+      "all_joined_intervals_with_vertex_activity": {
+        "frames": 1837,
+        "completion_gap_median_ns": 7821084,
+        "vertex_active_in_completion_gap_median_ns": 562916,
+        "same_output_vertex_activity_in_completion_gap_median_ns": 562834,
+        "other_client_output_vertex_activity_outside_same_output_median_ns": 0,
+        "submissions": {
+          "first": {
+            "vertex_active_ns": 259333,
+            "vertex_span_ns": 259333,
+            "longest_encoder_vertex_active_ns": 259333,
+            "vertex_encoder_count": 1,
+            "submitted_vertex_references": 0,
+            "external_activity_in_500us_before_vertex_ns": 0,
+            "external_activity_in_500us_after_vertex_ns": 0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0,
+            "largest_program_shapes_by_submitted_references": [],
+            "render_targets": [],
+            "total_named_vertex_encoder_count": 1835,
+            "total_tagged_vertex_encoder_count": 0,
+            "total_vertex_encoder_draws": 0,
+            "total_counted_direct_draws": 0
+          },
+          "final": {
+            "vertex_active_ns": 280000,
+            "vertex_span_ns": 280000,
+            "longest_encoder_vertex_active_ns": 280000,
+            "vertex_encoder_count": 1,
+            "submitted_vertex_references": 0,
+            "external_activity_in_500us_before_vertex_ns": 0,
+            "external_activity_in_500us_after_vertex_ns": 0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0,
+            "largest_program_shapes_by_submitted_references": [],
+            "render_targets": [],
+            "total_named_vertex_encoder_count": 1832,
+            "total_tagged_vertex_encoder_count": 0,
+            "total_vertex_encoder_draws": 0,
+            "total_counted_direct_draws": 0
+          }
+        },
+        "submission_with_longer_vertex_stage": {
+          "final": 1031,
+          "first": 806
+        }
+      },
+      "slowest_one_percent": {
+        "frames": 19,
+        "completion_gap_median_ns": 14180084,
+        "vertex_active_in_completion_gap_median_ns": 5931418,
+        "same_output_vertex_activity_in_completion_gap_median_ns": 4168958,
+        "other_client_output_vertex_activity_outside_same_output_median_ns": 892209,
+        "submissions": {
+          "first": {
+            "vertex_active_ns": 260000,
+            "vertex_span_ns": 260000,
+            "longest_encoder_vertex_active_ns": 260000,
+            "vertex_encoder_count": 1,
+            "submitted_vertex_references": 0,
+            "external_activity_in_500us_before_vertex_ns": 0,
+            "external_activity_in_500us_after_vertex_ns": 0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0,
+            "largest_program_shapes_by_submitted_references": [],
+            "render_targets": [],
+            "total_named_vertex_encoder_count": 19,
+            "total_tagged_vertex_encoder_count": 0,
+            "total_vertex_encoder_draws": 0,
+            "total_counted_direct_draws": 0
+          },
+          "final": {
+            "vertex_active_ns": 3809417,
+            "vertex_span_ns": 3809417,
+            "longest_encoder_vertex_active_ns": 3809417,
+            "vertex_encoder_count": 1,
+            "submitted_vertex_references": 0,
+            "external_activity_in_500us_before_vertex_ns": 500000,
+            "external_activity_in_500us_after_vertex_ns": 500000,
+            "windowserver_activity_in_500us_before_vertex_ns": 499917,
+            "other_processes_activity_in_500us_before_vertex_ns": 0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0,
+            "largest_program_shapes_by_submitted_references": [],
+            "render_targets": [],
+            "total_named_vertex_encoder_count": 19,
+            "total_tagged_vertex_encoder_count": 0,
+            "total_vertex_encoder_draws": 0,
+            "total_counted_direct_draws": 0
+          }
+        },
+        "submission_with_longer_vertex_stage": {
+          "first": 4,
+          "final": 15
+        }
+      },
+      "nearest_non_tail_submissions_by_vertex_references": {
+        "first": null,
+        "final": null
+      },
+      "recording": "archived",
+      "requested_trace_seconds": 14,
+      "legacy_paused": true,
+      "legacy_completed_frames_during_launch": 0
+    },
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4345,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34998614084,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 124.11428571428571,
+        "p99_gpu_completion_gap_ns": 14263416,
+        "min_draws": 670,
+        "max_draws": 978
+      },
+      "joined_clock_alignment": {
+        "matched_endpoints": 4393,
+        "maximum_error_ns": 42
+      },
+      "endpoint_matched_frames": 2195,
+      "endpoint_matched_tail_frames": 22,
+      "endpoint_matched_frames_missing_vertex_intervals": 3,
+      "joined_p99_completion_gap_ns": 13528375,
+      "all_joined_intervals_with_vertex_activity": {
+        "frames": 2192,
+        "completion_gap_median_ns": 7923042.0,
+        "vertex_active_in_completion_gap_median_ns": 629438.0,
+        "same_output_vertex_activity_in_completion_gap_median_ns": 629249.0,
+        "other_client_output_vertex_activity_outside_same_output_median_ns": 0.0,
+        "submissions": {
+          "first": {
+            "vertex_active_ns": 297145.5,
+            "vertex_span_ns": 297145.5,
+            "longest_encoder_vertex_active_ns": 297145.5,
+            "vertex_encoder_count": 1.0,
+            "submitted_vertex_references": 100995.0,
+            "external_activity_in_500us_before_vertex_ns": 0.0,
+            "external_activity_in_500us_after_vertex_ns": 0.0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0.0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0.0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0.0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 0,
+                "parameters": 0,
+                "references": 56860911
+              },
+              {
+                "instructions": 46,
+                "parameters": 38,
+                "references": 48775680
+              },
+              {
+                "instructions": 40,
+                "parameters": 223,
+                "references": 33487986
+              },
+              {
+                "instructions": 100,
+                "parameters": 38,
+                "references": 25228800
+              },
+              {
+                "instructions": 33,
+                "parameters": 34,
+                "references": 21654720
+              },
+              {
+                "instructions": 44,
+                "parameters": 38,
+                "references": 16819200
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": true,
+                "encoders": 2190
+              }
+            ],
+            "total_named_vertex_encoder_count": 2191,
+            "total_tagged_vertex_encoder_count": 2190,
+            "total_vertex_encoder_draws": 586752,
+            "total_counted_direct_draws": 586752
+          },
+          "final": {
+            "vertex_active_ns": 320354.0,
+            "vertex_span_ns": 320354.0,
+            "longest_encoder_vertex_active_ns": 320354.0,
+            "vertex_encoder_count": 1.0,
+            "submitted_vertex_references": 231739.5,
+            "external_activity_in_500us_before_vertex_ns": 0.0,
+            "external_activity_in_500us_after_vertex_ns": 0.0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0.0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0.0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0.0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 65,
+                "parameters": 223,
+                "references": 226113654
+              },
+              {
+                "instructions": 29,
+                "parameters": 24,
+                "references": 47479176
+              },
+              {
+                "instructions": 40,
+                "parameters": 223,
+                "references": 43139760
+              },
+              {
+                "instructions": 20,
+                "parameters": 34,
+                "references": 37972172
+              },
+              {
+                "instructions": 26,
+                "parameters": 223,
+                "references": 33139560
+              },
+              {
+                "instructions": 78,
+                "parameters": 223,
+                "references": 26474952
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": false,
+                "encoders": 2192
+              }
+            ],
+            "total_named_vertex_encoder_count": 2192,
+            "total_tagged_vertex_encoder_count": 2192,
+            "total_vertex_encoder_draws": 1242385,
+            "total_counted_direct_draws": 1242385
+          }
+        },
+        "submission_with_longer_vertex_stage": {
+          "final": 1586,
+          "first": 606
+        }
+      },
+      "slowest_one_percent": {
+        "frames": 22,
+        "completion_gap_median_ns": 14387083.0,
+        "vertex_active_in_completion_gap_median_ns": 6684813.5,
+        "same_output_vertex_activity_in_completion_gap_median_ns": 4831958.0,
+        "other_client_output_vertex_activity_outside_same_output_median_ns": 561583.5,
+        "submissions": {
+          "first": {
+            "vertex_active_ns": 298083.5,
+            "vertex_span_ns": 298083.5,
+            "longest_encoder_vertex_active_ns": 298083.5,
+            "vertex_encoder_count": 1.0,
+            "submitted_vertex_references": 100996.5,
+            "external_activity_in_500us_before_vertex_ns": 0.0,
+            "external_activity_in_500us_after_vertex_ns": 0.0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0.0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0.0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0.0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 0,
+                "parameters": 0,
+                "references": 571083
+              },
+              {
+                "instructions": 46,
+                "parameters": 38,
+                "references": 489984
+              },
+              {
+                "instructions": 40,
+                "parameters": 223,
+                "references": 316176
+              },
+              {
+                "instructions": 100,
+                "parameters": 38,
+                "references": 253440
+              },
+              {
+                "instructions": 33,
+                "parameters": 34,
+                "references": 217536
+              },
+              {
+                "instructions": 44,
+                "parameters": 38,
+                "references": 168960
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": true,
+                "encoders": 22
+              }
+            ],
+            "total_named_vertex_encoder_count": 22,
+            "total_tagged_vertex_encoder_count": 22,
+            "total_vertex_encoder_draws": 5632,
+            "total_counted_direct_draws": 5632
+          },
+          "final": {
+            "vertex_active_ns": 4401479.5,
+            "vertex_span_ns": 4401479.5,
+            "longest_encoder_vertex_active_ns": 4401479.5,
+            "vertex_encoder_count": 1.0,
+            "submitted_vertex_references": 234726.0,
+            "external_activity_in_500us_before_vertex_ns": 500000.0,
+            "external_activity_in_500us_after_vertex_ns": 499916.5,
+            "windowserver_activity_in_500us_before_vertex_ns": 499084.0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0.0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0.0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 65,
+                "parameters": 223,
+                "references": 2388780
+              },
+              {
+                "instructions": 29,
+                "parameters": 24,
+                "references": 497508
+              },
+              {
+                "instructions": 40,
+                "parameters": 223,
+                "references": 453186
+              },
+              {
+                "instructions": 20,
+                "parameters": 34,
+                "references": 441916
+              },
+              {
+                "instructions": 26,
+                "parameters": 223,
+                "references": 397932
+              },
+              {
+                "instructions": 78,
+                "parameters": 223,
+                "references": 283878
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": false,
+                "encoders": 22
+              }
+            ],
+            "total_named_vertex_encoder_count": 22,
+            "total_tagged_vertex_encoder_count": 22,
+            "total_vertex_encoder_draws": 13113,
+            "total_counted_direct_draws": 13113
+          }
+        },
+        "submission_with_longer_vertex_stage": {
+          "final": 18,
+          "first": 4
+        }
+      },
+      "nearest_non_tail_submissions_by_vertex_references": {
+        "first": {
+          "matches": 22,
+          "median_normalized_vertex_reference_distance": 0.0,
+          "median_tail_to_matched_vertex_active_ratio": 1.0032249239453448,
+          "matches_with_reference_distance_at_most_one_percent": 22,
+          "median_tail_to_matched_vertex_active_ratio_within_one_percent": 1.0032249239453448
+        },
+        "final": {
+          "matches": 22,
+          "median_normalized_vertex_reference_distance": 0.002049130744864261,
+          "median_tail_to_matched_vertex_active_ratio": 12.2780486741187,
+          "matches_with_reference_distance_at_most_one_percent": 20,
+          "median_tail_to_matched_vertex_active_ratio_within_one_percent": 12.2780486741187
+        }
+      },
+      "recording": "labelled_1",
+      "requested_trace_seconds": 17,
+      "legacy_paused": true,
+      "legacy_completed_frames_during_launch": 0
+    },
+    {
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4347,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34998665459,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 124.17142857142858,
+        "p99_gpu_completion_gap_ns": 14123750,
+        "min_draws": 697,
+        "max_draws": 976
+      },
+      "joined_clock_alignment": {
+        "matched_endpoints": 4379,
+        "maximum_error_ns": 42
+      },
+      "endpoint_matched_frames": 2188,
+      "endpoint_matched_tail_frames": 22,
+      "endpoint_matched_frames_missing_vertex_intervals": 3,
+      "joined_p99_completion_gap_ns": 13603375,
+      "all_joined_intervals_with_vertex_activity": {
+        "frames": 2185,
+        "completion_gap_median_ns": 7943375,
+        "vertex_active_in_completion_gap_median_ns": 561792,
+        "same_output_vertex_activity_in_completion_gap_median_ns": 561291,
+        "other_client_output_vertex_activity_outside_same_output_median_ns": 0,
+        "submissions": {
+          "first": {
+            "vertex_active_ns": 258625,
+            "vertex_span_ns": 258625,
+            "longest_encoder_vertex_active_ns": 258625,
+            "vertex_encoder_count": 1,
+            "submitted_vertex_references": 207777,
+            "external_activity_in_500us_before_vertex_ns": 0,
+            "external_activity_in_500us_after_vertex_ns": 0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 65,
+                "parameters": 223,
+                "references": 228884799
+              },
+              {
+                "instructions": 0,
+                "parameters": 0,
+                "references": 56704830
+              },
+              {
+                "instructions": 46,
+                "parameters": 38,
+                "references": 48664320
+              },
+              {
+                "instructions": 78,
+                "parameters": 223,
+                "references": 25603044
+              },
+              {
+                "instructions": 100,
+                "parameters": 38,
+                "references": 25171200
+              },
+              {
+                "instructions": 33,
+                "parameters": 34,
+                "references": 21605280
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": true,
+                "encoders": 2185
+              }
+            ],
+            "total_named_vertex_encoder_count": 2185,
+            "total_tagged_vertex_encoder_count": 2185,
+            "total_vertex_encoder_draws": 588800,
+            "total_counted_direct_draws": 588800
+          },
+          "final": {
+            "vertex_active_ns": 280500,
+            "vertex_span_ns": 280500,
+            "longest_encoder_vertex_active_ns": 280500,
+            "vertex_encoder_count": 1,
+            "submitted_vertex_references": 120648,
+            "external_activity_in_500us_before_vertex_ns": 0,
+            "external_activity_in_500us_after_vertex_ns": 0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 40,
+                "parameters": 223,
+                "references": 71435541
+              },
+              {
+                "instructions": 29,
+                "parameters": 24,
+                "references": 46826976
+              },
+              {
+                "instructions": 20,
+                "parameters": 34,
+                "references": 36638274
+              },
+              {
+                "instructions": 26,
+                "parameters": 223,
+                "references": 34934544
+              },
+              {
+                "instructions": 36,
+                "parameters": 34,
+                "references": 18377826
+              },
+              {
+                "instructions": 21,
+                "parameters": 34,
+                "references": 16536321
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": false,
+                "encoders": 2181
+              }
+            ],
+            "total_named_vertex_encoder_count": 2181,
+            "total_tagged_vertex_encoder_count": 2181,
+            "total_vertex_encoder_draws": 1215959,
+            "total_counted_direct_draws": 1215959
+          }
+        },
+        "submission_with_longer_vertex_stage": {
+          "final": 1296,
+          "first": 889
+        }
+      },
+      "slowest_one_percent": {
+        "frames": 22,
+        "completion_gap_median_ns": 14175792.0,
+        "vertex_active_in_completion_gap_median_ns": 5399833.5,
+        "same_output_vertex_activity_in_completion_gap_median_ns": 4529375.0,
+        "other_client_output_vertex_activity_outside_same_output_median_ns": 784042.0,
+        "submissions": {
+          "first": {
+            "vertex_active_ns": 259416.5,
+            "vertex_span_ns": 259416.5,
+            "longest_encoder_vertex_active_ns": 259416.5,
+            "vertex_encoder_count": 1.0,
+            "submitted_vertex_references": 207072.0,
+            "external_activity_in_500us_before_vertex_ns": 46250.5,
+            "external_activity_in_500us_after_vertex_ns": 0.0,
+            "windowserver_activity_in_500us_before_vertex_ns": 0.0,
+            "other_processes_activity_in_500us_before_vertex_ns": 0.0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0.0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 65,
+                "parameters": 223,
+                "references": 2296788
+              },
+              {
+                "instructions": 0,
+                "parameters": 0,
+                "references": 570993
+              },
+              {
+                "instructions": 46,
+                "parameters": 38,
+                "references": 489984
+              },
+              {
+                "instructions": 100,
+                "parameters": 38,
+                "references": 253440
+              },
+              {
+                "instructions": 78,
+                "parameters": 223,
+                "references": 248376
+              },
+              {
+                "instructions": 33,
+                "parameters": 34,
+                "references": 217536
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": true,
+                "encoders": 22
+              }
+            ],
+            "total_named_vertex_encoder_count": 22,
+            "total_tagged_vertex_encoder_count": 22,
+            "total_vertex_encoder_draws": 5632,
+            "total_counted_direct_draws": 5632
+          },
+          "final": {
+            "vertex_active_ns": 2567979.5,
+            "vertex_span_ns": 2567979.5,
+            "longest_encoder_vertex_active_ns": 2567979.5,
+            "vertex_encoder_count": 1.0,
+            "submitted_vertex_references": 127543.5,
+            "external_activity_in_500us_before_vertex_ns": 499896.0,
+            "external_activity_in_500us_after_vertex_ns": 500000.0,
+            "windowserver_activity_in_500us_before_vertex_ns": 499708.5,
+            "other_processes_activity_in_500us_before_vertex_ns": 0.0,
+            "unattributed_activity_in_500us_before_vertex_ns": 0.0,
+            "largest_program_shapes_by_submitted_references": [
+              {
+                "instructions": 40,
+                "parameters": 223,
+                "references": 759606
+              },
+              {
+                "instructions": 29,
+                "parameters": 24,
+                "references": 497508
+              },
+              {
+                "instructions": 26,
+                "parameters": 223,
+                "references": 454524
+              },
+              {
+                "instructions": 20,
+                "parameters": 34,
+                "references": 406552
+              },
+              {
+                "instructions": 21,
+                "parameters": 34,
+                "references": 173313
+              },
+              {
+                "instructions": 36,
+                "parameters": 34,
+                "references": 167562
+              }
+            ],
+            "render_targets": [
+              {
+                "width": 1365,
+                "height": 768,
+                "colors": 1,
+                "depth": true,
+                "clear": false,
+                "encoders": 22
+              }
+            ],
+            "total_named_vertex_encoder_count": 22,
+            "total_tagged_vertex_encoder_count": 22,
+            "total_vertex_encoder_draws": 13263,
+            "total_counted_direct_draws": 13263
+          }
+        },
+        "submission_with_longer_vertex_stage": {
+          "final": 16,
+          "first": 6
+        }
+      },
+      "nearest_non_tail_submissions_by_vertex_references": {
+        "first": {
+          "matches": 22,
+          "median_normalized_vertex_reference_distance": 0.0,
+          "median_tail_to_matched_vertex_active_ratio": 1.0887350058631986,
+          "matches_with_reference_distance_at_most_one_percent": 22,
+          "median_tail_to_matched_vertex_active_ratio_within_one_percent": 1.0887350058631986
+        },
+        "final": {
+          "matches": 20,
+          "median_normalized_vertex_reference_distance": 0.006948251755271728,
+          "median_tail_to_matched_vertex_active_ratio": 8.942049991860825,
+          "matches_with_reference_distance_at_most_one_percent": 14,
+          "median_tail_to_matched_vertex_active_ratio_within_one_percent": 10.160107137966746
+        }
+      },
+      "recording": "labelled_2",
+      "requested_trace_seconds": 17,
+      "legacy_paused": true,
+      "legacy_completed_frames_during_launch": 0
+    }
+  ]
+}

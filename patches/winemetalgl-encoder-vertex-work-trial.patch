@@ -1,0 +1,168 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2345,6 +2345,19 @@
+         }
+         return true;
+     }
++    static const bool profileVertices = CommandStream::vertexWorkProfileEnabled();
++    const auto noteVertexWork = [&](uint64_t references) {
++        if (!profileVertices || !references) return;
++        uint64_t key = 0;
++        uint32_t instructions = 0, parameters = 0;
++        if (compat::arbVertexProgramActive(ctx_)) {
++            const auto& vertex = compat::arbBound(ctx_, 0);
++            key = vertex.serial;
++            instructions = vertex.parsed->instructions;
++            parameters = vertex.parsed->parameters;
++        }
++        ctx_.stream().noteVertexWork(key, instructions, parameters, references * std::max(1, instances));
++    };
+     // Metal on some virtual GPUs (DeviceCaps::drawOffsets16) keeps only 16
+     // bits of the vertex start and base vertex: such a draw goes through
+     // indices that hold the vertex numbers themselves, with no offset.
+@@ -2395,10 +2408,12 @@
+                                    indexBuffer:pattern->buffer indexBufferOffset:0
+                                  instanceCount:std::max(1, instances) baseVertex:first - rebase
+                                   baseInstance:baseInstance_];
++            noteVertexWork(pattern->count);
+             ctx_.stream().noteDraw();
+             return true;
+         }
+     }
++    uint64_t references = static_cast<uint32_t>(count);
+     if (needsIndices || rotate || points || (indexData && !indexBuffer) || offsetIndices) {
+         stats::count(&stats::Frame::cpuIndexDraws);
+         std::vector<uint32_t> in, out;
+@@ -2411,6 +2426,7 @@
+         else if (needsIndices) expandIndices(mode, in, out);
+         else out.swap(in);
+         if (out.empty()) return true;
++        references = out.size();
+         TransientAllocation alloc = transient_.allocate(out.size() * 4, serial, 4);
+         std::memcpy(alloc.data, out.data(), out.size() * 4);
+         [encoder drawIndexedPrimitives:native indexCount:out.size() indexType:MTLIndexTypeUInt32
+@@ -2429,6 +2445,7 @@
+     // counts continue to use the normal draw-budget heuristic.
+     const uint64_t triangles = mode == GL_TRIANGLES && !points && count > 0 && triangleSubmissionBudget()
+                                    ? uint64_t{static_cast<uint32_t>(count / 3)} * std::max(1, instances) : 0;
++    noteVertexWork(references);
+     ctx_.stream().noteDraw(triangles);
+     return true;
+ }
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -246,7 +246,10 @@
+         drawsInPass_ = true;
+         ++drawsSinceCommit_;
+         trianglesSinceCommit_ += triangles;
++        if (render_ && !encoderWork_.empty()) ++encoderWork_.back().draws;
+     }
++    static bool vertexWorkProfileEnabled();
++    void noteVertexWork(uint64_t program, uint32_t instructions, uint32_t parameters, uint64_t references);
+     // Draws recorded in the command buffer being recorded.
+     uint32_t drawsSinceCommit() const { return drawsSinceCommit_; }
+     bool hasDrawSubmissionThisFrame() const { return frameHasDrawSubmission_; }
+@@ -320,6 +323,19 @@
+     RenderTargetDesc target_;
+     RenderTargetDesc pendingTarget_;
+     PendingClear pending_;
++    struct VertexProgramWork {
++        uint64_t program;
++        uint32_t instructions, parameters, draws;
++        uint64_t references;
++    };
++    struct EncoderWork {
++        uint64_t label;
++        uint32_t width, height, colors;
++        bool depth, clear;
++        uint32_t draws;
++        std::vector<VertexProgramWork> programs;
++    };
++    std::vector<EncoderWork> encoderWork_;
+     bool drawsInPass_ = false;
+     bool frameHasDrawSubmission_ = false;
+     uint64_t earlyDrawCredit_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -28,6 +28,17 @@
+         if (!path || !*path) return nullptr;
+         FILE* file = std::fopen(path, "wx");
+         if (!file) std::perror("cannot create WineMetalGL submission log");
++        return file;
++    }();
++    return log;
++}
++
++FILE* encoderWorkLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_ENCODER_WORK_LOG");
++        if (!path || !*path || !submissionLog()) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL encoder work log");
+         return file;
+     }();
+     return log;
+@@ -246,6 +257,15 @@
+         render_.label = [NSString stringWithFormat:@"WMGL pass %llu %ux%u c%d%s%s", static_cast<unsigned long long>(stats::frame().passes),
+                                                    target.width, target.height, colors, target.depth.texture ? " d" : "",
+                                                    clearsApply ? " clear" : ""];
++    }
++    if (render_ && vertexWorkProfileEnabled()) {
++        static std::atomic<uint64_t> nextLabel{1};
++        const uint64_t label = nextLabel.fetch_add(1, std::memory_order_relaxed);
++        uint32_t colors = 0;
++        for (const auto& t : target.color) colors += t.texture != nil;
++        render_.label = [NSString stringWithFormat:@"WMGL encoder %llu", static_cast<unsigned long long>(label)];
++        encoderWork_.push_back({label, target.width, target.height, colors,
++                                target.depth.texture != nil, clearsApply, 0, {}});
+     }
+     {
+         stats::Timer t(&stats::Frame::passFenceNanos);
+@@ -658,6 +678,23 @@
+     earlyDrawCredit_ = credit;
+ }
+
++bool CommandStream::vertexWorkProfileEnabled() {
++    return encoderWorkLog() != nullptr;
++}
++
++void CommandStream::noteVertexWork(uint64_t program, uint32_t instructions, uint32_t parameters,
++                                   uint64_t references) {
++    if (!render_ || encoderWork_.empty() || !references) return;
++    auto& programs = encoderWork_.back().programs;
++    for (auto& work : programs) {
++        if (work.program != program) continue;
++        ++work.draws;
++        work.references += references;
++        return;
++    }
++    programs.push_back({program, instructions, parameters, 1, references});
++}
++
+ uint64_t CommandStream::flush(bool keepPendingClear) {
+     flushDeferred_ = false;
+     if (__builtin_expect(deferred_ != nullptr, 0)) runDeferred();
+@@ -686,6 +723,20 @@
+         if (!submissionTraceStream_)
+             submissionTraceStream_ = nextTraceStream.fetch_add(1, std::memory_order_relaxed);
+         traceSubmission(log, buffer_, "render", submissionTraceStream_, serial_, submittedDraws);
++        if (FILE* workLog = encoderWorkLog()) {
++            for (const auto& encoder : encoderWork_) {
++                const auto label = static_cast<unsigned long long>(encoder.label);
++                std::fprintf(workLog, "P %d %llu %llu %llu %u %u %u %d %d %u\n", getpid(),
++                             static_cast<unsigned long long>(submissionTraceStream_),
++                             static_cast<unsigned long long>(serial_), label, encoder.width, encoder.height,
++                             encoder.colors, encoder.depth, encoder.clear, encoder.draws);
++                for (const auto& work : encoder.programs)
++                    std::fprintf(workLog, "V %d %llu %llu %u %u %u %llu\n", getpid(), label,
++                                 static_cast<unsigned long long>(work.program), work.instructions,
++                                 work.parameters, work.draws, static_cast<unsigned long long>(work.references));
++            }
++            encoderWork_.clear();
++        }
+     }
+     queue_.commit(buffer_, serial_);
+     lastCommitted_ = serial_;
