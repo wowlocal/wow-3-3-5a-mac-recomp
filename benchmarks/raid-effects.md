@@ -1842,3 +1842,30 @@ Throughput fell **1.32 and 0.52 FPS**. P99 rose **0.56 and 0.22 ms** in the two 
 ```sh
 python3 benchmarks/summarize-raid-deferred-commit.py CAPTURE_ROOT
 ```
+
+### Cache the checked i386 EBP address across linked blocks
+
+The trial keeps the last guarded mapped EBP address in the callee-saved register x29 in the eligible i386 register layout. Full entries clear the register. Linked blocks can carry the value through code with no eligible EBP accesses. A block that selects the existing guarded EBP prefix compares its newly computed mapped address against the cached address. A match skips the range check. A mismatch branches to an out-of-line copy of the original check, then caches the address if the guard succeeds.
+
+Apply `patches/aarchx-m32-ebp-guard-cache-trial.patch` after the general base hoist. Use `OCERZ_M32_EBP_GUARD_CACHE=1` with general base selection enabled and the translation cache off. Only the separate diagnostic uses `OCERZ_M32_EBP_GUARD_CACHE_COUNTS` to record two 64-bit counters on the local LSE-capable host.
+
+Both modes passed **806** general i386 checks, eight earlier EBP cases and two new interpreter comparisons. With counters enabled, the plain-intervening-block test recorded **four hits and two misses**. Changing EBP in the intervening block produced **six misses** and the same end state as the interpreter.
+
+Both new cases also matched the interpreter with forced branch veneers. In the separate raid diagnostic, the observer read **79,603,267 hits and 41,696,378 misses** (**65.63%** hits) between its world-ready and GPU-window snapshots. Those snapshots were **9.82 s** apart. The four timed runs used the counter off.
+
+| Guard policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Check on block entry | 135.86 | 12.46 ms |
+| Cache the checked address | 133.17 | 12.88 ms |
+
+The cache lost **3.38 and 2.00 FPS** in the two pairs. P99 lengthened by **0.59 and 0.26 ms**. Keep the cache disabled in the benchmark baseline. Each 60-second comparison verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions, and zero visible windows or activations. The older test was paused during the launches and resumed afterward. [Live comparison and guard counts](results/raid-aarchx-i386-ebp-guard-cache-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-ebp-guard-cache.py CAPTURE_ROOT
+```
+
+### Estimate the gains available from the largest CPU work
+
+The two hot i386 call trees together covered **43.20–43.59%** of sampled CPU time. Their root instructions had little exclusive weight. Summing samples by original instruction address put two conspicuous scalar matrix-copy sequences, at `0x97cfba–0x97d06c` and `0x97e3e0–0x97e44d`, below **0.02%** in each capture. The largest confirmed exclusive callee, `0x880c70`, covered **4.55–4.84%**. Recompiling the call trees as regions would only be valuable if it changes how much work their callees perform or significantly reduces their per-item cost. At 136 FPS, a serial model with fixed other costs yields about **174 FPS** for a twofold speedup across both trees. [CPU profiles](results/raid-aarchx-native-instructions-in-guest-call-trees.json)
+
+Prioritize attributing the hot trees' CPU work to repeated inputs and outputs within each frame. Use that evidence to select one self-contained per-item loop for native batching, or to identify equivalent work that can safely be reused. Compare complete output buffers and frame readbacks with the original path using the same inputs. For the GPU tail, inspect the draw groups active during slow frames while keeping the original ordering, camera, and effects. With the older client paused, median vertex activity rose from **0.56 ms** across all completion gaps to **5.93 ms** across the slowest one percent. This capture makes GPU tail work a separate requirement for the 2 ms goal. [Isolated GPU trace](results/raid-winemetalgl-legacy-load-gpu-traces.json)

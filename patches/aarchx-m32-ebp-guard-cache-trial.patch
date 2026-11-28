@@ -1,0 +1,172 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -852,4 +852,5 @@
+
+ #include <sys/mman.h>
++#include <fcntl.h>
+ #include <sys/sysctl.h>
+ #include <sys/time.h>
+@@ -1943,4 +1944,6 @@
+ static int g_mem_hoist_greg = -1;
+ static int g_m32_base_stop;
++static uint32_t *g_m32_ebp_cache_miss;
++static uint32_t *g_m32_ebp_cache_resume;
+ static int g_ea_lowhoisted, g_ea_lowhoisted_reg;
+ static int g_mem_hoist_aux_disp;
+@@ -22132,8 +22135,57 @@
+ }
+
+-static void emit_m32_base_guard(A64Buf *b)
+-{
+-    if (!g_m32_base_stop) return;
+-
++static int m32_ebp_guard_cache_enabled(void)
++{
++    // x29 is available in this pinned layout and saved by the host ABI.
++    return ocerz_guest_base && !ocerz_low_base &&
++           ocerz_tcache_mode() == OCERZ_TC_OFF && ENV_ON("OCERZ_M32_EBP_GUARD_CACHE");
++}
++
++static uint64_t *m32_ebp_guard_counters(void)
++{
++    static int initialized;
++    static uint64_t *counters;
++    if (!initialized) {
++        initialized = 1;
++        const char *path = getenv("OCERZ_M32_EBP_GUARD_CACHE_COUNTS");
++        if (!path || !*path)
++            return NULL;
++#if defined(__APPLE__) && defined(__aarch64__)
++        int supported = 0;
++        size_t size = sizeof supported;
++        if (sysctlbyname("hw.optional.arm.FEAT_LSE", &supported, &size, NULL, 0) != 0 || !supported)
++            return NULL;
++        int fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++        if (fd < 0) {
++            perror("ocerz: opening EBP guard counters");
++            return NULL;
++        }
++        const size_t bytes = 2 * sizeof *counters;
++        if (ftruncate(fd, (off_t)bytes) == 0) {
++            void *memory = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++            if (memory != MAP_FAILED)
++                counters = memory;
++        }
++        if (!counters)
++            perror("ocerz: mapping EBP guard counters");
++        close(fd);
++#endif
++    }
++    return counters;
++}
++
++static void emit_m32_ebp_guard_count(A64Buf *b, int index)
++{
++    uint64_t *counters = m32_ebp_guard_counters();
++    if (!counters)
++        return;
++    a64_mov_imm64(b, JT1, (uintptr_t)&counters[index]);
++    a64_movz(b, JT0, 1, 0);
++    // stadd xJT0, [xJT1], the no-result form of relaxed 64-bit LDADD.
++    a64_emit32(b, 0xf820001fu | ((uint32_t)JT0 << 16) | ((uint32_t)JT1 << 5));
++}
++
++static void emit_m32_base_range_check(A64Buf *b)
++{
+     // Reject if the base is within 256 bytes of 0 or 4 GiB. The W subtraction
+     // wraps and the X addition exposes the out-of-range bit without using NZCV.
+@@ -22144,4 +22196,32 @@
+     g_llh_bail_cb[g_n_llh_bail_cb++] = a64_label(b);
+     a64_cbnz(b, 0, JTT, 0);
++}
++
++static void emit_m32_base_guard(A64Buf *b)
++{
++    if (!g_m32_base_stop)
++        return;
++    if (g_mem_hoist_greg != OCERZ_RBP || !m32_ebp_guard_cache_enabled()) {
++        emit_m32_base_range_check(b);
++        return;
++    }
++    // Compare the full mapped address. This validates EBP even if an
++    // intervening block or a callback changed the guest register.
++    a64_eor_reg(b, 1, JTT, JMEMAUX, JMEMBASE, 0);
++    g_m32_ebp_cache_miss = a64_label(b);
++    a64_cbnz(b, 1, JTT, 0);
++    emit_m32_ebp_guard_count(b, 0);
++    g_m32_ebp_cache_resume = a64_label(b);
++}
++
++static void emit_m32_ebp_guard_miss(A64Buf *b)
++{
++    if (!g_m32_ebp_cache_miss)
++        return;
++    a64_patch_cbz(g_m32_ebp_cache_miss, a64_label(b));
++    emit_m32_ebp_guard_count(b, 1);
++    emit_m32_base_range_check(b);
++    a64_mov_reg(b, 1, JMEMAUX, JMEMBASE);
++    a64_b(b, (int32_t)(g_m32_ebp_cache_resume - a64_label(b)));
+ }
+
+@@ -26232,4 +26312,5 @@
+
+     int m32_base = -1;
++    g_m32_ebp_cache_miss = NULL;
+     g_m32_base_stop = jit->stop_requested ? 0 : select_m32_base_hoist(blk->insns, n, rip, &m32_base);
+     g_mem_hoist_greg = select_mem_base_hoist(blk->insns, n, rip);
+@@ -26293,4 +26374,6 @@
+     emit_reload_jgb(&b);
+     if (wlim_on()) a64_movz(&b, WLIM, (uint16_t)(OCERZ_LOW_LIMIT >> 32), 2);
++    if (mode32 && g_pin_class == 3 && m32_ebp_guard_cache_enabled())
++        a64_movz(&b, JMEMAUX, 0, 0);
+
+     emit_pin_prologue(&b);
+@@ -27491,4 +27574,5 @@
+     emit_oolslow_arms(&b, exit_sites, &n_exits);
+     emit_x87_arms(&b, exit_sites, &n_exits, epi_sites, &n_epi);
++    emit_m32_ebp_guard_miss(&b);
+     emit_low_hoist_bail(&b, rip, epi_sites, &n_epi);
+     emit_guard_arms(&b, entry);
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -72,4 +72,5 @@
+ static int g_ebp_case = -1;
+ static int g_shared_base_case = -1;
++static int g_ebp_cache_case = -1;
+ static OcerzVM g_vm;
+ static OcerzCPU *cpu(void) { return &g_vm.cpu; }
+@@ -109,4 +110,8 @@
+     cpu()->gpr[OCERZ_RSI] = 0x10;
+     cpu()->gpr[OCERZ_RDI] = 0x00000004;
++    if (g_ebp_cache_case >= 0) {
++        cpu()->gpr[OCERZ_RCX] = 3;
++        cpu()->gpr[OCERZ_RBP] = (0xdead0000ull << 32) | (M32_DATA + 0x40);
++    }
+     cpu()->rflags = 0x202;
+     cpu()->mode32 = 1;
+@@ -441,4 +446,23 @@
+                  0x8b,0x43,16, 0x8b,0x4b,20, 0x8b,0x53,24);
+             break;
++        }
++        return g_failures != 0;
++    }
++
++    const char *ebp_cache = getenv("OCERZ_TEST_JIT32_EBP_GUARD_CACHE");
++    if (ebp_cache) {
++        if (ebp_cache[0] < '0' || ebp_cache[0] > '1' || ebp_cache[1]) return 2;
++        g_ebp_cache_case = ebp_cache[0] - '0';
++        if (g_ebp_cache_case == 0) {
++            CASE("A plain intervening block preserves the guarded EBP address", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x45,8, 0x8b,0x45,12, 0x8b,0x45,16, 0x8b,0x45,20, 0x8b,0x45,24, 0xeb,0,
++                 0xbb,8,0,0,0, 0xeb,0,
++                 0x8b,0x45,4, 0x8b,0x45,8, 0x8b,0x45,12, 0x8b,0x45,16, 0x8b,0x45,20, 0x8b,0x45,24, 0x49,0x75,0xd0);
++        } else {
++            CASE("A changed EBP forces a new guard after the intervening block", M32_CODE, M32_STACK,
++                 0x8b,0x45,4, 0x8b,0x45,8, 0x8b,0x45,12, 0x8b,0x45,16, 0x8b,0x45,20, 0x8b,0x45,24, 0xeb,0,
++                 0xbd,0x80,0,0x50,0, 0xeb,0,
++                 0x8b,0x45,4, 0x8b,0x45,8, 0x8b,0x45,12, 0x8b,0x45,16, 0x8b,0x45,20, 0x8b,0x45,24,
++                 0xbd,0x40,0,0x50,0, 0x49,0x75,0xcb);
+         }
+         return g_failures != 0;
