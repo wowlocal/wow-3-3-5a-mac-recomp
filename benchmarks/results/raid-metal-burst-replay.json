@@ -1,0 +1,178 @@
+{
+  "base_commit": "98fb312",
+  "hardware": "Apple M4 Pro",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "artifacts": {
+    "renderer_sha256": "bbe4cc81a2d1e06353c895f4698828f04b5af13dbc31f2f3383ff0aaeb46ac7d",
+    "signed_runtime_sha256": "ece698e7ee7100b90c04633abb5326d8d9564327dd41e06f1d77d815b27fc4e1"
+  },
+  "gpu_tests_passed": 343,
+  "live_burst": {
+    "frames": [
+      {
+        "capture_sequence": 5071,
+        "draws": 941,
+        "render_draw_split": [
+          256,
+          685
+        ],
+        "shader_combinations": 34
+      },
+      {
+        "capture_sequence": 5072,
+        "draws": 939,
+        "render_draw_split": [
+          512,
+          427
+        ],
+        "shader_combinations": 34
+      },
+      {
+        "capture_sequence": 5073,
+        "draws": 947,
+        "render_draw_split": [
+          512,
+          435
+        ],
+        "shader_combinations": 34
+      },
+      {
+        "capture_sequence": 5074,
+        "draws": 945,
+        "render_draw_split": [
+          512,
+          433
+        ],
+        "shader_combinations": 34
+      }
+    ],
+    "verified_live_window": {
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 4069,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 34995476875,
+      "measurement_duration_ns": 35000000000,
+      "average_completed_fps": 116.22857142857143,
+      "p99_gpu_completion_gap_ns": 14508916,
+      "min_draws": 702,
+      "max_draws": 951
+    },
+    "archive_frame_count_metadata": 1,
+    "archive_command_stream_sha256": "ee787a7c5ef324bca0013d682249fed1a1d821c921fd2751eb049585230eb6fc"
+  },
+  "full_gpu_replay": {
+    "replay_requests": [
+      {
+        "label": "burst-final-first",
+        "command_path": "/commands/cb11/re0",
+        "elapsed_ns": 734045000
+      },
+      {
+        "label": "burst-rewind",
+        "command_path": "/commands/cb1/re0/draw0",
+        "elapsed_ns": 136054708
+      },
+      {
+        "label": "burst-final-second",
+        "command_path": "/commands/cb11/re0",
+        "elapsed_ns": 141337333
+      }
+    ],
+    "replayed_image_sha256": [
+      "0b3f5971e5faf8056ce898138b8a1d5367d90f2f2e651d001e5f6cf8a9bb46f9",
+      "79e85aabd31b49bf4cb5b47a3774aff02c0892afdf4428c6884f39c19d485d3c",
+      "8ada5bd261e6b7434d64555d332768108e6c8e60bdf5b598be27a1d0563f43a3",
+      "ef3d1d4f13329d87ec0cedd8e5c0ff2e7f360f9d43ee468b3e5bfddda708410a"
+    ],
+    "same_final_image_after_rewind": true,
+    "replayer_gpu_intervals": 73,
+    "render_buffers_with_application_encoding": [
+      7,
+      1,
+      8
+    ],
+    "application_encoding_breaks_between_requests_ns": [
+      336303167,
+      111260125
+    ],
+    "gpu_render_frames": [
+      [
+        {
+          "draws": 941,
+          "vertex_active_ns": 1105167,
+          "fragment_active_ns": 856083,
+          "render_active_union_ns": 1961250,
+          "windowserver_overlap_ns": 673875,
+          "elapsed_from_first_render_to_last_render_ns": 146664875
+        },
+        {
+          "draws": 939,
+          "vertex_active_ns": 409042,
+          "fragment_active_ns": 1036917,
+          "render_active_union_ns": 1445959,
+          "windowserver_overlap_ns": 0,
+          "elapsed_from_first_render_to_last_render_ns": 2721125
+        },
+        {
+          "draws": 947,
+          "vertex_active_ns": 1559708,
+          "fragment_active_ns": 1791917,
+          "render_active_union_ns": 3351625,
+          "windowserver_overlap_ns": 2715666,
+          "elapsed_from_first_render_to_last_render_ns": 3691375
+        },
+        {
+          "draws": 945,
+          "vertex_active_ns": 640750,
+          "fragment_active_ns": 1413417,
+          "render_active_union_ns": 2054167,
+          "windowserver_overlap_ns": 0,
+          "elapsed_from_first_render_to_last_render_ns": 2275125
+        }
+      ],
+      [
+        {
+          "draws": 941,
+          "vertex_active_ns": 3265000,
+          "fragment_active_ns": 1382459,
+          "render_active_union_ns": 4647459,
+          "windowserver_overlap_ns": 4029752,
+          "elapsed_from_first_render_to_last_render_ns": 15222167
+        },
+        {
+          "draws": 939,
+          "vertex_active_ns": 3314666,
+          "fragment_active_ns": 4213334,
+          "render_active_union_ns": 7528000,
+          "windowserver_overlap_ns": 7408084,
+          "elapsed_from_first_render_to_last_render_ns": 8795292
+        },
+        {
+          "draws": 947,
+          "vertex_active_ns": 347209,
+          "fragment_active_ns": 756250,
+          "render_active_union_ns": 1103459,
+          "windowserver_overlap_ns": 0,
+          "elapsed_from_first_render_to_last_render_ns": 1307042
+        },
+        {
+          "draws": 945,
+          "vertex_active_ns": 3298292,
+          "fragment_active_ns": 1197833,
+          "render_active_union_ns": 4496125,
+          "windowserver_overlap_ns": 3851665,
+          "elapsed_from_first_render_to_last_render_ns": 9296792
+        }
+      ]
+    ]
+  }
+}

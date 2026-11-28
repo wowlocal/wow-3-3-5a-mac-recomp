@@ -1,0 +1,60 @@
+diff --git a/src/core/surface.mm b/src/core/surface.mm
+--- a/src/core/surface.mm
++++ b/src/core/surface.mm
+@@ -35,6 +35,16 @@
+         return value ? std::strtoull(value, nullptr, 10) : 1ull;
+     }();
++    const unsigned long long frameCount = [] {
++        const char* value = std::getenv("OCERZ_WMGL_CAPTURE_FRAMES");
++        if (!value) return 1ull;
++        char* end = nullptr;
++        errno = 0;
++        const auto count = std::strtoull(value, &end, 10);
++        return *value >= '1' && *value <= '9' && end && *end == '\0' && !errno ? count : 0ull;
++    }();
+     std::mutex mutex;
+     const Surface* owner = nullptr;
++    uint64_t lastSequence = 0;
++    unsigned long long capturedFrames = 0;
+     bool attempted = false;
+ };
+@@ -50,11 +60,22 @@
+     std::lock_guard<std::mutex> lock(capture.mutex);
+     if (capture.owner != surface) return;
++    if (sequence && sequence == capture.lastSequence) return;
++    const bool completeOutput = sequence && draws && sequence == capture.lastSequence + 1;
++    if (completeOutput) {
++        capture.lastSequence = sequence;
++        ++capture.capturedFrames;
++        if (capture.frameCount > 1) {
++            std::fprintf(stderr, "WMGL_CAPTURE frame sequence=%llu draws=%llu\n",
++                         (unsigned long long)sequence, (unsigned long long)draws);
++        }
++        if (capture.capturedFrames < capture.frameCount) return;
++    }
+     [[MTLCaptureManager sharedCaptureManager] stopCapture];
+     capture.owner = nullptr;
+-    if (sequence) {
++    if (completeOutput) {
+         std::fprintf(stderr, "WMGL_CAPTURE end sequence=%llu draws=%llu\n",
+                      (unsigned long long)sequence, (unsigned long long)draws);
+     } else {
+-        std::fputs("WMGL_CAPTURE cancelled before the next swap\n", stderr);
++        std::fputs("WMGL_CAPTURE cancelled before the requested consecutive outputs\n", stderr);
+     }
+ }
+@@ -67,4 +88,8 @@
+     if (capture.attempted || ::access(capture.trigger, F_OK) != 0) return;
+     capture.attempted = true;
++    if (!capture.frameCount) {
++        std::fputs("WMGL_CAPTURE invalid frame count\n", stderr);
++        return;
++    }
+
+     struct stat status;
+@@ -90,4 +115,5 @@
+     }
+     capture.owner = surface;
++    capture.lastSequence = sequence;
+     std::fprintf(stderr, "WMGL_CAPTURE begin stream=%llu after_sequence=%llu draws=%llu\n",
+                  (unsigned long long)recordingStream, (unsigned long long)sequence,

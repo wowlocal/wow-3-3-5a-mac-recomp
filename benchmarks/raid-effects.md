@@ -2210,3 +2210,27 @@ Throughput changed by **−0.07** and **+0.30 FPS**. P99 changed by **+0.007** a
 ```sh
 python3 benchmarks/summarize-raid-quad-local.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
 ```
+
+### Replay four consecutive raid outputs on the same GPU
+
+The capture manager starts immediately after an offscreen flush and counts four consecutive GPU output sequences. The live log, GPU completions, draw signposts and `gpudebug` command tree agree on **3,772 draws** at **1365 × 768**. Each frame has one archived blit buffer and two render buffers. The archive metadata reports one frame, so the verification uses the four renderer output markers and their command-buffer boundaries. Replaying each final attachment produced four distinct images. Repeating the final fetch after rewinding produced the identical PNG. [Full-burst evidence](results/raid-metal-burst-replay.json) · [Apple’s gpudebug documentation](https://developer.apple.com/documentation/xcode/debugging-with-interactive-command-line-tools)
+
+The two final-attachment requests bracket a rewind to the first draw. Metal System Trace shows two groups of eight render buffers and one render buffer for the rewind. The application encoding rows separate the requests and match seven render buffers in the first full request and all eight in the second. The GPU trace supplies both vertex and fragment intervals for every render buffer. The numbers below count the union of vertex and fragment activity in the two render buffers for each output.
+
+| Draws by render buffer | First replay GPU active | Second replay GPU active | WindowServer overlap, first / second |
+| --- | ---: | ---: | ---: |
+| 256 + 685 | 1.96 ms | 4.65 ms | 0.67 / 4.03 ms |
+| 512 + 427 | 1.45 ms | 7.53 ms | 0.00 / 7.41 ms |
+| 512 + 435 | 3.35 ms | 1.10 ms | 2.72 / 0.00 ms |
+| 512 + 433 | 2.05 ms | 4.50 ms | 0.00 / 3.85 ms |
+
+Five of the eight sampled render intervals exceeded **2 ms**. The identical 939-draw frame varied by more than fivefold. The slower replay coincided with active WindowServer intervals for nearly its entire render time, establishing a timing association. The earlier test client had zero overlapping GPU intervals in the measured render spans. Debugger requests also incur replay setup, resource copies and readback. Sustainable gameplay throughput and p99 use the live output windows. [Hardware intervals and replay hashes](results/raid-metal-burst-replay.json)
+
+Apply `patches/winemetalgl-offscreen-frame-capture-trial.patch`, then `patches/winemetalgl-offscreen-burst-capture.patch`. Set `MTL_CAPTURE_ENABLED=1` and `OCERZ_WMGL_CAPTURE_FRAMES=4` alongside the existing capture request and output variables. Save the full-raid launch under `live-burst-quiet` with a 35-second verification window. Set `OCERZ_WMGL_CAPTURE_PATH` to `raid-burst.gputrace` inside that directory. The diagnostic checked the saved camera, overlapping effects, all 26 cast timing rows and consecutive GPU completions with no trial windows or activations. The renderer passed **343** GPU tests.
+
+Open the resulting archive with `gpudebug -t` and retain its session ID. Record Metal System Trace while attaching to that session's `GPUToolsReplayService` process. In order, fetch `color0` from `/commands/cb11/re0`, `/commands/cb1/re0/draw0`, and `/commands/cb11/re0` into `quiet-replay/burst-final-first.png`, `burst-rewind.png`, and `burst-final-second.png`. Record the replay service PID, request paths, fetch durations and earlier-client GPU completion count in `quiet-replay/fetch-witness.json`. Fetch `/commands/cb2/re0`, `/commands/cb5/re0`, and `/commands/cb8/re0` afterward as `frame-1.png` through `frame-3.png`. Export the `metal-gpu-intervals` and `metal-application-encoders-list` tables as `quiet-replay/burst-fetch-gpu.xml` and `quiet-replay/burst-fetch-encoders.xml`. Run these analysis commands with the GPU test log and `burst-artifacts.json` checksum witness at the capture root.
+
+```sh
+python3 benchmarks/summarize-raid-metal-burst.py commands SESSION_ID > CAPTURE_ROOT/quiet-replay/commands.json
+python3 benchmarks/summarize-raid-metal-burst.py summary CAPTURE_ROOT --legacy-pid EARLIER_CLIENT_PID
+```
