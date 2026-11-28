@@ -2577,3 +2577,25 @@ Deferring the close gained **3.68 and 4.07 FPS** over the queued encoder with sy
 Inside the diagnostic completion windows, the game thread spent a median **27.67 µs** finalizing a buffer with synchronous closure and **6.44 µs** with deferred closure. The deferred path matched **6,746** producer records to worker commits. In **6,743** cases the worker started after the producer returned. Reservation to commit return took **22.54 µs** at the median and **52.13 µs** at p99. These are elapsed times around the CPU-side flush. The six uninstrumented runs supply the frame timing comparison. [Producer and worker timestamps](results/raid-winemetalgl-defer-render-end-ab.json)
 
 Each mode passed **343** GPU tests, including fence waits and shared-context uploads. The indexed replay returned the same RGBA hash and **161,327** colored pixels. The two diagnostics and six timing windows verified the saved camera, overlapping spell effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. [Correctness checks](results/raid-winemetalgl-defer-render-end-ab.json)
+
+### Verify deferred Metal finalization with a shared PGO build
+
+Train with the queued encoder, batch reuse and deferred finalization patches applied. Use the same source for the two arm64 Release ThinLTO builds. Generate the initial LLVM IR profiles with `WMGL_PGO_GENERATE=ON`. Run one warmed 60-second full-raid launch under `training-control` with direct encoding and another under `training-deferred` with the pooled queue and deferred finalization. Use a fresh `LLVM_PROFILE_FILE=wmgl-%p%c.profraw` path inside each capture directory. Merge both continuous profiles at equal weight with `llvm-profdata merge`, then build with `WMGL_PGO_GENERATE=OFF` and `WMGL_PGO_PROFILE` set to the merged file.
+
+Time six 60-second full-raid launches in reference, control, deferred, deferred, control, reference order on the same signed AArchX executable. Reference uses the previously accepted PGO renderer as-is. Control and deferred use the same new profiled renderer and differ by the encoder path. Collect a 25-second deferred diagnostic with both timestamp logs enabled as in the preceding experiment. Repeat the GPU suite and indexed replay for the three modes. Keep the profile counters, matched compiler flags and artifact hashes in `build-flags.json` and `artifact-sha256.json`.
+
+```sh
+python3 benchmarks/summarize-raid-render-end-pgo.py CAPTURE_ROOT
+```
+
+| Profiled renderer and encode path | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Previous PGO renderer, direct encoding | 138.85 | 12.18 ms |
+| Jointly trained PGO renderer, direct encoding | 138.23 | 12.38 ms |
+| Jointly trained PGO renderer, deferred finalization | 141.32 | 11.79 ms |
+
+On the jointly trained build, deferred finalization gained **2.02 and 4.15 FPS** and cut p99 by **0.10 and 1.09 ms**. Against the previous PGO renderer it gained **3.87 and 1.07 FPS** and cut p99 by **0.19 and 0.59 ms**. Use the jointly trained deferred mode as the selected local renderer for subsequent raid measurements that preserve this stack. Keep the reference renderer available for comparisons. [Per-run timings and renderer hashes](results/raid-winemetalgl-defer-render-end-pgo-ab.json)
+
+The control and deferred training windows completed **6,276** and **6,311** GPU outputs. The merged LLVM IR profile contained **11,062** indexed functions. All **79** renderer compile commands matched after removing the generation and use flags. The deferred commit routine and its worker block had active counters in the deferred training run. The diagnostic on the final binary matched **7,100** producer records to worker commits, with **5.75 µs** median finalization time on the game thread. [Training and finalization data](results/raid-winemetalgl-defer-render-end-pgo-ab.json)
+
+All training and timing windows and the deferred diagnostic verified the saved camera, overlapping effects, all 26 timed rows, consecutive GPU completions and zero visible windows or activations. Each mode passed **343** GPU tests and returned the same indexed replay RGBA hash and pixel count. [Validation details](results/raid-winemetalgl-defer-render-end-pgo-ab.json)
