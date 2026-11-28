@@ -1,0 +1,361 @@
+{
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "f6bd687874b1b1a2b5cb9380645ad83d9e18f52e42a0399af3dc7baaf5ec0edf",
+    "runtime_signed_sha256": "215af9f1a6fe72f97499b78f63c936ba0c59af7eb79bf1062c4a2f944592c928",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  },
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "i386_checks_per_mode": 812,
+  "diagnostics": {
+    "mach_page_copy": {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3259,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24997325500,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 130.32,
+        "p99_gpu_completion_gap_ns": 12707209,
+        "min_draws": 708,
+        "max_draws": 976
+      },
+      "gpu_completions_between_counter_samples": 667,
+      "samples_inside_nominal_gpu_window": true,
+      "counter_sample_interval_ns": 5006219500,
+      "counters_between_samples": {
+        "dispatch_entries": 323855,
+        "descriptors_with_the_original_prefix_word": 323838,
+        "descriptors_published_in_original_item_order": 323839,
+        "readers": [
+          {
+            "pc": "0x9791bf",
+            "matches_used": 225797,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 3317
+          },
+          {
+            "pc": "0x979523",
+            "matches_used": 213221,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 1982
+          },
+          {
+            "pc": "0x979532",
+            "matches_used": 51491,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 10
+          },
+          {
+            "pc": "0x979553",
+            "matches_used": 146658,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 1748
+          }
+        ],
+        "serial_input_descriptors_created": 2688,
+        "worker": {
+          "dispatch_batches_seen": 2464,
+          "batches_queued": 2464,
+          "batches_completed": 2464,
+          "owned_input_records": 543994,
+          "worker_descriptors_selected": 321150,
+          "serial_descriptor_fallbacks": 2705,
+          "prefix_value_mismatches": 0,
+          "busy_worker_fallbacks": 0,
+          "producer_snapshot_elapsed_ns": 167914524,
+          "worker_execution_elapsed_ns": 965798,
+          "original_readers_using_worker_values": 632517,
+          "snapshot_pages_read": 105504,
+          "snapshot_page_failures": 0
+        },
+        "worker_fraction_of_successful_private_reads": 0.9927020702578758,
+        "mean_snapshot_ns_per_queued_batch": 68147.12824675324,
+        "mean_worker_ns_per_completed_batch": 391.96347402597405,
+        "guarded_capture": {
+          "mapping_guard_busy": 0,
+          "readable_guest_pages_consulted": 0,
+          "guest_page_checks_rejected": 0
+        },
+        "worker_fraction_of_original_read_sites": 0.9818277493542619,
+        "mean_producer_snapshot_ns_per_bracketed_gpu_output": 251745.91304347827
+      },
+      "whole_process_counters": {
+        "dispatch_entries": 2614884,
+        "descriptors_with_the_original_prefix_word": 2614737,
+        "descriptors_published_in_original_item_order": 2614737,
+        "readers": [
+          {
+            "pc": "0x9791bf",
+            "matches_used": 1855246,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 30617
+          },
+          {
+            "pc": "0x979523",
+            "matches_used": 1755581,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 12156
+          },
+          {
+            "pc": "0x979532",
+            "matches_used": 522300,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 365
+          },
+          {
+            "pc": "0x979553",
+            "matches_used": 1237650,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 11195
+          }
+        ],
+        "serial_input_descriptors_created": 31109,
+        "worker": {
+          "dispatch_batches_seen": 26808,
+          "batches_queued": 26805,
+          "batches_completed": 26805,
+          "owned_input_records": 4251445,
+          "worker_descriptors_selected": 2583628,
+          "serial_descriptor_fallbacks": 31256,
+          "prefix_value_mismatches": 0,
+          "busy_worker_fallbacks": 3,
+          "producer_snapshot_elapsed_ns": 2799383559,
+          "worker_execution_elapsed_ns": 7557126,
+          "original_readers_using_worker_values": 5296789,
+          "snapshot_pages_read": 2146134,
+          "snapshot_page_failures": 0
+        },
+        "worker_fraction_of_successful_private_reads": 0.9862239672211301,
+        "mean_snapshot_ns_per_queued_batch": 104435.12624510353,
+        "mean_worker_ns_per_completed_batch": 281.92971460548404,
+        "guarded_capture": {
+          "mapping_guard_busy": 0,
+          "readable_guest_pages_consulted": 0,
+          "guest_page_checks_rejected": 0
+        },
+        "worker_fraction_of_original_read_sites": 0.9763468390502681
+      }
+    },
+    "guarded_words": {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3480,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24994025375,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 139.16,
+        "p99_gpu_completion_gap_ns": 12315084,
+        "min_draws": 699,
+        "max_draws": 942
+      },
+      "gpu_completions_between_counter_samples": 683,
+      "samples_inside_nominal_gpu_window": true,
+      "counter_sample_interval_ns": 5002217166,
+      "counters_between_samples": {
+        "dispatch_entries": 328664,
+        "descriptors_with_the_original_prefix_word": 328663,
+        "descriptors_published_in_original_item_order": 328663,
+        "readers": [
+          {
+            "pc": "0x9791bf",
+            "matches_used": 225546,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 2261
+          },
+          {
+            "pc": "0x979523",
+            "matches_used": 212599,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 893
+          },
+          {
+            "pc": "0x979532",
+            "matches_used": 51196,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 0
+          },
+          {
+            "pc": "0x979553",
+            "matches_used": 146056,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 466
+          }
+        ],
+        "serial_input_descriptors_created": 2934,
+        "worker": {
+          "dispatch_batches_seen": 2536,
+          "batches_queued": 2536,
+          "batches_completed": 2536,
+          "owned_input_records": 553859,
+          "worker_descriptors_selected": 325729,
+          "serial_descriptor_fallbacks": 2935,
+          "prefix_value_mismatches": 0,
+          "busy_worker_fallbacks": 0,
+          "producer_snapshot_elapsed_ns": 11920541,
+          "worker_execution_elapsed_ns": 1000288,
+          "original_readers_using_worker_values": 630643,
+          "snapshot_pages_read": 0,
+          "snapshot_page_failures": 0
+        },
+        "worker_fraction_of_successful_private_reads": 0.9925180635099001,
+        "mean_snapshot_ns_per_queued_batch": 4700.528785488959,
+        "mean_worker_ns_per_completed_batch": 394.4353312302839,
+        "guarded_capture": {
+          "mapping_guard_busy": 0,
+          "readable_guest_pages_consulted": 302839,
+          "guest_page_checks_rejected": 0
+        },
+        "worker_fraction_of_original_read_sites": 0.9868954973028886,
+        "mean_producer_snapshot_ns_per_bracketed_gpu_output": 17453.207906295753
+      },
+      "whole_process_counters": {
+        "dispatch_entries": 2837157,
+        "descriptors_with_the_original_prefix_word": 2836936,
+        "descriptors_published_in_original_item_order": 2836936,
+        "readers": [
+          {
+            "pc": "0x9791bf",
+            "matches_used": 2001578,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 32335
+          },
+          {
+            "pc": "0x979523",
+            "matches_used": 1895289,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 12498
+          },
+          {
+            "pc": "0x979532",
+            "matches_used": 563032,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 381
+          },
+          {
+            "pc": "0x979553",
+            "matches_used": 1337645,
+            "value_mismatches": 0,
+            "original_loads_without_a_usable_descriptor": 6687
+          }
+        ],
+        "serial_input_descriptors_created": 34489,
+        "worker": {
+          "dispatch_batches_seen": 29145,
+          "batches_queued": 29144,
+          "batches_completed": 29144,
+          "owned_input_records": 4632713,
+          "worker_descriptors_selected": 2802447,
+          "serial_descriptor_fallbacks": 34710,
+          "prefix_value_mismatches": 0,
+          "busy_worker_fallbacks": 1,
+          "producer_snapshot_elapsed_ns": 99664207,
+          "worker_execution_elapsed_ns": 8448135,
+          "original_readers_using_worker_values": 5713184,
+          "snapshot_pages_read": 0,
+          "snapshot_page_failures": 0
+        },
+        "worker_fraction_of_successful_private_reads": 0.9854490108225138,
+        "mean_snapshot_ns_per_queued_batch": 3419.7161336810323,
+        "mean_worker_ns_per_completed_batch": 289.8756176228383,
+        "guarded_capture": {
+          "mapping_guard_busy": 0,
+          "readable_guest_pages_consulted": 2387055,
+          "guest_page_checks_rejected": 0
+        },
+        "worker_fraction_of_original_read_sites": 0.976705311358599
+      }
+    }
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "guarded_words": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7730,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999320875,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 128.81666666666666,
+      "p99_gpu_completion_gap_ns": 12373250,
+      "min_draws": 700,
+      "max_draws": 981
+    },
+    {
+      "order": 2,
+      "guarded_words": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8240,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997538459,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 137.31666666666666,
+      "p99_gpu_completion_gap_ns": 12483416,
+      "min_draws": 686,
+      "max_draws": 958
+    },
+    {
+      "order": 3,
+      "guarded_words": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8088,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998290209,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 134.78333333333333,
+      "p99_gpu_completion_gap_ns": 12363375,
+      "min_draws": 705,
+      "max_draws": 990
+    },
+    {
+      "order": 4,
+      "guarded_words": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 7759,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991588125,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 129.3,
+      "p99_gpu_completion_gap_ns": 12650500,
+      "min_draws": 694,
+      "max_draws": 981
+    }
+  ],
+  "comparison": {
+    "mach_page_copy": {
+      "median_gpu_completed_fps": 129.05833333333334,
+      "median_p99_completion_gap_ns": 12511875.0
+    },
+    "guarded_words": {
+      "median_gpu_completed_fps": 136.05,
+      "median_p99_completion_gap_ns": 12423395.5
+    }
+  },
+  "paired_guarded_minus_mach": [
+    {
+      "gpu_completed_fps": 8.5,
+      "p99_completion_gap_ns": 110166
+    },
+    {
+      "gpu_completed_fps": 5.48333333333332,
+      "p99_completion_gap_ns": -287125
+    }
+  ]
+}

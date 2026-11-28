@@ -1,0 +1,238 @@
+diff --git a/include/ocerz/mem.h b/include/ocerz/mem.h
+--- a/include/ocerz/mem.h
++++ b/include/ocerz/mem.h
+@@ -149,6 +149,10 @@
+ int ocerz_mem_armed_any(void);
+ int ocerz_addr_prot(uint64_t gaddr);
+ int ocerz_addr_readable(uint64_t gaddr);
++/* Stabilize guest mappings for a bounded read-only capture. A callback may
++ * query readability and copy words, but must not acquire other locks. Returns
++ * -1 without calling it when the mapping lock cannot be taken immediately. */
++int ocerz_mem_try_snapshot(int (*capture)(void *), void *context);
+ int ocerz_mem_overlaps(uint64_t gaddr, uint64_t len);
+ int ocerz_commit_fault_page(uint64_t gaddr);
+ unsigned ocerz_host_region_prot(uint64_t gaddr, uint64_t *base, uint64_t *size);
+diff --git a/src/mem.c b/src/mem.c
+--- a/src/mem.c
++++ b/src/mem.c
+@@ -154,6 +154,20 @@
+     ocerz_critical_depth--;
+ }
+
++int ocerz_mem_try_snapshot(int (*capture)(void *), void *context)
++{
++    if (!capture || ocerz_jit_lock_held_self())
++        return -1;
++    ocerz_critical_depth++;
++    if (pthread_mutex_trylock(&map_lock) != 0) {
++        ocerz_critical_depth--;
++        return -1;
++    }
++    int result = capture(context);
++    map_lock_release();
++    return result;
++}
++
+ static pthread_mutex_t g_initgate_m = PTHREAD_MUTEX_INITIALIZER;
+ static pthread_cond_t g_initgate_cv = PTHREAD_COND_INITIALIZER;
+ static volatile int g_init_released = 1;
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -6816,6 +6816,7 @@
+     RAID_BATCH_USED, RAID_BATCH_FALLBACK, RAID_BATCH_PREFIX_MISMATCH, RAID_BATCH_BUSY,
+     RAID_BATCH_SNAPSHOT_NS, RAID_BATCH_WORKER_NS, RAID_BATCH_READS,
+     RAID_BATCH_VM_PAGES, RAID_BATCH_VM_FAILURES,
++    RAID_BATCH_GUARD_BUSY, RAID_BATCH_GUARDED_PAGES, RAID_BATCH_GUARDED_PAGE_SKIPS,
+ };
+
+ typedef struct {
+@@ -6906,26 +6907,72 @@
+     }
+ }
+
+-static int raid_snapshot_word(uint64_t addr, uint32_t *value)
++typedef struct {
++    uint32_t frame, context, count;
++    int guarded_words;
++    uint32_t page_reads, page_failures;
++} RaidSnapshot;
++
++static int raid_snapshot_word(RaidSnapshot *capture, uint64_t addr, uint32_t *value)
+ {
+     if (addr < 4096 || addr > UINT32_MAX - 3 || (addr & 3))
+         return 0;
+-    unsigned page_size = vm_page_size;
++    unsigned page_size = capture->guarded_words ? OCERZ_GUEST_PAGE_SIZE : vm_page_size;
+     uint32_t base = (uint32_t)addr & ~(page_size - 1);
+     unsigned page_number = base / page_size;
+     unsigned index = (page_number ^ (page_number >> 5)) & (RAID_SNAPSHOT_PAGES - 1);
+     RaidSnapshotPage *page = &raid_snapshot[index];
+     if (!page->populated || page->page != base) {
+-        mach_vm_size_t copied = 0;
+         page->page = base;
+         page->populated = 1;
+-        page->valid = mach_vm_read_overwrite(mach_task_self(), (uintptr_t)ocerz_g2h(base), page_size,
+-                                             (uintptr_t)page->bytes, &copied) == KERN_SUCCESS && copied == page_size;
+-        raid_batch_count(page->valid ? RAID_BATCH_VM_PAGES : RAID_BATCH_VM_FAILURES, 1);
++        if (capture->guarded_words) {
++            page->valid = ocerz_addr_readable(base);
++        } else {
++            mach_vm_size_t copied = 0;
++            page->valid = mach_vm_read_overwrite(mach_task_self(), (uintptr_t)ocerz_g2h(base), page_size,
++                                                 (uintptr_t)page->bytes, &copied) == KERN_SUCCESS && copied == page_size;
++        }
++        capture->page_reads += page->valid;
++        capture->page_failures += !page->valid;
+     }
+     if (!page->valid) return 0;
+-    memcpy(value, page->bytes + (uint32_t)addr - base, sizeof *value);
++    if (capture->guarded_words)
++        *value = (uint32_t)ocerz_ld(addr, 4);
++    else
++        memcpy(value, page->bytes + (uint32_t)addr - base, sizeof *value);
+     return 1;
++}
++
++static int raid_capture_items(void *opaque)
++{
++    RaidSnapshot *capture = opaque;
++    uint64_t frame = capture->frame;
++    uint32_t table, indices;
++    for (unsigned i = 0; i < RAID_SNAPSHOT_PAGES; i++)
++        raid_snapshot[i].populated = 0;
++    if (!raid_snapshot_word(capture, frame + 8, &capture->context) || !capture->context ||
++        !raid_snapshot_word(capture, frame + 0x10, &table) || !table ||
++        !raid_snapshot_word(capture, frame + 0x14, &indices) || !indices ||
++        !raid_snapshot_word(capture, frame + 0x18, &capture->count) ||
++        !capture->count || capture->count > RAID_BATCH_MAX_ITEMS)
++        return 0;
++
++    int ready = 0;
++    for (uint32_t index = 0; index < capture->count; index++) {
++        RaidBatchInput *slot = &raid_batch.inputs[index];
++        *slot = (RaidBatchInput){0};
++        uint32_t offset;
++        if (!raid_snapshot_word(capture, (uint64_t)indices + 4ull * index, &offset)) continue;
++        uint64_t item = (uint64_t)table + 68ull * offset;
++        if (!raid_snapshot_word(capture, item, &slot->tag) || slot->tag > 4 ||
++            !raid_snapshot_word(capture, item + 4, &slot->material) || !slot->material ||
++            !raid_snapshot_word(capture, (uint64_t)slot->material + 0x2c, &slot->material_word) ||
++            (slot->tag <= 2 && !raid_snapshot_word(capture, item + 0x2c, &slot->object_word)))
++            continue;
++        slot->item = (uint32_t)item;
++        ready++;
++    }
++    return ready;
+ }
+
+ static void raid_batch_prepare(OcerzCPU *cpu)
+@@ -6947,35 +6994,27 @@
+         return;
+     }
+     uint64_t start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+-    uint32_t frame = (uint32_t)cpu->gpr[OCERZ_RBP];
+-    uint32_t context, table, indices, count;
+-    for (unsigned i = 0; i < RAID_SNAPSHOT_PAGES; i++)
+-        raid_snapshot[i].populated = 0;
+-    if (!raid_snapshot_word((uint64_t)frame + 8, &context) || !context ||
+-        !raid_snapshot_word((uint64_t)frame + 0x10, &table) || !table ||
+-        !raid_snapshot_word((uint64_t)frame + 0x14, &indices) || !indices ||
+-        !raid_snapshot_word((uint64_t)frame + 0x18, &count) || !count || count > RAID_BATCH_MAX_ITEMS)
++    RaidSnapshot capture = {
++        .frame = (uint32_t)cpu->gpr[OCERZ_RBP],
++        .guarded_words = ENV_ON("OCERZ_M32_RAID_GUARDED_WORD_SNAPSHOT"),
++    };
++    int ready = capture.guarded_words ? ocerz_mem_try_snapshot(raid_capture_items, &capture)
++                                       : raid_capture_items(&capture);
++    if (ready < 0) {
++        raid_batch_count(RAID_BATCH_GUARD_BUSY, 1);
+         return;
+-
+-    unsigned ready = 0;
+-    for (uint32_t index = 0; index < count; index++) {
+-        RaidBatchInput *slot = &raid_batch.inputs[index];
+-        *slot = (RaidBatchInput){0};
+-        uint32_t offset;
+-        if (!raid_snapshot_word((uint64_t)indices + 4ull * index, &offset)) continue;
+-        uint64_t item = (uint64_t)table + 68ull * offset;
+-        if (!raid_snapshot_word(item, &slot->tag) || slot->tag > 4 ||
+-            !raid_snapshot_word(item + 4, &slot->material) || !slot->material ||
+-            !raid_snapshot_word((uint64_t)slot->material + 0x2c, &slot->material_word) ||
+-            (slot->tag <= 2 && !raid_snapshot_word(item + 0x2c, &slot->object_word)))
+-            continue;
+-        slot->item = (uint32_t)item;
+-        ready++;
++    }
++    if (capture.guarded_words) {
++        raid_batch_count(RAID_BATCH_GUARDED_PAGES, capture.page_reads);
++        raid_batch_count(RAID_BATCH_GUARDED_PAGE_SKIPS, capture.page_failures);
++    } else {
++        raid_batch_count(RAID_BATCH_VM_PAGES, capture.page_reads);
++        raid_batch_count(RAID_BATCH_VM_FAILURES, capture.page_failures);
+     }
+     if (!ready) return;
+-    raid_batch.count = count;
+-    cpu->raid_descriptor.worker_frame = frame;
+-    cpu->raid_descriptor.worker_context = context;
++    raid_batch.count = capture.count;
++    cpu->raid_descriptor.worker_frame = capture.frame;
++    cpu->raid_descriptor.worker_context = capture.context;
+     cpu->raid_descriptor.worker_batch = (uintptr_t)&raid_batch;
+     raid_batch_count(RAID_BATCH_INPUTS, ready);
+     raid_batch_count(RAID_BATCH_QUEUED, 1);
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -3118,6 +3118,43 @@
+     call("_NSDeallocateMemoryPages", 2, (uint32_t[]){ pages, 0x5000 });
+ }
+
++struct SnapshotTest {
++    uint64_t address;
++    uint32_t copied;
++    int nested_result;
++};
++
++static int copy_snapshot_word(void *opaque)
++{
++    struct SnapshotTest *test = opaque;
++    if (!ocerz_addr_readable(test->address))
++        return 0;
++    test->copied = (uint32_t)ocerz_ld(test->address, 4);
++    return 1;
++}
++
++static int copy_word_with_nested_try(void *opaque)
++{
++    struct SnapshotTest *test = opaque;
++    test->nested_result = ocerz_mem_try_snapshot(copy_snapshot_word, test);
++    return copy_snapshot_word(test);
++}
++
++static void test_mapping_snapshot(void)
++{
++    uint64_t page = ocerz_map_anywhere(OCERZ_GUEST_PAGE_SIZE, PROT_READ | PROT_WRITE);
++    check("snapshot has a guest allocation", page != 0);
++    if (!page) return;
++    struct SnapshotTest test = {.address = page};
++    ocerz_st(page, 4, 0x85a9b7cdu);
++    check("snapshot callback returned its result", ocerz_mem_try_snapshot(copy_word_with_nested_try, &test) == 1);
++    check("snapshot read the original word", test.copied == 0x85a9b7cdu);
++    check("busy snapshot did not enter the nested callback", test.nested_result == -1);
++    check("snapshot released the mapping lock", ocerz_protect(page, OCERZ_GUEST_PAGE_SIZE, PROT_NONE) == OCERZ_OK);
++    check("snapshot honors revoked permissions", ocerz_mem_try_snapshot(copy_snapshot_word, &test) == 0);
++    check("snapshot released the lock after a rejected read", ocerz_unmap(page, OCERZ_GUEST_PAGE_SIZE) == OCERZ_OK);
++}
++
+ int main(int argc, char **argv)
+ {
+     if (argc == 4 && !strcmp(argv[1], "spawned")) {   /* test_posix_spawn's child: a line to a file or stdout */
+@@ -3182,6 +3219,7 @@
+     test_tsearch();
+     test_positional();
+     test_map_table();
++    test_mapping_snapshot();
+     test_font_tables();
+     test_sF();
+     test_cg();

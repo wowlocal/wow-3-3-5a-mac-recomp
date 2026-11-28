@@ -2819,3 +2819,24 @@ The worker path lost **5.58** and **6.68 FPS** in the two paired measurements. P
 ```sh
 python3 benchmarks/summarize-raid-descriptor-worker.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Capture the worker's input words under a nonblocking mapping guard
+
+Apply `patches/aarchx-m32-raid-guarded-word-snapshot-trial.patch` after the descriptor worker trial. Use the same signed ARM64 runtime and the selected deferred PGO renderer in both modes. Keep `OCERZ_M32_RAID_DESCRIPTOR=1`, `OCERZ_M32_RAID_DESCRIPTOR_WORKER=1` and `OCERZ_TCACHE=off`. The candidate sets `OCERZ_M32_RAID_GUARDED_WORD_SNAPSHOT=1`. The control captures the same inputs through Mach page copies.
+
+The game thread tries the existing guest mapping lock without waiting. The capture checks readability in the 4 KiB guest mapping metadata and loads only the needed aligned words. The lock protects mappings against concurrent unmap or protection changes while copying. It is released before waking the worker. The existing serial descriptor path handles an unavailable guard or unreadable input. The worker receives the same owned data and the consumer keeps the original equality gate.
+
+Time four warmed 60-second windows in page-copy, guarded-word, guarded-word, page-copy order with logging disabled. Record the snapshot and logging switches in `raid-snapshot-mode.txt`. Collect a 25-second diagnostic for each mode under `diagnostic-0` and `diagnostic-1`, with the submission log and the 32-counter descriptor log. Take two uptime-bracketed samples spanning five seconds, beginning two seconds after the verified full scene starts. Save both i386 test results, including the seven new permission, nonblocking acquisition and lock-release checks, as `general-control.log` and `general-candidate.log`.
+
+The counter bands covered **667** and **683** consecutive full-raid outputs. Every original material-prefix check and value comparison matched in each band. The worker supplied **98.2%** and **98.7%** of all recorded target reads. The control made **105,504** page copies. The candidate recorded zero page copies, **302,839** readable guest-page checks and zero busy guard attempts. Mean capture time fell from **68.1 to 4.7 µs per queued batch**, or about **0.252 to 0.017 ms** per completed output. The worker's mean computation remained about **0.39 µs per batch**. [Snapshot measurements and coverage](results/raid-aarchx-guarded-word-snapshot-ab.json)
+
+| Worker input capture | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Mach page copies | 129.06 | 12.51 ms |
+| Guarded word reads | 136.05 | 12.42 ms |
+
+The paired throughput improvements were **8.50** and **5.48 FPS**. P99 changed by **+0.110** and **−0.287 ms**. Use guarded word capture for subsequent worker experiments. The four warmed runs verified **31,817** GPU completions across their windows, the 26 timing rows, the saved camera and effects, and zero visible windows or activations. Both modes passed **812** i386 checks. [Full-raid timing and validation](results/raid-aarchx-guarded-word-snapshot-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-word-snapshot.py CAPTURE_ROOT I386_CLIENT
+```
