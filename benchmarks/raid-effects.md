@@ -2623,3 +2623,26 @@ The probe pairs the direct calls to `0x73f8e0` and `0x97dbc0` with their returns
 ```sh
 python3 benchmarks/summarize-raid-tail-phases.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Measure work inside the first preparation root
+
+Apply `patches/aarchx-m32-raid-scene-work-probe.patch` after the phase-tail probe. Rebuild the same diagnostic AArchX runtime with the selected deferred PGO renderer. Set `OCERZ_M32_RAID_ROOT_WORK_LOG` to a fresh `root-work.bin` in the `phase` directory. Arm the ring for **30 seconds** starting two seconds after the fixture is ready during a verified 45-second run. Keep the renderer mode, artifact, submission, and visibility records and save the gate count to `phase-gate.json`. Save the general AArchX check output to `general.log`.
+
+The launch produced **6,171** consecutive GPU completions and verified the camera, overlapping effects, 26 script rows, and zero trial window visibility or activations. The trace paired call and return sites on one calling CPU using the original guest stack and recorded **4,098** complete producer intervals. It includes the caller's original item pointer for both the update and consumer calls. The diagnostic runtime passed **805** general i386 checks. These timings include the inserted JIT boundaries and logging. [Call timings and artifact hashes](results/raid-aarchx-scene-work.json)
+
+| Inside the first preparation root | Median elapsed time per producer interval |
+| --- | ---: |
+| Entire root `0x73f8e0` | 2.408 ms |
+| Scene pass `0x97e390` | 1.309 ms |
+| Object updates `0x964ca0` within that pass | 0.420 ms |
+| Consumer calls `0x967f20` within that pass | 0.384 ms |
+| Three heapsort calls within that pass | 0.168 ms |
+| Largest other measured sibling `0x738830` | 0.360 ms |
+
+All measured updates in each scene pass completed before the first consumer. At the median, the pass updated **56** objects and called the consumer **179** times. An optimistic eight-worker schedule preserves the observed gaps between updates and waits for the last result at the old update boundary. With a hypothetical 500 ns delivery cost per object it could save **0.355 ms** at the median, about **7 producer intervals per second** averaged over the joined trace. This assumes the worker inputs are available without waiting for earlier results. Dependencies through omitted callees and worker costs beyond delivery remain unverified. Removing the *entire* 1.309 ms scene pass from the recorded producer intervals gives only **166.4 intervals per second** with all other costs held fixed. [Batch model](results/raid-aarchx-scene-work.json) · [Item data dependencies](results/raid-aarchx-i386-item-memory.json)
+
+The preceding two-root trace measured **4.98 ms** mean across both roots and **2.21 ms** mean of other producer time per frame. A fourfold speedup across both roots with the remainder held fixed would give **289** producer intervals per second. Even zero time for both roots gives **452**. These are producer throughput estimates from recorded intervals. The 2.0 ms completion target also needs reductions elsewhere on the producer and in GPU tails. In the two-root trace, the final command buffer's GPU span had a **6.18 ms p99**. [Two-root timings](results/raid-aarchx-preparation-root-tail.json) · [GPU scheduling and contention](results/raid-winemetalgl-deferred-tail-attribution.json)
+
+```sh
+python3 benchmarks/summarize-raid-scene-work.py CAPTURE_ROOT I386_CLIENT
+```

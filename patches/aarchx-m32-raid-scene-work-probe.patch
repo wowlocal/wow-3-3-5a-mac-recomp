@@ -1,0 +1,53 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19034,25 +19034,27 @@
+
+ /* Collect live register values around the selected raid preparation calls. The
+  * consumer reads a row only after its sequence has been published. */
+-enum { RAID_PREP_BITS = 20, RAID_PREP_STRIDE = 64 };
++enum { RAID_PREP_BITS = 22, RAID_PREP_STRIDE = 64 };
+
+ static int raid_prep_site(uint64_t pc)
+ {
+     switch (pc) {
+-    case 0x28434c: case 0x284351:
+-    case 0x284361: case 0x284366:
+-    case 0x61c512: case 0x61c517:
+-    case 0x61c57a: case 0x61c57f:
+-    case 0x61c5a5: case 0x61c5aa:
+-    case 0x61c6c7: case 0x61c6cc:
+-    case 0x61c6e1: case 0x61c6e6:
+-    case 0x65991d: case 0x659922:
+-    case 0x65992d: case 0x659932:
+-    case 0x6bf92c: case 0x6bf931:
+-    case 0x6bf93e: case 0x6bf943:
+     case 0x721dc3: case 0x721dc8:
+-    case 0x8036b3: case 0x8036b8:
+-    case 0x8036d3: case 0x8036d8:
++    case 0x73fcf3: case 0x73fcf8:
++    case 0x73fdca: case 0x73fdcf:
++    case 0x73fdd9: case 0x73fdde:
++    case 0x73fdf6: case 0x73fdfb:
++    case 0x73fe15: case 0x73fe1a:
++    case 0x74010b: case 0x740110:
++    case 0x7401ef: case 0x7401f4:
++    case 0x97e6f9: case 0x97e6fe:
++    case 0x9800f8: case 0x9800fd:
++    case 0x98011b: case 0x980120:
++    case 0x98013e: case 0x980143:
++    case 0x980165: case 0x98016a:
++    case 0x980175: case 0x98017a:
++    case 0x9801a7: case 0x9801ac:
++    case 0x9806ae: case 0x9806b3:
+         return 1;
+     default:
+         return 0;
+@@ -19064,7 +19066,7 @@
+     static int checked;
+     static const char *path;
+     if (!checked) {
+-        path = getenv("OCERZ_M32_RAID_PHASE_LOG");
++        path = getenv("OCERZ_M32_RAID_ROOT_WORK_LOG");
+         checked = 1;
+     }
+     return path && *path ? path : NULL;
