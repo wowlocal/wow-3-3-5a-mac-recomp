@@ -2551,3 +2551,29 @@ python3 benchmarks/summarize-raid-render-reuse.py CAPTURE_ROOT
 Compared with the original queue, the reuse pairs changed by **+0.47 and −3.08 FPS**, with p99 changes of **+0.10 and −0.26 ms**. Keep the original calling-thread renderer as the benchmark baseline. All six timing launches and both diagnostics verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible trial windows or activations. Each mode passed **343** GPU tests. The indexed replay returned the same RGBA hash and **161,327** colored pixels in all three modes. [Timing and verified replay](results/raid-winemetalgl-render-reuse-ab.json)
 
 The original queue created a batch object for each of its **231,384** diagnostic submissions. The reuse launch created **16** batch objects and reused them for the remaining **237,386** of **237,402** submissions. These counts cover whole diagnostic launches. Time Profiler attributed **269 ms** of running-sample weight to the game-thread proxy in the original queue and **238 ms** with reuse. The corresponding worker-consumer weights were **371 and 341 ms**. The profiles covered **9.48 and 9.40 seconds** of samples. These measurements track CPU execution. [Batch counts and CPU samples](results/raid-winemetalgl-render-reuse-ab.json)
+
+### Close the final Metal pass and commit on the encoder worker
+
+Apply `patches/winemetalgl-defer-render-end-trial.patch` after the queued encoder and batch reuse trials. Use one signed AArchX runtime and one arm64 Release ThinLTO renderer with PGO off. Use the existing calling-thread path, the queued path with `WINEMETALGL_QUEUED_RENDER_REUSE=1`, and that same queued path with `WINEMETALGL_DEFER_RENDER_END=1`.
+
+At a flush, the game thread records final store actions and commits any preludes. It reserves a position for the render buffer with `enqueue()` and marks its serial in flight. The existing serial worker issues the last partial batch, ends the encoder and commits the command buffer. The worker inherits ordering with earlier batches, while Metal's reservation orders the buffer against subsequent work on the shared command queue. Transitions to another encoder in the same buffer keep synchronous closure. [Metal's enqueue contract](https://developer.apple.com/documentation/metal/mtlcommandbuffer/enqueue%28%29)
+
+Use six warmed 60-second launches in control, reuse, deferred, deferred, reuse, control order. Record the mode and logging bit in `render-end-mode.txt`. Collect the GPU suites and indexed replay with log suffixes `-control.log`, `-reuse.log`, and `-deferred.log`.
+
+In separate 25-second launches under `diagnostic-reuse` and `diagnostic-deferred`, set `OCERZ_WMGL_RENDER_FINALIZE_LOG` to `render-finalize.tsv`. For the deferred case also set `OCERZ_WMGL_DEFER_RENDER_END_LOG` to `render-worker.tsv`. The analyzer bounds producer timestamps by the first and last completed GPU outputs in the verified interval and matches worker events by queue and serial.
+
+```sh
+python3 benchmarks/summarize-raid-render-end.py CAPTURE_ROOT
+```
+
+| Render path | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Calling-thread encoder | 130.87 | 12.45 ms |
+| Queued encoder with synchronous close | 128.93 | 12.78 ms |
+| Close and commit on the worker | 132.81 | 12.58 ms |
+
+Deferring the close gained **3.68 and 4.07 FPS** over the queued encoder with synchronous close, and **1.42 and 2.47 FPS** over the calling-thread encoder. P99 shortened **0.08 and 0.34 ms** against the queued encoder. Against the calling-thread encoder, p99 changed by **+0.34 and −0.08 ms**. The renderer build held fixed in this experiment has PGO off. [Live results and paired differences](results/raid-winemetalgl-defer-render-end-ab.json)
+
+Inside the diagnostic completion windows, the game thread spent a median **27.67 µs** finalizing a buffer with synchronous closure and **6.44 µs** with deferred closure. The deferred path matched **6,746** producer records to worker commits. In **6,743** cases the worker started after the producer returned. Reservation to commit return took **22.54 µs** at the median and **52.13 µs** at p99. These are elapsed times around the CPU-side flush. The six uninstrumented runs supply the frame timing comparison. [Producer and worker timestamps](results/raid-winemetalgl-defer-render-end-ab.json)
+
+Each mode passed **343** GPU tests, including fence waits and shared-context uploads. The indexed replay returned the same RGBA hash and **161,327** colored pixels. The two diagnostics and six timing windows verified the saved camera, overlapping spell effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. [Correctness checks](results/raid-winemetalgl-defer-render-end-ab.json)

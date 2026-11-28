@@ -49,9 +49,9 @@ def batch_counters(path, mode):
             "batch_allocations": totals["batches"] - totals["reused_batches"]}
 
 
-def replay_pixels(root):
+def replay_pixels(root, modes=MODES):
     pixels = {}
-    for mode in MODES:
+    for mode in modes:
         if not (root / f"gpu-tests-{mode}.log").read_text().endswith("343 tests, 0 failed checks\n"):
             raise ValueError(f"The {mode} GPU suite failed")
         row = QUEUED["PIXELS"].search((root / f"replay-{mode}.log").read_text())

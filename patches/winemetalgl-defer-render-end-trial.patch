@@ -1,0 +1,283 @@
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -182,7 +182,7 @@
+     static bool passProfile();
+     void profileNote(const std::string& what);
+     enum class PassEnd : uint8_t { Other, Target, Blit, Compute, Visibility, Commit, Barrier, Clear, Count };
+-    void endEncoder(PassEnd cause = PassEnd::Other);
++    void endEncoder(PassEnd cause = PassEnd::Other, dispatch_block_t __strong* deferredEnd = nullptr);
+     // glMemoryBarrier: orders shader writes to buffers and textures before
+     // later shader accesses: ends an open render pass, or a barrier in the
+     // open compute encoder.
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -29,6 +29,17 @@
+         if (!path || !*path) return nullptr;
+         FILE* file = std::fopen(path, "wx");
+         if (!file) std::perror("cannot create WineMetalGL submission log");
++        return file;
++    }();
++    return log;
++}
++
++FILE* renderFinalizeLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_RENDER_FINALIZE_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (file) std::setvbuf(file, nullptr, _IOLBF, 0);
+         return file;
+     }();
+     return log;
+@@ -81,7 +92,7 @@
+ static_assert(static_cast<size_t>(CommandStream::PassEnd::Count) == sizeof(stats::Frame::passEnds) / sizeof(uint64_t),
+               "stats::Frame::passEnds has a counter per PassEnd");
+
+-void CommandStream::endEncoder(PassEnd cause) {
++void CommandStream::endEncoder(PassEnd cause, dispatch_block_t __strong* deferredEnd) {
+     if (render_ && stats::g_enabled) ++stats::frame().passEnds[static_cast<int>(cause)];
+     if (shaderWrites_ && (render_ || compute_)) {
+         if (!writesFence_) writesFence_ = [Device::get().mtl() newFence];
+@@ -105,7 +116,8 @@
+         if (target_.stencil.texture)
+             [render_ setStencilStoreAction:storeDiscard_.stencil ? MTLStoreActionDontCare : MTLStoreActionStore];
+         storeDiscard_ = Discard();
+-        [render_ endEncoding];
++        if (deferredEnd) *deferredEnd = takeDeferredRenderEnd(render_);
++        else [render_ endEncoding];
+         render_ = nil;
+     }
+     if (blit_) {
+@@ -669,7 +681,11 @@
+     flushDeferred_ = false;
+     if (__builtin_expect(deferred_ != nullptr, 0)) runDeferred();
+     if (!keepPendingClear) resolvePendingClear();
+-    endEncoder(PassEnd::Commit);
++    dispatch_block_t endRender = nil;
++    const bool queuedPass = buffer_ && renderQueue_ && render_;
++    FILE* finalizeLog = queuedPass ? renderFinalizeLog() : nullptr;
++    const uint64_t finalizeStart = finalizeLog ? stats::nowNanos() : 0;
++    endEncoder(PassEnd::Commit, queuedPass && deferredRenderEndEnabled() ? &endRender : nullptr);
+     commitPrelude();
+     if (!buffer_) return lastCommitted_;
+     stats::count(&stats::Frame::commits);
+@@ -694,7 +710,13 @@
+             submissionTraceStream_ = nextTraceStream.fetch_add(1, std::memory_order_relaxed);
+         traceSubmission(log, buffer_, "render", submissionTraceStream_, serial_, submittedDraws);
+     }
+-    queue_.commit(buffer_, serial_);
++    if (endRender) queue_.commitAfterEncoding(buffer_, serial_, renderQueue_, endRender);
++    else queue_.commit(buffer_, serial_);
++    if (finalizeLog)
++        std::fprintf(finalizeLog, "%u %llu %llu %llu %llu\n", endRender ? 1u : 0u,
++                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(&queue_)),
++                     static_cast<unsigned long long>(serial_), static_cast<unsigned long long>(finalizeStart),
++                     static_cast<unsigned long long>(stats::nowNanos()));
+     lastCommitted_ = serial_;
+     buffer_ = nil;
+     hoistBlocked_ = false;
+diff --git a/src/core/metal/queue.h b/src/core/metal/queue.h
+--- a/src/core/metal/queue.h
++++ b/src/core/metal/queue.h
+@@ -7,6 +7,7 @@
+ #pragma once
+
+ #import <Metal/Metal.h>
++#include <dispatch/dispatch.h>
+
+ #include <atomic>
+ #include <condition_variable>
+@@ -25,6 +26,9 @@
+     id<MTLCommandBuffer> create(uint64_t* serial);
+     // Commits a command buffer created by create().
+     void commit(id<MTLCommandBuffer> buffer, uint64_t serial);
++    // Reserves Metal queue order now, then ends encoding and commits on worker.
++    void commitAfterEncoding(id<MTLCommandBuffer> buffer, uint64_t serial,
++                             dispatch_queue_t worker, dispatch_block_t endEncoding);
+     // Drops a reserved serial whose command buffer was never committed.
+     void abandon(uint64_t serial);
+
+@@ -46,6 +50,8 @@
+
+ private:
+     void publishCompletedPrefix();  // mutex_ held
++    void markSubmitted(uint64_t serial);
++    void commitSubmitted(id<MTLCommandBuffer> buffer, uint64_t serial);
+
+     id<MTLCommandQueue> queue_;
+     std::mutex mutex_;
+diff --git a/src/core/metal/queue.mm b/src/core/metal/queue.mm
+--- a/src/core/metal/queue.mm
++++ b/src/core/metal/queue.mm
+@@ -76,6 +76,17 @@
+     }();
+     return enabled;
+ }
++
++FILE* deferredRenderEndLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_DEFER_RENDER_END_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (file) std::setvbuf(file, nullptr, _IOLBF, 0);
++        return file;
++    }();
++    return log;
++}
+ }  // namespace
+
+ // Only advance past serials with neither a reservation nor an in-flight
+@@ -109,12 +120,13 @@
+     return buffer;
+ }
+
+-void Queue::commit(id<MTLCommandBuffer> buffer, uint64_t serial) {
+-    {
+-        std::lock_guard<std::mutex> lock(mutex_);
+-        reserved_.erase(serial);
+-        inflight_.insert(serial);
+-    }
++void Queue::markSubmitted(uint64_t serial) {
++    std::lock_guard<std::mutex> lock(mutex_);
++    reserved_.erase(serial);
++    inflight_.insert(serial);
++}
++
++void Queue::commitSubmitted(id<MTLCommandBuffer> buffer, uint64_t serial) {
+     [buffer addCompletedHandler:^(id<MTLCommandBuffer> done) {
+         if (stats::g_enabled && done.GPUEndTime > done.GPUStartTime) {
+             stats::addGpuNanos(static_cast<uint64_t>((done.GPUEndTime - done.GPUStartTime) * 1e9));
+@@ -131,6 +143,35 @@
+     [buffer commit];
+ }
+
++void Queue::commit(id<MTLCommandBuffer> buffer, uint64_t serial) {
++    markSubmitted(serial);
++    commitSubmitted(buffer, serial);
++}
++
++void Queue::commitAfterEncoding(id<MTLCommandBuffer> buffer, uint64_t serial,
++                                dispatch_queue_t worker, dispatch_block_t endEncoding) {
++    FILE* log = deferredRenderEndLog();
++    const uint64_t submit = log ? stats::nowNanos() : 0;
++    const auto queueId = reinterpret_cast<uintptr_t>(this);
++    // Prelude buffers are already committed. Reserve this buffer's position
++    // before the caller can submit newer work on the shared Metal queue.
++    [buffer enqueue];
++    markSubmitted(serial);
++    dispatch_async(worker, ^{
++        @autoreleasepool {
++            const uint64_t start = log ? stats::nowNanos() : 0;
++            endEncoding();
++            const uint64_t ended = log ? stats::nowNanos() : 0;
++            commitSubmitted(buffer, serial);
++            if (log)
++                std::fprintf(log, "%llu %llu %llu %llu %llu %llu\n",
++                             static_cast<unsigned long long>(queueId), static_cast<unsigned long long>(serial),
++                             static_cast<unsigned long long>(submit), static_cast<unsigned long long>(start),
++                             static_cast<unsigned long long>(ended), static_cast<unsigned long long>(stats::nowNanos()));
++        }
++    });
++}
++
+ void Queue::abandon(uint64_t serial) {
+     std::lock_guard<std::mutex> lock(mutex_);
+     reserved_.erase(serial);
+diff --git a/src/core/metal/queued_render_encoder.h b/src/core/metal/queued_render_encoder.h
+--- a/src/core/metal/queued_render_encoder.h
++++ b/src/core/metal/queued_render_encoder.h
+@@ -6,7 +6,9 @@
+ namespace wmgl {
+
+ bool queuedRenderEnabled();
++bool deferredRenderEndEnabled();
+ id<MTLRenderCommandEncoder> makeQueuedRenderEncoder(id<MTLRenderCommandEncoder> encoder,
+                                                      dispatch_queue_t queue);
++dispatch_block_t takeDeferredRenderEnd(id<MTLRenderCommandEncoder> encoder);
+
+ }  // namespace wmgl
+diff --git a/src/core/metal/queued_render_encoder.mm b/src/core/metal/queued_render_encoder.mm
+--- a/src/core/metal/queued_render_encoder.mm
++++ b/src/core/metal/queued_render_encoder.mm
+@@ -197,6 +197,7 @@
+
+ @interface WMGLQueuedRenderEncoder : NSProxy
+ - (instancetype)initWithEncoder:(id<MTLRenderCommandEncoder>)encoder queue:(dispatch_queue_t)queue;
++- (dispatch_block_t)deferredEndEncoding;
+ @end
+
+ @implementation WMGLQueuedRenderEncoder {
+@@ -216,9 +217,8 @@
+     return self;
+ }
+
+-- (void)flushPending {
+-    if (!pending_) return;
+-    if (log_) {
++- (void)accountPending {
++    if (pending_ && log_) {
+         ++batches_;
+         commands_ += pending_->commands.size();
+         bytes_ += pending_->payload.size() * sizeof(uint64_t) +
+@@ -226,6 +226,11 @@
+         reused_ += pending_->reused;
+         unpooled_ += pending_->occupied == nullptr;
+     }
++}
++
++- (void)flushPending {
++    if (!pending_) return;
++    [self accountPending];
+     dispatch_async_f(queue_, pending_.release(), consume);
+ }
+
+@@ -259,8 +264,26 @@
+ - (void)endEncoding {
+     [self flushPending];
+     dispatch_sync(queue_, ^{ [encoder_ endEncoding]; });
++    [self reportEncoding];
++}
++
++- (void)reportEncoding {
+     if (log_) std::fprintf(log_, "%zu %zu %zu %zu %zu %zu\n",
+                            commands_, batches_, bytes_, synchronous_, reused_, unpooled_);
++}
++
++- (dispatch_block_t)deferredEndEncoding {
++    [self accountPending];
++    [self reportEncoding];
++    // The returned block owns the proxy once CommandStream drops its render
++    // encoder. Keeping the last batch here avoids a separate enqueue for it.
++    return ^{
++        if (pending_) {
++            issue(*pending_);
++            pending_.reset();
++        }
++        [encoder_ endEncoding];
++    };
+ }
+
+ #define WMGL_BUFFER_SETTER(NAME, OP) \
+@@ -366,8 +389,20 @@
+     return enabled;
+ }
+
++bool deferredRenderEndEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_DEFER_RENDER_END");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
+ id<MTLRenderCommandEncoder> makeQueuedRenderEncoder(id<MTLRenderCommandEncoder> encoder, dispatch_queue_t queue) {
+     return (id<MTLRenderCommandEncoder>)[[WMGLQueuedRenderEncoder alloc] initWithEncoder:encoder queue:queue];
+ }
+
++dispatch_block_t takeDeferredRenderEnd(id<MTLRenderCommandEncoder> encoder) {
++    return [(WMGLQueuedRenderEncoder*)encoder deferredEndEncoding];
++}
++
+ }  // namespace wmgl
