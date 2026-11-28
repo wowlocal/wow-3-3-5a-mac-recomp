@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import plistlib
 import re
+from statistics import median
 import xml.etree.ElementTree as ElementTree
 
 from metal_submission_log import interval_coverage, read_submissions
@@ -93,7 +94,36 @@ def align_fragment_ends(buffers, submissions):
     return offset, tolerance, trace_ends, evidence
 
 
-def summarize_system_trace(root, xml, pid, previous_end, capture_end, labels):
+def align_capture_stages(buffers, output_ends):
+    fragment_ends = sorted({max(ends) for intervals in buffers.values()
+                            if (ends := [end for _, end, stage, _ in intervals if stage == "Fragment"])})
+    tolerance = 250
+    votes = Counter((end - trace_end) // tolerance
+                    for end in output_ends[::max(1, len(output_ends) // 48)] for trace_end in fragment_ends)
+    if not votes:
+        raise ValueError("The captured stream has no trace clock anchors")
+
+    def residuals(offset):
+        for end in output_ends:
+            relative = end - offset
+            index = bisect_left(fragment_ends, relative)
+            nearby = fragment_ends[max(0, index - 1):index + 1]
+            difference = end - min(nearby, key=lambda time: abs(relative - time))
+            if abs(difference - offset) <= tolerance:
+                yield difference
+
+    candidates = [(bucket * tolerance + tolerance // 2, list(residuals(bucket * tolerance + tolerance // 2)))
+                  for bucket, _ in votes.most_common(8)]
+    _, matched = max(candidates, key=lambda item: (len(item[1]), -sum(abs(item[0] - x) for x in item[1])))
+    if len(matched) < 30:
+        raise ValueError("Too few output completions match the trace clock")
+    offset = round(median(matched))
+    errors = [abs(value - offset) for value in residuals(offset)]
+    evidence = {"anchor": "final fragment endpoint", "matched_endpoints": len(errors), "maximum_error_ns": max(errors)}
+    return offset, tolerance, evidence
+
+
+def summarize_system_trace(root, xml, pid, previous_end, capture_end, labels, *, output_ends=None):
     submissions = [row for kind, row in read_submissions(root / "submissions.ns", pid) if kind == "render"]
     by_end = defaultdict(list)
     for submit in submissions:
@@ -112,14 +142,23 @@ def summarize_system_trace(root, xml, pid, previous_end, capture_end, labels):
         raise ValueError("Draw counts do not match the captured command buffers")
 
     buffers = read_active_intervals(xml, pid)
-    offset, tolerance, endings, alignment = align_fragment_ends(buffers, submissions)
+    if output_ends is None:
+        offset, tolerance, endings, alignment = align_fragment_ends(buffers, submissions)
+    else:
+        offset, tolerance, alignment = align_capture_stages(buffers, output_ends)
+        limits = {buffer: (min(start for start, _, _, _ in spans), max(end for _, end, _, _ in spans))
+                  for buffer, spans in buffers.items()}
     groups = []
     for submit in captured:
         if not submit.draws:
             continue
-        matches = [(end, buffer) for end, buffer in endings if abs(end + offset - submit.end) <= tolerance]
+        if output_ends is None:
+            matches = [(end, buffer) for end, buffer in endings if abs(end + offset - submit.end) <= tolerance]
+        else:
+            matches = [(end, buffer) for buffer, (start, end) in limits.items()
+                       if abs(start + offset - submit.start) <= tolerance and abs(end + offset - submit.end) <= tolerance]
         if len(matches) != 1:
-            raise ValueError(f"Expected one traced Fragment endpoint for submission {submit.serial}")
+            raise ValueError(f"Expected one traced command buffer for submission {submit.serial}")
         trace_end, buffer = matches[0]
         intervals = buffers[buffer]
         stage_names = {name for _, _, name, _ in intervals}
@@ -128,21 +167,26 @@ def summarize_system_trace(root, xml, pid, previous_end, capture_end, labels):
             bounds = [(a + offset, b + offset) for a, b, stage, _ in intervals if stage == name]
             stage_activity[name] = interval_coverage(bounds)(submit.start, submit.end)
         begins_at = sum(group["draws"] for group in groups)
-        groups.append({
+        group = {
             "submission_serial": submit.serial,
             "trace_command_buffer_id": buffer,
-            "fragment_endpoint_error_ns": abs(trace_end + offset - submit.end),
             "draws": submit.draws,
             "submit_to_gpu_start_ns": submit.start - submit.submit,
             "gpu_start_to_end_ns": submit.end - submit.start,
             "gpu_active_ns_by_stage": stage_activity,
             "traced_encoder_count": len({encoder for _, _, _, encoder in intervals if encoder is not None}),
             "shader_combination_counts": dict(Counter(labels[begins_at:begins_at + submit.draws]).most_common()),
-        })
+        }
+        if output_ends is None:
+            group["fragment_endpoint_error_ns"] = abs(trace_end + offset - submit.end)
+        else:
+            group["stage_start_error_ns"] = abs(limits[buffer][0] + offset - submit.start)
+            group["stage_end_error_ns"] = abs(trace_end + offset - submit.end)
+        groups.append(group)
     return {"clock_alignment": alignment, "submissions": groups}
 
 
-def capture_report(root, intervals):
+def capture_report(root, intervals, *, all_stages=False):
     stream, sequence, previous_draws, labels = read_capture_log(root / "client.log")
     window = json.loads((root / "window.json").read_text())
     width, height = window["window_size"]
@@ -172,8 +216,18 @@ def capture_report(root, intervals):
         "shader_combination_counts": dict(draw_counts.most_common()),
     }
     if intervals:
+        output_ends = None
+        if all_stages:
+            witness = json.loads((root / "trace-witness.json").read_text())
+            if (witness["attach_pid"] != window["pid"] or witness["returncode"] or not witness["trace_exists"]
+                    or not (window["last_sequence"] < sequence and
+                            completions[window["last_sequence"]][0] < witness["begin_uptime_ns"]
+                            <= witness["trigger_uptime_ns"] <= capture_end <= witness["end_uptime_ns"])):
+                raise ValueError("The all-stage trace was unverified or overlapped the measured window")
+            output_ends = sorted(end for end, _ in completions.values()
+                                 if witness["begin_uptime_ns"] <= end <= witness["end_uptime_ns"])
         report["metal_system_trace"] = summarize_system_trace(
-            root, intervals, window["pid"], previous_end, capture_end, labels
+            root, intervals, window["pid"], previous_end, capture_end, labels, output_ends=output_ends,
         )
     return report
 
@@ -182,5 +236,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capture_dir", type=Path)
     parser.add_argument("--intervals-xml", type=Path, help="exported metal-gpu-intervals table from the same run")
+    parser.add_argument("--all-stages", action="store_true", help="match each captured command buffer across all active stages")
     options = parser.parse_args()
-    print(json.dumps(capture_report(options.capture_dir, options.intervals_xml), indent=2))
+    if options.all_stages and not options.intervals_xml:
+        parser.error("--all-stages requires --intervals-xml")
+    print(json.dumps(capture_report(options.capture_dir, options.intervals_xml, all_stages=options.all_stages), indent=2))

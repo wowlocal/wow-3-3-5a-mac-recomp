@@ -1,0 +1,314 @@
+{
+  "viewport": [
+    5120,
+    2880
+  ],
+  "stream": 1,
+  "captured_sequence": 6081,
+  "previous_output_draws": 1041,
+  "captured_output_draws": 1037,
+  "completion_gap_during_capture_ns": 484271375,
+  "archive_frame_count": 1,
+  "archive_bytes": 1735074788,
+  "shader_combination_counts": {
+    "vertex=2000015@16 fragment=2000013@14": 145,
+    "vertex=2000073@74 fragment=2000019@20": 110,
+    "vertex=2000068@69 fragment=2000069@70": 88,
+    "vertex=2000021@22 fragment=2000000@1": 86,
+    "fixed function": 82,
+    "vertex=2000014@15 fragment=2000011@12": 65,
+    "vertex=2000023@24 fragment=2000011@12": 60,
+    "vertex=2000012@13 fragment=2000013@14": 58,
+    "vertex=2000042@43 fragment=2000038@39": 56,
+    "vertex=2000057@58 fragment=2000058@59": 46,
+    "vertex=2000044@45 fragment=2000039@40": 42,
+    "vertex=2000060@61 fragment=2000058@59": 26,
+    "vertex=2000015@16 fragment=2000011@12": 23,
+    "vertex=2000040@41 fragment=2000037@38": 22,
+    "vertex=2000025@26 fragment=2000013@14": 17,
+    "vertex=2000012@13 fragment=2000011@12": 14,
+    "vertex=2000043@44 fragment=2000039@40": 10,
+    "vertex=2000059@60 fragment=2000058@59": 10,
+    "vertex=2000062@63 fragment=2000013@14": 10,
+    "vertex=2000022@23 fragment=2000011@12": 9,
+    "vertex=2000024@25 fragment=2000011@12": 8,
+    "vertex=2000024@25 fragment=2000013@14": 7,
+    "vertex=2000025@26 fragment=2000011@12": 7,
+    "vertex=2000062@63 fragment=2000011@12": 5,
+    "vertex=2000010@11 fragment=2000026@27": 4,
+    "vertex=2000070@71 fragment=2000035@36": 4,
+    "vertex=2000014@15 fragment=2000013@14": 3,
+    "vertex=2000075@76 fragment=2000013@14": 2,
+    "vertex=2000077@78 fragment=fixed": 2,
+    "vertex=2000078@79 fragment=fixed": 2,
+    "vertex=2000071@72 fragment=2000011@12": 2,
+    "vertex=2000076@77 fragment=2000011@12": 2,
+    "vertex=fixed fragment=2000066@67": 2,
+    "vertex=2000021@22 fragment=2000063@64": 2,
+    "vertex=2000041@42 fragment=2000038@39": 1,
+    "vertex=2000057@58 fragment=2000061@62": 1,
+    "vertex=2000074@75 fragment=2000026@27": 1,
+    "vertex=2000072@73 fragment=2000011@12": 1,
+    "vertex=fixed fragment=2000065@66": 1,
+    "vertex=fixed fragment=2000067@68": 1
+  },
+  "metal_system_trace": {
+    "clock_alignment": {
+      "anchor": "final fragment endpoint",
+      "matched_endpoints": 360,
+      "maximum_error_ns": 42
+    },
+    "submissions": [
+      {
+        "submission_serial": 10796,
+        "trace_command_buffer_id": 49753650918,
+        "draws": 939,
+        "submit_to_gpu_start_ns": 298431291,
+        "gpu_start_to_end_ns": 33081584,
+        "gpu_active_ns_by_stage": {
+          "Compute": 452791,
+          "Fragment": 28587708,
+          "Vertex": 3891250
+        },
+        "traced_encoder_count": 3,
+        "shader_combination_counts": {
+          "vertex=2000015@16 fragment=2000013@14": 145,
+          "vertex=2000073@74 fragment=2000019@20": 110,
+          "vertex=2000068@69 fragment=2000069@70": 88,
+          "fixed function": 76,
+          "vertex=2000014@15 fragment=2000011@12": 65,
+          "vertex=2000023@24 fragment=2000011@12": 60,
+          "vertex=2000012@13 fragment=2000013@14": 58,
+          "vertex=2000042@43 fragment=2000038@39": 56,
+          "vertex=2000057@58 fragment=2000058@59": 46,
+          "vertex=2000044@45 fragment=2000039@40": 42,
+          "vertex=2000060@61 fragment=2000058@59": 26,
+          "vertex=2000015@16 fragment=2000011@12": 23,
+          "vertex=2000040@41 fragment=2000037@38": 22,
+          "vertex=2000025@26 fragment=2000013@14": 17,
+          "vertex=2000012@13 fragment=2000011@12": 14,
+          "vertex=2000043@44 fragment=2000039@40": 10,
+          "vertex=2000059@60 fragment=2000058@59": 10,
+          "vertex=2000062@63 fragment=2000013@14": 10,
+          "vertex=2000022@23 fragment=2000011@12": 9,
+          "vertex=2000024@25 fragment=2000011@12": 8,
+          "vertex=2000024@25 fragment=2000013@14": 7,
+          "vertex=2000025@26 fragment=2000011@12": 7,
+          "vertex=2000062@63 fragment=2000011@12": 5,
+          "vertex=2000010@11 fragment=2000026@27": 4,
+          "vertex=2000070@71 fragment=2000035@36": 4,
+          "vertex=2000014@15 fragment=2000013@14": 3,
+          "vertex=2000075@76 fragment=2000013@14": 2,
+          "vertex=2000077@78 fragment=fixed": 2,
+          "vertex=2000078@79 fragment=fixed": 2,
+          "vertex=2000071@72 fragment=2000011@12": 2,
+          "vertex=2000076@77 fragment=2000011@12": 2,
+          "vertex=2000041@42 fragment=2000038@39": 1,
+          "vertex=2000057@58 fragment=2000061@62": 1,
+          "vertex=2000074@75 fragment=2000026@27": 1,
+          "vertex=2000072@73 fragment=2000011@12": 1
+        },
+        "stage_start_error_ns": 1,
+        "stage_end_error_ns": 42
+      },
+      {
+        "submission_serial": 10797,
+        "trace_command_buffer_id": 49753650931,
+        "draws": 1,
+        "submit_to_gpu_start_ns": 329819958,
+        "gpu_start_to_end_ns": 310584,
+        "gpu_active_ns_by_stage": {
+          "Compute": 10458,
+          "Fragment": 300792,
+          "Vertex": 9375
+        },
+        "traced_encoder_count": 2,
+        "shader_combination_counts": {
+          "vertex=fixed fragment=2000065@66": 1
+        },
+        "stage_start_error_ns": 1,
+        "stage_end_error_ns": 0
+      },
+      {
+        "submission_serial": 10798,
+        "trace_command_buffer_id": 49753650934,
+        "draws": 1,
+        "submit_to_gpu_start_ns": 331170167,
+        "gpu_start_to_end_ns": 51375,
+        "gpu_active_ns_by_stage": {
+          "Compute": 6959,
+          "Fragment": 40000,
+          "Vertex": 8250
+        },
+        "traced_encoder_count": 2,
+        "shader_combination_counts": {
+          "vertex=fixed fragment=2000066@67": 1
+        },
+        "stage_start_error_ns": 42,
+        "stage_end_error_ns": 0
+      },
+      {
+        "submission_serial": 10799,
+        "trace_command_buffer_id": 49753650939,
+        "draws": 1,
+        "submit_to_gpu_start_ns": 333177792,
+        "gpu_start_to_end_ns": 51666,
+        "gpu_active_ns_by_stage": {
+          "Compute": 6250,
+          "Fragment": 40374,
+          "Vertex": 8375
+        },
+        "traced_encoder_count": 2,
+        "shader_combination_counts": {
+          "vertex=fixed fragment=2000066@67": 1
+        },
+        "stage_start_error_ns": 0,
+        "stage_end_error_ns": 1
+      },
+      {
+        "submission_serial": 10800,
+        "trace_command_buffer_id": 49753650943,
+        "draws": 95,
+        "submit_to_gpu_start_ns": 428442500,
+        "gpu_start_to_end_ns": 1468834,
+        "gpu_active_ns_by_stage": {
+          "Compute": 3584,
+          "Fragment": 1376000,
+          "Vertex": 92708
+        },
+        "traced_encoder_count": 2,
+        "shader_combination_counts": {
+          "vertex=2000021@22 fragment=2000000@1": 86,
+          "fixed function": 6,
+          "vertex=2000021@22 fragment=2000063@64": 2,
+          "vertex=fixed fragment=2000067@68": 1
+        },
+        "stage_start_error_ns": 1,
+        "stage_end_error_ns": 0
+      }
+    ]
+  },
+  "diagnostic_renderer_gpu_checks": 344,
+  "verified_fixture": {
+    "viewport": [
+      0,
+      0,
+      5120,
+      2880
+    ],
+    "multisample_count": 4,
+    "world_readback_sha256": "62dfaec55fb522574e2124a0da01b5f48ba0defab27bda770f593391ff213f1a",
+    "graphics": {
+      "captured": true,
+      "actual": {
+        "weatherDensity": "3",
+        "ffxGlow": "1",
+        "projectedTextures": "1",
+        "groundEffectDist": "140",
+        "extShadowQuality": "0",
+        "gxVSync": "0",
+        "baseMip": "0",
+        "shadowLevel": "0",
+        "maxFPSBk": "0",
+        "shadowLimit": 0,
+        "format": 3,
+        "farclip": "1277",
+        "caps": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          16,
+          1
+        ],
+        "gxDepthBits": "24",
+        "gxColorBits": "24",
+        "maxFPS": "0",
+        "formats": [
+          24,
+          24,
+          1,
+          24,
+          24,
+          2,
+          24,
+          24,
+          4
+        ],
+        "gxResolution": "5120x2880",
+        "environmentDetail": "1.5",
+        "terrainDetail": 1,
+        "terrainDetailBefore": 1,
+        "gxMultisample": "4",
+        "ffxDeath": "1",
+        "particleDensity": "1",
+        "marker": "complete",
+        "specular": "1",
+        "componentTextureLevel": "9",
+        "textureFilteringMode": "5",
+        "groundEffectDensity": "64"
+      },
+      "expected": {
+        "farclip": 1277,
+        "terrainDetail": 1,
+        "shadowLevel": 0,
+        "particleDensity": 1,
+        "environmentDetail": 1.5,
+        "groundEffectDensity": 64,
+        "groundEffectDist": 140,
+        "baseMip": 0,
+        "extShadowQuality": 0.0,
+        "textureFilteringMode": 5,
+        "weatherDensity": 3,
+        "componentTextureLevel": 9,
+        "specular": 1,
+        "ffxGlow": 1,
+        "ffxDeath": 1,
+        "projectedTextures": 1,
+        "gxResolution": "5120x2880",
+        "gxVSync": 0,
+        "gxMultisample": 4,
+        "maxFPS": 0,
+        "maxFPSBk": 0
+      },
+      "client_limits": {
+        "extShadowQuality": 0.0
+      },
+      "issues": []
+    },
+    "verified_cast_rows": 26,
+    "verified_gpu_window": {
+      "stream": 1,
+      "pid": 9254,
+      "window_size": [
+        5120,
+        2880
+      ],
+      "verified_completed_renders": 2045,
+      "first_sequence": 3516,
+      "last_sequence": 5560,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 24990036000,
+      "measurement_duration_ns": 25000000000,
+      "average_completed_fps": 81.76,
+      "p99_gpu_completion_gap_ns": 16075416,
+      "min_draws": 989,
+      "max_draws": 1118
+    },
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+      "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+      "renderer_sha256": "5b6749abce06c14fc9e428ae52e6c89dc630488443ffadfc6af397c7830327f4"
+    }
+  },
+  "trace_witness": {
+    "attach_pid": 9254,
+    "begin_uptime_ns": 439240582034958,
+    "trigger_uptime_ns": 439243688226791,
+    "end_uptime_ns": 439278298875458,
+    "requested_seconds": 6,
+    "returncode": 0,
+    "trace_exists": true
+  }
+}

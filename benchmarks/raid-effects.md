@@ -3267,3 +3267,15 @@ The two pairs lost **4.80** and **2.30 FPS** with the replacement. P99 rose **0.
 ```sh
 python3 benchmarks/summarize-raid-native-5k-quad-kernel.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
 ```
+
+### Capture one complete native 5K GPU frame
+
+Build the selected color-only MSAA renderer with `patches/winemetalgl-offscreen-frame-capture-trial.patch`. Keep the signed original runtime, the fixed 24-caster fixture and budget 2048. Enable the submission log and configure the Metal capture as in [the single-frame capture procedure](#capture-a-complete-live-raid-frame-from-the-offscreen-drawable). Keep `OCERZ_WMGL_CAPTURE_MIN_DRAWS=800` and pass the original 5K, 4× MSAA and maximum-quality checks.
+
+After the verified 25-second window, attach Metal System Trace to the same PID for six seconds. Create the capture request while recording. Save the PID, raw uptime bounds, capture request time, recorder status and archive witness in `trace-witness.json`. Export the `metal-gpu-intervals` table. The all-stage analyzer aligns the clocks against final output completions. It then matches both start and end of each captured render submission across the active GPU stages, which also covers command buffers whose last activity is compute.
+
+The archive contains one **5120 × 2880** frame with **1,037** labeled draw calls across five render submissions. Its largest submission accounted for **939** draws and **28.59 ms** of the **30.34 ms** of traced fragment activity in those submissions. GPU capture instrumentation was active for that frame. The 25-second fixture window ended before capture began. All five submission bounds matched within **42 ns**, and the diagnostic renderer passed **344** GPU tests. [Capture and command-buffer evidence](results/raid-native-5k-metal-frame-capture.json)
+
+```sh
+python3 benchmarks/summarize-metal-frame-capture.py CAPTURE_DIR --intervals-xml CAPTURE_DIR/intervals.xml --all-stages
+```
