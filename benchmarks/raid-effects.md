@@ -2083,3 +2083,24 @@ Both modes passed **806** general i386 checks and **2,728** offscreen buffer che
 ```sh
 python3 benchmarks/summarize-raid-shadow-index.py CAPTURE_ROOT
 ```
+
+### Reject lookups in empty OpenGL shadow buckets
+
+The trial publishes a small array of atomic population counts for the keys in the existing shadow slots. A lookup that misses the one-slot hint reads the relevant count. A zero count establishes that the key is absent before any scan or lock acquisition. Occupied buckets use the existing linear lookup, so hash collisions preserve normal behavior. During reassignment, the writer increments the new bucket before changing the slot and decrements the old bucket afterward. The existing mutex serializes key changes.
+
+Apply `patches/aarchx-m32-gl-shadow-empty-bucket-trial.patch` to the accepted profiled-runtime source layers. The fixed WineMetalGL library is the accepted profiled renderer. Set `OCERZ_M32_GL_SHADOW_EMPTY=1` to try the shortcut. Generate one 60-second raid profile per mode and merge them before building the common timed runtime. Set `OCERZ_M32_GL_SHADOW_EMPTY_LOG=1` only for the separate bucket diagnostic.
+
+Between the first and last complete counter rows after the last world readback, **3,670,016** checks reported an empty bucket and **4,498** reported an occupied one. That is **99.88%** empty among checks that reached the shortcut. The one-slot hint still runs first.
+
+| Shadow lookup policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Existing scan | 140.51 | 12.30 ms |
+| Empty-bucket shortcut | 141.96 | 12.17 ms |
+
+Throughput rose by **0.37 and 2.53 FPS** in the two pairs. P99 rose by **0.13 ms** and fell by **0.40 ms**, respectively. Keep the previous runtime as the benchmark baseline. The four 60-second timings had diagnostic logging disabled and verified the saved camera, effects, 26 timing rows, consecutive GPU completions and zero visible windows or activations.
+
+Each mode passed **806** general i386 checks and **2,728** offscreen buffer checks. The buffer suite reuses the test hunk from `patches/aarchx-m32-gl-shadow-index-trial.patch` with `OCERZ_M32_GL_SHADOW_INDEX_TEST=1`. It keeps the full-table, eviction and share-group cases from the earlier index trial. [Live timing, bucket counters and checks](results/raid-aarchx-gl-shadow-empty-bucket-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-shadow-bucket.py CAPTURE_ROOT
+```

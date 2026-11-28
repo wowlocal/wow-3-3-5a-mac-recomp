@@ -1,0 +1,123 @@
+diff --git a/src/m32_gl.c b/src/m32_gl.c
+--- a/src/m32_gl.c
++++ b/src/m32_gl.c
+@@ -49,6 +49,10 @@
+ } Shadow;
+ static Shadow g_shadows[256];
+ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
++enum { SHADOW_BUCKETS = 512 };
++static uint16_t g_shadow_bucket_population[SHADOW_BUCKETS];
++static int g_shadow_empty, g_shadow_empty_log;
++static uint64_t g_shadow_empty_queries, g_shadow_occupied_queries;
+ static int g_reuse_shadow_storage, g_log_map_stats, g_alias_unpack;
+ static uint64_t g_maps, g_allocations, g_reused_storage, g_copy_in_bytes;
+ static uint64_t g_evictions, g_grows, g_write_only_bytes;
+@@ -71,9 +75,53 @@
+ {
+     g_reuse_shadow_storage = getenv("OCERZ_M32_REUSE_GL_SHADOW_STORAGE") != NULL;
+     g_log_map_stats = getenv("OCERZ_M32_GL_MAP_STATS") != NULL;
++    const char *empty = getenv("OCERZ_M32_GL_SHADOW_EMPTY");
++    g_shadow_empty = empty && strcmp(empty, "1") == 0;
++    g_shadow_empty_log = getenv("OCERZ_M32_GL_SHADOW_EMPTY_LOG") != NULL;
+     const char *unpack_alias = getenv("OCERZ_M32_UNPACK_ALIAS");
+     g_alias_unpack = unpack_alias && strcmp(unpack_alias, "1") == 0;
+     g_host_page = (size_t)getpagesize();
++}
++
++static unsigned shadow_bucket(void *group, uint32_t buffer)
++{
++    if (!group || !buffer) return SHADOW_BUCKETS;
++    uint64_t hash = ((uintptr_t)group >> 4) + buffer * UINT64_C(0x9e3779b97f4a7c15);
++    return (unsigned)(hash ^ (hash >> 26) ^ (hash >> 45)) & (SHADOW_BUCKETS - 1);
++}
++
++/* Called under g_lock. Publish the new bucket before changing the key and
++ * keep the old one occupied until its key has been removed. */
++static void shadow_assign(Shadow *slot, Shadow value)
++{
++    if (!g_shadow_empty) {
++        *slot = value;
++        return;
++    }
++    unsigned old = shadow_bucket(slot->group, slot->buffer);
++    unsigned next = shadow_bucket(value.group, value.buffer);
++    if (next != old && next < SHADOW_BUCKETS)
++        __atomic_add_fetch(&g_shadow_bucket_population[next], 1, __ATOMIC_ACQ_REL);
++    *slot = value;
++    if (next != old && old < SHADOW_BUCKETS)
++        __atomic_sub_fetch(&g_shadow_bucket_population[old], 1, __ATOMIC_ACQ_REL);
++}
++
++static int shadow_known_absent(void *group, uint32_t buffer)
++{
++    if (!g_shadow_empty) return 0;
++    unsigned bucket = shadow_bucket(group, buffer);
++    if (bucket == SHADOW_BUCKETS) return 0;
++    int empty = __atomic_load_n(&g_shadow_bucket_population[bucket], __ATOMIC_ACQUIRE) == 0;
++    if (g_shadow_empty_log) {
++        uint64_t *counter = empty ? &g_shadow_empty_queries : &g_shadow_occupied_queries;
++        uint64_t count = __atomic_add_fetch(counter, 1, __ATOMIC_RELAXED);
++        if (count == 1 || (count & 262143) == 0)
++            fprintf(stderr, "ocerz: GL shadow buckets empty=%" PRIu64 " occupied=%" PRIu64 "\n",
++                    __atomic_load_n(&g_shadow_empty_queries, __ATOMIC_RELAXED),
++                    __atomic_load_n(&g_shadow_occupied_queries, __ATOMIC_RELAXED));
++    }
++    return empty;
+ }
+
+ static struct {
+@@ -297,7 +345,7 @@
+                 release_alias(vm, s);
+             if (s->direct) {
+                 m32_free(s->guest);
+-                *s = (Shadow){ 0 };
++                shadow_assign(s, (Shadow){ 0 });
+             }
+         }
+         uint64_t acquired = __atomic_load_n(&g_unpack_aliased, __ATOMIC_RELAXED);
+@@ -401,6 +449,8 @@
+     Shadow *h = &g_shadows[__atomic_load_n(&g_hint, __ATOMIC_RELAXED)];
+     if (has(h, group, buffer, live))
+         return h;
++    if (shadow_known_absent(group, buffer))
++        return NULL;
+     for (int i = 0; i < 256; i++)
+         if (has(&g_shadows[i], group, buffer, live)) {
+             __atomic_store_n(&g_hint, i, __ATOMIC_RELAXED);
+@@ -420,13 +470,16 @@
+     Shadow *h = &g_shadows[__atomic_load_n(&g_hint, __ATOMIC_RELAXED)];
+     if (is(h, group, buffer))
+         s = h;
++    const int absent = !s && shadow_known_absent(group, buffer);
+     for (int i = 0; i < 256 && !s; i++) {
+         Shadow *candidate = &g_shadows[i];
+-        if (is(candidate, group, buffer))
++        if (!absent && is(candidate, group, buffer))
+             s = candidate;
+         /* A direct alias can use an unassigned slot without evicting a shadow. */
+-        else if ((!spare || (!size && spare->group && !candidate->group)) && !candidate->host)
++        else if ((!spare || (!size && spare->group && !candidate->group)) && !candidate->host) {
+             spare = candidate;
++            if (absent && (size || !spare->group)) break;
++        }
+     }
+     if (!s && spare) {
+         uint32_t guest = 0, cap = 0;
+@@ -442,7 +495,7 @@
+         } else {
+             m32_free(spare->guest);
+         }
+-        *spare = (Shadow){ .group = group, .buffer = buffer, .guest = guest, .cap = cap };
++        shadow_assign(spare, (Shadow){ .group = group, .buffer = buffer, .guest = guest, .cap = cap });
+         s = spare;
+     }
+     if (s && s->cap < size) {
+@@ -740,7 +793,7 @@
+             if (s->alias)
+                 release_alias(vm, s);
+             m32_free(s->guest);
+-            *s = (Shadow){ 0 };
++            shadow_assign(s, (Shadow){ 0 });
+         }
+     }
+     pthread_mutex_unlock(&g_lock);
