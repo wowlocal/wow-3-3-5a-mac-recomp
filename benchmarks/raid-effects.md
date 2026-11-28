@@ -2409,3 +2409,40 @@ Apply `patches/aarchx-m32-raid-item-memory-probe.patch` after the preparation pr
 python3 benchmarks/summarize-raid-item-memory.py CAPTURE_ROOT I386_CLIENT \
     --cpu-profiles EARLIER_PROFILE_1 EARLIER_PROFILE_2
 ```
+
+### Run the verified i386 matrix product on ARM64
+
+The original function at `0x8c1e90` loads both 4 × 4 matrices before the first output store. Disassembly verifies **280** scalar instructions in the arithmetic body and the original addition order for all **16** results. The replay checks the final bits of **eight XMM registers** and the formulas for **26 scratch words**. Two 35-second original-client diagnostics record the input and output words at `0x8c1e9f` and `0x8c23de`.
+
+Apply `patches/aarchx-m32-raid-matrix-capture.patch` after the accepted AArchX source layers. Keep the profiled WineMetalGL renderer and translation cache off. Set `OCERZ_M32_RAID_MATRIX_LOG` to a new `matrix.bin` file and follow the quad-layout capture procedure. Arm each ring for **55 ms** at offsets **2, 12 and 24 seconds** in two verified 35-second launches. The probe skips snapshots that would cross a guest page and reports unpaired boundaries separately.
+
+For native execution, apply `patches/aarchx-m32-raid-matrix-native-trial.patch` on top and copy `benchmarks/raid-matrix-kernel.h` to `include/ocerz/raid-matrix-kernel.h` before rebuilding. Set `OCERZ_M32_RAID_MATRIX=1` for the native path. The JIT checks the original machine-code fingerprint. The helper checks guest permissions under the mapping lock, preserves the original rounding order without FMA, and writes the original result, scratch and XMM state. A pending signal, unexpected floating-point controls, unsuitable memory or input exponents outside the supported range use the normal translation. The original guest epilogue still runs.
+
+Use the same signed runtime in all four 60-second timings. Run control, native, native, control with both matrix logging flags unset. In a separate 25-second native diagnostic, set `OCERZ_M32_RAID_MATRIX_WITNESS=1` and capture the input and output ring at offsets **2, 10 and 18 seconds**. Export that capture with `--native` from `CAPTURE_ROOT/timing`.
+
+```sh
+python3 benchmarks/export-raid-matrix-replay.py CAPTURE_ROOT I386_CLIENT \
+    CAPTURE_ROOT/matrix-cases.bin > CAPTURE_ROOT/matrix-export.json
+python3 benchmarks/export-raid-matrix-replay.py CAPTURE_ROOT/timing I386_CLIENT \
+    CAPTURE_ROOT/timing/matrix-cases.bin --native > CAPTURE_ROOT/timing/matrix-export.json
+xcrun clang -arch arm64 -O3 -ffp-contract=off -fno-vectorize -fno-slp-vectorize \
+    benchmarks/raid-matrix-native-replay.c -o CAPTURE_ROOT/replay
+xcrun clang -arch arm64 -O1 -g -ffp-contract=off -fsanitize=address,undefined \
+    benchmarks/raid-matrix-native-replay.c -o CAPTURE_ROOT/replay-sanitized
+CAPTURE_ROOT/replay CAPTURE_ROOT/matrix-cases.bin > CAPTURE_ROOT/matrix-replay.txt
+CAPTURE_ROOT/replay CAPTURE_ROOT/timing/matrix-cases.bin --verify-only > CAPTURE_ROOT/timing/matrix-replay.txt
+CAPTURE_ROOT/replay-sanitized CAPTURE_ROOT/matrix-cases.bin --verify-only > CAPTURE_ROOT/matrix-sanitized.txt
+CAPTURE_ROOT/replay-sanitized CAPTURE_ROOT/timing/matrix-cases.bin --verify-only > CAPTURE_ROOT/timing/matrix-sanitized.txt
+python3 benchmarks/summarize-raid-matrix.py CAPTURE_ROOT
+```
+
+The replay matched all 16 outputs and 128 XMM bytes in **241,908** original calls and **131,499** calls from the native-enabled diagnostic. The scalar and NEON versions agreed on the scratch words, and the sanitizer build passed both datasets. All paired calls used the default masked MXCSR controls and passed the exponent guard. The corpus had zero actual output aliases, so the replay separately tested both directions of partial aliasing for every case. The standalone host timings were **17.12 ns** for scalar and **20.52 ns** for NEON per call over the captured corpus. Both benchmarked functions write outputs and XMM state.
+
+| Matrix path | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original translation | 140.72 | 12.43 ms |
+| Guarded ARM64 helper | 124.09 | 13.54 ms |
+
+The native helper lost **15.97 and 17.28 FPS** in the two pairs. P99 increased by **1.02 and 1.20 ms**. The timed comparison covers the complete path through the helper, including register transfers, mapping checks, the lock and the return to translated execution. The diagnostic logged over **25.9 million** successful native calls on one thread. All four timed launches, the native diagnostic and the two original recordings verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. The original translation remains the benchmark baseline. The trial runtime passed **805** general i386 checks. [Replays, per-run timings and artifact hashes](results/raid-aarchx-matrix-native-ab.json)
+
+In the original recordings, **7.64%** of inputs matched the immediately preceding complete call on the same CPU. **21.06%** matched one of its preceding 64 distinct pairs within a recording gate. The comparison uses exact input bytes and MXCSR controls. These rates bound potential reuse for this helper before staging or cache costs. [Observed input recurrence](results/raid-aarchx-matrix-native-ab.json)

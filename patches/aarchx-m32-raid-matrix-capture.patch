@@ -1,0 +1,151 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -851,6 +851,7 @@
+ #include "ocerz/m32.h"
+
+ #include <sys/mman.h>
++#include <fcntl.h>
+ #include <sys/sysctl.h>
+ #include <sys/time.h>
+ #include <mach/mach_time.h>
+@@ -19031,6 +19032,112 @@
+     return state == 1 && rip == target;
+ }
+
++/* Capture the inputs and outputs of the verified i386 matrix routine. */
++enum { RAID_MATRIX_BITS = 20, RAID_MATRIX_STRIDE = 256 };
++
++static int raid_matrix_capture_site(uint64_t pc)
++{
++    return pc == 0x8c1e9f || pc == 0x8c23de;
++}
++
++static const char *raid_matrix_capture_path(void)
++{
++    static int checked;
++    static const char *path;
++    if (!checked) {
++        path = getenv("OCERZ_M32_RAID_MATRIX_LOG");
++        checked = 1;
++    }
++    return path && *path ? path : NULL;
++}
++
++static void *raid_matrix_capture_mapping(void)
++{
++    static int initialized;
++    static void *mapping;
++    if (initialized) return mapping;
++    initialized = 1;
++    int lse = 0;
++    size_t len = sizeof lse;
++    unsigned tick_hz;
++    __asm__ volatile("mrs %x0, cntfrq_el0" : "=r" (tick_hz));
++    if (tick_hz != 1000000000u ||
++        sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &len, NULL, 0) || !lse)
++        return NULL;
++    int fd = open(raid_matrix_capture_path(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return NULL;
++    const size_t bytes = RAID_MATRIX_STRIDE * ((1u << RAID_MATRIX_BITS) + 1u);
++    if (ftruncate(fd, (off_t)bytes) == 0) {
++        void *p = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (p != MAP_FAILED) mapping = p;
++    }
++    close(fd);
++    return mapping;
++}
++
++static void emit_raid_matrix_capture(A64Buf *b, uint64_t pc)
++{
++    const int entry = pc == 0x8c1e9f;
++    const int frame = pin_slot(OCERZ_RBP);
++    const int out = pin_slot(OCERZ_RAX);
++    const int left = pin_slot(OCERZ_RCX);
++    const int right = pin_slot(OCERZ_RDX);
++    if (g_pin_class != 3 || !jgb_usable() || !ocerz_guest_base ||
++        frame < 0 || out < 0 || left < 0 || right < 0)
++        return;
++    if (!entry)
++        for (unsigned i = 0; i < 8; i++)
++            if (!xmm_is_pinned(i)) return;
++    void *mapping = raid_matrix_capture_mapping();
++    if (!mapping) return;
++
++    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++    a64_ldr(b, 8, JT1, JT0, 8);
++    uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
++    const int addresses[2] = {pin_hreg(entry ? left : out), pin_hreg(right)};
++    uint32_t *page_split[2];
++    const unsigned matrices = entry ? 2 : 1;
++    for (unsigned i = 0; i < matrices; i++) {
++        a64_ubfx(b, 0, JT1, addresses[i], 0, 12);
++        a64_add_imm(b, 0, JT1, JT1, 63);
++        page_split[i] = a64_label(b); a64_tbnz(b, JT1, 12, 0);
++    }
++
++    a64_movz(b, JT1, 1, 0);
++    a64_emit32(b, 0xf82a012bu); /* LDADD X10, X11, [X9] */
++    a64_ubfx(b, 0, JTT, JT2, 0, RAID_MATRIX_BITS);
++    a64_add_reg(b, 1, JT0, JT0, JTT, 8);
++    a64_add_imm(b, 1, JT0, JT0, RAID_MATRIX_STRIDE);
++    a64_str(b, 8, A64_ZR, JT0, 0);
++    a64_emit32(b, 0xd53be04au); /* MRS X10, CNTVCT_EL0 */
++    a64_str(b, 8, JT1, JT0, 8);
++    a64_str(b, 8, 20, JT0, 16);
++    a64_mov_imm64(b, JT1, pc);
++    a64_str(b, 4, JT1, JT0, 24);
++    a64_str(b, 4, pin_hreg(frame), JT0, 28);
++    a64_str(b, 4, pin_hreg(out), JT0, 32);
++    a64_str(b, 4, pin_hreg(left), JT0, 36);
++    a64_str(b, 4, pin_hreg(right), JT0, 40);
++    a64_ldr(b, 4, JT1, 20, X87_MXCSR_OFF);
++    a64_str(b, 4, JT1, JT0, 44);
++    for (unsigned matrix = 0; matrix < matrices; matrix++) {
++        a64_mov_reg(b, 0, JTT, addresses[matrix]);
++        a64_add_reg(b, 1, JTT, JGB, JTT, 0);
++        for (unsigned word = 0; word < 16; word++) {
++            a64_ldr(b, 4, JT1, JTT, 4 * word);
++            a64_str(b, 4, JT1, JT0, 48 + 64 * matrix + 4 * word);
++        }
++    }
++    if (!entry)
++        for (unsigned i = 0; i < 8; i++)
++            a64_str_v(b, 16, xmm_vreg(i), JT0, 112 + 16 * i);
++    a64_add_imm(b, 1, JT2, JT2, 1);
++    a64_stlr(b, 8, JT2, JT0);
++    for (unsigned i = 0; i < matrices; i++)
++        a64_patch_tbz(page_split[i], a64_label(b));
++    a64_patch_cbz(disabled, a64_label(b));
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+ static int g_ind_treg;
+@@ -25839,6 +25946,8 @@
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int matrix_capture = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                           raid_matrix_capture_path() != NULL;
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -25854,6 +25963,8 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && matrix_capture && raid_matrix_capture_site(vpc))
++                    break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+                     break;
+@@ -26783,6 +26894,8 @@
+         g_ea_plain = 0;
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
++        if (i == 0 && matrix_capture && raid_matrix_capture_site(rip))
++            emit_raid_matrix_capture(&b, rip);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);

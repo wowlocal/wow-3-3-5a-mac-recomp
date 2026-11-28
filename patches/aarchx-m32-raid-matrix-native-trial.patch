@@ -1,0 +1,179 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19138,6 +19138,18 @@
+     a64_patch_cbz(disabled, a64_label(b));
+ }
+
++static int raid_matrix_body_matches(void)
++{
++    const uint64_t begin = 0x8c1e90, end = 0x8c23e2;
++    if (!ocerz_addr_readable(begin) || !ocerz_addr_readable(end - 1))
++        return 0;
++    const unsigned char *text = ocerz_g2h(begin);
++    uint64_t hash = UINT64_C(0xcbf29ce484222325);
++    for (uint64_t i = 0; i < end - begin; i++)
++        hash = (hash ^ text[i]) * UINT64_C(0x100000001b3);
++    return hash == UINT64_C(0x487bae2171fe1b67);
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+ static int g_ind_treg;
+@@ -20740,6 +20752,48 @@
+     return pairs;
+ }
+
++int ocerz_m32_raid_matrix(OcerzCPU *, uint32_t, uint32_t, uint32_t, uint32_t, int);
++
++static void emit_raid_matrix_trial(A64Buf *b, uint32_t **epi_sites, int *n_epi)
++{
++    if (g_pin_class != 3 || !jgb_usable() || !ocerz_guest_base || ocerz_low_base ||
++        g_l0_fixed || !raid_matrix_body_matches())
++        return;
++    a64_mov_imm64(b, JTA, (uint64_t)(uintptr_t)&m32_sig_pending);
++    a64_ldr(b, 4, JT0, JTA, 0);
++    a64_ldr(b, 4, JT1, 20, INT_OFF);
++    a64_orr_reg(b, 0, JT0, JT0, JT1, 0);
++    uint32_t *pending = a64_label(b); a64_cbnz(b, 0, JT0, 0);
++    a64_emit32(b, 0xd53b4200u | JT1); /* MRS X10, NZCV */
++    a64_stp_pre(b, JT1, 30, 31, -16);
++    emit_m32_bridge_xmms(b, 1);
++    a64_mov_reg(b, 0, 1, pin_hreg(pin_slot(OCERZ_RAX)));
++    a64_mov_reg(b, 0, 2, pin_hreg(pin_slot(OCERZ_RCX)));
++    a64_mov_reg(b, 0, 3, pin_hreg(pin_slot(OCERZ_RDX)));
++    a64_mov_reg(b, 0, 4, pin_hreg(pin_slot(OCERZ_RBP)));
++    a64_movz(b, 5, ENV_ON("OCERZ_M32_RAID_MATRIX_WITNESS") != 0, 0);
++    a64_mov_reg(b, 1, 0, 20);
++    a64_mov_imm64(b, 16, (uint64_t)(uintptr_t)ocerz_m32_raid_matrix);
++    a64_blr(b, 16);
++    g_callout_seq++;
++    a64_mov_reg(b, 0, JT0, 0);
++    emit_m32_bridge_xmms(b, 0);
++    emit_pk_consts_load(b);
++    emit_reload_jgb(b);
++    emit_reload_mem_base(b);
++    yc_reload_all(b);
++    a64_ldp_post(b, JT1, 30, 31, 16);
++    a64_emit32(b, 0xd51b4200u | JT1); /* MSR NZCV, X10 */
++    uint32_t *declined = a64_label(b); a64_cbz(b, 0, JT0, 0);
++    a64_mov_imm64(b, JT1, 0x8c23de);
++    a64_str(b, 8, JT1, 20, RIP_OFF);
++    a64_mov_imm64(b, 0, OCERZ_STEP_OK);
++    epi_sites[(*n_epi)++] = a64_label(b);
++    a64_b(b, 0);
++    a64_patch_cbz(declined, a64_label(b));
++    a64_patch_cbz(pending, a64_label(b));
++}
++
+ static int emit_bridge_fastcall32_body(A64Buf *b, const X86Insn *insns, int i, uint32_t **epi_sites, int *n_epi);
+
+ static void emit_bridge_fastcall32(A64Buf *b, const X86Insn *insns, int i,
+@@ -25948,6 +26002,8 @@
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
+     const int matrix_capture = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                            raid_matrix_capture_path() != NULL;
++    const int matrix_trial = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                             ENV_ON("OCERZ_M32_RAID_MATRIX");
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -25964,6 +26020,8 @@
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
+                 if (vn && matrix_capture && raid_matrix_capture_site(vpc))
++                    break;
++                if (vn && matrix_trial && vpc == 0x8c1e9f)
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -26896,6 +26954,8 @@
+         lanerec_note((uint32_t)(b.p - entry));
+         if (i == 0 && matrix_capture && raid_matrix_capture_site(rip))
+             emit_raid_matrix_capture(&b, rip);
++        if (i == 0 && matrix_trial && rip == 0x8c1e9f)
++            emit_raid_matrix_trial(&b, epi_sites, &n_epi);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);
+diff --git a/src/mem.c b/src/mem.c
+--- a/src/mem.c
++++ b/src/mem.c
+@@ -112,6 +112,8 @@
+  * gettimeofday each, 48% of a sqlite run that calls randomblob() per row.
+  */
+ #include "ocerz/mem.h"
++#include "ocerz/cpu.h"
++#include "ocerz/raid-matrix-kernel.h"
+ #include "ocerz/mode.h"
+
+ #include <sys/mman.h>
+@@ -2547,6 +2549,68 @@
+     return prot >= 0 && (prot & PROT_READ) != 0;
+ }
+
++/* Check both the guest slot and the containing host page while map_lock
++ * keeps mappings and executable-page protection stable. */
++static int raid_matrix_span(uint64_t first, uint64_t size, int access)
++{
++    const uint64_t last = first + size;
++    MemRegion *r = region_for_range(round_down(first), round_up(last));
++    if (!r || first < OCERZ_NULL_LIMIT || last > UINT64_C(0x100000000))
++        return 0;
++    for (uint64_t address = guest_round_down(first); address < last; address += OCERZ_GUEST_PAGE) {
++        const size_t page = pg_index(r, address);
++        const uint32_t state = slot_load(r, slot_index(r, address));
++        const int prot = (int)((state & MEM_SLOT_PROT_MASK) >> MEM_SLOT_PROT_SHIFT);
++        if (!slot_is_data(state) || (prot & access) != access || !bit_test(r, page))
++            return 0;
++        if ((access & PROT_WRITE) && ((prot & PROT_EXEC) || (r->armed && r->armed[page])))
++            return 0;
++    }
++    return 1;
++}
++
++int ocerz_m32_raid_matrix(OcerzCPU *cpu, uint32_t dst, uint32_t left, uint32_t right, uint32_t frame, int log)
++{
++    if ((cpu->mxcsr & ~UINT32_C(63)) != UINT32_C(0x1f80) ||
++        ((dst | left | right | frame) & 3) || frame < 104)
++        return 0;
++    uint64_t fpcr;
++    __asm__ volatile("mrs %0, fpcr" : "=r" (fpcr));
++    if (fpcr != 0)
++        return 0;
++    const uint64_t scratch = frame - 104;
++    const uint64_t limit = (uint64_t)frame + 20;
++    const uint64_t args[3] = {dst, left, right};
++    for (unsigned i = 0; i < 3; i++)
++        if (args[i] < limit && args[i] + 64 > scratch)
++            return 0;
++
++    map_lock_acquire();
++    int use_native = 0;
++    if (raid_matrix_span(left, 64, PROT_READ) && raid_matrix_span(right, 64, PROT_READ) &&
++        raid_matrix_span(dst, 64, PROT_WRITE) && raid_matrix_span(scratch, 104, PROT_WRITE)) {
++        float l[16], r[16];
++        memcpy(l, ocerz_g2h(left), sizeof l);
++        memcpy(r, ocerz_g2h(right), sizeof r);
++        if (raid_matrix_input_ok(l) && raid_matrix_input_ok(r)) {
++            float out[16], xmm[8][4], locals[26];
++            _Static_assert(sizeof cpu->xmm[0] == 16, "Guest XMM layout changed");
++            raid_matrix_product(out, xmm, locals, l, r);
++            memcpy(ocerz_g2h(dst), out, sizeof out);
++            memcpy(ocerz_g2h(scratch), locals, sizeof locals);
++            memcpy(cpu->xmm, xmm, sizeof xmm);
++            use_native = 1;
++        }
++    }
++    map_lock_release();
++    if (use_native && log) {
++        static _Thread_local unsigned hits;
++        if (++hits == 1 || (hits & 32767) == 0)
++            fprintf(stderr, "ocerz: raid matrix native calls=%u\n", hits);
++    }
++    return use_native;
++}
++
+ int ocerz_mem_overlaps(uint64_t gaddr, uint64_t len)
+ {
+     if (len == 0 || gaddr > UINT64_MAX - len)
