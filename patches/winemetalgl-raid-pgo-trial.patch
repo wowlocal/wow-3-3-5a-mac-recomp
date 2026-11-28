@@ -1,0 +1,25 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -155,6 +155,21 @@
+     target_compile_options(wmgl_portable PRIVATE $<$<CONFIG:Release>:-flto=thin>)
+     target_link_options(winemetalgl_core PRIVATE $<$<CONFIG:Release>:-flto=thin>)
+ endif()
++option(WMGL_PGO_GENERATE "Collect LLVM instrumentation profiles for the renderer" OFF)
++set(WMGL_PGO_PROFILE "" CACHE FILEPATH "Indexed LLVM profile to optimize the renderer with")
++if(WMGL_PGO_GENERATE AND WMGL_PGO_PROFILE)
++    message(FATAL_ERROR "Select profile generation or profile use for each build.")
++endif()
++if(WMGL_PGO_GENERATE)
++    target_compile_options(winemetalgl_core PRIVATE -fprofile-generate -fprofile-continuous -fprofile-update=atomic)
++    target_compile_options(wmgl_portable PRIVATE -fprofile-generate -fprofile-continuous -fprofile-update=atomic)
++    target_link_options(winemetalgl_core PRIVATE -fprofile-generate -fprofile-continuous)
++elseif(WMGL_PGO_PROFILE)
++    foreach(target winemetalgl_core wmgl_portable)
++        target_compile_options(${target} PRIVATE "-fprofile-use=${WMGL_PGO_PROFILE}" -Werror=profile-instr-out-of-date)
++    endforeach()
++    target_link_options(winemetalgl_core PRIVATE "-fprofile-use=${WMGL_PGO_PROFILE}")
++endif()
+ set_target_properties(winemetalgl_core PROPERTIES
+     OUTPUT_NAME "winemetalgl"
+     PREFIX "lib"

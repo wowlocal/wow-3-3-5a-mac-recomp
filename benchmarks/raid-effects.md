@@ -2022,3 +2022,22 @@ Throughput changed by **−2.18 and +0.57 FPS** across the two pairs. P99 increa
 python3 benchmarks/summarize-raid-i386-wrap-guards.py CAPTURE_ROOT I386_CLIENT \
     --cpu-profile EARLIER_STACK_RUN_1 --cpu-profile EARLIER_STACK_RUN_2
 ```
+
+### Profile-guided optimization of the native renderer
+
+The accepted renderer already builds with `-O3` and ThinLTO. This trial takes one copy of the same patched renderer sources and applies an LLVM instrumentation profile from the live raid. The game runtime remains the same executable. Profile generation, the control build, and profile use share the same CMake build tree and renderer configuration.
+
+Apply `patches/winemetalgl-raid-pgo-trial.patch` to the copied renderer sources. Keep `WMGL_HOST_ONLY=ON`, `WMGL_LTO=ON`, `CMAKE_BUILD_TYPE=Release` and arm64 for the three builds. Select `WMGL_PGO_GENERATE=ON` to generate profiles and pass a fresh `LLVM_PROFILE_FILE` pattern such as `wmgl-%p%c.profraw` to each training launch. Continuous mode writes counters even when the benchmark terminates the client. Merge the two recorded profiles with `llvm-profdata merge`. Set `WMGL_PGO_GENERATE=OFF` for timing. The control leaves `WMGL_PGO_PROFILE` empty and the candidate points it at the indexed profile. [Clang PGO instructions](https://clang.llvm.org/docs/UsersManual.html#profile-guided-optimization)
+
+The two 60-second training windows verified **12,562** GPU completions. The merged IR profile contains **10,988** function records. The measured builds used Apple Clang 21 and matched all **78** renderer compile commands apart from the profile-use flag and its stale-profile check. Neither measured Mach-O includes LLVM instrumentation counters. The executable text section shrank from **9,932,836 to 6,982,872 bytes**.
+
+| Native renderer build | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Release and ThinLTO | 135.05 | 12.74 ms |
+| Release, ThinLTO and the raid profile | 138.58 | 12.30 ms |
+
+The two pairs gained **2.20 and 4.85 FPS** and shortened p99 by **0.12 and 0.76 ms**. Use the locally profiled library in follow-up comparisons that keep this renderer source unchanged. Each of the four 60-second timing windows verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible windows or activations. Both builds passed **343** GPU tests. The deterministic indexed replay produced the same framebuffer hash in both modes. [Timed results, build flags and replay](results/raid-winemetalgl-renderer-pgo-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-renderer-pgo.py CAPTURE_ROOT
+```
