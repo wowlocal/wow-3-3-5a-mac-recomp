@@ -15,6 +15,7 @@ MEMORY = run_path(str(HERE / "summarize-raid-item-memory.py"))
 PREP = MEMORY["PREP"]
 SCOPES = ("dispatch", "list_update", "list_consumer", "list_with_item_dependencies")
 FLAG_CLEAR_PCS = {0x97B8B7, 0x97BD8F, 0x97BEC9, 0x97C19B, 0x97C292, 0x97C7E0}
+EARLY_PUBLICATIONS = {0x5C: 0x97D3B9, 0x64: 0x97D3BF, 0x94: 0x97D3F2}
 POLICIES = (
     ("observed_reads_and_writes", True, False, False),
     ("read_dependencies_with_ordered_publication_assumed", False, False, False),
@@ -155,7 +156,8 @@ def schedule(predecessors, weights, workers=4):
     return critical_path, now
 
 
-def access_time_bound(items, weights, isolate_dispatch_context, binding_delays=None, commute_flag_clears=False):
+def access_time_bound(items, weights, isolate_dispatch_context, binding_delays=None, commute_flag_clears=False,
+                      early_context_tags=()):
     """Use offsets of observed live-in reads and final writes within each task."""
     last_writer, last_regular_writer = {}, {}
     last_start = finished = 0
@@ -164,6 +166,8 @@ def access_time_bound(items, weights, isolate_dispatch_context, binding_delays=N
         scale = work / item.elapsed_ns
         start_offset = item.started_ns
         isolate = isolate_dispatch_context and item.context
+        predicts_context = (early_context_tags and item.tag in early_context_tags and item.context and
+                            (item.number & 0xfff) + 0x2f < 0x1000)
         clears = item.flag_word_touches[0] - item.flag_word_touches[1] if commute_flag_clears else set()
         lo, hi = item.context + 0x50, item.context + 0xA0
         earliest = last_start
@@ -193,6 +197,8 @@ def access_time_bound(items, weights, isolate_dispatch_context, binding_delays=N
                 raise ValueError("Write offset falls outside the task")
             available = earliest + (written - start_offset) * scale
             writer = item.writes.get(byte, 0)
+            if predicts_context and EARLY_PUBLICATIONS.get((byte - item.context) & ~3) == writer:
+                available = earliest
             is_clear = (byte & ~3) in clears
             last_writer[byte] = available, writer, is_clear
             if commute_flag_clears and not is_clear:
@@ -246,7 +252,7 @@ def timing_calibration(root):
     return weights, frames
 
 
-def evaluate(frames, calibration):
+def evaluate(frames, calibration, early_context_tags=()):
     result = {}
     for scope in SCOPES:
         captured = [groups[scope] for groups in frames if groups.get(scope)]
@@ -258,7 +264,13 @@ def evaluate(frames, calibration):
                                                for frame in captured for batch in frame for item in batch),
             "policies": {},
         }
-        for name, ordered_writes, isolated_context, commuting_clears in POLICIES:
+        policies = [(*policy, ()) for policy in POLICIES]
+        if scope == "dispatch" and early_context_tags:
+            policies.extend((
+                ("verified_early_publications", False, False, False, early_context_tags),
+                ("verified_early_publications_and_commuting_clears", False, False, True, early_context_tags),
+            ))
+        for name, ordered_writes, isolated_context, commuting_clears, released_tags in policies:
             if isolated_context and scope != "dispatch":
                 continue
             fractions = defaultdict(list)
@@ -290,7 +302,8 @@ def evaluate(frames, calibration):
                         serial[model] += sum(weights)
                         if scope == "dispatch" and not ordered_writes:
                             delays = binding_delays if model == "timing_only_median_by_tag" else None
-                            lower = access_time_bound(batch, weights, isolated_context, delays, commuting_clears)
+                            lower = access_time_bound(batch, weights, isolated_context, delays, commuting_clears,
+                                                      released_tags)
                             overlap[model] += lower
                             worker_lower_bound[model] += max(lower, sum(weights) / 4)
                 for model, conventional in serial.items():
@@ -326,7 +339,26 @@ def evaluate(frames, calibration):
     return result
 
 
-def summarize(root, guest, timing_root):
+def verified_input_tags(path, guest_hash):
+    if path is None:
+        return ()
+    witness = json.loads(path.read_text())
+    if witness["guest_image_sha256"] != guest_hash or len(witness["captures"]) < 2:
+        raise ValueError("Need both verified context-value captures of the same i386 image")
+    matching = []
+    for capture in witness["captures"]:
+        window = capture["verified_gpu_window"]
+        if window["window_size"] != [1365, 768] or window["missing_sequences"] or not window["verified_completed_renders"]:
+            raise ValueError("Context values lack verified full-raid outputs")
+        matching.append({row["tag"] for row in capture["predictions_from_the_original_item_before_setup"]
+                         if 0 < row.get("input_words_captured", 0) == row.get("all_three_values_match")})
+    tags = sorted(set.intersection(*matching))
+    if not tags:
+        raise ValueError("No input tag predicts all three fields in both captures")
+    return tags
+
+
+def summarize(root, guest, timing_root, context_values=None):
     earlier = json.loads((HERE / "results/raid-aarchx-i386-item-memory.json").read_text())
     artifact = json.loads((root / "artifact-sha256.json").read_text())
     if (artifact != earlier["diagnostic_artifacts"] or
@@ -335,6 +367,7 @@ def summarize(root, guest, timing_root):
         raise ValueError("Wrong game image or diagnostic runtime")
     calibration, calibrated_frames = timing_calibration(timing_root)
     known_clears = verified_flag_clears(guest)
+    early_context_tags = verified_input_tags(context_values, earlier["guest_image_sha256"])
     frames, captures = [], []
     for number in (1, 2):
         folder = root / f"measured-{number}"
@@ -353,7 +386,7 @@ def summarize(root, guest, timing_root):
         label: {key: max(1, round(aggregate(samples))) for key, samples in calibration.items()}
         for label, aggregate in (("timing_only_median_by_tag", median), ("timing_only_mean_by_tag", mean))
     }
-    return {
+    result = {
         "guest_image_sha256": earlier["guest_image_sha256"],
         "diagnostic_artifacts": artifact,
         "captures": captures,
@@ -365,8 +398,15 @@ def summarize(root, guest, timing_root):
              "mean_elapsed_ns": costs["timing_only_mean_by_tag"][key]}
             for key, samples in sorted(calibration.items())
         ],
-        "scopes": evaluate(frames, costs),
+        "scopes": evaluate(frames, costs, early_context_tags),
     }
+    if early_context_tags:
+        result["verified_early_context"] = {
+            "context_values_sha256": MEMORY["file_hash"](context_values),
+            "input_tags": early_context_tags,
+            "destination_fields": [hex(field) for field in sorted(EARLY_PUBLICATIONS)],
+        }
+    return result
 
 
 if __name__ == "__main__":
@@ -374,5 +414,6 @@ if __name__ == "__main__":
     parser.add_argument("capture_root", type=Path)
     parser.add_argument("guest_binary", type=Path)
     parser.add_argument("timing_root", type=Path)
+    parser.add_argument("--context-values", type=Path)
     args = parser.parse_args()
-    print(json.dumps(summarize(args.capture_root, args.guest_binary, args.timing_root), indent=2))
+    print(json.dumps(summarize(args.capture_root, args.guest_binary, args.timing_root, args.context_values), indent=2))

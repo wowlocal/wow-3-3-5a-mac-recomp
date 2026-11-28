@@ -2755,3 +2755,23 @@ The ordinary access-offset model attributes **35%** of its modeled start delays 
 python3 benchmarks/summarize-raid-i386-frame-slots.py I386_CLIENT STACK_CAPTURE_1 STACK_CAPTURE_2
 python3 benchmarks/summarize-raid-item-critical-path.py MEMORY_CAPTURE_ROOT I386_CLIENT TIMING_CAPTURE_ROOT
 ```
+
+### Derive the next dispatcher's context from the original item
+
+Apply `patches/aarchx-m32-raid-context-values-probe.patch` after the particle-path probe. Rebuild the diagnostic AArchX runtime and retain the selected deferred PGO renderer. Set `OCERZ_M32_RAID_CONTEXT_VALUES_LOG` to `context-values.bin` in each capture. The probe uses **128-byte records** with the same numbered ring header as the earlier preparation probe.
+
+Use two verified 45-second raid launches under `phase-0` and `phase-1`. Arm each ring for five seconds, starting two and nineteen seconds after the full fixture is ready, respectively. Save the offsets, gate duration and row counts to `phase-gate.json` along with the prior renderer and isolation witnesses. The probe samples context registers before the common setup, at tag-specific checkpoints, and on both sides of the late stores. It also reads three input words at the original dispatch entry. The optional reads stay on the same mapped guest page. Save the 805-check runtime result to `general.log`.
+
+The two windows verified **12,297** consecutive GPU completions across their two launches with the saved camera and effects, all 26 timing rows, and zero trial windows or activations. The analyzer joined checkpoints to **1,351** complete producer intervals and verified **647,094** publications. The three recorded destination words matched the original previous publication in **638,788 of 638,788** observed adjacent-index pairs.
+
+The early calculation uses the item tag for `0x5c` and the word at item offset `0x4` for `0x64`. For `0x94` it uses the word at item offset `0x2c` in tags 0–2 and zero in tags 3–4. It matched all three observed late words in **640,813 of 640,813** items with inputs covered by the page guard. The guard left **6,281** items uncovered. The result also matched the next item's original previous-state snapshot in every covered adjacent pair, **632,592** cases. The median lead before publication was roughly **2 µs** for tag 0, **8.5 µs** for tag 1, and **11 µs** for tag 4. These are instrumented task times. [Live values and publication checks](results/raid-aarchx-context-values.json)
+
+The tag-0 checkpoint at `0x9791ad` matched all nine late copy sources. In tags 1 and 4, the sampled flags at `0x78` or `0x80` still differed before the heavy call. In every sampled tag-4 checkpoint at `0x97cb1c`, `0x98` pointed into the current callee's stack. A worker descriptor must own those bytes if it needs them after return. The verified early calculation covers three fields. A production implementation must retain the other dependencies, index-change barriers and ordered graphics publication.
+
+The revised scheduler makes only the three verified copies available at dispatch entry, with the same item page guard. It retains the other context dependencies. The four-worker lower bound moves from **79–80%** to **66–68%** of serial work using timing-only weights. Combining those three early publications with the earlier hypothetical merge of identical flag clears leaves **47%** with either timing-only estimate, or **87%** with instrumented elapsed weights. The `0x97d3c5 → 0x979553` edge at `0x6c` supplies about **97%** of the remaining modeled start delays in the combined scenario. Its source at `0x68` already matched the eventual copy at the common pre-call checkpoint. These are scheduling bounds and leave worker, synchronization, rendering and untraced call costs to a runtime implementation. [Revised scheduling model](results/raid-aarchx-context-values-critical-path.json)
+
+```sh
+python3 benchmarks/summarize-raid-context-values.py CONTEXT_CAPTURE_ROOT I386_CLIENT
+python3 benchmarks/summarize-raid-item-critical-path.py MEMORY_CAPTURE_ROOT I386_CLIENT TIMING_CAPTURE_ROOT \
+    --context-values benchmarks/results/raid-aarchx-context-values.json
+```
