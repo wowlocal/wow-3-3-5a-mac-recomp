@@ -1,0 +1,257 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -1942,6 +1942,7 @@
+ }
+ static int g_mem_hoist_greg = -1;
+ static int g_m32_base_stop;
++static int g_m32_base_stop2;
+ static int g_ea_lowhoisted, g_ea_lowhoisted_reg;
+ static int g_mem_hoist_aux_disp;
+ static int g_mem_hoist_aux_index = -1;
+@@ -5781,7 +5782,8 @@
+     if (g_mem_hoist_greg2 >= 0) {
+         int bs2 = pin_slot(g_mem_hoist_greg2);
+         assert(bs2 >= 0);
+-        if (jgb_usable()) a64_add_reg(b, 1, JMEMBASE2, JGB, pin_hreg(bs2), 0);
++        if (g_m32_base_stop2) a64_add_ext_uxtw(b, JMEMBASE2, JGB, pin_hreg(bs2), 0);
++        else if (jgb_usable()) a64_add_reg(b, 1, JMEMBASE2, JGB, pin_hreg(bs2), 0);
+         else { a64_mov_imm64(b, JMEMBASE2, ocerz_guest_base); a64_add_reg(b, 1, JMEMBASE2, JMEMBASE2, pin_hreg(bs2), 0); }
+     }
+     if (g_mem_hoist_greg3 >= 0) {
+@@ -5806,12 +5808,17 @@
+            op->disp >= -256 && op->disp <= 255;
+ }
+
+-static int m32_hoisted_base_access(const X86Insn *in, const X86Operand *op)
+-{
+-    return g_m32_base_stop && !g_align_guard && g_cur_insn_idx >= 0 &&
+-           g_cur_insn_idx < g_m32_base_stop &&
+-           g_cur_insns && &g_cur_insns[g_cur_insn_idx] == in &&
+-           op->base == (unsigned)g_mem_hoist_greg && m32_hoisted_base_form(in, op);
++static int m32_hoisted_base_reg(const X86Insn *in, const X86Operand *op)
++{
++    if (!g_m32_base_stop || g_align_guard || g_cur_insn_idx < 0 ||
++        !g_cur_insns || &g_cur_insns[g_cur_insn_idx] != in ||
++        !m32_hoisted_base_form(in, op))
++        return -1;
++    if (g_cur_insn_idx < g_m32_base_stop && op->base == (unsigned)g_mem_hoist_greg)
++        return JMEMBASE;
++    if (g_cur_insn_idx < g_m32_base_stop2 && op->base == (unsigned)g_mem_hoist_greg2)
++        return JMEMBASE2;
++    return -1;
+ }
+
+ static int m32_hoisted_base_plain(const X86Operand *op)
+@@ -5823,15 +5830,16 @@
+                                    const X86Operand *mem, int size,
+                                    int value_reg, int store)
+ {
+-    if (m32_hoisted_base_access(insn, mem)) {
++    int m32_reg = m32_hoisted_base_reg(insn, mem);
++    if (m32_reg >= 0) {
+         const X86Operand *dst = &insn->ops[0];
+         const int folded_load = !store && insn->op == OCERZ_OP_MOV && size == 4 &&
+             dst->kind == OCERZ_OPK_REG && pin_slot(dst->reg) >= 0 &&
+             !(rsp_is_ptr() && dst->reg == OCERZ_RSP && !jgb_zero()) &&
+             ENV_ON("OCERZ_M32_MOV_BASE_UXTW") && mem_plain_access_ok(mem);
+         const int plain = m32_hoisted_base_plain(mem) || folded_load;
+-        if (store) emit_gpr_st_at(b, size, value_reg, JMEMBASE, (int32_t)mem->disp, plain);
+-        else       emit_gpr_ld_at(b, size, value_reg, JMEMBASE, (int32_t)mem->disp, plain);
++        if (store) emit_gpr_st_at(b, size, value_reg, m32_reg, (int32_t)mem->disp, plain);
++        else       emit_gpr_ld_at(b, size, value_reg, m32_reg, (int32_t)mem->disp, plain);
+         return 1;
+     }
+     if (g_mem_hoist_greg < 0 ||
+@@ -9649,8 +9657,9 @@
+ {
+     g_sse_mem_plainacc = mem_plain_access_ok(o);
+     g_sse_mem_gpr_plainacc = g_sse_mem_plainacc;
+-    if (m32_hoisted_base_access(insn, o)) {
+-        g_sse_mem_ra = JMEMBASE;
++    int m32_reg = m32_hoisted_base_reg(insn, o);
++    if (m32_reg >= 0) {
++        g_sse_mem_ra = m32_reg;
+         g_sse_mem_disp = (uint32_t)o->disp;
+         g_sse_mem_plain = 1;
+         g_sse_mem_gpr_plainacc = m32_hoisted_base_plain(o);
+@@ -22067,7 +22076,8 @@
+     a64_b(b, 0);
+ }
+
+-static int select_m32_base_hoist(const X86Insn *insns, int n, uint64_t rip, int *base)
++static int select_m32_base_hoist(const X86Insn *insns, int n, uint64_t rip,
++                                 int *base, int *base2)
+ {
+     const int general = ENV_ON("OCERZ_M32_GENERAL_BASE_HOIST");
+     if (!g_xlat_mode32 || g_pin_class != 3 || g_no_chain || !ocerz_guest_base ||
+@@ -22122,6 +22132,20 @@
+
+     int stop = (active & (1u << best)) ? i : end[best];
+     *base = best;
++    if (general && ENV_ON("OCERZ_M32_DUAL_BASE_HOIST")) {
++        int second = -1;
++        for (int reg = OCERZ_RAX; reg < OCERZ_R8; ++reg)
++            if (reg != best && count[reg] >= 6 && (second < 0 || count[reg] > count[second]))
++                second = reg;
++        if (second >= 0) {
++            *base2 = second;
++            g_m32_base_stop2 = (active & (1u << second)) ? i : end[second];
++            if (ENV_ON("OCERZ_M32_DUAL_BASE_HOIST_LOG"))
++                fprintf(stderr, "ocerz: i386 dual base rip=%#llx primary=%d:%d:%d secondary=%d:%d:%d\n",
++                        (unsigned long long)rip, best, count[best], stop,
++                        second, count[second], g_m32_base_stop2);
++        }
++    }
+     if (best == OCERZ_RBP && ENV_ON("OCERZ_M32_EBP_HOIST_LOG"))
+         fprintf(stderr, "ocerz: i386 EBP hoist rip=%#llx accesses=%d prefix=%d\n",
+                 (unsigned long long)rip, count[best], stop);
+@@ -22131,13 +22155,11 @@
+     return stop;
+ }
+
+-static void emit_m32_base_guard(A64Buf *b)
+-{
+-    if (!g_m32_base_stop) return;
+-
++static void emit_m32_one_base_guard(A64Buf *b, int guest_reg)
++{
+     // Reject if the base is within 256 bytes of 0 or 4 GiB. The W subtraction
+     // wraps and the X addition exposes the out-of-range bit without using NZCV.
+-    int base = pin_hreg(pin_slot(g_mem_hoist_greg));
++    int base = pin_hreg(pin_slot(guest_reg));
+     a64_sub_imm(b, 0, JTT, base, 256);
+     a64_add_imm(b, 1, JTT, JTT, 512);
+     a64_lsr_imm(b, 1, JTT, JTT, 32);
+@@ -26230,10 +26252,15 @@
+         }
+     }
+
+-    int m32_base = -1;
+-    g_m32_base_stop = jit->stop_requested ? 0 : select_m32_base_hoist(blk->insns, n, rip, &m32_base);
++    int m32_base = -1, m32_base2 = -1;
++    g_m32_base_stop2 = 0;
++    g_m32_base_stop = jit->stop_requested ? 0 :
++        select_m32_base_hoist(blk->insns, n, rip, &m32_base, &m32_base2);
+     g_mem_hoist_greg = select_mem_base_hoist(blk->insns, n, rip);
+-    if (g_m32_base_stop) g_mem_hoist_greg = m32_base;
++    if (g_m32_base_stop) {
++        g_mem_hoist_greg = m32_base;
++        g_mem_hoist_greg2 = m32_base2;
++    }
+     select_low_hoist(blk->insns, n, rip);
+     g_n_llh_bail_tb = g_n_llh_bail_cb = 0;
+
+@@ -26352,7 +26379,8 @@
+         g_body_entry = g_place_pro ? entry : a64_label(&b);
+         emit_reload_mem_base(&b);
+         body_noreload = g_m32_base_stop ? NULL : a64_label(&b);
+-        emit_m32_base_guard(&b);
++        if (g_m32_base_stop) emit_m32_one_base_guard(&b, g_mem_hoist_greg);
++        if (g_m32_base_stop2) emit_m32_one_base_guard(&b, g_mem_hoist_greg2);
+         {
+             static int bt = -1;
+             if (bt < 0) bt = getenv("OCERZ_BTRACE") ? 1 : 0;
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -53,6 +53,7 @@
+
+ #include <stdint.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+
+@@ -68,6 +69,7 @@
+
+ static int g_failures;
+ static OcerzVM g_vm;
++static uint64_t g_copy_src, g_copy_dst;
+ static OcerzCPU *cpu(void) { return &g_vm.cpu; }
+
+ typedef struct {
+@@ -89,6 +91,10 @@
+     cpu()->gpr[OCERZ_RSP] = esp;
+     cpu()->gpr[OCERZ_RBP] = M32_STACK - 0x40;
+     cpu()->gpr[OCERZ_RBX] = M32_DATA;
++    if (g_copy_src) {
++        cpu()->gpr[OCERZ_RBX] = g_copy_src;
++        cpu()->gpr[OCERZ_RBP] = g_copy_dst;
++    }
+     cpu()->gpr[OCERZ_RSI] = 0x10;
+     cpu()->gpr[OCERZ_RDI] = 0x00000004;
+     cpu()->rflags = 0x202;
+@@ -216,8 +222,11 @@
+     for (int i = 0; i < 64; i++) {
+         if (cpu()->rip == DONE)
+             return 1;
+-        if (ocerz_jit_step(&g_vm, cpu()) != OCERZ_STEP_OK)
++        int result = ocerz_jit_step(&g_vm, cpu());
++        if (result != OCERZ_STEP_OK && result != OCERZ_STEP_PROFILE) {
++            fprintf(stderr, "i386 test execution stopped with status %d\n", result);
+             return 0;
++        }
+     }
+     return 0;
+ }
+@@ -259,6 +268,49 @@
+     run_case(name, (at), (esp), _b, sizeof _b); \
+ } while (0)
+
++static int run_dual_base_case(const char *name)
++{
++    if (strcmp(name, "overlap") == 0) {
++        g_copy_src = 0xdead000000000000ull | M32_DATA;
++        g_copy_dst = 0xbeef000000000000ull | (M32_DATA + 4);
++        CASE("dual bases preserve overlapping scalar copies", M32_CODE + 0x600, M32_STACK,
++             0x8b,0x53,0x00, 0x89,0x55,0x00,
++             0x8b,0x53,0x04, 0x89,0x55,0x04,
++             0x8b,0x53,0x08, 0x89,0x55,0x08,
++             0x8b,0x53,0x0c, 0x89,0x55,0x0c,
++             0xf3,0x0f,0x10,0x43,0x10, 0xf3,0x0f,0x11,0x45,0x10,
++             0x8b,0x53,0x14, 0x89,0x55,0x14,
++             0x83,0xc3,0x28, 0x8b,0x53,0x00, 0x89,0x55,0x18);
++        return g_failures != 0;
++    }
++    if (strcmp(name, "underflow") == 0) {
++        g_copy_src = 0xdead000000000010ull;
++        g_copy_dst = M32_DATA + 0x100;
++        CASE("secondary protected address wraps below zero", M32_CODE + 0x680, M32_STACK,
++             0x8b,0x53,0xd0, 0x89,0x55,0x00,
++             0x8b,0x53,0xd4, 0x89,0x55,0x04,
++             0x8b,0x53,0xd8, 0x89,0x55,0x08,
++             0x8b,0x53,0xdc, 0x89,0x55,0x0c,
++             0x8b,0x53,0xe0, 0x89,0x55,0x10,
++             0x8b,0x53,0xe4, 0x89,0x55,0x14);
++        return g_failures != 0;
++    }
++    if (strcmp(name, "upper") == 0) {
++        g_copy_src = 0xdead0000ffffffe0ull;
++        g_copy_dst = M32_DATA + 0x100;
++        CASE("secondary protected address near four GiB", M32_CODE + 0x700, M32_STACK,
++             0x8b,0x53,0x00, 0x89,0x55,0x00,
++             0x8b,0x53,0x04, 0x89,0x55,0x04,
++             0x8b,0x53,0x08, 0x89,0x55,0x08,
++             0x8b,0x53,0x0c, 0x89,0x55,0x0c,
++             0x8b,0x53,0x10, 0x89,0x55,0x10,
++             0x8b,0x53,0x14, 0x89,0x55,0x14);
++        return g_failures != 0;
++    }
++    fprintf(stderr, "Unrecognized dual-base case: %s\n", name);
++    return 2;
++}
++
+ int main(void)
+ {
+     if (ocerz_mem_init(0x10000ull, 0x900000000ull) != OCERZ_OK) {
+@@ -279,6 +331,9 @@
+     }
+     ocerz_ldt_install(CS32, 0, 0xfffff, 0xfb, 1, 0, 1);
+     *(uint8_t *)ocerz_g2h(DONE) = 0xf4;
++    const char *dual_case = getenv("OCERZ_TEST_JIT32_DUAL_BASE");
++    if (dual_case)
++        return run_dual_base_case(dual_case);
+
+     static const uint8_t carry_chain[] = {
+         0xb8, 0xff, 0xff, 0xff, 0xff,

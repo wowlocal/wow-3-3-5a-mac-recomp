@@ -2662,3 +2662,24 @@ The diagnostic verified **6,195** consecutive full-resolution GPU completions, t
 ```sh
 python3 benchmarks/summarize-raid-particle-paths.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Reuse both i386 memory bases in straight-line blocks
+
+Apply `patches/aarchx-m32-dual-base-hoist-trial.patch` to the selected AArchX runtime source layers. Use the same arm64 runtime build and selected deferred PGO WineMetalGL library in both modes. Both modes keep `OCERZ_M32_GENERAL_BASE_HOIST=1` and `OCERZ_TCACHE=off`. The candidate adds `OCERZ_M32_DUAL_BASE_HOIST=1`.
+
+The translator selects a second pinned base register when at least six supported memory operands use it before reassignment. Each base is checked at entry with the existing 32-bit wrap guard. The generated loads and stores use the original width and order. Each register's guarded prefix stops at its own reassignment. A guard rejection retires the block and resumes through the ordinary translation.
+
+Run four warmed 60-second full raid measurements in control, candidate, candidate, control order. Record the new switch and logging switch in `dual-base-mode.txt`. Keep submission logging enabled for both modes and turn on `OCERZ_M32_DUAL_BASE_HOIST_LOG=1` only in the separate 25-second candidate diagnostic. The diagnostic emitted a second base in the preparation path at `0x97b9a7`, in its descendant at `0x2aaddf`, and in the matrix path at `0x8c19fa`.
+
+The three focused `test_jit32` comparisons run in fresh processes with `OCERZ_TEST_JIT32_DUAL_BASE` set to `overlap`, `underflow`, or `upper`. They check aliased writes, scalar and SSE moves, register reassignment, and both ends of the guest address range against the interpreter. Use `OCERZ_LOW_HOIST_LOG=1` and the candidate compilation log to verify both fallback paths. Save the outputs to `focused-0-CASE.log` and `focused-1-CASE.log`. Keep the `test_m32` output in `general.log`. The existing all-in-one `test_jit32` run hits the translator's self-modifying-code blacklist when it repeatedly rewrites the same guest page. The dedicated comparisons each use a fresh JIT.
+
+| i386 address mode | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| One base | 141.17 | 12.14 ms |
+| Two bases | 141.23 | 12.14 ms |
+
+The paired changes were **−1.07** and **+1.18 FPS**, with p99 changes of **+0.195** and **−0.188 ms**. Use the existing one-base mode for subsequent raid trials. The four timed runs verified **33,891** consecutive completions across their four windows, the saved camera, overlapping effects, all 26 timing rows, and zero visible trial windows or activations. The six targeted comparisons and **805** general i386 checks passed. The separate diagnostic saw **144** distinct blocks with a second base, including **three** first recorded after the final fixture readback. [Paired timing and code-generation witnesses](results/raid-aarchx-dual-base-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-dual-base.py CAPTURE_ROOT
+```
