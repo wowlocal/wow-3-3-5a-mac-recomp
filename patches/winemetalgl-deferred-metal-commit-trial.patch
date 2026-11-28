@@ -1,0 +1,146 @@
+diff --git a/src/core/metal/queue.h b/src/core/metal/queue.h
+--- a/src/core/metal/queue.h
++++ b/src/core/metal/queue.h
+@@ -8,5 +8,7 @@
+
+ #import <Metal/Metal.h>
++#include <dispatch/dispatch.h>
+
++#include <atomic>
+ #include <condition_variable>
+ #include <cstdint>
+@@ -45,8 +47,12 @@
+
+ private:
++    void publishCompletedPrefix();  // mutex_ held
++
+     id<MTLCommandQueue> queue_;
++    dispatch_queue_t commitQueue_ = nullptr;
+     std::mutex mutex_;
+     std::condition_variable completed_;
+     uint64_t next_ = 1;
++    std::atomic<uint64_t> completedPrefix_{0};
+     std::set<uint64_t> reserved_;   // created, not committed
+     std::set<uint64_t> inflight_;   // committed, not complete
+diff --git a/src/core/metal/queue.mm b/src/core/metal/queue.mm
+--- a/src/core/metal/queue.mm
++++ b/src/core/metal/queue.mm
+@@ -1,5 +1,9 @@
+ #include "core/metal/queue.h"
+
++#include <algorithm>
+ #include <atomic>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
+ #include <chrono>
+
+@@ -65,7 +69,49 @@
+ }  // namespace
+
++namespace {
++bool completedPrefixEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_COMPLETED_SERIAL_FAST_PATH");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
++bool deferredCommitEnabled() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_DEFER_METAL_COMMIT");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    return enabled;
++}
++
++FILE* commitTimingLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_COMMIT_LOG");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL commit timing log");
++        return file;
++    }();
++    return log;
++}
++}  // namespace
++
++// Only advance past serials with neither a reservation nor an in-flight
++// buffer. These sets can contain holes and can retire out of order.
++void Queue::publishCompletedPrefix() {
++    if (!completedPrefixEnabled()) return;
++    uint64_t firstPending = next_;
++    if (!reserved_.empty()) firstPending = std::min(firstPending, *reserved_.begin());
++    if (!inflight_.empty()) firstPending = std::min(firstPending, *inflight_.begin());
++    completedPrefix_.store(firstPending - 1, std::memory_order_release);
++}
++
+ Queue::Queue() {
+     queue_ = [Device::get().mtl() newCommandQueueWithMaxCommandBufferCount:256];
+     queue_.label = @"WineMetalGL";
++    if (deferredCommitEnabled())
++        commitQueue_ = dispatch_queue_create("org.winemetalgl.commit",
++            dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_USER_INITIATED, 0));
+ }
+
+@@ -102,7 +148,35 @@
+         std::lock_guard<std::mutex> lock(mutex_);
+         inflight_.erase(serial);
++        publishCompletedPrefix();
+         completed_.notify_all();
+     }];
+-    [buffer commit];
++    FILE* log = commitTimingLog();
++    const uint64_t start = log ? stats::nowNanos() : 0;
++    const auto queueIdentity = static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(this));
++    const auto serialNumber = static_cast<unsigned long long>(serial);
++    const bool deferred = commitQueue_ != nullptr;
++    if (deferred) {
++        // Reserve queue order before returning to the encoder. Raw prelude
++        // commits on this same Metal queue can then follow this buffer safely.
++        [buffer enqueue];
++        dispatch_async(commitQueue_, ^{
++            @autoreleasepool {
++                const uint64_t begin = log ? stats::nowNanos() : 0;
++                [buffer commit];
++                if (log) {
++                    const uint64_t end = stats::nowNanos();
++                    std::fprintf(log, "worker %llu %llu %llu %llu %llu\n", queueIdentity, serialNumber,
++                        (unsigned long long)start, (unsigned long long)begin, (unsigned long long)end);
++                }
++            }
++        });
++    } else {
++        [buffer commit];
++    }
++    if (log) {
++        const uint64_t end = stats::nowNanos();
++        std::fprintf(log, "main %llu %llu %u %llu %llu\n", queueIdentity, serialNumber,
++            (unsigned)deferred, (unsigned long long)start, (unsigned long long)end);
++    }
+ }
+
+@@ -110,8 +184,21 @@
+     std::lock_guard<std::mutex> lock(mutex_);
+     reserved_.erase(serial);
++    publishCompletedPrefix();
+     completed_.notify_all();  // fence waiters (waitSignaled) stop waiting for it
+ }
+
+ bool Queue::isComplete(uint64_t serial) {
++    const bool fast = completedPrefixEnabled() && serial <= completedPrefix_.load(std::memory_order_acquire);
++    static const bool report = [] {
++        const char* value = std::getenv("WINEMETALGL_COMPLETED_SERIAL_LOG");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    if (report) {
++        static thread_local unsigned long long queries = 0, hits = 0;
++        hits += fast;
++        if ((++queries & 16383) == 0)
++            std::fprintf(stderr, "winemetalgl: completed prefix queries=%llu hits=%llu\n", queries, hits);
++    }
++    if (fast) return true;
+     std::lock_guard<std::mutex> lock(mutex_);
+     return !inflight_.count(serial) && !reserved_.count(serial);

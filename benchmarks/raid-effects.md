@@ -1823,3 +1823,22 @@ The trial changed throughput by **+0.52 and −0.18 FPS**. P99 increased by **0.
 ```sh
 python3 benchmarks/summarize-raid-adjacent-comis.py CAPTURE_ROOT I386_CLIENT PRIOR_STACK_CAPTURE_1 PRIOR_STACK_CAPTURE_2
 ```
+
+### Defer tracked Metal commits to a worker
+
+The experiment reserves each tracked command buffer's position with `enqueue()` on the calling thread and runs `commit()` on a serial dispatch queue. Buffer encoding, prelude commits, serial tracking, callbacks, and waits remain in their original paths. Both modes use the same renderer build. Metal executes buffers in their reserved queue order. [Metal enqueue documentation](https://developer.apple.com/documentation/metal/mtlcommandbuffer/enqueue%28%29)
+
+Apply `patches/winemetalgl-deferred-metal-commit-trial.patch` after the completed-serial prefix patch. Set `WINEMETALGL_DEFER_METAL_COMMIT=1` for the worker path. Both modes passed **343** GPU tests with the fast share lock, completed-prefix query, and native-width client indices enabled. For separate diagnostics, set `OCERZ_WMGL_COMMIT_LOG` to a fresh `commits.ns`. The analyzer joins main and worker calls by queue, serial, and start timestamp. The submission-time total covers calls inside the verified output time window and is divided by that window's verified output count.
+
+Separate 25-second diagnostics measured **6,704** inline submissions and **6,691** deferred submissions. Caller-side submission wall time was **11.86 µs per verified output** inline and **5.36 µs** with the worker. In deferred mode, worker start followed main submission start by **12.21 µs** at the median and **34.96 µs** at p99. The worker's median `commit()` call took **5.67 µs**.
+
+| Tracked Metal submission | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Inline commit | 135.10 | 12.44 ms |
+| Deferred commit | 134.18 | 12.83 ms |
+
+Throughput fell **1.32 and 0.52 FPS**. P99 rose **0.56 and 0.22 ms** in the two pairs. Keep inline commits as the baseline. The four 60-second windows and separate diagnostic launches verified the camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible trial windows or activations. The older test was suspended during each launch and resumed afterward. [Live A/B and submission timing distributions](results/raid-winemetalgl-deferred-metal-commit-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-deferred-commit.py CAPTURE_ROOT
+```

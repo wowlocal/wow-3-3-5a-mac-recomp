@@ -1,0 +1,174 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "64b24bb",
+  "scope": "Defer tracked Metal commit calls on the same WineMetalGL trial renderer and i386 runtime in both arms.",
+  "runtime_sha256": "6f9c79a83bfa4c7083ddf628dba12c2a3bce7d3fb6486820dc2057039e5c62fa",
+  "renderer_sha256": "cabbabe83d1c0bb22560d584ad4a2e7864fd9a61a179f19f5119cb902b916910",
+  "verified_timed_script_rows": 26,
+  "visual_readbacks_verified": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "copied_client_process_guard_passed": true,
+  "shadow_allocation_reuse_enabled": true,
+  "legacy_paused_in_all_launches": true,
+  "legacy_resumed_after_each_pause": true,
+  "gpu_tests_passed_per_mode": 343,
+  "opt_in_environment_variable": "WINEMETALGL_DEFER_METAL_COMMIT",
+  "diagnostics": [
+    {
+      "deferred_commit": false,
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3353,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24998030125,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 134.08,
+        "p99_gpu_completion_gap_ns": 12788500,
+        "min_draws": 708,
+        "max_draws": 964
+      },
+      "tracked_submissions_inside_measured_window": 6704,
+      "submissions_by_distinct_queues": 1,
+      "main_submission_call_ns": {
+        "mean": 5932.390811455847,
+        "median": 4917.0,
+        "p99": 14542
+      },
+      "main_submission_ns_divided_by_verified_outputs": 11861.243065911125
+    },
+    {
+      "deferred_commit": true,
+      "diagnostic_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3346,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24994828459,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 133.8,
+        "p99_gpu_completion_gap_ns": 12894625,
+        "min_draws": 716,
+        "max_draws": 961
+      },
+      "tracked_submissions_inside_measured_window": 6691,
+      "submissions_by_distinct_queues": 1,
+      "main_submission_call_ns": {
+        "mean": 2680.5053056344345,
+        "median": 2125,
+        "p99": 8042
+      },
+      "main_submission_ns_divided_by_verified_outputs": 5360.209503885236,
+      "worker_begin_after_main_begin_ns": {
+        "mean": 12614.251531908534,
+        "median": 12208,
+        "p99": 34958
+      },
+      "worker_metal_commit_call_ns": {
+        "mean": 6445.05798834255,
+        "median": 5667,
+        "p99": 16875
+      }
+    }
+  ],
+  "timed_runs": [
+    {
+      "order": 1,
+      "deferred_commit": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8164,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993822041,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 136.05,
+      "p99_gpu_completion_gap_ns": 12354750,
+      "min_draws": 704,
+      "max_draws": 996
+    },
+    {
+      "order": 2,
+      "deferred_commit": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8085,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997768875,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 134.73333333333332,
+      "p99_gpu_completion_gap_ns": 12915375,
+      "min_draws": 689,
+      "max_draws": 953
+    },
+    {
+      "order": 3,
+      "deferred_commit": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8019,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998637500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 133.63333333333333,
+      "p99_gpu_completion_gap_ns": 12741625,
+      "min_draws": 707,
+      "max_draws": 993
+    },
+    {
+      "order": 4,
+      "deferred_commit": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8050,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59992521625,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 134.15,
+      "p99_gpu_completion_gap_ns": 12524209,
+      "min_draws": 715,
+      "max_draws": 974
+    }
+  ],
+  "comparison": {
+    "inline": {
+      "median_completed_fps": 135.10000000000002,
+      "median_p99_gap_ns": 12439479.5
+    },
+    "deferred": {
+      "median_completed_fps": 134.18333333333334,
+      "median_p99_gap_ns": 12828500.0
+    }
+  },
+  "paired_deferred_minus_inline": [
+    {
+      "completed_fps": -1.3166666666666913,
+      "p99_gap_ns": 560625
+    },
+    {
+      "completed_fps": -0.5166666666666799,
+      "p99_gap_ns": 217416
+    }
+  ]
+}
