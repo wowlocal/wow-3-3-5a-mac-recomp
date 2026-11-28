@@ -211,7 +211,7 @@ Use `--seconds 600 --segment-seconds 60` for the ten-minute run to see how compl
 
 With GL statistics disabled, **193** calibration records from the direct file matched the Instruments signposts for sequence, dimensions, draw count, and GPU timestamp. A subsequent fixed **60-second login-screen window** contained **1,749** successful GPU completion records including its start marker, with zero missing sequence numbers. This verified the extended recording path at 1365 × 768. The background login screen averaged 29.13 completed FPS and had a 41.34 ms p99, with the raid workload still awaiting in-world testing. [Direct GPU recording results](results/metal-login-direct-60s.json)
 
-For live acceptance on the M4 Pro, use the fixed camera with all 24 casters at 1365 × 768, VSync off, and `maxFPS=0`. The stock client applies a 200 FPS foreground cap. Preserve the spell effects and cast schedule. Collect three warmed 60-second windows and one warmed 600-second window from the GPU completion log. Each window must average at least 500 newly rendered frames per second, with p99 completion gaps of 2.0 ms or less. Check sequence continuity, confirm the visible spell effects and combat timing, and run the movement and input checks separately in Northshire. [Northshire route and cap verification](northshire.md)
+The current M4 Pro acceptance run uses the fixed camera with all 24 casters and the [verified native 5K graphics profile](#native-5k-with-maximum-supported-graphics-quality). Preserve the spell effects and cast schedule. Collect three warmed 60-second windows and one warmed 600-second window from the GPU completion log. Each window must average at least 500 newly rendered frames per second, with p99 completion gaps of 2.0 ms or less. Check sequence continuity, confirm the visible spell effects and combat timing, and run the movement and input checks separately in Northshire. [Northshire route and cap verification](northshire.md)
 
 The first complete uncapped reference run kept the 24-caster fixture at 1365 × 768 with the saved camera and VSync off. One warmed 60-second window averaged **89.13 GPU-completed FPS** at **18.29 ms p99**, with zero gaps in the GPU completion sequence. The image showed the active casters and overlapping spell effects. [Uncapped live reference](results/raid-winemetalgl-uncapped-live.json)
 
@@ -3074,4 +3074,25 @@ At 64 the mid-scene commit stored color, depth and stencil, and the continuation
 
 ```sh
 python3 benchmarks/summarize-raid-native-5k-pass-audit.py CAPTURE_ROOT --legacy-pid EARLIER_TEST_PID
+```
+
+### Test early fragment depth rejection with read-only depth
+
+Apply `patches/winemetalgl-read-only-early-depth-trial.patch` to the deferred renderer and build one ARM64 library for the two modes. Reuse the prior LLVM profile for the trial build with profile mismatch warnings enabled. Enable the candidate with `WINEMETALGL_EARLY_DEPTH=1`. Keep the native 5K viewport, 4× MSAA, quality settings, VSync, raid and draw budget 2048 fixed.
+
+The variant adds Metal's early fragment test attribute to compatible legacy fragment shaders that discard. It requires an attached read-only depth buffer and a depth comparison. It excludes stencil testing, active occlusion or fragment invocation queries, coverage-changing pipeline variants, custom shader depth and sample mask, and writable fragment resources. The pipeline cache identifies the variant independently of the ordinary fragment function. [Metal Shading Language specification](https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf)
+
+Run all renderer tests with each mode and save their logs in `CAPTURE_ROOT/early-depth/gpu-tests-0.log` and `gpu-tests-1.log`. Run `wmgl_gpu_tests arb_read_only_early_depth_msaa` with `WINEMETALGL_EARLY_DEPTH_LOG=1` in each mode and save `focused-0.log` and `focused-1.log`. The four-sample test checks front and occluded fragments, discard with depth writes enabled, stencil updates, occlusion counts and shader-supplied depth. Both modes passed **344** tests. The enabled focused test compiled and used the Metal variant.
+
+Run one verified 25-second launch with the feature and its log enabled under `native-5k-early-depth-diagnostic`. Then run four warmed 60-second windows in 0, 1, 1, 0 order with logging disabled, using `native-5k-early-depth-ORDER-MODE`. Save the process's mode and log flag in `early-depth-mode.txt`. The diagnostic launch compiled **20** variants and its periodic log reached **2,375,680** requests over the launch, with zero shader or pipeline fallbacks.
+
+| Depth test mode | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Ordinary order | 99.05 | 13.20 ms |
+| Early depth | 100.56 | 13.35 ms |
+
+The paired throughput changes were **+1.13** and **+1.88 FPS**, with p99 gaps **0.273** and **0.013 ms** longer. The four uninstrumented windows verified **23,957** consecutive GPU completions across their respective launches, the same native 5120 × 2880 target, the 4× MSAA and maximum-quality witness, and all 26 cast timing rows. Keep the ordinary order as the performance reference because of the longer tail in both pairs. [Native 5K early-depth A/B](results/raid-native-5k-early-depth-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-early-depth.py CAPTURE_ROOT
 ```
