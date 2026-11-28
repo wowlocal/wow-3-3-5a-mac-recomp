@@ -1,0 +1,854 @@
+[
+  {
+    "base_commit": "694e96e",
+    "hardware": "Apple M4 Pro",
+    "viewport": [
+      1365,
+      768
+    ],
+    "archive_command_stream_sha256": "ee787a7c5ef324bca0013d682249fed1a1d821c921fd2751eb049585230eb6fc",
+    "replayed_final_image_sha256": "ef3d1d4f13329d87ec0cedd8e5c0ff2e7f360f9d43ee468b3e5bfddda708410a",
+    "load_draws_per_buffer": 8,
+    "load_median_gpu_command_buffer_ns": 229500.0,
+    "gpu_marker_witness": {
+      "matched_markers": 16,
+      "end_timestamp_offset_range_ns": 43
+    },
+    "comparison": {
+      "control": {
+        "frames": 16,
+        "above_2ms_render_active": 10,
+        "median_elapsed_render_burst_ns": 39027125.0,
+        "median_independent_queue_active_during_request_ns": 0.0,
+        "median_render_active_ns": 4035395.0,
+        "median_elapsed_render_span_ns": 6868916.5,
+        "median_windowserver_overlap_ns": 3096396.0,
+        "median_independent_queue_overlap_ns": 0.0
+      },
+      "loaded": {
+        "frames": 16,
+        "above_2ms_render_active": 12,
+        "median_elapsed_render_burst_ns": 42935313.0,
+        "median_independent_queue_active_during_request_ns": 179727953.5,
+        "median_render_active_ns": 3995333.5,
+        "median_elapsed_render_span_ns": 7631875.0,
+        "median_windowserver_overlap_ns": 3525834.5,
+        "median_independent_queue_overlap_ns": 784937.5
+      }
+    },
+    "paired_render_active_delta_ns": [
+      [
+        4440625,
+        6798500,
+        6027374,
+        -3072250
+      ],
+      [
+        -2662791,
+        -187000,
+        -3761294,
+        3343709
+      ],
+      [
+        1484334,
+        -2571415,
+        -4219374,
+        6253710
+      ],
+      [
+        -3780040,
+        2953042,
+        1011959,
+        -301416
+      ]
+    ],
+    "runs": [
+      {
+        "mode": "control",
+        "fetch_wall_ns": 135705625,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 20859875,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 242667,
+            "fragment_active_ns": 540375,
+            "render_active_ns": 783042,
+            "elapsed_render_span_ns": 1622917,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 335917,
+            "fragment_active_ns": 707625,
+            "render_active_ns": 1043542,
+            "elapsed_render_span_ns": 1192667,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 346334,
+            "fragment_active_ns": 756583,
+            "render_active_ns": 1102917,
+            "elapsed_render_span_ns": 2238958,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 516916,
+            "fragment_active_ns": 3474292,
+            "render_active_ns": 3991208,
+            "elapsed_render_span_ns": 13541583,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 3355042
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 136584208,
+        "load_buffers": 507,
+        "independent_queue_active_during_request_ns": 164621907,
+        "elapsed_render_burst_ns": 42869292,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 3521125,
+            "fragment_active_ns": 1702542,
+            "render_active_ns": 5223667,
+            "elapsed_render_span_ns": 12528042,
+            "independent_queue_overlap_ns": 1947709,
+            "windowserver_overlap_ns": 4944667
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 6977417,
+            "fragment_active_ns": 864625,
+            "render_active_ns": 7842042,
+            "elapsed_render_span_ns": 14176834,
+            "independent_queue_overlap_ns": 396376,
+            "windowserver_overlap_ns": 7189165
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 5374250,
+            "fragment_active_ns": 1756041,
+            "render_active_ns": 7130291,
+            "elapsed_render_span_ns": 8906416,
+            "independent_queue_overlap_ns": 1534374,
+            "windowserver_overlap_ns": 6639334
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 280333,
+            "fragment_active_ns": 638625,
+            "render_active_ns": 918958,
+            "elapsed_render_span_ns": 1167542,
+            "independent_queue_overlap_ns": 452043,
+            "windowserver_overlap_ns": 0
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 177628209,
+        "load_buffers": 562,
+        "independent_queue_active_during_request_ns": 161590075,
+        "elapsed_render_burst_ns": 38976375,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 2301416,
+            "fragment_active_ns": 611500,
+            "render_active_ns": 2912916,
+            "elapsed_render_span_ns": 7428916,
+            "independent_queue_overlap_ns": 817833,
+            "windowserver_overlap_ns": 2545583
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 2245458,
+            "fragment_active_ns": 407792,
+            "render_active_ns": 2653250,
+            "elapsed_render_span_ns": 7532375,
+            "independent_queue_overlap_ns": 285750,
+            "windowserver_overlap_ns": 2301458
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 242083,
+            "fragment_active_ns": 424749,
+            "render_active_ns": 666832,
+            "elapsed_render_span_ns": 6009708,
+            "independent_queue_overlap_ns": 368333,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 2979625,
+            "fragment_active_ns": 1133542,
+            "render_active_ns": 4113167,
+            "elapsed_render_span_ns": 6045375,
+            "independent_queue_overlap_ns": 1025292,
+            "windowserver_overlap_ns": 3827376
+          }
+        ]
+      },
+      {
+        "mode": "control",
+        "fetch_wall_ns": 139702458,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 39507167,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 1569624,
+            "fragment_active_ns": 4006083,
+            "render_active_ns": 5575707,
+            "elapsed_render_span_ns": 13050500,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 4977835
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 1181209,
+            "fragment_active_ns": 1659041,
+            "render_active_ns": 2840250,
+            "elapsed_render_span_ns": 3058917,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 1624582
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 1935500,
+            "fragment_active_ns": 2492626,
+            "render_active_ns": 4428126,
+            "elapsed_render_span_ns": 13476625,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 3883583
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 239708,
+            "fragment_active_ns": 529750,
+            "render_active_ns": 769458,
+            "elapsed_render_span_ns": 3062125,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          }
+        ]
+      },
+      {
+        "mode": "control",
+        "fetch_wall_ns": 136559417,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 40072625,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 4958000,
+            "fragment_active_ns": 2495541,
+            "render_active_ns": 7453541,
+            "elapsed_render_span_ns": 9461375,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 6303708
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 6143791,
+            "fragment_active_ns": 1009375,
+            "render_active_ns": 7153166,
+            "elapsed_render_span_ns": 11021708,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 6081333
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 421499,
+            "fragment_active_ns": 4782500,
+            "render_active_ns": 5203999,
+            "elapsed_render_span_ns": 7368875,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 2837750
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 2974916,
+            "fragment_active_ns": 1104666,
+            "render_active_ns": 4079582,
+            "elapsed_render_span_ns": 4240916,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 3401127
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 188736625,
+        "load_buffers": 343,
+        "independent_queue_active_during_request_ns": 194929828,
+        "elapsed_render_burst_ns": 43893208,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 6427666,
+            "fragment_active_ns": 2510209,
+            "render_active_ns": 8937875,
+            "elapsed_render_span_ns": 12434292,
+            "independent_queue_overlap_ns": 2243625,
+            "windowserver_overlap_ns": 6827294
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 3607792,
+            "fragment_active_ns": 973959,
+            "render_active_ns": 4581751,
+            "elapsed_render_span_ns": 4842250,
+            "independent_queue_overlap_ns": 1938582,
+            "windowserver_overlap_ns": 4099418
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 396625,
+            "fragment_active_ns": 588000,
+            "render_active_ns": 984625,
+            "elapsed_render_span_ns": 5823333,
+            "independent_queue_overlap_ns": 593333,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 9489167,
+            "fragment_active_ns": 844125,
+            "render_active_ns": 10333292,
+            "elapsed_render_span_ns": 10983041,
+            "independent_queue_overlap_ns": 410125,
+            "windowserver_overlap_ns": 9772751
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 185259250,
+        "load_buffers": 394,
+        "independent_queue_active_during_request_ns": 194834000,
+        "elapsed_render_burst_ns": 43001334,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 2459584,
+            "fragment_active_ns": 1031834,
+            "render_active_ns": 3491418,
+            "elapsed_render_span_ns": 7731375,
+            "independent_queue_overlap_ns": 1054626,
+            "windowserver_overlap_ns": 2807417
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 3128167,
+            "fragment_active_ns": 749333,
+            "render_active_ns": 3877500,
+            "elapsed_render_span_ns": 12141250,
+            "independent_queue_overlap_ns": 435958,
+            "windowserver_overlap_ns": 3224293
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 1006917,
+            "fragment_active_ns": 6304792,
+            "render_active_ns": 7311709,
+            "elapsed_render_span_ns": 11696375,
+            "independent_queue_overlap_ns": 3004251,
+            "windowserver_overlap_ns": 7000377
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 341208,
+            "fragment_active_ns": 683709,
+            "render_active_ns": 1024917,
+            "elapsed_render_span_ns": 1606167,
+            "independent_queue_overlap_ns": 752042,
+            "windowserver_overlap_ns": 0
+          }
+        ]
+      },
+      {
+        "mode": "control",
+        "fetch_wall_ns": 188578083,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 38547083,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 3948958,
+            "fragment_active_ns": 3322500,
+            "render_active_ns": 7271458,
+            "elapsed_render_span_ns": 14128750,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 6953289
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 285375,
+            "fragment_active_ns": 639083,
+            "render_active_ns": 924458,
+            "elapsed_render_span_ns": 1459291,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 4526625,
+            "fragment_active_ns": 1773125,
+            "render_active_ns": 6299750,
+            "elapsed_render_span_ns": 7539250,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 5884833
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 299249,
+            "fragment_active_ns": 1027084,
+            "render_active_ns": 1326333,
+            "elapsed_render_span_ns": 6368958,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 723917
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "base_commit": "694e96e",
+    "hardware": "Apple M4 Pro",
+    "viewport": [
+      1365,
+      768
+    ],
+    "archive_command_stream_sha256": "ee787a7c5ef324bca0013d682249fed1a1d821c921fd2751eb049585230eb6fc",
+    "replayed_final_image_sha256": "ef3d1d4f13329d87ec0cedd8e5c0ff2e7f360f9d43ee468b3e5bfddda708410a",
+    "load_draws_per_buffer": 64,
+    "load_median_gpu_command_buffer_ns": 1023000,
+    "gpu_marker_witness": {
+      "matched_markers": 16,
+      "end_timestamp_offset_range_ns": 42
+    },
+    "comparison": {
+      "control": {
+        "frames": 16,
+        "above_2ms_render_active": 6,
+        "median_elapsed_render_burst_ns": 38365771.0,
+        "median_independent_queue_active_during_request_ns": 0.0,
+        "median_render_active_ns": 1386770.0,
+        "median_elapsed_render_span_ns": 6302958.5,
+        "median_windowserver_overlap_ns": 208229.0,
+        "median_independent_queue_overlap_ns": 0.0
+      },
+      "loaded": {
+        "frames": 16,
+        "above_2ms_render_active": 11,
+        "median_elapsed_render_burst_ns": 49325604.5,
+        "median_independent_queue_active_during_request_ns": 235227791.5,
+        "median_render_active_ns": 3302688.0,
+        "median_elapsed_render_span_ns": 7746625.5,
+        "median_windowserver_overlap_ns": 3255000.0,
+        "median_independent_queue_overlap_ns": 1271646.0
+      }
+    },
+    "paired_render_active_delta_ns": [
+      [
+        11663501,
+        2375000,
+        6273875,
+        -2803543
+      ],
+      [
+        1094959,
+        350875,
+        472293,
+        1508209
+      ],
+      [
+        198417,
+        1188334,
+        4777459,
+        -4226958
+      ],
+      [
+        1750832,
+        -397542,
+        -3592833,
+        5745417
+      ]
+    ],
+    "runs": [
+      {
+        "mode": "control",
+        "fetch_wall_ns": 197144959,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 26666625,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 312125,
+            "fragment_active_ns": 991041,
+            "render_active_ns": 1303166,
+            "elapsed_render_span_ns": 2219917,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 345249,
+            "fragment_active_ns": 928167,
+            "render_active_ns": 1273416,
+            "elapsed_render_span_ns": 1424417,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 556666,
+            "fragment_active_ns": 1051709,
+            "render_active_ns": 1608375,
+            "elapsed_render_span_ns": 2630417,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 3955000,
+            "fragment_active_ns": 1273542,
+            "render_active_ns": 5228542,
+            "elapsed_render_span_ns": 16847666,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 4637543
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 195299334,
+        "load_buffers": 155,
+        "independent_queue_active_during_request_ns": 234944843,
+        "elapsed_render_burst_ns": 58491417,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 11853084,
+            "fragment_active_ns": 1113583,
+            "render_active_ns": 12966667,
+            "elapsed_render_span_ns": 18229500,
+            "independent_queue_overlap_ns": 3822666,
+            "windowserver_overlap_ns": 12935710
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 1970250,
+            "fragment_active_ns": 1678166,
+            "render_active_ns": 3648416,
+            "elapsed_render_span_ns": 7229958,
+            "independent_queue_overlap_ns": 901416,
+            "windowserver_overlap_ns": 3302333
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 4303708,
+            "fragment_active_ns": 3578542,
+            "render_active_ns": 7882250,
+            "elapsed_render_span_ns": 11014000,
+            "independent_queue_overlap_ns": 2830876,
+            "windowserver_overlap_ns": 7757663
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 1033583,
+            "fragment_active_ns": 1391416,
+            "render_active_ns": 2424999,
+            "elapsed_render_span_ns": 3554000,
+            "independent_queue_overlap_ns": 1206874,
+            "windowserver_overlap_ns": 1286084
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 182347833,
+        "load_buffers": 216,
+        "independent_queue_active_during_request_ns": 237223119,
+        "elapsed_render_burst_ns": 40135084,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 917750,
+            "fragment_active_ns": 590459,
+            "render_active_ns": 1508209,
+            "elapsed_render_span_ns": 8213084,
+            "independent_queue_overlap_ns": 892751,
+            "windowserver_overlap_ns": 1212958
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 518250,
+            "fragment_active_ns": 537958,
+            "render_active_ns": 1056208,
+            "elapsed_render_span_ns": 5683584,
+            "independent_queue_overlap_ns": 515375,
+            "windowserver_overlap_ns": 814918
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 566209,
+            "fragment_active_ns": 839792,
+            "render_active_ns": 1406001,
+            "elapsed_render_span_ns": 5169042,
+            "independent_queue_overlap_ns": 713875,
+            "windowserver_overlap_ns": 745374
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 1425708,
+            "fragment_active_ns": 540667,
+            "render_active_ns": 1966375,
+            "elapsed_render_span_ns": 8630917,
+            "independent_queue_overlap_ns": 1336418,
+            "windowserver_overlap_ns": 1577122
+          }
+        ]
+      },
+      {
+        "mode": "control",
+        "fetch_wall_ns": 134870584,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 37902708,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 131875,
+            "fragment_active_ns": 281375,
+            "render_active_ns": 413250,
+            "elapsed_render_span_ns": 7053333,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 413708,
+            "fragment_active_ns": 291625,
+            "render_active_ns": 705333,
+            "elapsed_render_span_ns": 5359083,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 291833
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 421874,
+            "fragment_active_ns": 511834,
+            "render_active_ns": 933708,
+            "elapsed_render_span_ns": 7293875,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 673543
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 144250,
+            "fragment_active_ns": 313916,
+            "render_active_ns": 458166,
+            "elapsed_render_span_ns": 5311666,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          }
+        ]
+      },
+      {
+        "mode": "control",
+        "fetch_wall_ns": 201276250,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 46820792,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 5808166,
+            "fragment_active_ns": 2103667,
+            "render_active_ns": 7911833,
+            "elapsed_render_span_ns": 18306625,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 7548084
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 1787542,
+            "fragment_active_ns": 1755333,
+            "render_active_ns": 3542875,
+            "elapsed_render_span_ns": 8621042,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 3245500
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 559999,
+            "fragment_active_ns": 910375,
+            "render_active_ns": 1470374,
+            "elapsed_render_span_ns": 3848916,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 5244999,
+            "fragment_active_ns": 2193251,
+            "render_active_ns": 7438250,
+            "elapsed_render_span_ns": 7651125,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 6361211
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 194251375,
+        "load_buffers": 171,
+        "independent_queue_active_during_request_ns": 232603471,
+        "elapsed_render_burst_ns": 63595125,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 7013333,
+            "fragment_active_ns": 1096917,
+            "render_active_ns": 8110250,
+            "elapsed_render_span_ns": 19312250,
+            "independent_queue_overlap_ns": 2314293,
+            "windowserver_overlap_ns": 7918832
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 4046833,
+            "fragment_active_ns": 684376,
+            "render_active_ns": 4731209,
+            "elapsed_render_span_ns": 10983333,
+            "independent_queue_overlap_ns": 2342042,
+            "windowserver_overlap_ns": 4586127
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 4593750,
+            "fragment_active_ns": 1654083,
+            "render_active_ns": 6247833,
+            "elapsed_render_span_ns": 10340542,
+            "independent_queue_overlap_ns": 1653708,
+            "windowserver_overlap_ns": 6205252
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 1765167,
+            "fragment_active_ns": 1446125,
+            "render_active_ns": 3211292,
+            "elapsed_render_span_ns": 6736917,
+            "independent_queue_overlap_ns": 2536250,
+            "windowserver_overlap_ns": 3207667
+          }
+        ]
+      },
+      {
+        "mode": "loaded",
+        "fetch_wall_ns": 197600917,
+        "load_buffers": 201,
+        "independent_queue_active_during_request_ns": 235510740,
+        "elapsed_render_burst_ns": 40159792,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 1629042,
+            "fragment_active_ns": 532916,
+            "render_active_ns": 2161958,
+            "elapsed_render_span_ns": 7920917,
+            "independent_queue_overlap_ns": 1858916,
+            "windowserver_overlap_ns": 1582332
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 1355917,
+            "fragment_active_ns": 2038167,
+            "render_active_ns": 3394084,
+            "elapsed_render_span_ns": 5845333,
+            "independent_queue_overlap_ns": 1182041,
+            "windowserver_overlap_ns": 3330792
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 160542,
+            "fragment_active_ns": 555500,
+            "render_active_ns": 716042,
+            "elapsed_render_span_ns": 5563375,
+            "independent_queue_overlap_ns": 392500,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 5828625,
+            "fragment_active_ns": 503875,
+            "render_active_ns": 6332500,
+            "elapsed_render_span_ns": 7572334,
+            "independent_queue_overlap_ns": 277751,
+            "windowserver_overlap_ns": 6242791
+          }
+        ]
+      },
+      {
+        "mode": "control",
+        "fetch_wall_ns": 140763291,
+        "load_buffers": 0,
+        "independent_queue_active_during_request_ns": 0,
+        "elapsed_render_burst_ns": 38828834,
+        "frames": [
+          {
+            "draws": 941,
+            "vertex_active_ns": 129209,
+            "fragment_active_ns": 281917,
+            "render_active_ns": 411126,
+            "elapsed_render_span_ns": 6958375,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 0
+          },
+          {
+            "draws": 939,
+            "vertex_active_ns": 3194293,
+            "fragment_active_ns": 597333,
+            "render_active_ns": 3791626,
+            "elapsed_render_span_ns": 5440292,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 3562377
+          },
+          {
+            "draws": 947,
+            "vertex_active_ns": 3933208,
+            "fragment_active_ns": 375667,
+            "render_active_ns": 4308875,
+            "elapsed_render_span_ns": 9600167,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 4043083
+          },
+          {
+            "draws": 945,
+            "vertex_active_ns": 268666,
+            "fragment_active_ns": 318417,
+            "render_active_ns": 587083,
+            "elapsed_render_span_ns": 5647542,
+            "independent_queue_overlap_ns": 0,
+            "windowserver_overlap_ns": 124625
+          }
+        ]
+      }
+    ]
+  }
+]

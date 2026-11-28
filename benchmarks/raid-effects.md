@@ -2234,3 +2234,24 @@ Open the resulting archive with `gpudebug -t` and retain its session ID. Record 
 python3 benchmarks/summarize-raid-metal-burst.py commands SESSION_ID > CAPTURE_ROOT/quiet-replay/commands.json
 python3 benchmarks/summarize-raid-metal-burst.py summary CAPTURE_ROOT --legacy-pid EARLIER_CLIENT_PID
 ```
+
+### Add a separate Metal workload during the four-frame replay
+
+The experiment reuses the verified 3,772-draw archive at 1365 × 768. It rewinds to the first draw before each full replay and checks the final PNG against the archived reference. Two sets of eight requests use the order control, loaded, loaded, control, control, loaded, loaded, control. The loaded arm runs a roughly 300 ms pulse on a separate process's Metal queue. Its renderer draws blended fullscreen triangles into a private 512 × 512 texture, with one command buffer in flight. The two sets use eight and 64 draws per test buffer.
+
+Metal System Trace matched all **16** named begin and end markers in each set. The offsets between the marker completion timestamps and the hardware trace varied by at most **43 ns**. Each request contained eight raid render buffers with vertex and fragment activity. The earlier client had zero overlapping GPU work. All **16** final PNGs matched the reference byte for byte. [Timing, work counts and verification](results/raid-metal-replay-contention.json)
+
+| Test queue draws per buffer | Median test buffer GPU time | Raid median GPU active, control / loaded | Median time across four raid renders, control / loaded |
+| --- | ---: | ---: | ---: |
+| 8 | 0.23 ms | 4.04 / 4.00 ms | 39.03 / 42.94 ms |
+| 64 | 1.02 ms | 1.39 / 3.30 ms | 38.37 / 49.33 ms |
+
+With 64 draws per test buffer, the paired median GPU active time increased by **0.68–4.32 ms** in all four pairs. Frames above 2 ms increased from **6 to 11 of 16** in that set. During each loaded request the test queue was active for a median **235 ms**, compared with **180 ms** in the eight-draw set. These workloads differed in both buffer duration and total activity. Median WindowServer overlap also varied, from **0.21 to 3.26 ms** in the 64-draw set and from **3.10 to 3.53 ms** in the eight-draw set. The experiment measures the replay response under injected workload and concurrent desktop activity. The live client provides the gameplay FPS and p99 measurements. [Paired observations](results/raid-metal-replay-contention.json)
+
+Build the helper with `xcrun swiftc -O benchmarks/metal-replay-contention.swift -o raid-contention`. Start it with `8` or `64` as its argument and keep its stdin and stdout open. Start a 15-second Metal System Trace attached to the archive's `GPUToolsReplayService` process. Warm up by fetching the final attachment before timing. Allow the recorder to begin collecting hardware work, then submit an unmeasured `mark 100`. For trial `i`, fetch the first draw's attachment, send `mark 2*i` with the computed integer, wait for the marker, and fetch the final attachment. In the loaded arm, send `pulse i` before the final fetch and wait for its `armed` event. Collect the `pulse` record after the fetch. End each trial with `mark 2*i+1` after at least 300 ms and after the pulse ends. Store the full-size final images as `sample-0.png` through `sample-7.png`.
+
+Export the trace's `metal-gpu-intervals` table to `gpu.xml`. Record `archive`, `replayer_pid`, `load_pid`, `load_draws_per_buffer` and `legacy_outputs_during_experiment` in `witness.json`. Each row of `samples` carries `name`, `mode`, `begin`, `end`, `fetch_wall_ns` and `load_buffers`. Use the helper's marker records for both edges and its `gpu_buffers_ns` list for the loaded arm. The control uses an empty list. GPU activity in the intervening render buffers supplies the measurements.
+
+```sh
+python3 benchmarks/summarize-raid-replay-contention.py SHORT_CAPTURE LONG_CAPTURE --legacy-pid EARLIER_CLIENT_PID
+```
