@@ -2352,3 +2352,23 @@ Throughput gained **1.03 and 1.38 FPS**. P99 moved by **+0.29 and −0.12 ms**. 
 ```sh
 python3 benchmarks/summarize-raid-math-leaf.py CAPTURE_ROOT PGO_LIBWINEMETALGL
 ```
+
+### Compare the budget for GL state calls and parallel item preparation
+
+The four archived GL timelines matched **256** GPU outputs at full resolution, with consecutive completions in each capture. Median traced time per frame in `glVertexAttribPointer`, `glLightModelfv`, `glDisable`, `glActiveTexture`, and `glClientActiveTexture` together ranged from **0.123 to 0.135 ms**. `glVertexAttribPointer` alone accounted for **0.055–0.062 ms**. The times cover the renderer entry-to-return intervals in these instrumented recordings. Guest and bridge work outside those intervals has separate costs. [GL timeline captures](results/raid-winemetalgl-command-timeline.json)
+
+The preparation model uses **428** swap intervals from the six previously recorded probe gates. It leaves all cross-swap iterations and index-changing iterations serial. Within each run between index changes, it bounds the eligible worker time by the larger of total eligible time divided by worker count and the largest individual task. It preserves the measured cost of the rest of each iteration and the gaps between iterations. All proposed worker paths still need a dependency check and must pay for staging, synchronization, and ordered publication. [Original preparation traces](results/raid-aarchx-i386-item-preparation.json)
+
+| Total workers including the calling thread | Eligible work in each index-preserving iteration | Ideal median savings | Lowest gate median |
+| --- | --- | --- | --- |
+| 2 | Half | 0.46 ms | 0.40 ms |
+| 2 | All | 0.91 ms | 0.80 ms |
+| 4 | Half | 0.68 ms | 0.58 ms |
+| 4 | All | 1.35 ms | 1.17 ms |
+
+If all the modeled savings reached the critical path, **0.68–1.35 ms** at the selected **140.78 FPS** baseline would correspond to about **156–174 FPS**. Verify a candidate by isolating a preparation unit with measured disjoint outputs, replaying the original input, and comparing the emitted buffer bytes and draw order before timing the full fixture. GPU completion p99 remains a separate measurement. [Recomputed bounds](results/raid-preparation-budget.json) · [Baseline](results/raid-aarchx-runtime-pgo-ab.json) · [GPU stage timing](results/raid-metal-burst-replay.json)
+
+```sh
+python3 benchmarks/summarize-raid-preparation-budget.py PREPARATION_CAPTURE_ROOT \
+    GL_CAPTURE_1 GL_CAPTURE_2 GL_CAPTURE_3 GL_CAPTURE_WITH_DRAW_REASONS
+```

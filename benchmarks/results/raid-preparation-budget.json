@@ -1,0 +1,96 @@
+{
+  "scope": "Offline bounds from the existing 24-caster raid diagnostics at 1365 \u00d7 768.",
+  "dispatch": {
+    "verified_capture_gpu_outputs": [
+      4853,
+      4863
+    ],
+    "frames_with_complete_probe_records": 428,
+    "frames_with_dispatch_crossing_a_swap": 182,
+    "median_dispatch_ns_per_frame_by_gate": [
+      2444215,
+      2682616,
+      3137095,
+      2719831,
+      2577342.5,
+      2630166.0
+    ],
+    "median_index_changing_dispatch_ns_per_frame": 774797.0,
+    "ideal_worker_model": [
+      {
+        "total_workers_including_calling_thread": 2,
+        "eligible_fraction_of_each_non_index_changing_iteration": 0.5,
+        "median_modeled_ns_saved_per_frame": 455235.125,
+        "minimum_median_ns_saved_across_gates": 400453.5
+      },
+      {
+        "total_workers_including_calling_thread": 2,
+        "eligible_fraction_of_each_non_index_changing_iteration": 1.0,
+        "median_modeled_ns_saved_per_frame": 910470.25,
+        "minimum_median_ns_saved_across_gates": 800907.0
+      },
+      {
+        "total_workers_including_calling_thread": 4,
+        "eligible_fraction_of_each_non_index_changing_iteration": 0.5,
+        "median_modeled_ns_saved_per_frame": 676282.4375,
+        "minimum_median_ns_saved_across_gates": 584945.0
+      },
+      {
+        "total_workers_including_calling_thread": 4,
+        "eligible_fraction_of_each_non_index_changing_iteration": 1.0,
+        "median_modeled_ns_saved_per_frame": 1352564.875,
+        "minimum_median_ns_saved_across_gates": 1169890.0
+      }
+    ]
+  },
+  "gl_calls_by_capture": [
+    {
+      "verified_outputs": 64,
+      "median_traced_gl_ns_per_frame": 2394878.5,
+      "median_selected_gl_state_ns_per_frame": 134776.0,
+      "median_gl_state_ns_per_frame_by_command": {
+        "glActiveTexture": 14190.5,
+        "glClientActiveTexture": 14207.0,
+        "glDisable": 25849.5,
+        "glLightModelfv": 18612.0,
+        "glVertexAttribPointer": 61414.0
+      }
+    },
+    {
+      "verified_outputs": 64,
+      "median_traced_gl_ns_per_frame": 2362954.0,
+      "median_selected_gl_state_ns_per_frame": 133301.0,
+      "median_gl_state_ns_per_frame_by_command": {
+        "glActiveTexture": 13669.5,
+        "glClientActiveTexture": 13557.0,
+        "glDisable": 25933.0,
+        "glLightModelfv": 18244.0,
+        "glVertexAttribPointer": 61503.0
+      }
+    },
+    {
+      "verified_outputs": 64,
+      "median_traced_gl_ns_per_frame": 2335433.0,
+      "median_selected_gl_state_ns_per_frame": 125673.5,
+      "median_gl_state_ns_per_frame_by_command": {
+        "glActiveTexture": 13681.5,
+        "glClientActiveTexture": 13661.0,
+        "glDisable": 23985.5,
+        "glLightModelfv": 17860.0,
+        "glVertexAttribPointer": 56904.5
+      }
+    },
+    {
+      "verified_outputs": 64,
+      "median_traced_gl_ns_per_frame": 2283394.5,
+      "median_selected_gl_state_ns_per_frame": 123484.5,
+      "median_gl_state_ns_per_frame_by_command": {
+        "glActiveTexture": 14148.5,
+        "glClientActiveTexture": 13377.0,
+        "glDisable": 23792.0,
+        "glLightModelfv": 18263.0,
+        "glVertexAttribPointer": 54746.0
+      }
+    }
+  ]
+}
