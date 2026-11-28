@@ -2910,3 +2910,28 @@ The paired throughput changes were **+0.08** and **−2.13 FPS**. P99 changed by
 ```sh
 python3 benchmarks/summarize-raid-scene-args.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Execute original scene object updates on worker threads
+
+Apply `patches/aarchx-m32-raid-scene-worker-trial.patch` after the argument packet trial. Build one ARM64 runtime for both modes and keep the selected deferred PGO renderer. Enable `OCERZ_M32_SCENE_WORKERS=1` with `OCERZ_TCACHE=off` for the candidate. Leave the separate argument relocation mode off.
+
+The producer captures the six arguments and two vectors at the original update call. It checks the call and traversal instructions, frame layout, floating-point controls and guest mappings. The admission check derives four mutable regions from the object, its tracks, bone records and matrices. A group holds up to 12 tasks. Overlaps among the declared regions end the current group. The original traversal exits and its alternate path wait for the pending work. Up to three participants share a group through libdispatch. Each participant runs the original i386 update with an attached guest context and a private stack. An unadmitted call runs through the original instruction and waits for preceding updates first.
+
+Use four warmed 60-second runs in control, workers, workers, control order. Disable the runtime, submission and serial replay logs during timing. Keep the packet and logging switches in `scene-workers-mode.txt` and write the general i386 test logs to `general-control.log` and `general-candidate.log`.
+
+Use two separate 25-second launches under `diagnostic-1` and `diagnostic-drain`. Set `OCERZ_M32_SCENE_WORKERS_LOG` to `scene-workers.bin` and enable submission and encoder logging in both. Enable `OCERZ_M32_SCENE_WORKERS_COMPARE=1` only in `diagnostic-1`. Save the 15 little-endian 64-bit counter words in `scene-workers-gate.json` using the earlier uptime-bracketed format. Take the samples five seconds apart starting two seconds after the verified raid is ready.
+
+The replay diagnostic saves the declared mutable bytes, executes the worker group, saves its results, then restores the original bytes and executes the same calls serially. It compares all bytes in the declared regions and checks the observed traversal fields. Other i386 inputs and side effects remain outside this comparison.
+
+The replay gate covered **668** verified GPU completions. Worker threads completed **12,429 of 35,100** updates, and **3,018** groups had overlapping participants. All **448,851,220** compared bytes matched the serial results across **10,237** groups, with zero changes to the observed traversal fields. The separate timing gate covered **692** GPU completions. It put a mean of **0.260 ms per output** inside group execution and joining on the producer, with **16.94 µs per group**. The producer can execute some updates during that interval. [Worker completion, serial replay and wait data](results/raid-aarchx-scene-worker-ab.json)
+
+| Scene update mode | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original serial updates | 139.64 | 12.37 ms |
+| Batched worker updates | 140.73 | 12.00 ms |
+
+The paired throughput changes were **+0.33** and **+1.85 FPS**. P99 shortened by **0.127** and **0.621 ms**. The four timed windows verified **33,649** consecutive GPU completions across their respective launches, the saved camera, overlapping effects and all 26 cast timing rows. Both modes passed **812** general i386 checks and recorded zero trial window activations or visible windows. [Full-raid A/B](results/raid-aarchx-scene-worker-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-scene-workers.py CAPTURE_ROOT I386_CLIENT
+```

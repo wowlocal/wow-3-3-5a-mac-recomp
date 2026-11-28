@@ -1,0 +1,207 @@
+{
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "96affc2b1f794e21a64fe61752af72e3177482a56d6e7d7a5d2cf1518909701c",
+    "runtime_signed_sha256": "96e95fbbfa71abc04a4f4b4014e46e34b23f92f44df4a3849869a8951a5dab00",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  },
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "general_i386_checks_per_mode": 812,
+  "diagnostic": {
+    "serial_replay": {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3355,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24990543166,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 134.16,
+        "p99_gpu_completion_gap_ns": 12334875,
+        "min_draws": 683,
+        "max_draws": 962
+      },
+      "gpu_completions_between_counter_samples": 668,
+      "samples_inside_nominal_gpu_window": true,
+      "counter_sample_interval_ns": 5009872250,
+      "counters_between_samples": {
+        "update_calls": 35100,
+        "queued_updates": 35100,
+        "fallback_calls": 0,
+        "batches": 10237,
+        "multi_item_batches": 6033,
+        "updates_on_worker_threads": 12429,
+        "updates_on_producer_thread": 22671,
+        "batches_with_overlapping_participants": 3018,
+        "producer_wait_and_audit_ns": 409237445,
+        "summed_participant_elapsed_ns": 306164718,
+        "serial_replay_batches": 10237,
+        "serial_replay_bytes_compared": 448851220,
+        "serial_replay_mismatches": 0,
+        "changes_to_observed_traversal_fields": 0,
+        "worker_fraction_of_retired_updates": 0.3541025641025641
+      },
+      "whole_process_counters": {
+        "update_calls": 289992,
+        "queued_updates": 289951,
+        "fallback_calls": 41,
+        "batches": 86679,
+        "multi_item_batches": 50556,
+        "updates_on_worker_threads": 100103,
+        "updates_on_producer_thread": 189848,
+        "largest_batch": 12,
+        "batches_with_overlapping_participants": 25495,
+        "producer_wait_and_audit_ns": 3536707882,
+        "summed_participant_elapsed_ns": 2620680234,
+        "serial_replay_batches": 86679,
+        "serial_replay_bytes_compared": 3719809040,
+        "serial_replay_mismatches": 0,
+        "changes_to_observed_traversal_fields": 0,
+        "worker_fraction_of_retired_updates": 0.3452410924604502
+      }
+    },
+    "drain_timing": {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3504,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24999421791,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 140.12,
+        "p99_gpu_completion_gap_ns": 12170500,
+        "min_draws": 674,
+        "max_draws": 946
+      },
+      "gpu_completions_between_counter_samples": 692,
+      "samples_inside_nominal_gpu_window": true,
+      "counter_sample_interval_ns": 5008226708,
+      "counters_between_samples": {
+        "update_calls": 37940,
+        "queued_updates": 37940,
+        "fallback_calls": 0,
+        "batches": 10624,
+        "multi_item_batches": 6539,
+        "updates_on_worker_threads": 13760,
+        "updates_on_producer_thread": 24180,
+        "batches_with_overlapping_participants": 3467,
+        "producer_wait_and_audit_ns": 180012403,
+        "summed_participant_elapsed_ns": 340564987,
+        "serial_replay_batches": 0,
+        "serial_replay_bytes_compared": 0,
+        "serial_replay_mismatches": 0,
+        "changes_to_observed_traversal_fields": 0,
+        "worker_fraction_of_retired_updates": 0.36267791249341064
+      },
+      "whole_process_counters": {
+        "update_calls": 304621,
+        "queued_updates": 304543,
+        "fallback_calls": 78,
+        "batches": 88879,
+        "multi_item_batches": 53937,
+        "updates_on_worker_threads": 105759,
+        "updates_on_producer_thread": 198784,
+        "largest_batch": 12,
+        "batches_with_overlapping_participants": 27439,
+        "producer_wait_and_audit_ns": 1593776889,
+        "summed_participant_elapsed_ns": 2814588735,
+        "serial_replay_batches": 0,
+        "serial_replay_bytes_compared": 0,
+        "serial_replay_mismatches": 0,
+        "changes_to_observed_traversal_fields": 0,
+        "worker_fraction_of_retired_updates": 0.3472711571108185
+      },
+      "mean_producer_drain_ns_per_bracketed_output": 260133.5303468208,
+      "mean_producer_drain_ns_per_batch": 16943.938535391568
+    }
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "scene_workers": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8447,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997055750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 140.76666666666668,
+      "p99_gpu_completion_gap_ns": 12125250,
+      "min_draws": 670,
+      "max_draws": 976
+    },
+    {
+      "order": 2,
+      "scene_workers": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8467,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993506834,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 141.1,
+      "p99_gpu_completion_gap_ns": 11998250,
+      "min_draws": 691,
+      "max_draws": 963
+    },
+    {
+      "order": 3,
+      "scene_workers": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8423,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996853750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 140.36666666666667,
+      "p99_gpu_completion_gap_ns": 11999625,
+      "min_draws": 706,
+      "max_draws": 962
+    },
+    {
+      "order": 4,
+      "scene_workers": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8312,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59994834666,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 138.51666666666668,
+      "p99_gpu_completion_gap_ns": 12621000,
+      "min_draws": 692,
+      "max_draws": 984
+    }
+  ],
+  "comparison": {
+    "serial": {
+      "average_completed_fps": 139.64166666666668,
+      "p99_gpu_completion_gap_ns": 12373125.0
+    },
+    "scene_workers": {
+      "average_completed_fps": 140.73333333333335,
+      "p99_gpu_completion_gap_ns": 11998937.5
+    }
+  },
+  "paired_worker_minus_serial": [
+    {
+      "average_completed_fps": 0.3333333333333144,
+      "p99_gpu_completion_gap_ns": -127000
+    },
+    {
+      "average_completed_fps": 1.8499999999999943,
+      "p99_gpu_completion_gap_ns": -621375
+    }
+  ]
+}

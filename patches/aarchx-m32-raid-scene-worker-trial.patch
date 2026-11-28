@@ -1,0 +1,416 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -2322,13 +2322,17 @@
+ }
+
+ __thread int ocerz_jit_exec_state;
++extern int m32_scene_worker_site(uint64_t pc);
++extern int m32_scene_worker_instruction(const X86Insn *insn);
++extern int m32_scene_worker_hook(OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn);
+ static int raid_batch_instruction(const X86Insn *insn);
+ static void raid_batch_prepare(OcerzCPU *cpu);
+ static int jit_exec_one(struct OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn);
+ __attribute__((noinline))
+ static int jit_exec_one_parked(struct OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn, const void *ret)
+ {
+-    if ((insn->op != OCERZ_OP_SYSCALL && insn->op != OCERZ_OP_INT) || !ocerz_jit_pc_in_arena(vm, ret))
++    if ((insn->op != OCERZ_OP_SYSCALL && insn->op != OCERZ_OP_INT &&
++         !m32_scene_worker_instruction(insn)) || !ocerz_jit_pc_in_arena(vm, ret))
+         return jit_exec_one(vm, cpu, insn);
+     JitThr *t = jit_thr();
+     __atomic_add_fetch(&t->parked, 1, __ATOMIC_SEQ_CST);
+@@ -2377,7 +2381,8 @@
+         form = (uint64_t)insn->op | (uint64_t)(uint32_t)cpu->gpr[OCERZ_RAX] << 32;
+     cpu->slow_op = form;
+     if (raid_batch_instruction(insn)) raid_batch_prepare(cpu);
+-    int r = ocerz_interp_exec(vm, cpu, insn);
++    int handled = m32_scene_worker_instruction(insn) && m32_scene_worker_hook(vm, cpu, insn);
++    int r = handled ? OCERZ_STEP_OK : ocerz_interp_exec(vm, cpu, insn);
+     cpu->slow_op = prev_op;
+     cpu->rip &= cpu->mode32 ? 0xffffffffull : ~0ull;
+     ocerz_jit_exec_state = prev;
+@@ -26588,6 +26593,8 @@
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int scene_workers = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                              ENV_ON("OCERZ_M32_SCENE_WORKERS");
+     const int scene_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_SCENE_ARGS");
+     const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+@@ -26607,6 +26614,8 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && scene_workers && m32_scene_worker_site(vpc))
++                    break;
+                 if (vn && scene_trace && scene_packet_site(vpc))
+                     break;
+                 if (vn && prep_trace && (raid_desc_marker(vpc) || (vpc == RAID_BATCH_ENTRY && raid_batch_enabled())))
+@@ -27540,6 +27549,12 @@
+         g_ea_plain = 0;
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
++        if (i == 0 && scene_workers && m32_scene_worker_instruction(insn)) {
++            emit_slowcall(&b, insn, exit_sites, &n_exits);
++            blk->n_slow++;
++            g_dep_slow[i] = 1;
++            continue;
++        }
+         if (i == 0 && scene_trace && scene_packet_site(rip))
+             emit_scene_packet(&b, insn);
+         if (i == 0 && prep_trace && raid_desc_marker(rip))
+--- /dev/null
++++ b/src/m32_scene_workers.c
+@@ -0,0 +1,351 @@
++/* Trial for the original scene's object-update wave. The main thread
++ * collects the original cdecl calls and joins the wave before leaving
++ * the audited list loop or taking its other update path. */
++#include "ocerz/interp.h"
++#include "ocerz/m32.h"
++#include "ocerz/mem.h"
++#include "ocerz/types.h"
++#include "ocerz/vm.h"
++
++#include <dispatch/dispatch.h>
++#include <fcntl.h>
++#include <pthread.h>
++#include <stdatomic.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <time.h>
++#include <unistd.h>
++
++enum {
++    UPDATE_CALL = 0x9806ae, UPDATE_TARGET = 0x964ca0,
++    LIST_END = 0x9806b8, OTHER_PATH = 0x9808bd,
++    FRAME_SIZE = 0x2d8, SCALE = 0x200, OFFSET = 0x23c,
++    MAX_TASKS = 12, MAX_PARTICIPANTS = 3, REGION_COUNT = 4,
++};
++
++enum {
++    REQUESTS, QUEUED, FALLBACKS, BATCHES, MULTI_BATCHES, WORKER_TASKS, PRODUCER_TASKS,
++    LONGEST_BATCH, CONCURRENT_BATCHES, WALL_DRAIN_NS, ALL_GUEST_NS,
++    AUDIT_BATCHES, AUDIT_BYTES, AUDIT_MISMATCH, LINK_CHANGES, COUNTER_COUNT,
++};
++
++typedef struct {
++    uint32_t begin, bytes;
++} Region;
++
++typedef struct {
++    uint32_t words[6], scale[3], offset[3], links[2], selector;
++    Region regions[REGION_COUNT];
++} Task;
++
++typedef struct {
++    uint32_t count, frame;
++    Task tasks[MAX_TASKS];
++} Wave;
++
++typedef struct {
++    OcerzVM *vm;
++    Wave *wave;
++    pthread_t producer;
++    atomic_uint next, running, overlapping;
++} Work;
++
++static _Thread_local Wave pending;
++static pthread_once_t log_once = PTHREAD_ONCE_INIT;
++static _Atomic uint64_t *counters;
++static int compare_serial;
++
++static void init_log(void)
++{
++    const char *path = getenv("OCERZ_M32_SCENE_WORKERS_LOG");
++    compare_serial = getenv("OCERZ_M32_SCENE_WORKERS_COMPARE") != NULL;
++    if (!path || !*path) return;
++    int fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return;
++    size_t bytes = COUNTER_COUNT * sizeof(uint64_t);
++    if (ftruncate(fd, (off_t)bytes) == 0) {
++        void *mapping = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (mapping != MAP_FAILED)
++            counters = mapping;
++    }
++    close(fd);
++}
++
++static void count(unsigned index, uint64_t n)
++{
++    if (counters)
++        atomic_fetch_add_explicit(&counters[index], n, memory_order_relaxed);
++}
++
++static void maximum(unsigned index, uint64_t n)
++{
++    if (!counters) return;
++    uint64_t prior = atomic_load_explicit(&counters[index], memory_order_relaxed);
++    if (prior < n)
++        atomic_store_explicit(&counters[index], n, memory_order_relaxed);
++}
++
++static int span(uint32_t start, uint32_t bytes, int write)
++{
++    if (start < 4096 || bytes > UINT32_MAX - start)
++        return 0;
++    if (bytes) {
++        uint32_t last = (start + bytes - 1) & ~4095u;
++        for (uint32_t page = start & ~4095u;; page += 4096) {
++            int prot = ocerz_addr_prot(page);
++            int need = PROT_READ | (write ? PROT_WRITE : 0);
++            if (prot < 0 || (prot & need) != need)
++                return 0;
++            if (page == last)
++                break;
++        }
++    }
++    return 1;
++}
++
++static int overlaps(Region a, Region b)
++{
++    return a.bytes && b.bytes && a.begin < b.begin + b.bytes && b.begin < a.begin + a.bytes;
++}
++
++static int regions_intersect(const Task *a, const Task *b)
++{
++    for (unsigned i = 0; i < REGION_COUNT; i++)
++        for (unsigned j = 0; j < REGION_COUNT; j++)
++            if (overlaps(a->regions[i], b->regions[j]))
++                return 1;
++    return 0;
++}
++
++typedef struct {
++    uint32_t sp, frame, ebx;
++    Task *task;
++} Capture;
++
++static int capture_task(void *opaque)
++{
++    const Capture *request = opaque;
++    const uint32_t sp = request->sp;
++    Task *task = request->task;
++    if (sp > UINT32_MAX - FRAME_SIZE || request->frame != sp + FRAME_SIZE ||
++        !span(sp, OFFSET + 12, 0))
++        return 0;
++    memcpy(task->words, m32_h(sp), sizeof task->words);
++    uint32_t item = task->words[0];
++    if (item != request->ebx || (item & 3) || task->words[2] != sp + SCALE ||
++        task->words[3] != sp + OFFSET || task->words[4] != 0x3f800000 ||
++        task->words[5] != 0x3f800000 || !span(item, 0x1c0, 1))
++        return 0;
++    memcpy(task->scale, m32_h(sp + SCALE), sizeof task->scale);
++    memcpy(task->offset, m32_h(sp + OFFSET), sizeof task->offset);
++    task->links[0] = m32_rd(item + 0x44);
++    task->links[1] = m32_rd(item + 0x48);
++    task->selector = m32_rd(item + 0x10) & 0x1000;
++    if (task->links[1] || task->selector || !(m32_rd(item + 0x10) & 1))
++        return 0;
++    const uint32_t shared = m32_rd(item + 0x2c);
++    if (!span(shared, 0x154, 0))
++        return 0;
++    const uint32_t model = m32_rd(shared + 0x150);
++    if (!span(model, 0x50, 0))
++        return 0;
++    const uint32_t tracks = m32_rd(model + 0x14), bones = m32_rd(model + 0x2c);
++    if (bones > 512 || tracks > 512)
++        return 0;
++    task->regions[0] = (Region){item, 0x1c0};
++    task->regions[1] = (Region){m32_rd(item + 0x70), tracks * 4};
++    task->regions[2] = (Region){m32_rd(item + 0x90), bones * 0xac};
++    task->regions[3] = (Region){m32_rd(item + 0x94), bones * 64};
++    for (unsigned i = 1; i < REGION_COUNT; i++) {
++        const Region range = task->regions[i];
++        if (range.bytes && !span(range.begin, range.bytes, 1))
++            return 0;
++        for (unsigned j = 0; j < i; j++)
++            if (overlaps(range, task->regions[j]))
++                return 0;
++    }
++    return 1;
++}
++
++static void call_task(OcerzVM *vm, const Task *task)
++{
++    OcerzCPU *cpu = m32_thread_attach(vm);
++    if (!cpu || cpu->gpr[OCERZ_RSP] < 4096 || cpu->gpr[OCERZ_RSP] > UINT32_MAX)
++        abort();
++    uint32_t vectors = ((uint32_t)cpu->gpr[OCERZ_RSP] - 64) & ~15u;
++    uint32_t args[6];
++    memcpy(args, task->words, sizeof args);
++    memcpy(m32_h(vectors), task->scale, sizeof task->scale);
++    memcpy(m32_h(vectors + 12), task->offset, sizeof task->offset);
++    args[2] = vectors;
++    args[3] = vectors + 12;
++    m32_call(vm, UPDATE_TARGET, args, 6, NULL, NULL);
++}
++
++static void participant(void *opaque, size_t lane)
++{
++    Work *work = opaque;
++    const int on_worker = !pthread_equal(work->producer, pthread_self());
++    unsigned index = atomic_fetch_add_explicit(&work->next, 1, memory_order_relaxed);
++    if (index >= work->wave->count) return;
++    uint64_t start = 0;
++    if (counters) {
++        unsigned prior = atomic_fetch_add_explicit(&work->running, 1, memory_order_relaxed);
++        if (prior)
++            atomic_store_explicit(&work->overlapping, 1, memory_order_relaxed);
++        start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++    }
++    unsigned completed = 0;
++    do {
++        call_task(work->vm, &work->wave->tasks[index]);
++        completed++;
++        index = atomic_fetch_add_explicit(&work->next, 1, memory_order_relaxed);
++    } while (index < work->wave->count);
++    if (start) {
++        count(ALL_GUEST_NS, clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start);
++        atomic_fetch_sub_explicit(&work->running, 1, memory_order_relaxed);
++        count(on_worker ? WORKER_TASKS : PRODUCER_TASKS, completed);
++    }
++}
++
++static size_t wave_bytes(const Wave *wave)
++{
++    size_t bytes = 0;
++    for (unsigned i = 0; i < wave->count; i++)
++        for (unsigned j = 0; j < REGION_COUNT; j++)
++            bytes += wave->tasks[i].regions[j].bytes;
++    return bytes;
++}
++
++static void snapshot_wave(const Wave *wave, uint8_t *bytes, int restore)
++{
++    for (unsigned i = 0; i < wave->count; i++)
++        for (unsigned j = 0; j < REGION_COUNT; j++) {
++            const Region range = wave->tasks[i].regions[j];
++            if (!range.bytes) continue;
++            if (restore)
++                memcpy(m32_h(range.begin), bytes, range.bytes);
++            else
++                memcpy(bytes, m32_h(range.begin), range.bytes);
++            bytes += range.bytes;
++        }
++}
++
++static int check_wave(const Wave *wave, const uint8_t *bytes)
++{
++    for (unsigned i = 0; i < wave->count; i++)
++        for (unsigned j = 0; j < REGION_COUNT; j++) {
++            const Region range = wave->tasks[i].regions[j];
++            if (!range.bytes) continue;
++            if (memcmp(bytes, m32_h(range.begin), range.bytes))
++                return 0;
++            bytes += range.bytes;
++        }
++    return 1;
++}
++
++static void drain(OcerzVM *vm)
++{
++    if (!pending.count) return;
++    uint64_t start = counters ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
++    const size_t bytes = compare_serial ? wave_bytes(&pending) : 0;
++    uint8_t *copies = compare_serial ? malloc(2 * bytes) : NULL;
++    if (compare_serial && !copies)
++        abort();
++    if (copies)
++        snapshot_wave(&pending, copies, 0);
++    Work work = {.vm = vm, .wave = &pending, .producer = pthread_self()};
++    const unsigned width = pending.count < MAX_PARTICIPANTS ? pending.count : MAX_PARTICIPANTS;
++    if (width > 1) {
++        dispatch_apply_f(width, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), &work, participant);
++        if (counters) {
++            count(MULTI_BATCHES, 1);
++            count(CONCURRENT_BATCHES, atomic_load_explicit(&work.overlapping, memory_order_relaxed));
++        }
++    } else {
++        participant(&work, 0);
++    }
++    if (copies) {
++        snapshot_wave(&pending, copies + bytes, 0);
++        snapshot_wave(&pending, copies, 1);
++        for (unsigned i = 0; i < pending.count; i++)
++            call_task(vm, &pending.tasks[i]);
++        count(AUDIT_BATCHES, 1);
++        count(AUDIT_BYTES, bytes);
++        if (!check_wave(&pending, copies + bytes)) {
++            count(AUDIT_MISMATCH, 1);
++            fputs("Scene worker outputs differ from their serial replay.\n", stderr);
++            abort();
++        }
++        free(copies);
++    }
++    for (unsigned i = 0; i < pending.count; i++) {
++        const Task *task = &pending.tasks[i];
++        uint32_t item = task->words[0];
++        if (task->links[0] != m32_rd(item + 0x44) ||
++            task->links[1] != m32_rd(item + 0x48) ||
++            task->selector != (m32_rd(item + 0x10) & 0x1000)) {
++            count(LINK_CHANGES, 1);
++            fputs("A scene update changed a list-enumeration input.\n", stderr);
++            abort();
++        }
++    }
++    count(BATCHES, 1);
++    maximum(LONGEST_BATCH, pending.count);
++    if (start)
++        count(WALL_DRAIN_NS, clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start);
++    pending.count = 0;
++}
++
++int m32_scene_worker_site(uint64_t pc)
++{
++    return pc == UPDATE_CALL || pc == LIST_END || pc == OTHER_PATH;
++}
++
++int m32_scene_worker_instruction(const X86Insn *insn)
++{
++    if (!insn->mode32 || !m32_scene_worker_site(insn->rip))
++        return 0;
++    const char *enabled = getenv("OCERZ_M32_SCENE_WORKERS");
++    if (!enabled || strcmp(enabled, "1"))
++        return 0;
++    static const uint8_t caller[] = {0xe8,0xed,0x45,0xfe,0xff,0xe9,0x68,0xff,0xff,0xff,0x8b,0x55,0x08};
++    static const uint8_t other[] = {0x8d,0x85,0x4c,0xff,0xff,0xff};
++    return !memcmp(ocerz_g2h(UPDATE_CALL), caller, sizeof caller) &&
++           !memcmp(ocerz_g2h(OTHER_PATH), other, sizeof other);
++}
++
++/* The caller already advanced EIP to the original call's continuation.
++ * A queued void cdecl update has no guest return data on that path. */
++int m32_scene_worker_hook(OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn)
++{
++    pthread_once(&log_once, init_log);
++    if (insn->rip != UPDATE_CALL) {
++        drain(vm);
++        return 0;
++    }
++    count(REQUESTS, 1);
++    Task task;
++    const uint32_t frame = (uint32_t)cpu->gpr[OCERZ_RBP];
++    Capture input = {(uint32_t)cpu->gpr[OCERZ_RSP], frame, (uint32_t)cpu->gpr[OCERZ_RBX], &task};
++    if ((cpu->mxcsr & 0xffc0) != 0x1f80 || cpu->fcw != 0x037f ||
++        ocerz_mem_try_snapshot(capture_task, &input) != 1) {
++        drain(vm);
++        count(FALLBACKS, 1);
++        return 0;
++    }
++    if (pending.count && (pending.frame != frame || pending.count == MAX_TASKS))
++        drain(vm);
++    for (unsigned i = 0; i < pending.count; i++)
++        if (regions_intersect(&pending.tasks[i], &task)) {
++            drain(vm);
++            break;
++        }
++    pending.frame = frame;
++    pending.tasks[pending.count++] = task;
++    count(QUEUED, 1);
++    return 1;
++}
