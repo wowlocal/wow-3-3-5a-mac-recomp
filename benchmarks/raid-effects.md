@@ -2953,3 +2953,31 @@ The three timing pairs changed by **−0.40**, **+7.60**, and **+42.02 FPS**. Co
 ```sh
 python3 benchmarks/summarize-raid-scene-worker-entry.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Predict each particle fill's buffer sizes at the original mapping boundary
+
+Apply `patches/aarchx-m32-raid-particle-plan-probe.patch` after the original scene worker trial. Use the selected deferred PGO renderer and leave the worker modes off. Build the same diagnostic runtime again after applying `patches/aarchx-m32-raid-particle-culling-plan-probe.patch`.
+
+In both builds, set `OCERZ_M32_PARTICLE_PLAN_LOG` to a fresh `particle-plan.bin` with `OCERZ_TCACHE=off`. Run two verified 45-second launches under `phase-0` and `phase-1` per build. Arm the ring for two seconds at offsets 2, 16 and 30 seconds after the full scene is ready. Save the row bounds in `particle-plan-gates.json` and retain the artifact, isolation, submission and GPU logs. Save the i386 checks from each build in `general.log`.
+
+At the original map return, the probe reads the emitter list in caller order and snapshots the inputs for its fill sizes under the guest mapping guard. The analyzer independently compares those inputs and the calculated prefix offsets with the original texture result, selected count, generated vertex count and final cursor advance. The first planner uses four vertices per selected particle. The second planner reads the original culling inputs for eligible emitters and counts only particles that pass the same threshold. Its integer calculation rounds the phase product first to binary32 and then to the signed integer used by the original table lookup. The threshold branch uses the original floating-point comparisons under the observed default controls.
+
+The culling arithmetic check extracts the three arithmetic helpers and compares them with native binary32 multiplication and nearest-even integer rounding, including inputs near the integer rounding boundaries.
+
+| Prediction at map return | Exact fill sizes | Groups with every mapped offset predicted |
+| --- | ---: | ---: |
+| Four vertices per selected particle | 429,289 / 444,078 | 75,962 / 80,817 |
+| Include the original culling count | 413,467 / 413,467 | 73,505 / 73,505 |
+
+The culling pass matched the original output count in all **15,322** fills that took the counted path, removing **77,951** particles from the size plan. The checked prefixes include **640,945,968 vertex bytes** and **34,191,930 logical index bytes**. Of the exact groups, **52,655** contained multiple fills, covering **392,617** mapped fills. These offsets are available before any of the group's original geometry calls. The arithmetic check passed **1,048,576** comparisons. [Size predictions, cursor coverage and arithmetic checks](results/raid-aarchx-particle-plans.json)
+
+The four diagnostic launches verified **22,098** consecutive GPU completions across their respective windows, the saved camera, the overlapping spell effects and all 26 cast timing rows. Both builds passed **812** general i386 checks. These launches measured prediction coverage and preserve original serial rendering in the instrumented client. [Verified diagnostic windows](results/raid-aarchx-particle-plans.json)
+
+```sh
+python3 -c 'from pathlib import Path; import sys; text=Path(sys.argv[1]).read_text(); print(text[text.index("static uint64_t round_shift"):text.index("enum { CULL_NONE")], end="")' AARCHX_SOURCE/src/m32_particle_plan.c > CAPTURE_ROOT/culling-math.h
+xcrun clang -arch arm64 -O2 -ffp-contract=off -fno-fast-math -Wall -Wextra -Werror -I CAPTURE_ROOT benchmarks/check-raid-particle-culling.c -o CAPTURE_ROOT/culling-math-test
+CAPTURE_ROOT/culling-math-test > CAPTURE_ROOT/culling-math.log
+python3 benchmarks/summarize-raid-particle-plans.py CAPTURE_ROOT I386_CLIENT --initial-root INITIAL_CAPTURE_ROOT
+```
+
+The byte checks cover output sizes, mapped offsets and the return counts used by the original caller. Mutable emitter state, shared scratch storage and graphics publication still need separate validation before dispatching the fills concurrently.

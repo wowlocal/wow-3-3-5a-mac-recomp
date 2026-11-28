@@ -1,0 +1,759 @@
+{
+  "without_culling_prediction": {
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "efc08ded2776b873b48c607b86fcd19d8f9297aecb38debad0b5920fb6c1f109",
+      "runtime_signed_sha256": "ab5717ae4fd441c63501cd80cf27a3e3217c006fe23e5f69473eac507b33da76",
+      "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+    },
+    "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+    "general_i386_checks": 812,
+    "captures": [
+      {
+        "verified_gpu_window": {
+          "window_size": [
+            1365,
+            768
+          ],
+          "verified_completed_renders": 5768,
+          "missing_sequences": 0,
+          "gpu_completion_interval_ns": 44998553041,
+          "measurement_duration_ns": 45000000000,
+          "average_completed_fps": 128.15555555555557,
+          "p99_gpu_completion_gap_ns": 12797875,
+          "min_draws": 683,
+          "max_draws": 954
+        },
+        "gates": [
+          {
+            "rows": 496102,
+            "complete_producer_intervals_with_groups": 259
+          },
+          {
+            "rows": 499786,
+            "complete_producer_intervals_with_groups": 254
+          },
+          {
+            "rows": 455568,
+            "complete_producer_intervals_with_groups": 237
+          }
+        ],
+        "mapping_guard_busy": 0,
+        "counts": {
+          "complete_groups": 40758,
+          "empty_groups": 0,
+          "groups_with_multiple_fills": 28759,
+          "original_fills": 226474,
+          "quad_calls_with_original_vertex_count": 226474,
+          "quad_calls_with_four_vertices_per_selected_particle": 218963,
+          "texture_results_checked": 226474,
+          "size_clamp_checks": 226474,
+          "fills_with_predicted_sizes": 226474,
+          "fills_with_exact_sizes": 218963,
+          "mapped_vertex_bytes": 359587008,
+          "logical_index_bytes": 19191744,
+          "nonempty_groups_with_exact_prefix_positions": 38289,
+          "fills_in_exact_groups": 218218,
+          "vertex_bytes_in_exact_groups": 350071392,
+          "logical_index_bytes_in_exact_groups": 18597018,
+          "exact_groups_with_multiple_fills": 26290,
+          "fills_in_exact_groups_with_multiple_fills": 206219,
+          "fills_with_different_sizes": 7511
+        },
+        "prediction_paths": {
+          "generated": 226474
+        },
+        "top_failure_inputs": [
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              76
+            ],
+            "count": 85
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              1824,
+              114
+            ],
+            "count": 85
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              80
+            ],
+            "count": 79
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              1920,
+              120
+            ],
+            "count": 79
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              464,
+              16778375,
+              28,
+              80
+            ],
+            "count": 71
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              464,
+              16778375,
+              2688,
+              168,
+              1920,
+              120
+            ],
+            "count": 71
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              72
+            ],
+            "count": 63
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              1728,
+              108
+            ],
+            "count": 63
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              464,
+              16778375,
+              28,
+              84
+            ],
+            "count": 63
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              464,
+              16778375,
+              2688,
+              168,
+              2016,
+              126
+            ],
+            "count": 63
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              464,
+              16778375,
+              28,
+              72
+            ],
+            "count": 60
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              464,
+              16778375,
+              2688,
+              168,
+              1728,
+              108
+            ],
+            "count": 60
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              464,
+              16778375,
+              28,
+              76
+            ],
+            "count": 50
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              464,
+              16778375,
+              2688,
+              168,
+              1824,
+              114
+            ],
+            "count": 50
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              84
+            ],
+            "count": 49
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              2016,
+              126
+            ],
+            "count": 49
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              88
+            ],
+            "count": 48
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              2112,
+              132
+            ],
+            "count": 48
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              27,
+              72
+            ],
+            "count": 47
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2592,
+              162,
+              1728,
+              108
+            ],
+            "count": 47
+          }
+        ]
+      },
+      {
+        "verified_gpu_window": {
+          "window_size": [
+            1365,
+            768
+          ],
+          "verified_completed_renders": 5613,
+          "missing_sequences": 0,
+          "gpu_completion_interval_ns": 44996313666,
+          "measurement_duration_ns": 45000000000,
+          "average_completed_fps": 124.71111111111111,
+          "p99_gpu_completion_gap_ns": 13205584,
+          "min_draws": 686,
+          "max_draws": 972
+        },
+        "gates": [
+          {
+            "rows": 455206,
+            "complete_producer_intervals_with_groups": 231
+          },
+          {
+            "rows": 463884,
+            "complete_producer_intervals_with_groups": 240
+          },
+          {
+            "rows": 478084,
+            "complete_producer_intervals_with_groups": 254
+          }
+        ],
+        "mapping_guard_busy": 0,
+        "counts": {
+          "complete_groups": 40059,
+          "empty_groups": 0,
+          "groups_with_multiple_fills": 28491,
+          "original_fills": 217604,
+          "quad_calls_with_original_vertex_count": 217604,
+          "quad_calls_with_four_vertices_per_selected_particle": 210326,
+          "texture_results_checked": 217604,
+          "size_clamp_checks": 217604,
+          "fills_with_predicted_sizes": 217604,
+          "fills_with_exact_sizes": 210326,
+          "mapped_vertex_bytes": 352869312,
+          "logical_index_bytes": 18927552,
+          "nonempty_groups_with_exact_prefix_positions": 37673,
+          "fills_in_exact_groups": 209621,
+          "vertex_bytes_in_exact_groups": 343079808,
+          "logical_index_bytes_in_exact_groups": 18315708,
+          "exact_groups_with_multiple_fills": 26105,
+          "fills_in_exact_groups_with_multiple_fills": 198053,
+          "fills_with_different_sizes": 7278
+        },
+        "prediction_paths": {
+          "generated": 217604
+        },
+        "top_failure_inputs": [
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              88
+            ],
+            "count": 68
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              2112,
+              132
+            ],
+            "count": 68
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              96
+            ],
+            "count": 61
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              2304,
+              144
+            ],
+            "count": 61
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              92
+            ],
+            "count": 60
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              2208,
+              138
+            ],
+            "count": 60
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              84
+            ],
+            "count": 60
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              2016,
+              126
+            ],
+            "count": 60
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              100
+            ],
+            "count": 57
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              2400,
+              150
+            ],
+            "count": 57
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              28,
+              80
+            ],
+            "count": 48
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2688,
+              168,
+              1920,
+              120
+            ],
+            "count": 48
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              27,
+              80
+            ],
+            "count": 40
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2592,
+              162,
+              1920,
+              120
+            ],
+            "count": 40
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              27,
+              92
+            ],
+            "count": 38
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2592,
+              162,
+              2208,
+              138
+            ],
+            "count": 38
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              208,
+              16778375,
+              27,
+              84
+            ],
+            "count": 38
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              208,
+              16778375,
+              2592,
+              162,
+              2016,
+              126
+            ],
+            "count": 38
+          },
+          {
+            "shape": [
+              "quad_vertex_ratio",
+              720,
+              16778375,
+              28,
+              92
+            ],
+            "count": 37
+          },
+          {
+            "shape": [
+              "fill_sizes",
+              "generated",
+              720,
+              16778375,
+              2688,
+              168,
+              2208,
+              138
+            ],
+            "count": 37
+          }
+        ]
+      }
+    ],
+    "total_counts": {
+      "complete_groups": 80817,
+      "groups_with_multiple_fills": 57250,
+      "original_fills": 444078,
+      "quad_calls_with_original_vertex_count": 444078,
+      "quad_calls_with_four_vertices_per_selected_particle": 429289,
+      "texture_results_checked": 444078,
+      "size_clamp_checks": 444078,
+      "fills_with_predicted_sizes": 444078,
+      "fills_with_exact_sizes": 429289,
+      "mapped_vertex_bytes": 712456320,
+      "logical_index_bytes": 38119296,
+      "nonempty_groups_with_exact_prefix_positions": 75962,
+      "fills_in_exact_groups": 427839,
+      "vertex_bytes_in_exact_groups": 693151200,
+      "logical_index_bytes_in_exact_groups": 36912726,
+      "exact_groups_with_multiple_fills": 52395,
+      "fills_in_exact_groups_with_multiple_fills": 404272,
+      "fills_with_different_sizes": 14789
+    }
+  },
+  "with_culling_prediction": {
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "ec9edf885beeff2dd7c733e4de706244312734491ba4d3c076ceccdbf3d22c13",
+      "runtime_signed_sha256": "71f2c79450a6dbd189ba34c361ea087eb0af7fadbce856499f26171763392b92",
+      "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+    },
+    "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+    "general_i386_checks": 812,
+    "captures": [
+      {
+        "verified_gpu_window": {
+          "window_size": [
+            1365,
+            768
+          ],
+          "verified_completed_renders": 5356,
+          "missing_sequences": 0,
+          "gpu_completion_interval_ns": 44998738125,
+          "measurement_duration_ns": 45000000000,
+          "average_completed_fps": 119.0,
+          "p99_gpu_completion_gap_ns": 13676916,
+          "min_draws": 679,
+          "max_draws": 983
+        },
+        "gates": [
+          {
+            "rows": 448424,
+            "complete_producer_intervals_with_groups": 242
+          },
+          {
+            "rows": 434856,
+            "complete_producer_intervals_with_groups": 234
+          },
+          {
+            "rows": 446952,
+            "complete_producer_intervals_with_groups": 225
+          }
+        ],
+        "mapping_guard_busy": 0,
+        "counts": {
+          "complete_groups": 36928,
+          "empty_groups": 0,
+          "groups_with_multiple_fills": 26592,
+          "original_fills": 207927,
+          "quad_calls_with_original_vertex_count": 207927,
+          "quad_calls_with_four_vertices_per_selected_particle": 200552,
+          "texture_results_checked": 207927,
+          "size_clamp_checks": 207927,
+          "fills_with_predicted_sizes": 207927,
+          "fills_with_exact_sizes": 207927,
+          "mapped_vertex_bytes": 319995360,
+          "logical_index_bytes": 17056794,
+          "nonempty_groups_with_exact_prefix_positions": 36928,
+          "fills_in_exact_groups": 207927,
+          "vertex_bytes_in_exact_groups": 319995360,
+          "logical_index_bytes_in_exact_groups": 17056794,
+          "exact_groups_with_multiple_fills": 26592,
+          "fills_in_exact_groups_with_multiple_fills": 197591,
+          "culling_count_checks": 7766,
+          "culling_vertex_count_matches": 7766,
+          "particles_removed_by_culling_plan": 42944
+        },
+        "prediction_paths": {
+          "generated": 200161,
+          "generated_with_culling_count": 7766
+        },
+        "top_failure_inputs": []
+      },
+      {
+        "verified_gpu_window": {
+          "window_size": [
+            1365,
+            768
+          ],
+          "verified_completed_renders": 5361,
+          "missing_sequences": 0,
+          "gpu_completion_interval_ns": 44998596666,
+          "measurement_duration_ns": 45000000000,
+          "average_completed_fps": 119.11111111111111,
+          "p99_gpu_completion_gap_ns": 13695125,
+          "min_draws": 671,
+          "max_draws": 956
+        },
+        "gates": [
+          {
+            "rows": 456606,
+            "complete_producer_intervals_with_groups": 233
+          },
+          {
+            "rows": 413176,
+            "complete_producer_intervals_with_groups": 220
+          },
+          {
+            "rows": 448912,
+            "complete_producer_intervals_with_groups": 226
+          }
+        ],
+        "mapping_guard_busy": 0,
+        "counts": {
+          "complete_groups": 36577,
+          "empty_groups": 0,
+          "groups_with_multiple_fills": 26063,
+          "original_fills": 205540,
+          "quad_calls_with_original_vertex_count": 205540,
+          "quad_calls_with_four_vertices_per_selected_particle": 198754,
+          "texture_results_checked": 205540,
+          "size_clamp_checks": 205540,
+          "fills_with_predicted_sizes": 205540,
+          "fills_with_exact_sizes": 205540,
+          "mapped_vertex_bytes": 320950608,
+          "logical_index_bytes": 17135136,
+          "nonempty_groups_with_exact_prefix_positions": 36577,
+          "fills_in_exact_groups": 205540,
+          "vertex_bytes_in_exact_groups": 320950608,
+          "logical_index_bytes_in_exact_groups": 17135136,
+          "exact_groups_with_multiple_fills": 26063,
+          "fills_in_exact_groups_with_multiple_fills": 195026,
+          "culling_count_checks": 7556,
+          "culling_vertex_count_matches": 7556,
+          "particles_removed_by_culling_plan": 35007
+        },
+        "prediction_paths": {
+          "generated": 197984,
+          "generated_with_culling_count": 7556
+        },
+        "top_failure_inputs": []
+      }
+    ],
+    "total_counts": {
+      "complete_groups": 73505,
+      "groups_with_multiple_fills": 52655,
+      "original_fills": 413467,
+      "quad_calls_with_original_vertex_count": 413467,
+      "quad_calls_with_four_vertices_per_selected_particle": 399306,
+      "texture_results_checked": 413467,
+      "size_clamp_checks": 413467,
+      "fills_with_predicted_sizes": 413467,
+      "fills_with_exact_sizes": 413467,
+      "mapped_vertex_bytes": 640945968,
+      "logical_index_bytes": 34191930,
+      "nonempty_groups_with_exact_prefix_positions": 73505,
+      "fills_in_exact_groups": 413467,
+      "vertex_bytes_in_exact_groups": 640945968,
+      "logical_index_bytes_in_exact_groups": 34191930,
+      "exact_groups_with_multiple_fills": 52655,
+      "fills_in_exact_groups_with_multiple_fills": 392617,
+      "culling_count_checks": 15322,
+      "culling_vertex_count_matches": 15322,
+      "particles_removed_by_culling_plan": 77951
+    }
+  },
+  "native_phase_index_comparisons": 1048576
+}

@@ -1,0 +1,134 @@
+--- a/src/m32_particle_plan.c
++++ b/src/m32_particle_plan.c
+@@ -75,7 +75,7 @@
+     Row boundary;
+     uint32_t records;
+     Row plans[MAX_GROUP];
+-    uint32_t eax, edx, esi, edi, esp;
++    uint32_t eax, edx, esi, edi, esp, mxcsr, fcw;
+ } Capture;
+
+ static int texture_words(uint64_t texture, uint32_t *data)
+@@ -89,13 +89,103 @@
+                         word((uint64_t)data[3] + 0x18, &data[5]));
+ }
+
++/* Multiply as IEEE binary32, then round to a signed integer as the
++ * original FISTP does under the guarded nearest-even controls. The
++ * integer implementation leaves guest FP status and controls alone. */
++static uint64_t round_shift(uint64_t value, unsigned shift)
++{
++    if (!shift) return value;
++    if (shift >= 64) return 0;
++    uint64_t half = UINT64_C(1) << (shift - 1);
++    uint64_t whole = value >> shift;
++    uint64_t remainder = value & ((half << 1) - 1);
++    return whole + (remainder > half || (remainder == half && (whole & 1)));
++}
++
++static int finite_float(uint32_t bits)
++{
++    return (bits & 0x7f800000u) != 0x7f800000u;
++}
++
++static uint32_t float_order(uint32_t bits)
++{
++    if (!(bits & 0x7fffffffu))
++        bits = 0;
++    return bits ^ (bits >> 31 ? UINT32_MAX : 0x80000000u);
++}
++
++static uint32_t phase_index(uint32_t a, uint32_t b)
++{
++    unsigned ae = (a >> 23) & 255, be = (b >> 23) & 255;
++    uint32_t am = (a & 0x7fffffu) | (ae ? 0x800000u : 0);
++    uint32_t bm = (b & 0x7fffffu) | (be ? 0x800000u : 0);
++    uint64_t product = (uint64_t)am * bm;
++    if (!product)
++        return 0;
++    unsigned width = 64 - __builtin_clzll(product);
++    unsigned shift = width > 24 ? width - 24 : 0;
++    uint64_t mantissa = round_shift(product, shift);
++    int power = (int)(ae ? ae : 1) + (int)(be ? be : 1) - 300 + (int)shift;
++    unsigned sign = (a ^ b) >> 31;
++    uint64_t limit = 0x7fffffffull + sign;
++    if (power >= 0) {
++        if (power > 31 || mantissa > (limit >> power))
++            return 0x80000000u;
++        mantissa <<= power;
++    } else {
++        mantissa = round_shift(mantissa, (unsigned)-power);
++        if (mantissa > limit)
++            return 0x80000000u;
++    }
++    return sign ? 0u - (uint32_t)mantissa : (uint32_t)mantissa;
++}
++
++enum { CULL_NONE, CULL_COUNTED, CULL_UNSUPPORTED, MAX_CULL_PARTICLES = 1024 };
++
++static void cull_plan(const Capture *capture, uint32_t *data, uint64_t emitter, uint32_t gate)
++{
++    data[19] = CULL_UNSUPPORTED;
++    data[21] = gate;
++    if (!word(emitter + 0x140, &data[20]) || !finite_float(data[20]) || !finite_float(gate))
++        return;
++    if (float_order(data[20]) >= float_order(gate)) {
++        data[19] = CULL_NONE;
++        return;
++    }
++    if ((capture->mxcsr & 0xffc0u) != 0x1f80u || (capture->fcw & 0xc00u) ||
++        !data[7] || (data[10] & 0x20))
++        return;
++    uint32_t selected = data[3] / data[7];
++    if (selected > data[4])
++        selected = data[4];
++    uint32_t phases, order, scale;
++    if (selected > MAX_CULL_PARTICLES || !word(emitter + 0x34, &phases) ||
++        !word(emitter + 0x54, &order) || !word(emitter + 0x13c, &scale) || !finite_float(scale))
++        return;
++    uint32_t contributing = 0;
++    for (uint32_t i = 0; i < selected; i++) {
++        uint32_t index, phase, lookup;
++        if (!word((uint64_t)order + 4ull * i, &index))
++            return;
++        uint64_t particle = (uint64_t)phases + 32ull * index;
++        if (!word(particle, &phase) || !finite_float(phase))
++            return;
++        unsigned slot = ((uint32_t)(particle >> 5) + phase_index(phase, scale)) & 127;
++        if (!word(0xf4aae0ull + 4 * slot, &lookup) || !finite_float(lookup))
++            return;
++        contributing += float_order(lookup) <= float_order(data[20]);
++    }
++    data[18] = contributing;
++    data[19] = CULL_COUNTED;
++}
++
+ static int map_plan(Capture *capture)
+ {
+     const uint32_t frame = capture->boundary.frame;
+-    uint32_t count, table, indices, starting_offset, stride, enabled, limit;
++    uint32_t count, table, indices, starting_offset, stride, enabled, limit, gate;
+     if (!word(frame - 0xe0ull, &count) || !word(frame - 0xfcull, &starting_offset) ||
+         !word(frame - 0xf4ull, &stride) || !word(frame + 0x10ull, &table) ||
+-        !word(frame + 0x14ull, &indices) || !word(PARTICLE_READY, &enabled) || !word(PARTICLE_LIMIT, &limit))
++        !word(frame + 0x14ull, &indices) || !word(PARTICLE_READY, &enabled) || !word(PARTICLE_LIMIT, &limit) || !word(0xd2f8b8, &gate))
+         return 0;
+     uint32_t *map = capture->boundary.word;
+     map[0] = capture->eax;
+@@ -127,6 +217,7 @@
+             !word(object + 0x134, &data[10]) || !word(object + 0x128, &data[11]) ||
+             !texture_words(data[11], data + 12))
+             continue;
++        cull_plan(capture, data, object, gate);
+         plan->ready = 1;
+     }
+     return 1;
+@@ -205,6 +296,8 @@
+     capture.esi = cpu->gpr[OCERZ_RSI];
+     capture.edi = cpu->gpr[OCERZ_RDI];
+     capture.esp = cpu->gpr[OCERZ_RSP];
++    capture.mxcsr = cpu->mxcsr;
++    capture.fcw = cpu->fcw;
+     int result = ocerz_mem_try_snapshot(capture_words, &capture);
+     capture.boundary.ready = result == 1;
+     if (result < 0)

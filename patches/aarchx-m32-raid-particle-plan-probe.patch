@@ -1,0 +1,266 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -2322,6 +2322,9 @@
+ }
+
+ __thread int ocerz_jit_exec_state;
++extern int m32_particle_plan_site(uint64_t pc);
++extern int m32_particle_plan_instruction(const X86Insn *insn);
++extern void m32_particle_plan_hook(OcerzCPU *cpu, const X86Insn *insn);
+ extern int m32_scene_worker_site(uint64_t pc);
+ extern int m32_scene_worker_instruction(const X86Insn *insn);
+ extern int m32_scene_worker_hook(OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn);
+@@ -2381,6 +2384,7 @@
+         form = (uint64_t)insn->op | (uint64_t)(uint32_t)cpu->gpr[OCERZ_RAX] << 32;
+     cpu->slow_op = form;
+     if (raid_batch_instruction(insn)) raid_batch_prepare(cpu);
++    if (m32_particle_plan_instruction(insn)) m32_particle_plan_hook(cpu, insn);
+     int handled = m32_scene_worker_instruction(insn) && m32_scene_worker_hook(vm, cpu, insn);
+     int r = handled ? OCERZ_STEP_OK : ocerz_interp_exec(vm, cpu, insn);
+     cpu->slow_op = prev_op;
+@@ -26593,6 +26597,8 @@
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int particle_plan = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                              getenv("OCERZ_M32_PARTICLE_PLAN_LOG") != NULL;
+     const int scene_workers = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                               ENV_ON("OCERZ_M32_SCENE_WORKERS");
+     const int scene_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+@@ -26614,6 +26620,8 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && particle_plan && m32_particle_plan_site(vpc))
++                    break;
+                 if (vn && scene_workers && m32_scene_worker_site(vpc))
+                     break;
+                 if (vn && scene_trace && scene_packet_site(vpc))
+@@ -27549,7 +27557,8 @@
+         g_ea_plain = 0;
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
+-        if (i == 0 && scene_workers && m32_scene_worker_instruction(insn)) {
++        if (i == 0 && ((scene_workers && m32_scene_worker_instruction(insn)) ||
++                       (particle_plan && m32_particle_plan_instruction(insn)))) {
+             emit_slowcall(&b, insn, exit_sites, &n_exits);
+             blk->n_slow++;
+             g_dep_slow[i] = 1;
+--- /dev/null
++++ b/src/m32_particle_plan.c
+@@ -0,0 +1,215 @@
++/* Read-only diagnostic at the original mapped particle group boundaries. */
++#include "ocerz/interp.h"
++
++#include "ocerz/m32.h"
++#include "ocerz/mem.h"
++#include "ocerz/types.h"
++
++#include <fcntl.h>
++#include <pthread.h>
++#include <stdatomic.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <sys/mman.h>
++#include <time.h>
++#include <unistd.h>
++
++enum {
++    MAP_RETURN = 0x97c8c3, FILL = 0x97c9fb, ADVANCE = 0x97ca30, UNMAP = 0x97c906,
++    TEXTURE_RETURN = 0x88303b, QUAD_CALL = 0x8831a9, QUAD_RETURN = 0x8831ae,
++    PARTICLE_READY = 0xda2e00, PARTICLE_LIMIT = 0xd2ff58,
++    PLAN = 1, CAPACITY = 1 << 22, MAX_GROUP = 128,
++};
++
++typedef struct {
++    uint64_t sequence, tick, cpu;
++    uint32_t site, frame, ordinal, ready;
++    uint32_t word[22];
++} Row;
++
++_Static_assert(sizeof(Row) == 128, "particle plan row");
++
++typedef union {
++    Row header;
++    struct {
++        _Atomic uint64_t count, armed, busy;
++    } state;
++} Header;
++
++static Header *header;
++static pthread_once_t init_once = PTHREAD_ONCE_INIT;
++
++static void start_log(void)
++{
++    const char *path = getenv("OCERZ_M32_PARTICLE_PLAN_LOG");
++    if (!path || !*path) return;
++    const int fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600);
++    if (fd < 0) return;
++    const size_t length = (CAPACITY + 1ull) * sizeof(Row);
++    if (!ftruncate(fd, (off_t)length)) {
++        void *mapped = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (mapped != MAP_FAILED)
++            header = mapped;
++    }
++    close(fd);
++}
++
++static int word(uint64_t guest, uint32_t *out)
++{
++    if (guest < 4096 || guest > UINT32_MAX - 3 || !ocerz_addr_readable(guest) ||
++        ((guest & 4095) > 4092 && !ocerz_addr_readable(guest + 3)))
++        return 0;
++    *out = m32_rd((uint32_t)guest);
++    return 1;
++}
++
++static void append(Row row)
++{
++    uint64_t index = atomic_fetch_add_explicit(&header->state.count, 1, memory_order_relaxed);
++    Row *destination = (Row *)header + 1 + (index & (CAPACITY - 1));
++    row.sequence = index + 1;
++    *destination = row;
++}
++
++typedef struct {
++    Row boundary;
++    uint32_t records;
++    Row plans[MAX_GROUP];
++    uint32_t eax, edx, esi, edi, esp;
++} Capture;
++
++static int texture_words(uint64_t texture, uint32_t *data)
++{
++    if (!texture)
++        return 1;
++    if (!word(texture + 0x28, &data[0]) || !word(texture + 0x40, &data[1]) ||
++        !word(texture + 0x44, &data[2]) || !word(texture + 0x5c, &data[3]))
++        return 0;
++    return !data[3] || (word((uint64_t)data[3] + 2, &data[4]) &&
++                        word((uint64_t)data[3] + 0x18, &data[5]));
++}
++
++static int map_plan(Capture *capture)
++{
++    const uint32_t frame = capture->boundary.frame;
++    uint32_t count, table, indices, starting_offset, stride, enabled, limit;
++    if (!word(frame - 0xe0ull, &count) || !word(frame - 0xfcull, &starting_offset) ||
++        !word(frame - 0xf4ull, &stride) || !word(frame + 0x10ull, &table) ||
++        !word(frame + 0x14ull, &indices) || !word(PARTICLE_READY, &enabled) || !word(PARTICLE_LIMIT, &limit))
++        return 0;
++    uint32_t *map = capture->boundary.word;
++    map[0] = capture->eax;
++    map[1] = count;
++    map[2] = stride;
++    capture->boundary.ready = 1;
++    if (count > MAX_GROUP)
++        return 1;
++    for (uint32_t i = 0; i < count; i++) {
++        Row *plan = &capture->plans[capture->records++];
++        *plan = capture->boundary;
++        plan->site = PLAN;
++        plan->ordinal = i;
++        plan->ready = 0;
++        uint32_t *data = plan->word;
++        *data = 0;
++        uint32_t index, item;
++        if (!word((uint64_t)indices + starting_offset + 4ull * i, &index) ||
++            !word((uint64_t)table + 68ull * index + 0x18, &item) || !item)
++            continue;
++        data[0] = item;
++        data[1] = stride;
++        data[2] = enabled;
++        data[3] = limit;
++        uint64_t object = item;
++        if (!word(object + 0x50, &data[4]) || !word(object + 0x98, &data[5]) ||
++            !word(object + 0x1c, &data[6]) || !word(object + 0x8c, &data[7]) ||
++            !word(object + 0x90, &data[8]) || !word(object + 0xd4, &data[9]) ||
++            !word(object + 0x134, &data[10]) || !word(object + 0x128, &data[11]) ||
++            !texture_words(data[11], data + 12))
++            continue;
++        plan->ready = 1;
++    }
++    return 1;
++}
++
++static int capture_words(void *opaque)
++{
++    Capture *capture = opaque;
++    Row *row = &capture->boundary;
++    const uint32_t frame = row->frame;
++    uint32_t *data = row->word;
++    switch (row->site) {
++    case MAP_RETURN:
++        return map_plan(capture);
++    case FILL:
++        data[0] = capture->edi;
++        data[1] = capture->esi;
++        return word(frame - 0xe4ull, &row->ordinal) && word(frame - 0xf4ull, &data[2]);
++    case ADVANCE:
++        data[0] = capture->edi;
++        data[1] = capture->esi;
++        data[2] = capture->edx;
++        if (!word(frame - 0xe4ull, &row->ordinal) || !row->ordinal)
++            return 0;
++        row->ordinal--;
++        return word(capture->edi + 0x1cull, &data[3]) &&
++               word(capture->edi + 0x8cull, &data[4]) &&
++               word(capture->edi + 0x90ull, &data[5]);
++    case TEXTURE_RETURN:
++        data[0] = capture->esi;
++        data[1] = capture->eax;
++        return 1;
++    case QUAD_CALL:
++        data[0] = capture->esi;
++        return word(capture->esp + 8ull, &data[1]);
++    case QUAD_RETURN:
++        data[0] = capture->esi;
++        return word(frame - 0x1cull, &data[1]);
++    default:
++        return 1;
++    }
++}
++
++int m32_particle_plan_site(uint64_t pc)
++{
++    switch (pc) {
++    case MAP_RETURN: case FILL: case ADVANCE: case UNMAP:
++    case TEXTURE_RETURN: case QUAD_CALL: case QUAD_RETURN:
++        return 1;
++    default:
++        return 0;
++    }
++}
++
++int m32_particle_plan_instruction(const X86Insn *insn)
++{
++    if (!insn->mode32 || !m32_particle_plan_site(insn->rip))
++        return 0;
++    const char *path = getenv("OCERZ_M32_PARTICLE_PLAN_LOG");
++    return path && *path;
++}
++
++void m32_particle_plan_hook(OcerzCPU *cpu, const X86Insn *insn)
++{
++    pthread_once(&init_once, start_log);
++    if (!header || !atomic_load_explicit(&header->state.armed, memory_order_relaxed))
++        return;
++    Capture capture;
++    capture.boundary = (Row){
++        .cpu = (uintptr_t)cpu, .site = insn->rip, .frame = cpu->gpr[OCERZ_RBP],
++        .tick = clock_gettime_nsec_np(CLOCK_UPTIME_RAW),
++    };
++    capture.records = 0;
++    capture.eax = cpu->gpr[OCERZ_RAX];
++    capture.edx = cpu->gpr[OCERZ_RDX];
++    capture.esi = cpu->gpr[OCERZ_RSI];
++    capture.edi = cpu->gpr[OCERZ_RDI];
++    capture.esp = cpu->gpr[OCERZ_RSP];
++    int result = ocerz_mem_try_snapshot(capture_words, &capture);
++    capture.boundary.ready = result == 1;
++    if (result < 0)
++        atomic_fetch_add_explicit(&header->state.busy, 1, memory_order_relaxed);
++    append(capture.boundary);
++    for (uint32_t i = 0; i < capture.records; i++)
++        append(capture.plans[i]);
++}
