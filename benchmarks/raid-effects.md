@@ -2646,3 +2646,19 @@ The preceding two-root trace measured **4.98 ms** mean across both roots and **2
 ```sh
 python3 benchmarks/summarize-raid-scene-work.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Measure mapped particle groups before ordered publication
+
+Apply `patches/aarchx-m32-raid-particle-paths-probe.patch` after the scene-work probe and use the same selected deferred PGO renderer. Set `OCERZ_M32_RAID_PARTICLE_PATHS_LOG` to a fresh `particle-paths.bin` in the `phase` directory. Arm the ring for **8 seconds**, beginning two seconds after the fixture is ready during a verified 45-second launch. Use the same gate metadata, artifact and visibility checks as for the scene-work recording. The first 30-second gate exceeded the ring capacity and was discarded.
+
+The three largest dispatcher paths ran through separate calls to `0x97caa0`, `0x979130` and `0x97b970`. In **1,091** complete producer intervals they accounted for median elapsed times of **0.928**, **0.833** and **0.796 ms**, respectively. The particle path in this window went through the grouped fill under `0x97c340`. The standalone fill path had zero recorded calls in the joined window. [Call times and verified GPU outputs](results/raid-aarchx-particle-paths.json)
+
+The grouped path maps a buffer, advances its cursor by the number of bytes reported after each fill, then unmaps and publishes. The trace matched **316,049** fills in **57,686** mapped groups. It checks the mapped pointer returned by the original call, each cursor advance and the matching unmap. The medians were **52 groups**, **274 fills**, and **393,504 bytes of vertex cursor advance** per producer interval. Geometry fills took **0.587 ms**. The quad batch nested within those fills took **0.522 ms**. Mapping took **0.092 ms**, and the following publication call took **0.168 ms**. These are elapsed intervals on one calling CPU. [Mapped lifetimes and call timings](results/raid-aarchx-particle-paths.json)
+
+Across **314,533** fills matched to the same emitter address and occurrence in the immediately preceding frame, **84.2%** had the same pair of vertex advance and logical index size. Address reuse can affect the match. A new implementation needs a current-frame size or independently owned output storage before assigning ranges. The eight-worker model gives median savings of **0.228 ms** when every fill in each individual group is eligible, original inter-call time stays on the producer, and dispatch costs **500 ns per fill**. It preserves the final group barrier. This estimate leaves shared emitter state, byte-for-byte equivalence, memory traffic and staging to a candidate implementation. [Output sizes and model](results/raid-aarchx-particle-paths.json)
+
+The diagnostic verified **6,195** consecutive full-resolution GPU completions, the saved camera, overlapping effects, all 26 cast timing rows, and zero visible trial windows or activations. The earlier trial was paused during the capture and resumed after it. The runtime passed **805** general i386 checks.
+
+```sh
+python3 benchmarks/summarize-raid-particle-paths.py CAPTURE_ROOT I386_CLIENT
+```

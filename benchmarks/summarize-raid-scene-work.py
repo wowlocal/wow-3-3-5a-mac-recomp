@@ -47,39 +47,45 @@ class Call(NamedTuple):
         return self.end - self.start
 
 
-def load_calls(capture):
-    gate = json.loads((capture / "phase-gate.json").read_text())
-    calls, pending = defaultdict(list), {}
-    latest, unpaired = {}, Counter()
-    first = None
-    with (capture / "root-work.bin").open("rb") as source:
+def read_boundary_records(path, gate):
+    latest = {}
+    with path.open("rb") as source:
         with mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_READ) as trace:
             count, armed = struct.unpack_from("<QQ", trace)
             if armed or not 0 < count == gate["rows"] < CAPACITY or len(trace) != (CAPACITY + 1) * STRIDE:
                 raise ValueError("Incomplete scene-work trace")
             for index in range(count):
-                sequence, tick, cpu, pc, _, ebx, _, _, _, _, ebp, esp = RECORD.unpack_from(
-                    trace, (index + 1) * STRIDE
-                )
+                row = RECORD.unpack_from(trace, (index + 1) * STRIDE)
+                sequence, tick, cpu = row[:3]
                 if sequence != index + 1 or not cpu or tick < latest.get(cpu, 1):
                     raise ValueError(f"Invalid event {index + 1}")
                 latest[cpu] = tick
-                first = tick if first is None else min(first, tick)
-                if pc in SITES:
-                    key = cpu, pc, ebp, esp
-                    if key in pending:
-                        raise ValueError(f"Repeated call with no return at {pc:#x}")
-                    pending[key] = tick, ebx
-                else:
-                    site = RETURNS[pc]
-                    entry = pending.pop((cpu, site, ebp, esp), None)
-                    if entry is None:
-                        unpaired[pc] += 1
-                        continue
-                    start, item = entry
-                    if tick < start or (site in (UPDATE, CONSUMER) and (not item or item != ebx)):
-                        raise ValueError(f"Invalid return at {pc:#x}")
-                    calls[cpu].append(Call(site, start, tick, item))
+                yield row[1:]
+
+
+def load_calls(capture):
+    gate = json.loads((capture / "phase-gate.json").read_text())
+    calls, pending = defaultdict(list), {}
+    latest, unpaired = {}, Counter()
+    first = None
+    for tick, cpu, pc, _, ebx, _, _, _, _, ebp, esp in read_boundary_records(capture / "root-work.bin", gate):
+        latest[cpu] = tick
+        first = tick if first is None else min(first, tick)
+        if pc in SITES:
+            key = cpu, pc, ebp, esp
+            if key in pending:
+                raise ValueError(f"Repeated call with no return at {pc:#x}")
+            pending[key] = tick, ebx
+        else:
+            site = RETURNS[pc]
+            entry = pending.pop((cpu, site, ebp, esp), None)
+            if entry is None:
+                unpaired[pc] += 1
+                continue
+            start, item = entry
+            if tick < start or (site in (UPDATE, CONSUMER) and (not item or item != ebx)):
+                raise ValueError(f"Invalid return at {pc:#x}")
+            calls[cpu].append(Call(site, start, tick, item))
     active = [entries for entries in calls.values() if any(entry.site == ROOT for entry in entries)]
     if len(active) != 1:
         raise ValueError("Expected scene work on one calling CPU")
@@ -158,7 +164,7 @@ def work_per_frame(starts, windows):
         }
 
 
-def summarize(root, guest):
+def verify_trial(root, guest):
     artifacts = json.loads((root / "artifact-sha256.json").read_text())
     results = HERE / "results"
     sha = TAIL["QUEUED"]["sha"]
@@ -171,13 +177,18 @@ def summarize(root, guest):
         raise ValueError("Wrong original client, runtime or selected renderer")
     if not (root / "general.log").read_text().endswith("test_m32: 805 checks, 0 failed\n"):
         raise ValueError("The diagnostic runtime did not pass the general i386 checks")
+    verified, _ = TAIL["verify_capture"](root / "phase", artifacts)
+    return artifacts, guest_sha, verified
+
+
+def summarize(root, guest):
+    artifacts, guest_sha, verified = verify_trial(root, guest)
     instructions = PHASE["GUEST"](guest, SITES.keys())
     if {pc: ("calll", hex(target)) for pc, target in SITES.items()} != {
         pc: (op, operands.strip()) for pc, (op, operands) in instructions.items()
     }:
         raise ValueError("Original guest call sites differ")
     capture = root / "phase"
-    verified, _ = TAIL["verify_capture"](capture, artifacts)
     calls, first, last, counters = load_calls(capture)
     window = json.loads((capture / "window.json").read_text())
     by_end, _ = LIFE["render_submissions"](capture / "submissions.ns", window["pid"])

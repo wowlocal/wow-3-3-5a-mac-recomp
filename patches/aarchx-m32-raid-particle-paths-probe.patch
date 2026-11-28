@@ -1,0 +1,71 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19039,22 +19039,43 @@
+ static int raid_prep_site(uint64_t pc)
+ {
+     switch (pc) {
+-    case 0x721dc3: case 0x721dc8:
+-    case 0x73fcf3: case 0x73fcf8:
+-    case 0x73fdca: case 0x73fdcf:
+-    case 0x73fdd9: case 0x73fdde:
+-    case 0x73fdf6: case 0x73fdfb:
+-    case 0x73fe15: case 0x73fe1a:
+-    case 0x74010b: case 0x740110:
+-    case 0x7401ef: case 0x7401f4:
+-    case 0x97e6f9: case 0x97e6fe:
+-    case 0x9800f8: case 0x9800fd:
+-    case 0x98011b: case 0x980120:
+-    case 0x98013e: case 0x980143:
+-    case 0x980165: case 0x98016a:
+-    case 0x980175: case 0x98017a:
+-    case 0x9801a7: case 0x9801ac:
+-    case 0x9806ae: case 0x9806b3:
++    case 0x8831a9:
++    case 0x8831ae:
++    case 0x8831db:
++    case 0x8831e1:
++    case 0x88321c:
++    case 0x883221:
++    case 0x88324d:
++    case 0x883252:
++    case 0x88326d:
++    case 0x883272:
++    case 0x88328f:
++    case 0x883295:
++    case 0x97c8a1:
++    case 0x97c8a6:
++    case 0x97c8bd:
++    case 0x97c8c3:
++    case 0x97c906:
++    case 0x97c90c:
++    case 0x97c992:
++    case 0x97c997:
++    case 0x97c9fb:
++    case 0x97ca00:
++    case 0x97ca30:
++    case 0x97cb41:
++    case 0x97cb46:
++    case 0x97cda2:
++    case 0x97cda7:
++    case 0x97d3a1:
++    case 0x97d3a6:
++    case 0x97d4de:
++    case 0x97d4e3:
++    case 0x97d552:
++    case 0x97d557:
++    case 0x97dc66:
++    case 0x97dc6b:
++    case 0x97dc9c:
++    case 0x97dca1:
+         return 1;
+     default:
+         return 0;
+@@ -19066,7 +19087,7 @@
+     static int checked;
+     static const char *path;
+     if (!checked) {
+-        path = getenv("OCERZ_M32_RAID_ROOT_WORK_LOG");
++        path = getenv("OCERZ_M32_RAID_PARTICLE_PATHS_LOG");
+         checked = 1;
+     }
+     return path && *path ? path : NULL;
