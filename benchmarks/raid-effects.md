@@ -3031,3 +3031,13 @@ The paired changes were **+0.78** and **+1.90 FPS**. P99 shortened by **0.555** 
 ```sh
 python3 benchmarks/summarize-raid-native-5k-draw-budget.py CAPTURE_ROOT
 ```
+
+### Attribute native 5K fragment time to render targets
+
+Use the original verified 5K runtime, renderer, draw budget and raid fixture. Enable `WINEMETALGL_STATS=1` to add the target sizes and pass numbers to Metal's encoder labels. Enable submission logging and record a six-second Metal System Trace after the fixture warms up. Save the recorder's PID, uptime bounds and archive status in `trace-witness.json`. Export `metal-gpu-intervals` as shown above. The trace uses the union of active intervals per GPU stage. WineMetalGL's built-in pass profiler sums overlapping spans from vertex start to fragment end.
+
+The trace matched **561** consecutive GPU completions and **1,186** fragment end timestamps within **42 ns** of the submission log. Labels covered **99.92%** of the client's fragment activity. Passes targeting **5120 × 2880** accounted for **96.4%** of mean fragment activity, with a median of **8.04 ms** per completion interval. The auxiliary **1280 × 720** color passes had a **0.27 ms** median. The native 5K pass labeled **1** alone had a **5.06 ms** median and **9.15 ms p99**. Pass numbers follow renderer encoding order and may change when the draw stream splits. Attribute the draws and attachment traffic in pass 1 before changing the shader or submission path. The instrumented 60-second diagnostic averaged **84.95 FPS**. [Native 5K fragment time by render target](results/raid-native-5k-encoder-profile.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-encoders.py CAPTURE --legacy-pid EARLIER_TEST_PID
+```

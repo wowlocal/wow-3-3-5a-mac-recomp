@@ -1,0 +1,263 @@
+{
+  "diagnostic_run": {
+    "viewport": [
+      0,
+      0,
+      5120,
+      2880
+    ],
+    "multisample_count": 4,
+    "world_readback_sha256": "e3080e00a31757b0f4fbd885a8e8a54dc3799a1e974d5a5dd916f94bd8b63808",
+    "graphics": {
+      "captured": true,
+      "actual": {
+        "weatherDensity": "3",
+        "ffxGlow": "1",
+        "projectedTextures": "1",
+        "groundEffectDist": "140",
+        "extShadowQuality": "0",
+        "gxVSync": "0",
+        "baseMip": "0",
+        "shadowLevel": "0",
+        "maxFPSBk": "0",
+        "shadowLimit": 0,
+        "format": 3,
+        "farclip": "1277",
+        "caps": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          16,
+          1
+        ],
+        "gxDepthBits": "24",
+        "gxColorBits": "24",
+        "maxFPS": "0",
+        "formats": [
+          24,
+          24,
+          1,
+          24,
+          24,
+          2,
+          24,
+          24,
+          4
+        ],
+        "gxResolution": "5120x2880",
+        "environmentDetail": "1.5",
+        "terrainDetail": 1,
+        "terrainDetailBefore": 1,
+        "gxMultisample": "4",
+        "ffxDeath": "1",
+        "particleDensity": "1",
+        "marker": "complete",
+        "specular": "1",
+        "componentTextureLevel": "9",
+        "textureFilteringMode": "5",
+        "groundEffectDensity": "64"
+      },
+      "expected": {
+        "farclip": 1277,
+        "terrainDetail": 1,
+        "shadowLevel": 0,
+        "particleDensity": 1,
+        "environmentDetail": 1.5,
+        "groundEffectDensity": 64,
+        "groundEffectDist": 140,
+        "baseMip": 0,
+        "extShadowQuality": 0.0,
+        "textureFilteringMode": 5,
+        "weatherDensity": 3,
+        "componentTextureLevel": 9,
+        "specular": 1,
+        "ffxGlow": 1,
+        "ffxDeath": 1,
+        "projectedTextures": 1,
+        "gxResolution": "5120x2880",
+        "gxVSync": 0,
+        "gxMultisample": 4,
+        "maxFPS": 0,
+        "maxFPSBk": 0
+      },
+      "client_limits": {
+        "extShadowQuality": 0.0
+      },
+      "issues": []
+    },
+    "verified_cast_rows": 26,
+    "verified_gpu_window": {
+      "stream": 1,
+      "pid": 11838,
+      "window_size": [
+        5120,
+        2880
+      ],
+      "verified_completed_renders": 5098,
+      "first_sequence": 3618,
+      "last_sequence": 8715,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991263375,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 84.95,
+      "p99_gpu_completion_gap_ns": 19329834,
+      "min_draws": 866,
+      "max_draws": 1245
+    },
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+      "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+      "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+    }
+  },
+  "metal_trace_witness": {
+    "attach_pid": 11838,
+    "begin_uptime_ns": 430284492360875,
+    "requested_seconds": 6,
+    "end_uptime_ns": 430369066478583,
+    "returncode": 0,
+    "trace_exists": true
+  },
+  "matched_output_count": 561,
+  "matched_fragment_clock_alignment": {
+    "matched_endpoints": 1186,
+    "maximum_error_ns": 42
+  },
+  "matched_completion_span_ns": 6500512916,
+  "stages_in_matched_completion_gaps": {
+    "Fragment": {
+      "all_client_active_ns": {
+        "mean": 8888200.832142858,
+        "median": 8331791.5,
+        "p99": 14202084
+      },
+      "known_target_union_active_ns": {
+        "mean": 8881228.73392857,
+        "median": 8331791.5,
+        "p99": 14202084
+      },
+      "known_target_share_of_union": 0.9992155782316401,
+      "targets": {
+        "1280x720": {
+          "active_ns": {
+            "mean": 313581.7982142857,
+            "median": 270125.0,
+            "p99": 1041875
+          },
+          "encoder_identities": 1680
+        },
+        "5120x2880": {
+          "active_ns": {
+            "mean": 8567646.935714286,
+            "median": 8036999.0,
+            "p99": 13936959
+          },
+          "encoder_identities": 1743
+        },
+        "unknown": {
+          "active_ns": {
+            "mean": 6972.098214285715,
+            "median": 0.0,
+            "p99": 0
+          },
+          "encoder_identities": 2
+        }
+      },
+      "native_5k_pass_numbers": {
+        "0": {
+          "mean": 1988399.55,
+          "median": 1924625.0,
+          "p99": 3928417
+        },
+        "1": {
+          "mean": 5453003.053571428,
+          "median": 5060791.5,
+          "p99": 9153667
+        },
+        "2": {
+          "mean": 251749.325,
+          "median": 0.0,
+          "p99": 3066626
+        },
+        "5": {
+          "mean": 775774.5428571429,
+          "median": 825416.0,
+          "p99": 1939833
+        },
+        "6": {
+          "mean": 98720.46428571429,
+          "median": 0.0,
+          "p99": 850792
+        }
+      }
+    },
+    "Vertex": {
+      "all_client_active_ns": {
+        "mean": 894312.9571428571,
+        "median": 774458.5,
+        "p99": 2388125
+      },
+      "known_target_union_active_ns": {
+        "mean": 893735.3535714286,
+        "median": 774458.5,
+        "p99": 2388125
+      },
+      "known_target_share_of_union": 0.9993541370872296,
+      "targets": {
+        "1280x720": {
+          "active_ns": {
+            "mean": 57690.40892857143,
+            "median": 16083.5,
+            "p99": 770751
+          },
+          "encoder_identities": 1679
+        },
+        "5120x2880": {
+          "active_ns": {
+            "mean": 836044.9446428572,
+            "median": 755334.0,
+            "p99": 1951458
+          },
+          "encoder_identities": 1743
+        },
+        "unknown": {
+          "active_ns": {
+            "mean": 577.6035714285714,
+            "median": 0.0,
+            "p99": 0
+          },
+          "encoder_identities": 1
+        }
+      },
+      "native_5k_pass_numbers": {
+        "0": {
+          "mean": 263036.3803571428,
+          "median": 215520.5,
+          "p99": 1081708
+        },
+        "1": {
+          "mean": 484821.1482142857,
+          "median": 452625.0,
+          "p99": 1184625
+        },
+        "2": {
+          "mean": 14076.792857142857,
+          "median": 0.0,
+          "p99": 233875
+        },
+        "5": {
+          "mean": 65996.41071428571,
+          "median": 61208.0,
+          "p99": 294250
+        },
+        "6": {
+          "mean": 8114.2125,
+          "median": 0.0,
+          "p99": 105667
+        }
+      }
+    }
+  }
+}
