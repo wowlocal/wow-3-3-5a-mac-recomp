@@ -1,0 +1,194 @@
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19588,6 +19588,164 @@
+     return state == 1 && rip == target;
+ }
+
++/* Verify the rotated particle output on the marked i386 path. */
++enum {
++    QUAD_PACKET_BEGIN = 0x881651, QUAD_PACKET_END = 0x881aad,
++    QUAD_PACKET_BITS = 20, QUAD_PACKET_STRIDE = 256,
++};
++
++static int quad_packet_site(uint64_t pc)
++{
++    return pc == QUAD_PACKET_BEGIN || pc == QUAD_PACKET_END;
++}
++
++static const char *quad_packet_path(void)
++{
++    static int checked;
++    static const char *path;
++    if (!checked) {
++        path = getenv("OCERZ_M32_RAID_QUAD_PACKETS_LOG");
++        checked = 1;
++    }
++    return path && *path ? path : NULL;
++}
++
++static void *quad_packet_mapping(void)
++{
++    static int initialized;
++    static void *mapping;
++    if (initialized) return mapping;
++    initialized = 1;
++    int lse = 0;
++    size_t size = sizeof lse;
++    unsigned frequency;
++    __asm__ volatile("mrs %x0, cntfrq_el0" : "=r" (frequency));
++    if (frequency != 1000000000u ||
++        sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &size, NULL, 0) || !lse)
++        return NULL;
++    int fd = open(quad_packet_path(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return NULL;
++    const size_t bytes = QUAD_PACKET_STRIDE * ((1u << QUAD_PACKET_BITS) + 1u);
++    if (ftruncate(fd, (off_t)bytes) == 0) {
++        void *result = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (result != MAP_FAILED) mapping = result;
++    }
++    close(fd);
++    return mapping;
++}
++
++/* JTU holds a guest address. JTT borrows the translated host pointer. */
++static uint32_t *emit_quad_packet_words(A64Buf *b, unsigned words, unsigned offset)
++{
++    a64_ubfx(b, 0, JTT, JTU, 0, 12);
++    a64_add_imm(b, 0, JTT, JTT, words * 4 - 1);
++    uint32_t *page_split = a64_label(b); a64_tbnz(b, JTT, 12, 0);
++    a64_add_ext_uxtw(b, JTT, JGB, JTU, 0);
++    for (unsigned word = 0; word < words; word++) {
++        a64_ldr(b, 4, JT1, JTT, word * 4);
++        a64_str(b, 4, JT1, JT0, offset + word * 4);
++    }
++    return page_split;
++}
++
++static void emit_quad_packet(A64Buf *b, uint64_t pc)
++{
++    const int begin = pc == QUAD_PACKET_BEGIN;
++    if (g_pin_class != 3 || !jgb_usable() || !ocerz_guest_base || pin_slot(OCERZ_RBP) < 0)
++        return;
++    if (begin && (!xmm_is_pinned(2) || !xmm_is_pinned(3) || !xmm_is_pinned(7)))
++        return;
++    void *mapping = quad_packet_mapping();
++    if (!mapping) return;
++    if (begin) { l0_flush_reg(b, 2); l0_flush_reg(b, 3); l0_flush_reg(b, 7); }
++    int frame = pin_hreg(pin_slot(OCERZ_RBP));
++    uint32_t *page_splits[24];
++    unsigned n_splits = 0;
++
++    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++    a64_ldr(b, 8, JT1, JT0, 8);
++    uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
++    a64_movz(b, JT1, 1, 0);
++    a64_emit32(b, 0xf82a012bu); /* LDADD X10, X11, [X9] */
++    a64_ubfx(b, 0, JTT, JT2, 0, QUAD_PACKET_BITS);
++    a64_add_reg(b, 1, JT0, JT0, JTT, 8);
++    a64_add_imm(b, 1, JT0, JT0, QUAD_PACKET_STRIDE);
++    a64_str(b, 8, A64_ZR, JT0, 0);
++    a64_emit32(b, 0xd53be04au); /* MRS X10, CNTVCT_EL0 */
++    a64_str(b, 8, JT1, JT0, 8);
++    a64_str(b, 8, 20, JT0, 16);
++    a64_mov_imm64(b, JT1, pc);
++    a64_str(b, 4, JT1, JT0, 24);
++    a64_str(b, 4, frame, JT0, 28);
++    a64_str(b, 4, A64_ZR, JT0, 40);
++    a64_ldr(b, 4, JT1, 20, offsetof(OcerzCPU, mxcsr));
++    a64_str(b, 4, JT1, JT0, 44);
++
++    a64_add_ext_uxtw(b, JTT, JGB, frame, 0);
++    a64_ldr(b, 4, JT1, JTT, 8);
++    a64_str(b, 4, JT1, JT0, 32);
++    a64_ldr(b, 4, JTU, JTT, 0x10);
++    a64_str(b, 4, JTU, JT0, 36);
++    uint32_t *no_cursor = a64_label(b); a64_cbz(b, 0, JTU, 0);
++    page_splits[n_splits++] = emit_quad_packet_words(b, 9, 48);
++    a64_ldr(b, 4, JTU, JT0, 32);
++    uint32_t *no_context = a64_label(b); a64_cbz(b, 0, JTU, 0);
++    a64_add_imm(b, 0, JTU, JTU, 0x218);
++    page_splits[n_splits++] = emit_quad_packet_words(b, 6, 84);
++
++    if (begin) {
++        /* The original path initialized these locals before entering here. */
++        static const unsigned offsets[] = {0x2c, 0x30, 0xc8, 0xc4, 0xbc, 0xc0};
++        a64_str_v(b, 4, xmm_vreg(2), JT0, 108);
++        a64_str_v(b, 4, xmm_vreg(3), JT0, 112);
++        a64_str_v(b, 4, xmm_vreg(7), JT0, 116);
++        a64_add_ext_uxtw(b, JTT, JGB, frame, 0);
++        for (unsigned word = 0; word < sizeof offsets / sizeof offsets[0]; word++) {
++            a64_ldur(b, 4, JT1, JTT, -(int)offsets[word]);
++            a64_str(b, 4, JT1, JT0, 120 + 4 * word);
++        }
++        a64_mov_imm64(b, JTU, 0x1c8);
++        a64_sub_reg(b, 0, JTU, frame, JTU, 0);
++        a64_add_ext_uxtw(b, JTT, JGB, JTU, 0);
++        a64_ldr(b, 4, JTU, JTT, 0);
++        a64_str(b, 4, JTU, JT0, 168);
++        uint32_t *no_color = a64_label(b); a64_cbz(b, 0, JTU, 0);
++        page_splits[n_splits++] = emit_quad_packet_words(b, 1, 164);
++        a64_ldr(b, 4, JTU, JT0, 32);
++        a64_add_imm(b, 0, JTU, JTU, 0x10);
++        page_splits[n_splits++] = emit_quad_packet_words(b, 2, 144);
++        a64_mov_imm64(b, JTU, 0xf4ad00);
++        page_splits[n_splits++] = emit_quad_packet_words(b, 3, 152);
++        a64_emit32(b, 0xd53b440au); /* MRS X10, FPCR */
++        a64_str(b, 4, JT1, JT0, 172);
++        a64_movz(b, JT1, 1, 0);
++        a64_str(b, 4, JT1, JT0, 40);
++        a64_patch_cbz(no_color, a64_label(b));
++    } else {
++        static const unsigned width[] = {3, 3, 1, 2};
++        unsigned offset = 108;
++        for (unsigned stream = 0; stream < 4; stream++) {
++            a64_ldr(b, 4, JTU, JT0, 48 + 4 * stream);
++            a64_ldr(b, 4, JTA, JT0, 64 + 4 * stream);
++            a64_sub_reg(b, 0, JTU, JTU, JTA, 2);
++            for (unsigned vertex = 0; vertex < 4; vertex++) {
++                page_splits[n_splits++] = emit_quad_packet_words(b, width[stream], offset);
++                offset += 4 * width[stream];
++                a64_add_reg(b, 0, JTU, JTU, JTA, 0);
++            }
++        }
++        a64_movz(b, JT1, 1, 0);
++        a64_str(b, 4, JT1, JT0, 40);
++    }
++    for (unsigned i = 0; i < n_splits; i++)
++        a64_patch_tbz(page_splits[i], a64_label(b));
++    a64_patch_cbz(no_cursor, a64_label(b));
++    a64_patch_cbz(no_context, a64_label(b));
++    a64_add_imm(b, 1, JT2, JT2, 1);
++    a64_stlr(b, 8, JT2, JT0);
++    a64_patch_cbz(disabled, a64_label(b));
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+ static int g_ind_treg;
+@@ -26398,6 +26556,7 @@
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
+     const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                            raid_desc_enabled();
++    const int quad_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF && quad_packet_path();
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -26413,7 +26572,8 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
+-                if (vn && prep_trace && (raid_desc_marker(vpc) || (vpc == RAID_BATCH_ENTRY && raid_batch_enabled())))
++                if (vn && ((prep_trace && (raid_desc_marker(vpc) || (vpc == RAID_BATCH_ENTRY && raid_batch_enabled()))) ||
++                           (quad_trace && quad_packet_site(vpc))))
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -27346,6 +27506,8 @@
+         lanerec_note((uint32_t)(b.p - entry));
+         if (i == 0 && prep_trace && raid_desc_marker(rip))
+             emit_raid_desc_marker(&b, insn);
++        if (i == 0 && quad_trace && quad_packet_site(rip))
++            emit_quad_packet(&b, rip);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);

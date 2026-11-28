@@ -2840,3 +2840,29 @@ The paired throughput improvements were **8.50** and **5.48 FPS**. P99 changed b
 ```sh
 python3 benchmarks/summarize-raid-word-snapshot.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Replay the original rotated particle quads on ARM64
+
+Apply `patches/aarchx-m32-raid-rotated-quad-packets-probe.patch` after the guarded-word snapshot trial. Rebuild the diagnostic i386 runtime and retain the selected deferred PGO renderer. Set `OCERZ_M32_RAID_QUAD_PACKETS_LOG` to a fresh `quad-packets.bin` in each capture. Run two verified 45-second launches under `packet-0` and `packet-1`. In each launch arm three 160 ms gates starting two, fifteen and twenty-eight seconds after the fixture is ready. Keep the submission and GPU logs, artifact and isolation witnesses, and gate counts. Save the i386 check output to `general.log`.
+
+The recorder samples the live inputs at guest address `0x881651` and reads the original vertex outputs, cursor and bounds at `0x881aad`. Both launches kept the camera, overlapping effects and 26 cast timing rows. They verified **12,142** consecutive GPU completions across the two windows with zero visible trial windows or activations. The exporter matched **305,947** entry and exit pairs and retained **302,405** cases. The page guard excluded **3,542** inputs or outputs. The retained sample includes both observed stride layouts, including the layout that shares a single normal among all four vertices. The diagnostic runtime passed **812** general i386 checks. [Capture coverage and runtime hashes](results/raid-aarchx-rotated-quad-packets.json)
+
+The scalar, single-thread NEON and four-thread NEON replays matched every original position, normal, packed color and UV word. The verifier compares all six bounds words in the original vertex order and checks that the original cursor advanced by four vertices. AddressSanitizer and UndefinedBehaviorSanitizer also passed the replay. The timed section measures emission into independent host-side records, with the bounds checks performed separately. The four-thread run includes task dispatch and waits for all results. An earlier trial client was paused during the native replay and recorded zero GPU completions in that window.
+
+| Quads per batch | Scalar, ns per quad | Single-thread NEON, ns per quad | Four-thread NEON, ns per quad |
+| ---: | ---: | ---: | ---: |
+| 256 | 3.90 | 2.94 | 3.66 |
+| 2,392 | 4.92 | 3.40 | 5.07 |
+| 4,096 | 5.02 | 3.41 | 3.94 |
+| 32,768 | 5.02 | 3.43 | 1.26 |
+
+The median and p99 counts over **123** fully observed producer intervals were **2,392** and **3,772** retained rotated quads. At the median size, single-thread NEON took about **8.1 µs** per batch and the four-thread version took **12.1 µs**. The real client retained its original geometry path in both captures. The replay measures the ARM64 kernel and the cost of dispatch on these batch sizes. [Native timing samples](results/raid-aarchx-rotated-quad-packets.json)
+
+```sh
+python3 benchmarks/export-raid-rotated-quads.py export CAPTURE_ROOT I386_CLIENT CAPTURE_ROOT/cases.bin > CAPTURE_ROOT/export.json
+xcrun clang -arch arm64 -O3 -fno-vectorize -fno-slp-vectorize -ffp-contract=off -fno-fast-math benchmarks/raid-rotated-quad-replay.c -o CAPTURE_ROOT/replay
+CAPTURE_ROOT/replay CAPTURE_ROOT/cases.bin 2392 > CAPTURE_ROOT/replay.log
+xcrun clang -arch arm64 -O1 -g -ffp-contract=off -fno-fast-math -fsanitize=address,undefined benchmarks/raid-rotated-quad-replay.c -o CAPTURE_ROOT/replay-sanitized
+CAPTURE_ROOT/replay-sanitized CAPTURE_ROOT/cases.bin --verify-only > CAPTURE_ROOT/sanitizer.log
+python3 benchmarks/export-raid-rotated-quads.py report CAPTURE_ROOT/export.json CAPTURE_ROOT/replay.log CAPTURE_ROOT/sanitizer.log
+```

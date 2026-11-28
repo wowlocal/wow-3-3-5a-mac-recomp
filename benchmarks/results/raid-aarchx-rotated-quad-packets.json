@@ -1,0 +1,517 @@
+{
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "aa04be8f568dfd8cc3d3d71a5eba93f7465b9f019af390a3e657f070b4867c12",
+    "runtime_signed_sha256": "1e603d8ae4eef5f240bb758fcb9f2379b6e03592ddb3daaab1dfd95b447b4f32",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  },
+  "general_i386_checks": 812,
+  "captures": [
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 6076,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 44998299166,
+        "measurement_duration_ns": 45000000000,
+        "average_completed_fps": 135.0,
+        "p99_gpu_completion_gap_ns": 12407000,
+        "min_draws": 700,
+        "max_draws": 955
+      },
+      "gates": [
+        {
+          "rows": 125228,
+          "producer_intervals_fully_inside_gate": 22,
+          "complete_begin_end_pairs": 62614,
+          "pairs_with_verified_cursor": 62062,
+          "zero_normal_stride_pairs": 49304,
+          "exported_replay_cases": 62062,
+          "pairs_missing_same_page_snapshot": 552,
+          "entries_without_captured_exit": 0
+        },
+        {
+          "rows": 127858,
+          "producer_intervals_fully_inside_gate": 17,
+          "complete_begin_end_pairs": 63929,
+          "pairs_with_verified_cursor": 62956,
+          "zero_normal_stride_pairs": 17936,
+          "exported_replay_cases": 62956,
+          "pairs_missing_same_page_snapshot": 973,
+          "entries_without_captured_exit": 0
+        },
+        {
+          "rows": 94320,
+          "producer_intervals_fully_inside_gate": 21,
+          "complete_begin_end_pairs": 47160,
+          "pairs_with_verified_cursor": 46793,
+          "zero_normal_stride_pairs": 44132,
+          "exported_replay_cases": 46793,
+          "pairs_missing_same_page_snapshot": 367,
+          "entries_without_captured_exit": 0
+        }
+      ],
+      "all_gate_counts": {
+        "complete_begin_end_pairs": 173703,
+        "pairs_with_verified_cursor": 171811,
+        "zero_normal_stride_pairs": 111372,
+        "exported_replay_cases": 171811,
+        "pairs_missing_same_page_snapshot": 1892,
+        "entries_without_captured_exit": 0
+      },
+      "verified_strides": [
+        {
+          "strides": [
+            24,
+            0,
+            24,
+            24
+          ],
+          "cases": 111372
+        },
+        {
+          "strides": [
+            36,
+            36,
+            36,
+            36
+          ],
+          "cases": 60439
+        }
+      ],
+      "rotated_quads_per_fully_observed_producer_interval": [
+        3073,
+        3035,
+        2988,
+        2933,
+        2867,
+        2807,
+        2749,
+        2706,
+        2670,
+        2631,
+        2587,
+        2551,
+        2533,
+        2482,
+        2443,
+        2416,
+        2384,
+        2344,
+        2307,
+        2289,
+        2254,
+        2231,
+        2772,
+        2816,
+        2925,
+        3020,
+        3052,
+        3113,
+        3203,
+        3276,
+        3324,
+        3405,
+        3467,
+        3516,
+        3558,
+        3633,
+        3714,
+        3772,
+        3847,
+        2220,
+        2203,
+        2187,
+        2171,
+        2155,
+        2146,
+        2126,
+        2112,
+        2094,
+        2068,
+        2049,
+        2036,
+        2012,
+        1985,
+        1951,
+        1907,
+        1894,
+        1896,
+        1881,
+        1853,
+        1824
+      ]
+    },
+    {
+      "verified_gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 6066,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 44999419459,
+        "measurement_duration_ns": 45000000000,
+        "average_completed_fps": 134.77777777777777,
+        "p99_gpu_completion_gap_ns": 12386875,
+        "min_draws": 712,
+        "max_draws": 987
+      },
+      "gates": [
+        {
+          "rows": 41826,
+          "producer_intervals_fully_inside_gate": 24,
+          "complete_begin_end_pairs": 20913,
+          "pairs_with_verified_cursor": 20676,
+          "zero_normal_stride_pairs": 19161,
+          "exported_replay_cases": 20676,
+          "pairs_missing_same_page_snapshot": 237,
+          "entries_without_captured_exit": 0
+        },
+        {
+          "rows": 120524,
+          "producer_intervals_fully_inside_gate": 21,
+          "complete_begin_end_pairs": 60262,
+          "pairs_with_verified_cursor": 59736,
+          "zero_normal_stride_pairs": 46322,
+          "exported_replay_cases": 59736,
+          "pairs_missing_same_page_snapshot": 526,
+          "entries_without_captured_exit": 0
+        },
+        {
+          "rows": 102138,
+          "producer_intervals_fully_inside_gate": 18,
+          "complete_begin_end_pairs": 51069,
+          "pairs_with_verified_cursor": 50182,
+          "zero_normal_stride_pairs": 15951,
+          "exported_replay_cases": 50182,
+          "pairs_missing_same_page_snapshot": 887,
+          "entries_without_captured_exit": 0
+        }
+      ],
+      "all_gate_counts": {
+        "complete_begin_end_pairs": 132244,
+        "pairs_with_verified_cursor": 130594,
+        "zero_normal_stride_pairs": 81434,
+        "exported_replay_cases": 130594,
+        "pairs_missing_same_page_snapshot": 1650,
+        "entries_without_captured_exit": 0
+      },
+      "verified_strides": [
+        {
+          "strides": [
+            24,
+            0,
+            24,
+            24
+          ],
+          "cases": 81434
+        },
+        {
+          "strides": [
+            36,
+            36,
+            36,
+            36
+          ],
+          "cases": 49160
+        }
+      ],
+      "rotated_quads_per_fully_observed_producer_interval": [
+        1013,
+        989,
+        961,
+        913,
+        864,
+        862,
+        844,
+        834,
+        829,
+        821,
+        808,
+        790,
+        786,
+        786,
+        781,
+        785,
+        781,
+        776,
+        758,
+        692,
+        671,
+        656,
+        651,
+        673,
+        2926,
+        2893,
+        2870,
+        2800,
+        2774,
+        2740,
+        2692,
+        2669,
+        2625,
+        2599,
+        2550,
+        2515,
+        2478,
+        2451,
+        2433,
+        2411,
+        2393,
+        2372,
+        2364,
+        2357,
+        2392,
+        2114,
+        2160,
+        2213,
+        2278,
+        2312,
+        2318,
+        2328,
+        2402,
+        2463,
+        2535,
+        2585,
+        2659,
+        2749,
+        2821,
+        2901,
+        2985,
+        3080,
+        3163
+      ]
+    }
+  ],
+  "case_file_sha256": "7ee9b7f3960e0c319f098d52f82795eb360fef1f419ea286d3b5a30576195bbe",
+  "exported_replay_cases": 302405,
+  "rotated_quads_per_full_interval": {
+    "mean": 2245.1788617886177,
+    "median": 2392,
+    "p99": 3772
+  },
+  "verified_replay_modes": [
+    "scalar",
+    "neon",
+    "parallel_neon",
+    "address_and_undefined_behavior_sanitizer"
+  ],
+  "native_replay_isolation": {
+    "legacy_paused": true,
+    "legacy_gpu_completions": 0
+  },
+  "native_packet_timings": [
+    {
+      "quads": 256,
+      "median_ns_per_quad": {
+        "scalar": 3.9005,
+        "neon": 2.936,
+        "parallel": 3.6646
+      },
+      "runs": [
+        {
+          "order": 1,
+          "scalar": 3.9387,
+          "neon": 2.936,
+          "parallel": 6.5397
+        },
+        {
+          "order": 2,
+          "scalar": 3.9825,
+          "neon": 2.9116,
+          "parallel": 3.404
+        },
+        {
+          "order": 3,
+          "scalar": 3.7324,
+          "neon": 2.985,
+          "parallel": 3.6646
+        },
+        {
+          "order": 4,
+          "scalar": 5.2589,
+          "neon": 3.9612,
+          "parallel": 4.5068
+        },
+        {
+          "order": 5,
+          "scalar": 3.9005,
+          "neon": 3.3169,
+          "parallel": 3.4129
+        },
+        {
+          "order": 6,
+          "scalar": 3.8458,
+          "neon": 2.8944,
+          "parallel": 6.0806
+        },
+        {
+          "order": 7,
+          "scalar": 3.8436,
+          "neon": 2.895,
+          "parallel": 3.4014
+        }
+      ]
+    },
+    {
+      "quads": 2392,
+      "median_ns_per_quad": {
+        "scalar": 4.9229,
+        "neon": 3.4029,
+        "parallel": 5.0741
+      },
+      "runs": [
+        {
+          "order": 1,
+          "scalar": 4.9229,
+          "neon": 3.2474,
+          "parallel": 6.7283
+        },
+        {
+          "order": 2,
+          "scalar": 4.8387,
+          "neon": 3.3926,
+          "parallel": 5.0741
+        },
+        {
+          "order": 3,
+          "scalar": 5.2293,
+          "neon": 3.4029,
+          "parallel": 5.6799
+        },
+        {
+          "order": 4,
+          "scalar": 4.9487,
+          "neon": 3.3387,
+          "parallel": 4.9732
+        },
+        {
+          "order": 5,
+          "scalar": 4.9099,
+          "neon": 3.4651,
+          "parallel": 5.0145
+        },
+        {
+          "order": 6,
+          "scalar": 5.048,
+          "neon": 3.4929,
+          "parallel": 4.8058
+        },
+        {
+          "order": 7,
+          "scalar": 4.8458,
+          "neon": 3.5564,
+          "parallel": 5.1422
+        }
+      ]
+    },
+    {
+      "quads": 4096,
+      "median_ns_per_quad": {
+        "scalar": 5.0217,
+        "neon": 3.4091,
+        "parallel": 3.9364
+      },
+      "runs": [
+        {
+          "order": 1,
+          "scalar": 4.9051,
+          "neon": 3.4841,
+          "parallel": 4.0929
+        },
+        {
+          "order": 2,
+          "scalar": 5.1886,
+          "neon": 3.7715,
+          "parallel": 4.6536
+        },
+        {
+          "order": 3,
+          "scalar": 5.2147,
+          "neon": 3.4091,
+          "parallel": 4.1494
+        },
+        {
+          "order": 4,
+          "scalar": 5.1247,
+          "neon": 3.356,
+          "parallel": 3.9364
+        },
+        {
+          "order": 5,
+          "scalar": 5.0217,
+          "neon": 3.5696,
+          "parallel": 3.4119
+        },
+        {
+          "order": 6,
+          "scalar": 4.9181,
+          "neon": 3.3455,
+          "parallel": 3.7861
+        },
+        {
+          "order": 7,
+          "scalar": 4.8631,
+          "neon": 3.2539,
+          "parallel": 3.4396
+        }
+      ]
+    },
+    {
+      "quads": 32768,
+      "median_ns_per_quad": {
+        "scalar": 5.0214,
+        "neon": 3.4335,
+        "parallel": 1.262
+      },
+      "runs": [
+        {
+          "order": 1,
+          "scalar": 5.5183,
+          "neon": 3.6713,
+          "parallel": 1.5806
+        },
+        {
+          "order": 2,
+          "scalar": 5.0256,
+          "neon": 3.8592,
+          "parallel": 1.262
+        },
+        {
+          "order": 3,
+          "scalar": 4.9229,
+          "neon": 3.4459,
+          "parallel": 1.2118
+        },
+        {
+          "order": 4,
+          "scalar": 5.0214,
+          "neon": 3.4237,
+          "parallel": 1.18
+        },
+        {
+          "order": 5,
+          "scalar": 5.098,
+          "neon": 3.4335,
+          "parallel": 1.1775
+        },
+        {
+          "order": 6,
+          "scalar": 4.9124,
+          "neon": 3.3382,
+          "parallel": 1.304
+        },
+        {
+          "order": 7,
+          "scalar": 4.7509,
+          "neon": 3.3382,
+          "parallel": 1.4429
+        }
+      ]
+    }
+  ]
+}
