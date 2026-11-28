@@ -2935,3 +2935,21 @@ The paired throughput changes were **+0.33** and **+1.85 FPS**. P99 shortened by
 ```sh
 python3 benchmarks/summarize-raid-scene-workers.py CAPTURE_ROOT I386_CLIENT
 ```
+
+### Reuse a guest entry across a participant's scene updates
+
+Apply `patches/aarchx-m32-raid-scene-worker-guest-loop-trial.patch` after the scene worker trial. Build one ARM64 runtime for both modes and retain the selected deferred PGO renderer. Keep `OCERZ_M32_SCENE_WORKERS=1` and `OCERZ_TCACHE=off` in both modes. Set `OCERZ_M32_SCENE_WORKERS_GUEST_LOOP=1` for the candidate.
+
+For a group with more jobs than available participants, the candidate packs the original 48 bytes per update into a guest table and points each vector argument to its copy in the table. Each participant takes its initial job from the shared queue and enters i386 once with the table address and job index. The guest code keeps the original call-stack alignment, calls the same update routine and obtains subsequent jobs through a locked add on the same queue. The producer checks the combined return counts against the number of queued jobs before leaving the barrier. Smaller groups use the existing per-update entry.
+
+Run four warmed 60-second windows in control, guest loop, guest loop, control order. Leave the worker, submission and replay logs off for timing. Record the guest-loop and logging switches in `scene-worker-entry-mode.txt`. Save the general i386 tests as `general-control.log` and `general-candidate.log`. After the diagnostics, repeat the comparison in guest loop, control order to check the variation seen in the initial pair of controls.
+
+Run the serial comparison under `diagnostic-1` with the guest loop enabled. Run the two timing diagnostics under `diagnostic-drain-0` and `diagnostic-drain-1` with serial replay off. All three diagnostics use 25-second windows, submission and encoder logs, and `OCERZ_M32_SCENE_WORKERS_LOG` pointing to `scene-workers.bin`. Take the two uptime-bracketed samples of the **18** counter words five seconds apart starting two seconds after the full scene is ready, and save them to `scene-workers-gate.json`.
+
+The replay gate covered **671** GPU completions. It compared **460,621,084** declared bytes across **10,048** groups with zero mismatches or observed traversal changes. The guest loop processed **24,279** updates in **3,087** groups. The separate diagnostic without serial replay measured **53.88 versus 32.87** guest entries per completed output and **0.270 versus 0.260 ms** spent executing and joining groups on the producer. The windows sampled independent periods of the same fixture. [Guest entries, replay and producer timings](results/raid-aarchx-scene-worker-entry-ab.json)
+
+The three timing pairs changed by **−0.40**, **+7.60**, and **+42.02 FPS**. Control throughput ranged from **86.22 to 138.67 FPS**. In the last control, the first and last ten-second intervals recorded **1,274** and **363** completions. Variation across the controls prevents assigning the FPS differences to the guest loop. Use the per-update entry as the performance reference. The six uninstrumented windows verified **45,705** consecutive GPU completions across the launches, the saved camera, overlapping effects and all 26 cast timing rows. Both runtime modes passed **812** general i386 checks and recorded zero visible trial windows or activations. [Paired timings and ten-second counts](results/raid-aarchx-scene-worker-entry-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-scene-worker-entry.py CAPTURE_ROOT I386_CLIENT
+```

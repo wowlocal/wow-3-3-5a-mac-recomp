@@ -1,0 +1,199 @@
+--- a/src/m32_scene_workers.c
++++ b/src/m32_scene_workers.c
+@@ -11,11 +11,13 @@
+ #include <fcntl.h>
+ #include <pthread.h>
+ #include <stdatomic.h>
++#include <stddef.h>
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
++#include <mach/mach.h>
+ #include <time.h>
+ #include <unistd.h>
+
+@@ -29,7 +31,8 @@
+ enum {
+     REQUESTS, QUEUED, FALLBACKS, BATCHES, MULTI_BATCHES, WORKER_TASKS, PRODUCER_TASKS,
+     LONGEST_BATCH, CONCURRENT_BATCHES, WALL_DRAIN_NS, ALL_GUEST_NS,
+-    AUDIT_BATCHES, AUDIT_BYTES, AUDIT_MISMATCH, LINK_CHANGES, COUNTER_COUNT,
++    AUDIT_BATCHES, AUDIT_BYTES, AUDIT_MISMATCH, LINK_CHANGES,
++    GUEST_ENTRIES, GUEST_LOOP_UPDATES, GUEST_LOOP_WAVES, COUNTER_COUNT,
+ };
+
+ typedef struct {
+@@ -51,17 +54,21 @@
+     Wave *wave;
+     pthread_t producer;
+     atomic_uint next, running, overlapping;
++    uint32_t guest_wave;
++    unsigned finished[MAX_PARTICIPANTS];
+ } Work;
+
+ static _Thread_local Wave pending;
+ static pthread_once_t log_once = PTHREAD_ONCE_INIT;
+ static _Atomic uint64_t *counters;
+-static int compare_serial;
++static int compare_serial, reuse_entry;
+
+ static void init_log(void)
+ {
+     const char *path = getenv("OCERZ_M32_SCENE_WORKERS_LOG");
+     compare_serial = getenv("OCERZ_M32_SCENE_WORKERS_COMPARE") != NULL;
++    const char *reuse = getenv("OCERZ_M32_SCENE_WORKERS_GUEST_LOOP");
++    reuse_entry = reuse && strcmp(reuse, "1") == 0;
+     if (!path || !*path) return;
+     int fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+     if (fd < 0) return;
+@@ -185,11 +192,96 @@
+     m32_call(vm, UPDATE_TARGET, args, 6, NULL, NULL);
+ }
+
++typedef struct {
++    uint32_t words[6], scale[3], offset[3];
++} GuestPacket;
++
++typedef struct {
++    _Atomic uint32_t next;
++    uint32_t count;
++    GuestPacket packets[MAX_TASKS];
++} GuestWave;
++
++_Static_assert(sizeof(GuestPacket) == 48 && offsetof(GuestWave, packets) == 8,
++               "guest wave assembly uses these offsets");
++
++static pthread_once_t guest_runner_once = PTHREAD_ONCE_INIT;
++static uint32_t guest_runner;
++static _Thread_local uint32_t guest_wave;
++
++static uint32_t guest_page(int protection)
++{
++    const uint64_t page = ocerz_map_anywhere_aligned(vm_page_size, protection, vm_page_size);
++    if (page && page <= UINT32_MAX - vm_page_size)
++        return (uint32_t)page;
++    if (page)
++        ocerz_unmap(page, vm_page_size);
++    return 0;
++}
++
++static void init_guest_runner(void)
++{
++    /* i386 cdecl: preserve EBX/ESI, align the outgoing stack and claim one
++     * input with LOCK XADD. Each iteration copies six words to the stack,
++     * calls the original update, and returns the number of completed calls. */
++    static const uint8_t code[] = {
++        0x55,0x89,0xe5,0x53,0x56,0x83,0xec,0x20,0x31,0xdb,0x8b,0x75,
++        0x08,0x8b,0x45,0x0c,0xeb,0x11,0x8b,0x75,0x08,0xb8,0x01,0x00,
++        0x00,0x00,0xf0,0x0f,0xc1,0x06,0x3b,0x46,0x04,0x73,0x37,0x6b,
++        0xc0,0x30,0x8d,0x74,0x06,0x08,0x8b,0x06,0x89,0x04,0x24,0x8b,
++        0x46,0x04,0x89,0x44,0x24,0x04,0x8b,0x46,0x08,0x89,0x44,0x24,
++        0x08,0x8b,0x46,0x0c,0x89,0x44,0x24,0x0c,0x8b,0x46,0x10,0x89,
++        0x44,0x24,0x10,0x8b,0x46,0x14,0x89,0x44,0x24,0x14,0xe8,0x00,
++        0x00,0x00,0x00,0x43,0xeb,0xb8,0x89,0xd8,0x83,0xc4,0x20,0x5e,
++        0x5b,0xc9,0xc3,
++    };
++    enum { RELATIVE_WORD = 0x53, CALL_NEXT = 0x57 };
++    uint32_t address = guest_page(PROT_READ | PROT_WRITE);
++    if (!address)
++        return;
++    uint8_t *memory = m32_h(address);
++    const uint32_t relative = (uint32_t)UPDATE_TARGET - (address + CALL_NEXT);
++    memcpy(memory, code, sizeof code);
++    memcpy(memory + RELATIVE_WORD, &relative, sizeof relative);
++    if (ocerz_protect(address, vm_page_size, PROT_READ | PROT_EXEC) != OCERZ_OK) {
++        ocerz_unmap(address, vm_page_size);
++        return;
++    }
++    guest_runner = address;
++}
++
++static uint32_t pack_guest_wave(const Wave *wave)
++{
++    pthread_once(&guest_runner_once, init_guest_runner);
++    if (!guest_runner)
++        return 0;
++    if (!guest_wave)
++        guest_wave = guest_page(PROT_READ | PROT_WRITE);
++    if (!guest_wave)
++        return 0;
++    GuestWave *guest = m32_h(guest_wave);
++    atomic_store_explicit(&guest->next, 0, memory_order_relaxed);
++    guest->count = wave->count;
++    for (unsigned i = 0; i < wave->count; i++) {
++        const Task *task = &wave->tasks[i];
++        GuestPacket *packet = &guest->packets[i];
++        uint32_t packet_g = guest_wave + offsetof(GuestWave, packets) + i * sizeof *packet;
++        memcpy(packet->words, task->words, sizeof packet->words);
++        memcpy(packet->scale, task->scale, sizeof packet->scale);
++        memcpy(packet->offset, task->offset, sizeof packet->offset);
++        packet->words[2] = packet_g + offsetof(GuestPacket, scale);
++        packet->words[3] = packet_g + offsetof(GuestPacket, offset);
++    }
++    return guest_wave;
++}
++
+ static void participant(void *opaque, size_t lane)
+ {
+     Work *work = opaque;
+     const int on_worker = !pthread_equal(work->producer, pthread_self());
+-    unsigned index = atomic_fetch_add_explicit(&work->next, 1, memory_order_relaxed);
++    GuestWave *guest = work->guest_wave ? m32_h(work->guest_wave) : NULL;
++    _Atomic uint32_t *next = guest ? &guest->next : &work->next;
++    unsigned index = atomic_fetch_add_explicit(next, 1, memory_order_relaxed);
+     if (index >= work->wave->count) return;
+     uint64_t start = 0;
+     if (counters) {
+@@ -199,11 +291,20 @@
+         start = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+     }
+     unsigned completed = 0;
+-    do {
+-        call_task(work->vm, &work->wave->tasks[index]);
+-        completed++;
+-        index = atomic_fetch_add_explicit(&work->next, 1, memory_order_relaxed);
+-    } while (index < work->wave->count);
++    if (work->guest_wave) {
++        const uint32_t args[] = {work->guest_wave, index};
++        completed = m32_call(work->vm, guest_runner, args, 2, NULL, NULL);
++        work->finished[lane] = completed;
++        count(GUEST_ENTRIES, 1);
++        count(GUEST_LOOP_UPDATES, completed);
++    } else {
++        do {
++            call_task(work->vm, &work->wave->tasks[index]);
++            completed++;
++            index = atomic_fetch_add_explicit(&work->next, 1, memory_order_relaxed);
++        } while (index < work->wave->count);
++        count(GUEST_ENTRIES, completed);
++    }
+     if (start) {
+         count(ALL_GUEST_NS, clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start);
+         atomic_fetch_sub_explicit(&work->running, 1, memory_order_relaxed);
+@@ -259,6 +360,8 @@
+         snapshot_wave(&pending, copies, 0);
+     Work work = {.vm = vm, .wave = &pending, .producer = pthread_self()};
+     const unsigned width = pending.count < MAX_PARTICIPANTS ? pending.count : MAX_PARTICIPANTS;
++    if (reuse_entry && pending.count > width)
++        work.guest_wave = pack_guest_wave(&pending);
+     if (width > 1) {
+         dispatch_apply_f(width, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), &work, participant);
+         if (counters) {
+@@ -267,6 +370,16 @@
+         }
+     } else {
+         participant(&work, 0);
++    }
++    if (work.guest_wave) {
++        unsigned finished = 0;
++        for (unsigned lane = 0; lane < width; lane++)
++            finished += work.finished[lane];
++        if (finished != pending.count) {
++            fputs("An i386 update wave failed to retire every job.\n", stderr);
++            abort();
++        }
++        count(GUEST_LOOP_WAVES, 1);
+     }
+     if (copies) {
+         snapshot_wave(&pending, copies + bytes, 0);
