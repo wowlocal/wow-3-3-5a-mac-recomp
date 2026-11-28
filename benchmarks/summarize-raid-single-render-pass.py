@@ -34,7 +34,7 @@ def verify(capture, setting, diagnostic):
     return VERIFY_WINDOW(capture, 35 if diagnostic else 60)
 
 
-def summarize_trace(capture, setting, window, frames, submissions):
+def summarize_trace(capture, setting, window, frames, submissions, include_fragment=False):
     buffers, names, external = ENCODERS["read_trace"](capture, window["pid"])
     application_encoders = Counter(buffer for buffer, _ in names)
     windowserver = external.get("windowserver", interval_coverage(()))
@@ -56,6 +56,13 @@ def summarize_trace(capture, setting, window, frames, submissions):
     all_vertex = interval_coverage(
         (a, b) for spans in buffers.values() for a, b, stage, _ in spans if stage == "Vertex"
     )
+    if include_fragment:
+        all_fragment = interval_coverage(
+            (a, b) for spans in buffers.values() for a, b, stage, _ in spans if stage == "Fragment"
+        )
+        all_render = interval_coverage(
+            (a, b) for spans in buffers.values() for a, b, stage, _ in spans if stage in ("Vertex", "Fragment")
+        )
     anchor_indices = [i for i, frame in enumerate(frames) if match(frame.final) is not None]
     if len(anchor_indices) < 100:
         raise ValueError(f"Too few matched output endpoints for draw setting {setting}")
@@ -76,6 +83,9 @@ def summarize_trace(capture, setting, window, frames, submissions):
             "final_gpu_span_ns": frame.final.end - frame.final.start,
             "draw_buffers": len(draw_buffers),
         }
+        if include_fragment:
+            row["fragment_activity_in_gap_ns"] = all_fragment(start, stop)
+            row["render_activity_in_gap_ns"] = all_render(start, stop)
         vertex_by_buffer = [
             [(a, b, encoder) for a, b, stage, encoder in buffers.get(buffer, ()) if stage == "Vertex"]
             for buffer in draw_buffers
@@ -105,6 +115,8 @@ def summarize_trace(capture, setting, window, frames, submissions):
         "completion_gap_ns", "vertex_activity_in_gap_ns", "windowserver_activity_in_gap_ns",
         "final_submission_interval_ns", "final_gpu_span_ns",
     )
+    if include_fragment:
+        common += ("fragment_activity_in_gap_ns", "render_activity_in_gap_ns")
     specific = (
         "own_vertex_activity_in_gap_ns", "final_buffer_vertex_active_ns", "final_buffer_vertex_encoder_count",
         "final_buffer_application_encoder_count", "windowserver_activity_before_final_vertex_ns",
@@ -133,7 +145,7 @@ def summarize_trace(capture, setting, window, frames, submissions):
     }
 
 
-def diagnose(capture, setting):
+def diagnose(capture, setting, include_fragment=False):
     verified_window = verify(capture, setting, True)
     window = json.loads((capture / "window.json").read_text())
     by_end, by_stream = LIFECYCLE["render_submissions"](capture / "submissions.ns", window["pid"])
@@ -142,7 +154,7 @@ def diagnose(capture, setting):
     intervals = LIFECYCLE["explain_intervals"](frames, False, submissions)
     counts = Counter(row["render_submissions"] for row in intervals)
     draw_counts = Counter(sum(draws > 0 for draws in row["draws_per_submission"]) for row in intervals)
-    return {
+    result = {
         "draw_setting": setting,
         "verified_gpu_window": verified_window,
         "render_submissions_per_output": dict(sorted(counts.items())),
@@ -151,8 +163,16 @@ def diagnose(capture, setting):
             {"draws": split, "intervals": number}
             for split, number in Counter(row["draws_per_submission"] for row in intervals).most_common(6)
         ],
-        "trace": summarize_trace(capture, setting, window, frames, submissions),
+        "trace": summarize_trace(capture, setting, window, frames, submissions, include_fragment),
     }
+    if include_fragment:
+        timing = LIFECYCLE["summarize"](intervals)
+        keys = ("earlier_submissions_gpu_spans_ns", "final_gpu_span_ns", "final_submit_to_gpu_start_ns")
+        result["submission_timing"] = {
+            "all_interval_medians_ns": {key: timing["metrics"][key]["median"] for key in keys},
+            "tail_medians_ns": {key: timing["tail_medians"][key] for key in keys},
+        }
+    return result
 
 
 def summarize(root):

@@ -2255,3 +2255,24 @@ Export the trace's `metal-gpu-intervals` table to `gpu.xml`. Record `archive`, `
 ```sh
 python3 benchmarks/summarize-raid-replay-contention.py SHORT_CAPTURE LONG_CAPTURE --legacy-pid EARLIER_CLIENT_PID
 ```
+
+### Halve the continuing-pass draw budget in the live raid
+
+Use the accepted PGO AArchX runtime and PGO WineMetalGL library in both arms. `WINEMETALGL_COMMIT_DRAWS=64` sets the ordinary continuing-pass limit to 512 draws. Set it to `32` to reach the ordinary limit at 256 draws. Keep `WINEMETALGL_IDLE_FIRST_DRAWS=256` in both arms. At the smaller budget the ordinary limit meets the idle-first threshold, so the early path has no draw credit to carry. The setting also lowers the base draw-count gate for other pass transitions. The live submission logs show the actual split for each output.
+
+Use four warmed 60-second captures in `64, 32, 32, 64` order, with submission logging off. Make separate 35-second diagnostic captures for each setting with the submission log enabled. Record 16 seconds of Metal System Trace within those windows and export `metal-gpu-intervals` and `metal-application-encoders-list`. Run the eight-second ordered indexed replay with three outputs in flight at each setting and verify the final framebuffer hashes. Use the same linked renderer in the replay and in the live launch.
+
+| Continuing-pass limit | Median GPU-completed FPS | Median p99 GPU completion gap |
+| --- | ---: | ---: |
+| 512 draws | 143.13 | 12.22 ms |
+| 256 draws | 143.15 | 12.31 ms |
+
+The pairs changed by **−0.27 and +0.32 FPS**. P99 increased by **0.135 and 0.034 ms**. Keep the 512-draw baseline. All six runs verified the saved camera, overlapping effects, 26 timing rows, consecutive GPU outputs and zero trial windows or activations. The ordered indexed replay produced the same RGBA hash and **161,327** colored pixels at both settings. [Full raid timings and replay comparison](results/raid-winemetalgl-256-draw-split-ab.json)
+
+Every control interval used two draw-bearing submissions. At 256 draws, **4,092 of 4,601** intervals used four and the other **509** used three. The median GPU span of the final submission fell from **1.21 to 0.53 ms**. The median combined span of earlier submissions rose from **0.63 to 2.05 ms**. Within the two Metal recordings, median vertex-and-fragment activity between successive output completions rose from **2.01 to 2.21 ms**, and fragment activity rose from **1.26 to 1.42 ms**.
+
+In the slowest one percent of the instrumented completion gaps, median final-buffer vertex activity fell from **5.38 to 0.067 ms**. Across the complete gap, median vertex activity was **6.56 and 6.51 ms**, and the union of vertex and fragment activity was **9.23 and 9.30 ms**. Median WindowServer activity in those gaps was **9.35 and 8.69 ms**. The traces cover separate 16-second periods with clock alignment within **42 ns**. The four uninstrumented runs supply the throughput and p99 comparison. [Joined GPU stages and submission timings](results/raid-winemetalgl-256-draw-split-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-256-draw-split.py CAPTURE_ROOT PGO_LIBWINEMETALGL
+```
