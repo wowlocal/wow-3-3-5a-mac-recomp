@@ -1,0 +1,121 @@
+diff --git a/src/m32_bridge.c b/src/m32_bridge.c
+--- a/src/m32_bridge.c
++++ b/src/m32_bridge.c
+@@ -165,6 +165,26 @@
+ }
+
++enum { DIAGNOSTIC_NONE, DIAGNOSTIC_EXCEPTION_PORT, DIAGNOSTIC_QUICKTIME, DIAGNOSTIC_CONTENT_CLICK };
++
++static int g_preclassify_diagnostics = -1;
++
++static unsigned classify_diagnostic(const char *name)
++{
++    if (!strcmp(name, "_task_set_exception_ports") || !strcmp(name, "_thread_set_exception_ports"))
++        return DIAGNOSTIC_EXCEPTION_PORT;
++    if (!strcmp(name, "_Gestalt"))
++        return DIAGNOSTIC_QUICKTIME;
++    if (!strcmp(name, "_CallNextEventHandler"))
++        return DIAGNOSTIC_CONTENT_CLICK;
++    return DIAGNOSTIC_NONE;
++}
++
+ static void publish(uint32_t id, M32Export *e)
+ {
++    if (g_preclassify_diagnostics < 0) {
++        const char *mode = getenv("OCERZ_M32_PRECLASSIFY_DIAGNOSTICS");
++        g_preclassify_diagnostics = mode && !strcmp(mode, "1");
++    }
++    e->diagnostic_kind = classify_diagnostic(e->name);
+     g_exports[id] = e;
+     uint16_t *s = name_slot(e->name);
+@@ -497,12 +517,11 @@
+         return OCERZ_STEP_EXIT;
+     }
+-    if ((!strcmp(e->name, "_task_set_exception_ports") ||
+-         !strcmp(e->name, "_thread_set_exception_ports")) &&
+-        getenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS")) {
++    const unsigned diagnostic = g_preclassify_diagnostics ? e->diagnostic_kind : classify_diagnostic(e->name);
++    if (diagnostic == DIAGNOSTIC_EXCEPTION_PORT && getenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS")) {
+         fprintf(stderr, "ocerz: diagnostic keeps host exception reporting for %s\n", e->name);
+         m32_ret(cpu, 0, 0, 0);
+         return OCERZ_STEP_OK;
+     }
+-    if (!strcmp(e->name, "_Gestalt") && getenv("OCERZ_DIAG_QUICKTIME_VERSION") &&
++    if (diagnostic == DIAGNOSTIC_QUICKTIME && getenv("OCERZ_DIAG_QUICKTIME_VERSION") &&
+         m32_arg(cpu, 0) == 0x7174696d && m32_arg(cpu, 1)) {
+         /* Test startup after advertising QuickTime 6.5.1 to a legacy client. */
+@@ -512,5 +531,5 @@
+         return OCERZ_STEP_OK;
+     }
+-    if (!strcmp(e->name, "_CallNextEventHandler") && getenv("OCERZ_PROBE_AGL_CONTENT_CLICKS") &&
++    if (diagnostic == DIAGNOSTIC_CONTENT_CLICK && getenv("OCERZ_PROBE_AGL_CONTENT_CLICKS") &&
+         m32_carbon_agl_content_click(m32_arg(cpu, 1))) {
+         /* Let the guest process clicks on its GL drawable without native control tracking. */
+diff --git a/include/ocerz/m32.h b/include/ocerz/m32.h
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -130,4 +130,5 @@
+     int file_ret;             /* returns a FILE *: the guest gets m32_file's twin */
+     int gl_ptr;               /* M32_GL_*: a GL call whose pointer may be a buffer offset, or that binds one */
++    unsigned diagnostic_kind; /* fixed when the name is published */
+ } M32Export;
+ enum { M32_EX_UNRESOLVED, M32_EX_SPECIAL, M32_EX_FN, M32_EX_BAD, M32_EX_DATA };
+diff --git a/tests/unit/test_m32.c b/tests/unit/test_m32.c
+--- a/tests/unit/test_m32.c
++++ b/tests/unit/test_m32.c
+@@ -115,4 +115,45 @@
+     check("a crossing returns to its caller", cpu()->rip == RET_ADDR && cpu()->gpr[OCERZ_RSP] == STACK + 4);
+     return (uint32_t)cpu()->gpr[OCERZ_RAX];
++}
++
++
++static int diagnostic_stub(struct OcerzVM *vm, OcerzCPU *cpu)
++{
++    (void)vm;
++    m32_ret(cpu, 0xa13eu, 0, 0);
++    return OCERZ_STEP_OK;
++}
++
++static void test_trap_diagnostics(void)
++{
++    const char *names[] = { "_task_set_exception_ports", "_thread_set_exception_ports",
++                            "_Gestalt", "_GestaltOther", "_CallNextEventHandler" };
++    for (size_t index = 0; index < sizeof names / sizeof names[0]; ++index)
++        check("publish the diagnostic fixture export", m32_export_special(names[index], diagnostic_stub) != 0);
++
++    unsetenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS");
++    check("ordinary task exception trap reaches its handler", cross("(m32)", names[0], 0, NULL) == 0xa13eu);
++    setenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS", "1", 1);
++    check("diagnostic task exception override", cross("(m32)", names[0], 0, NULL) == 0);
++    check("diagnostic thread exception override", cross("(m32)", names[1], 0, NULL) == 0);
++    unsetenv("OCERZ_DIAG_KEEP_HOST_EXCEPTIONS");
++    check("ordinary thread exception trap reaches its handler", cross("(m32)", names[1], 0, NULL) == 0xa13eu);
++
++    const uint32_t request[] = { 0x7174696d, DATA };
++    m32_wr(DATA, 0x1234);
++    unsetenv("OCERZ_DIAG_QUICKTIME_VERSION");
++    check("ordinary Gestalt trap reaches its handler", cross("(m32)", names[2], 2, request) == 0xa13eu &&
++          m32_rd(DATA) == 0x1234);
++    setenv("OCERZ_DIAG_QUICKTIME_VERSION", "1", 1);
++    check("diagnostic QuickTime selector writes the version", cross("(m32)", names[2], 2, request) == 0 &&
++          m32_rd(DATA) == 0x06518000);
++    check("another Gestalt selector reaches its handler",
++          cross("(m32)", names[2], 2, (uint32_t[]){ 0x74657374, DATA }) == 0xa13eu);
++    check("similarly named export reaches its handler", cross("(m32)", names[3], 2, request) == 0xa13eu);
++    unsetenv("OCERZ_DIAG_QUICKTIME_VERSION");
++    setenv("OCERZ_PROBE_AGL_CONTENT_CLICKS", "1", 1);
++    check("a null event falls through to the event handler",
++          cross("(m32)", names[4], 2, (uint32_t[]){ 0, 0 }) == 0xa13eu);
++    unsetenv("OCERZ_PROBE_AGL_CONTENT_CLICKS");
+ }
+
+@@ -3146,4 +3187,9 @@
+     cpu()->mode32 = 1;
+     m32_heap_init();
++    if (argc > 1 && !strcmp(argv[1], "trap-diagnostics")) {
++        test_trap_diagnostics();
++        printf("test_m32 trap-diagnostics: %d checks, %d failed\n", g_checks, g_failures);
++        return g_failures != 0;
++    }
+     if (argc > 1 && (!strcmp(argv[1], "carbon") || !strcmp(argv[1], "wmgl-storage"))) {
+         char db[PATH_MAX];

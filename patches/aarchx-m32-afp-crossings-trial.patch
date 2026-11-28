@@ -1,0 +1,132 @@
+diff --git a/src/m32.c b/src/m32.c
+--- a/src/m32.c
++++ b/src/m32.c
+@@ -171,4 +171,5 @@
+     }
+     m32_active = 1;
++    m32_afp_trace_enabled = getenv("OCERZ_M32_AFP_CROSS_LOG") != NULL;
+     if (getenv("OCERZ_M32_AFP") || getenv("OCERZ_M32_AFP_LOG"))
+         ocerz_afp_enable();
+diff --git a/src/m32_bridge.c b/src/m32_bridge.c
+--- a/src/m32_bridge.c
++++ b/src/m32_bridge.c
+@@ -10,4 +10,5 @@
+ #include <stdlib.h>
+ #include <string.h>
++#include <time.h>
+
+ #include <dlfcn.h>
+@@ -465,4 +466,61 @@
+ static int trap_dispatch(struct OcerzVM *vm, OcerzCPU *cpu);
+
++int m32_afp_trace_enabled;
++
++enum { AFP_CROSSING_REPORT_INTERVAL = 256, AFP_CROSSING_LEAF_SLOTS = 128 };
++static _Thread_local uint32_t afp_traps[M32_ID_LIMIT];
++static _Thread_local struct {
++    const char *name;
++    uint32_t count;
++} afp_leaves[AFP_CROSSING_LEAF_SLOTS];
++static _Thread_local uint64_t afp_swaps, afp_callbacks;
++static _Thread_local uint32_t afp_leaf_overflow, afp_other_traps;
++
++void m32_afp_trace_leaf(const char *name)
++{
++    for (unsigned i = 0; i < AFP_CROSSING_LEAF_SLOTS; ++i) {
++        if (!afp_leaves[i].name)
++            afp_leaves[i].name = name;
++        if (afp_leaves[i].name == name) {
++            ++afp_leaves[i].count;
++            return;
++        }
++    }
++    ++afp_leaf_overflow;
++}
++
++void m32_afp_trace_callback(void)
++{
++    ++afp_callbacks;
++}
++
++void m32_afp_trace_swap(void)
++{
++    if (++afp_swaps % AFP_CROSSING_REPORT_INTERVAL)
++        return;
++    uint64_t thread = 0;
++    pthread_threadid_np(NULL, &thread);
++    fprintf(stderr, "AFP_CROSS begin thread=%llu swaps=%llu uptime_ns=%llu callbacks=%llu leaf_overflow=%u other_traps=%u\n",
++            (unsigned long long)thread, (unsigned long long)afp_swaps,
++            (unsigned long long)clock_gettime_nsec_np(CLOCK_UPTIME_RAW), (unsigned long long)afp_callbacks,
++            afp_leaf_overflow, afp_other_traps);
++    for (uint32_t id = 0; id < M32_ID_LIMIT; ++id) {
++        if (!afp_traps[id]) continue;
++        M32Export *e = m32_export_by_id(id);
++        const char *name = e && e->name ? e->name : "<runtime>";
++        const char *kind = !e ? "runtime" : e->special ? "special" : "generic";
++        fprintf(stderr, "AFP_CROSS trap %s %s %u\n", kind, name, afp_traps[id]);
++        afp_traps[id] = 0;
++    }
++    for (unsigned i = 0; i < AFP_CROSSING_LEAF_SLOTS; ++i) {
++        if (!afp_leaves[i].count) continue;
++        fprintf(stderr, "AFP_CROSS leaf %s %u\n", afp_leaves[i].name, afp_leaves[i].count);
++        afp_leaves[i].count = 0;
++    }
++    afp_callbacks = afp_leaf_overflow = afp_other_traps = 0;
++    fprintf(stderr, "AFP_CROSS end thread=%llu swaps=%llu\n",
++            (unsigned long long)thread, (unsigned long long)afp_swaps);
++}
++
+ /* every call the guest makes into the host: host code runs without FPCR.AH (src/cpu.c ocerz_afp_host) */
+ int m32_trap(struct OcerzVM *vm, OcerzCPU *cpu)
+@@ -472,4 +530,9 @@
+         m32_signals_deliver(vm);   /* a signal's guest handler runs before the call */
+     uint64_t fpcr = ocerz_afp_host();
++    if (m32_afp_trace_enabled && (fpcr & 2)) {
++        uint64_t id = cpu->rip - OCERZ_DYLDAPI_LO;
++        if (id < M32_ID_LIMIT) ++afp_traps[id];
++        else ++afp_other_traps;
++    }
+     int r = trap_dispatch(vm, cpu);
+     ocerz_afp_restore(fpcr);
+diff --git a/src/m32_agl.c b/src/m32_agl.c
+--- a/src/m32_agl.c
++++ b/src/m32_agl.c
+@@ -340,4 +340,6 @@
+         if (!m32_wmgl_swap(ctx))
+             agl.swap_buffers(ctx);
++        else if (m32_afp_trace_enabled)
++            m32_afp_trace_swap();
+         if (timed) {
+             uint64_t returned = clock_gettime_nsec_np(CLOCK_MONOTONIC);
+diff --git a/src/m32_leaf.c b/src/m32_leaf.c
+--- a/src/m32_leaf.c
++++ b/src/m32_leaf.c
+@@ -190,4 +190,6 @@
+         return ((F7)l->fn)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+     uint64_t fpcr = ocerz_afp_host();
++    if (m32_afp_trace_enabled && (fpcr & 2))
++        m32_afp_trace_leaf(l->name);
+     uint64_t r = ((F7)l->fn)(a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+     ocerz_afp_restore(fpcr);
+diff --git a/src/m32_callback.c b/src/m32_callback.c
+--- a/src/m32_callback.c
++++ b/src/m32_callback.c
+@@ -72,4 +72,6 @@
+     ocerz_bridge_guest_enter(&saved);
+     uint64_t fpcr = ocerz_afp_guest();   /* translated code relies on FPCR.AH (src/cpu.c) */
++    if (m32_afp_trace_enabled && ocerz_afp() && !(fpcr & 2))
++        m32_afp_trace_callback();
+     int pool_scope = m32_wmgl_guest_pool_enter();
+     ocerz_vm_call32(vm, fn, &call, top, M32_TRAP(M32_ID_SENTINEL));
+diff --git a/include/ocerz/m32.h b/include/ocerz/m32.h
+--- a/include/ocerz/m32.h
++++ b/include/ocerz/m32.h
+@@ -47,4 +47,8 @@
+ int m32_is_i386(const char *path);
+ int m32_run(struct OcerzVM *vm, const char *path, int argc, char **argv, char **envp);
++extern int m32_afp_trace_enabled;
++void m32_afp_trace_leaf(const char *name);
++void m32_afp_trace_callback(void);
++void m32_afp_trace_swap(void);
+ extern int m32_active;   /* set by m32_run: the process is an i386 Mach-O program, not Wine's WoW64 */
+ int m32_trap(struct OcerzVM *vm, OcerzCPU *cpu);

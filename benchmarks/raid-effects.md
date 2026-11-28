@@ -2301,3 +2301,26 @@ AFP lost **5.18 and 4.58 FPS** in the two pairs. P99 changed by **−0.27 and +0
 ```sh
 python3 benchmarks/summarize-raid-i386-afp.py CAPTURE_ROOT PGO_LIBWINEMETALGL
 ```
+
+### Count FPCR transitions and preclassify i386 diagnostic dispatch
+
+Apply `patches/aarchx-m32-afp-crossings-trial.patch` after the native AFP trial for the crossing diagnostic. Enable `OCERZ_M32_AFP=1`, `OCERZ_M32_AFP_LOG=1` and `OCERZ_M32_AFP_CROSS_LOG=1`. The probe records the trap or direct leaf only when entering the host clears `FPCR.AH`. It also counts host-to-guest callback pairs that set the bit. The WineMetalGL swap thread reports each complete block of 256 swaps. Use two verified 35-second captures under `crossing-1` and `crossing-2`, and save the runtime and renderer hashes in each capture and at the root.
+
+The analyzer retained **4,608** and **4,352** swaps in complete report intervals inside the verified GPU windows. The two captures recorded **13,785** and **13,961** FPCR pairs per counted swap. OpenGL-named imports accounted for about **9,810–9,936** pairs per swap, mainly direct leaves. Special traps accounted for **4,529–4,594** pairs per swap. The most frequent special traps were `_sinf` and `_floorf`, at roughly a thousand each. The callback contribution was about seven per swap.
+
+Multiplying the measured crossing rate by the isolated **20 ns** incremental transition cost estimates **0.276–0.279 ms** per swap. The earlier live AFP comparison added **0.257 ms** per average GPU completion. The estimate uses swap-thread counts from separate instrumented launches and the isolated cost of a pair of transitions. [Measured crossing counts and links to the prior timing](results/raid-aarchx-trap-dispatch-ab.json)
+
+Run the diagnostic dispatch experiment on a separate copy of the accepted runtime with software floating-point checks. Apply `patches/aarchx-m32-preclassify-diagnostics-trial.patch` to that copy. Set `OCERZ_M32_PRECLASSIFY_DIAGNOSTICS=1` to store the diagnostic kind with each export when it is published. The trap uses that value to select the existing exception-port, QuickTime-selector, and event-handler checks. Each override still checks its environment variable at dispatch, and trap handlers retain their ordinary behavior. Run `test_m32` and `test_m32 trap-diagnostics` under both settings. The focused checks cover activating and removing overrides, the QuickTime selector and another selector, an unrelated export name, and event-handler fallthrough.
+
+Place four warmed 60-second windows in `dispatch/timed-1-0`, `timed-2-1`, `timed-3-1`, and `timed-4-0`. Keep the same signed `-O2` runtime and accepted PGO renderer across these windows. Use software floating-point checks and leave the crossing log off. Verify the mode with `trap-dispatch-mode.txt` and write each run's signed runtime and renderer hashes. Store the two focused and two general test outputs in `dispatch`.
+
+| Diagnostic dispatch | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Classify the name at dispatch | 142.38 | 12.06 ms |
+| Classify the name at export | 141.41 | 12.25 ms |
+
+Throughput changed by **−1.37 and −0.58 FPS**. P99 increased by **0.21 and 0.17 ms**. Keep the dispatch baseline. Both modes passed **32** focused tests and **805** general i386 checks. All six live captures verified the saved camera, overlapping spell effects, 26 timing rows, consecutive GPU outputs and zero trial windows or activations. [Live timing, tests and crossing counts](results/raid-aarchx-trap-dispatch-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-trap-dispatch.py CAPTURE_ROOT PGO_LIBWINEMETALGL
+```

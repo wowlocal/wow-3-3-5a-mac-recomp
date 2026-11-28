@@ -1,0 +1,550 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "3cc8c28",
+  "crossing_artifacts": {
+    "runtime_unsigned_sha256": "191525596a4963807798f246de56b1c282099da0f52e0661b66192895f8bf739",
+    "runtime_signed_sha256": "1ae3ad8d30e78932f6a2aaa4aa72bbf7519c8b7677f7fbf475d8e5777b531170",
+    "renderer_sha256": "1be67f208b2a9c5289384706d49db943470724cb2c8633cbcff48cb3a4fa94b4"
+  },
+  "prior_transition_pair_delta_ns": 20.002114499999998,
+  "prior_afp_average_frame_time_increase_ns": 256566.00737922732,
+  "crossing_captures": [
+    {
+      "gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4704,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34999810125,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 134.37142857142857,
+        "p99_gpu_completion_gap_ns": 12370250,
+        "min_draws": 672,
+        "max_draws": 958
+      },
+      "complete_report_intervals": 18,
+      "counted_swaps": 4608,
+      "measured_pairs": 63521011,
+      "measured_pairs_per_swap": 13784.941623263889,
+      "estimated_transition_cost_ns_per_swap": 275727.98072434013,
+      "opengl_symbol_pairs_per_swap": 9809.932508680555,
+      "leaf_pairs_per_swap": 8553.14453125,
+      "callback_pairs_per_swap": 7.426866319444445,
+      "trap_pairs_per_swap": {
+        "generic": 695.2927517361111,
+        "special": 4529.077473958333,
+        "runtime": 0.0
+      },
+      "top_trap_pairs_per_swap": [
+        {
+          "kind": "special",
+          "name": "_sinf",
+          "pairs_per_swap": 1038.220703125
+        },
+        {
+          "kind": "special",
+          "name": "_floorf",
+          "pairs_per_swap": 1016.82421875
+        },
+        {
+          "kind": "generic",
+          "name": "_glTestObjectAPPLE",
+          "pairs_per_swap": 538.0930989583334
+        },
+        {
+          "kind": "special",
+          "name": "_cosf",
+          "pairs_per_swap": 428.6184895833333
+        },
+        {
+          "kind": "special",
+          "name": "_finite",
+          "pairs_per_swap": 378.83637152777777
+        },
+        {
+          "kind": "special",
+          "name": "_atan2f",
+          "pairs_per_swap": 359.33355034722223
+        },
+        {
+          "kind": "special",
+          "name": "_glMapBufferARB",
+          "pairs_per_swap": 325.67230902777777
+        },
+        {
+          "kind": "special",
+          "name": "_glUnmapBufferARB",
+          "pairs_per_swap": 325.67230902777777
+        },
+        {
+          "kind": "special",
+          "name": "_pthread_mutex_unlock",
+          "pairs_per_swap": 139.82118055555554
+        },
+        {
+          "kind": "special",
+          "name": "_pthread_mutex_lock",
+          "pairs_per_swap": 137.82118055555554
+        },
+        {
+          "kind": "special",
+          "name": "_powf",
+          "pairs_per_swap": 107.99652777777777
+        },
+        {
+          "kind": "special",
+          "name": "_floor",
+          "pairs_per_swap": 62.921875
+        },
+        {
+          "kind": "special",
+          "name": "_malloc_size",
+          "pairs_per_swap": 52.541232638888886
+        },
+        {
+          "kind": "generic",
+          "name": "_Microseconds",
+          "pairs_per_swap": 35.93077256944444
+        },
+        {
+          "kind": "generic",
+          "name": "_strncasecmp",
+          "pairs_per_swap": 34.689670138888886
+        },
+        {
+          "kind": "special",
+          "name": "_free",
+          "pairs_per_swap": 28.89084201388889
+        },
+        {
+          "kind": "generic",
+          "name": "_qsort",
+          "pairs_per_swap": 23.727213541666668
+        },
+        {
+          "kind": "special",
+          "name": "_glBufferSubDataARB",
+          "pairs_per_swap": 22.21484375
+        },
+        {
+          "kind": "generic",
+          "name": "_glAlphaFunc",
+          "pairs_per_swap": 22.163411458333332
+        },
+        {
+          "kind": "special",
+          "name": "__setjmp",
+          "pairs_per_swap": 22.120008680555557
+        }
+      ],
+      "top_leaf_pairs_per_swap": [
+        {
+          "name": "_glVertexAttribPointerARB",
+          "pairs_per_swap": 1593.8973524305557
+        },
+        {
+          "name": "_glLightModelfv",
+          "pairs_per_swap": 812.6295572916666
+        },
+        {
+          "name": "_glDrawRangeElementsEXT",
+          "pairs_per_swap": 812.6295572916666
+        },
+        {
+          "name": "_glDisable",
+          "pairs_per_swap": 747.7345920138889
+        },
+        {
+          "name": "_glActiveTextureARB",
+          "pairs_per_swap": 619.9973958333334
+        },
+        {
+          "name": "_glClientActiveTextureARB",
+          "pairs_per_swap": 619.9973958333334
+        },
+        {
+          "name": "_glBindTexture",
+          "pairs_per_swap": 539.2940538194445
+        },
+        {
+          "name": "_glProgramEnvParameters4fvEXT",
+          "pairs_per_swap": 530.3092447916666
+        },
+        {
+          "name": "_glBindBufferARB",
+          "pairs_per_swap": 457.7291666666667
+        },
+        {
+          "name": "_glLoadMatrixf",
+          "pairs_per_swap": 424.90234375
+        },
+        {
+          "name": "_glEnable",
+          "pairs_per_swap": 361.25
+        },
+        {
+          "name": "_glBindProgramARB",
+          "pairs_per_swap": 169.08224826388889
+        },
+        {
+          "name": "_glMatrixMode",
+          "pairs_per_swap": 166.24435763888889
+        },
+        {
+          "name": "_glEnableVertexAttribArrayARB",
+          "pairs_per_swap": 127.90212673611111
+        },
+        {
+          "name": "_glDisableVertexAttribArrayARB",
+          "pairs_per_swap": 127.90212673611111
+        },
+        {
+          "name": "_glVertexPointer",
+          "pairs_per_swap": 69.09635416666667
+        },
+        {
+          "name": "_glColorPointer",
+          "pairs_per_swap": 69.09635416666667
+        },
+        {
+          "name": "_glFrontFace",
+          "pairs_per_swap": 52.46440972222222
+        },
+        {
+          "name": "_glTexParameteri",
+          "pairs_per_swap": 49.00347222222222
+        },
+        {
+          "name": "_glBlendFunc",
+          "pairs_per_swap": 43.432291666666664
+        }
+      ]
+    },
+    {
+      "gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 4538,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 34997335375,
+        "measurement_duration_ns": 35000000000,
+        "average_completed_fps": 129.62857142857143,
+        "p99_gpu_completion_gap_ns": 13182291,
+        "min_draws": 697,
+        "max_draws": 954
+      },
+      "complete_report_intervals": 17,
+      "counted_swaps": 4352,
+      "measured_pairs": 60757531,
+      "measured_pairs_per_swap": 13960.829733455883,
+      "estimated_transition_cost_ns_per_swap": 279246.114843589,
+      "opengl_symbol_pairs_per_swap": 9935.931755514706,
+      "leaf_pairs_per_swap": 8669.50114889706,
+      "callback_pairs_per_swap": 7.451516544117647,
+      "trap_pairs_per_swap": {
+        "generic": 689.5790441176471,
+        "special": 4594.298023897059,
+        "runtime": 0.0
+      },
+      "top_trap_pairs_per_swap": [
+        {
+          "kind": "special",
+          "name": "_floorf",
+          "pairs_per_swap": 1027.1599264705883
+        },
+        {
+          "kind": "special",
+          "name": "_sinf",
+          "pairs_per_swap": 1025.6417738970588
+        },
+        {
+          "kind": "generic",
+          "name": "_glTestObjectAPPLE",
+          "pairs_per_swap": 532.8168658088235
+        },
+        {
+          "kind": "special",
+          "name": "_cosf",
+          "pairs_per_swap": 426.94875919117646
+        },
+        {
+          "kind": "special",
+          "name": "_finite",
+          "pairs_per_swap": 418.48828125
+        },
+        {
+          "kind": "special",
+          "name": "_atan2f",
+          "pairs_per_swap": 352.49494485294116
+        },
+        {
+          "kind": "special",
+          "name": "_glMapBufferARB",
+          "pairs_per_swap": 332.7828584558824
+        },
+        {
+          "kind": "special",
+          "name": "_glUnmapBufferARB",
+          "pairs_per_swap": 332.7828584558824
+        },
+        {
+          "kind": "special",
+          "name": "_pthread_mutex_unlock",
+          "pairs_per_swap": 151.96438419117646
+        },
+        {
+          "kind": "special",
+          "name": "_pthread_mutex_lock",
+          "pairs_per_swap": 149.96438419117646
+        },
+        {
+          "kind": "special",
+          "name": "_powf",
+          "pairs_per_swap": 109.26907169117646
+        },
+        {
+          "kind": "special",
+          "name": "_floor",
+          "pairs_per_swap": 64.05813419117646
+        },
+        {
+          "kind": "special",
+          "name": "_malloc_size",
+          "pairs_per_swap": 52.685202205882355
+        },
+        {
+          "kind": "generic",
+          "name": "_Microseconds",
+          "pairs_per_swap": 35.904181985294116
+        },
+        {
+          "kind": "generic",
+          "name": "_strncasecmp",
+          "pairs_per_swap": 34.63189338235294
+        },
+        {
+          "kind": "special",
+          "name": "_free",
+          "pairs_per_swap": 29.246323529411764
+        },
+        {
+          "kind": "generic",
+          "name": "_qsort",
+          "pairs_per_swap": 23.91957720588235
+        },
+        {
+          "kind": "special",
+          "name": "_glBufferSubDataARB",
+          "pairs_per_swap": 23.011488970588236
+        },
+        {
+          "kind": "special",
+          "name": "__setjmp",
+          "pairs_per_swap": 22.091222426470587
+        },
+        {
+          "kind": "generic",
+          "name": "_glAlphaFunc",
+          "pairs_per_swap": 21.850873161764707
+        }
+      ],
+      "top_leaf_pairs_per_swap": [
+        {
+          "name": "_glVertexAttribPointerARB",
+          "pairs_per_swap": 1620.5845588235295
+        },
+        {
+          "name": "_glLightModelfv",
+          "pairs_per_swap": 822.1286764705883
+        },
+        {
+          "name": "_glDrawRangeElementsEXT",
+          "pairs_per_swap": 822.1286764705883
+        },
+        {
+          "name": "_glDisable",
+          "pairs_per_swap": 757.2104779411765
+        },
+        {
+          "name": "_glActiveTextureARB",
+          "pairs_per_swap": 628.2431066176471
+        },
+        {
+          "name": "_glClientActiveTextureARB",
+          "pairs_per_swap": 628.2431066176471
+        },
+        {
+          "name": "_glBindTexture",
+          "pairs_per_swap": 542.1213235294117
+        },
+        {
+          "name": "_glProgramEnvParameters4fvEXT",
+          "pairs_per_swap": 538.3733915441177
+        },
+        {
+          "name": "_glBindBufferARB",
+          "pairs_per_swap": 468.03010110294116
+        },
+        {
+          "name": "_glLoadMatrixf",
+          "pairs_per_swap": 435.5615808823529
+        },
+        {
+          "name": "_glEnable",
+          "pairs_per_swap": 361.1764705882353
+        },
+        {
+          "name": "_glBindProgramARB",
+          "pairs_per_swap": 169.62339154411765
+        },
+        {
+          "name": "_glMatrixMode",
+          "pairs_per_swap": 168.25965073529412
+        },
+        {
+          "name": "_glEnableVertexAttribArrayARB",
+          "pairs_per_swap": 132.01309742647058
+        },
+        {
+          "name": "_glDisableVertexAttribArrayARB",
+          "pairs_per_swap": 132.01309742647058
+        },
+        {
+          "name": "_glVertexPointer",
+          "pairs_per_swap": 71.25459558823529
+        },
+        {
+          "name": "_glColorPointer",
+          "pairs_per_swap": 71.25459558823529
+        },
+        {
+          "name": "_glFrontFace",
+          "pairs_per_swap": 51.595818014705884
+        },
+        {
+          "name": "_glTexParameteri",
+          "pairs_per_swap": 49.001838235294116
+        },
+        {
+          "name": "_glBlendFunc",
+          "pairs_per_swap": 42.927389705882355
+        }
+      ]
+    }
+  ],
+  "dispatch_experiment": {
+    "artifacts": {
+      "signed_runtime_sha256": "2468aae6e050cac505fb63c0e8645ebc451d615856b8dd100183fcd8ae255ffb",
+      "renderer_sha256": "1be67f208b2a9c5289384706d49db943470724cb2c8633cbcff48cb3a4fa94b4"
+    },
+    "tests": {
+      "0": {
+        "focused": 32,
+        "general": 805
+      },
+      "1": {
+        "focused": 32,
+        "general": 805
+      }
+    },
+    "timed_runs": [
+      {
+        "order": 1,
+        "mode": "control",
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 8612,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59994132416,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 143.51666666666668,
+        "p99_gpu_completion_gap_ns": 11949834,
+        "min_draws": 660,
+        "max_draws": 975
+      },
+      {
+        "order": 2,
+        "mode": "candidate",
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 8530,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59996119625,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 142.15,
+        "p99_gpu_completion_gap_ns": 12159709,
+        "min_draws": 682,
+        "max_draws": 981
+      },
+      {
+        "order": 3,
+        "mode": "candidate",
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 8441,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59996362000,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 140.66666666666666,
+        "p99_gpu_completion_gap_ns": 12348750,
+        "min_draws": 707,
+        "max_draws": 987
+      },
+      {
+        "order": 4,
+        "mode": "control",
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 8476,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59995766500,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 141.25,
+        "p99_gpu_completion_gap_ns": 12173875,
+        "min_draws": 700,
+        "max_draws": 974
+      }
+    ],
+    "comparison": {
+      "control": {
+        "median_gpu_completed_fps": 142.38333333333333,
+        "median_p99_completion_gap_ns": 12061854.5
+      },
+      "candidate": {
+        "median_gpu_completed_fps": 141.40833333333333,
+        "median_p99_completion_gap_ns": 12254229.5
+      }
+    },
+    "paired_candidate_minus_control": [
+      {
+        "completed_fps": -1.3666666666666742,
+        "p99_gap_ns": 209875
+      },
+      {
+        "completed_fps": -0.5833333333333428,
+        "p99_gap_ns": 174875
+      }
+    ]
+  }
+}
