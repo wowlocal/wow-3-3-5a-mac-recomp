@@ -1,0 +1,700 @@
+{
+  "enabled_entries_with_12_casters": [
+    990500,
+    990501,
+    990502,
+    990504,
+    990507,
+    990509,
+    990511,
+    990515,
+    990516,
+    990518,
+    990520,
+    990523,
+    990524
+  ],
+  "fixture_restoration": {
+    "spawns": {
+      "before_sha256": "d07f14aed4968d736ee7e3ca8f96369c8aec763c74ca7b8f31d6a05d969ffc24",
+      "restored_sha256": "d07f14aed4968d736ee7e3ca8f96369c8aec763c74ca7b8f31d6a05d969ffc24"
+    },
+    "templates": {
+      "before_sha256": "fccd770623392ba4f9c70f3240dd70fffef4b8085dfa8b98fc0567b819f4225d",
+      "restored_sha256": "fccd770623392ba4f9c70f3240dd70fffef4b8085dfa8b98fc0567b819f4225d"
+    },
+    "models": {
+      "before_sha256": "a94aca7b73096b373e8c2c1ce17337f74eedefa5be5f36427803ffc227321a0d",
+      "restored_sha256": "a94aca7b73096b373e8c2c1ce17337f74eedefa5be5f36427803ffc227321a0d"
+    },
+    "scripts": {
+      "before_sha256": "3747f64a853e645e3b4836d1eec70316ac75a1ab7f19a9940c2fb0037e6e13c5",
+      "restored_sha256": "3747f64a853e645e3b4836d1eec70316ac75a1ab7f19a9940c2fb0037e6e13c5"
+    }
+  },
+  "native_5k_24_casters_before": {
+    "viewport": [
+      0,
+      0,
+      5120,
+      2880
+    ],
+    "multisample_count": 4,
+    "world_readback_sha256": "db01584ed71e9aad4c6ef8904fe3b8ad346cf535df270f1b9fa3337637e11d5e",
+    "graphics": {
+      "captured": true,
+      "actual": {
+        "weatherDensity": "3",
+        "ffxGlow": "1",
+        "projectedTextures": "1",
+        "groundEffectDist": "140",
+        "extShadowQuality": "0",
+        "gxVSync": "0",
+        "baseMip": "0",
+        "shadowLevel": "0",
+        "maxFPSBk": "0",
+        "shadowLimit": 0,
+        "format": 3,
+        "farclip": "1277",
+        "caps": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          16,
+          1
+        ],
+        "gxDepthBits": "24",
+        "gxColorBits": "24",
+        "maxFPS": "0",
+        "formats": [
+          24,
+          24,
+          1,
+          24,
+          24,
+          2,
+          24,
+          24,
+          4
+        ],
+        "gxResolution": "5120x2880",
+        "environmentDetail": "1.5",
+        "terrainDetail": 1,
+        "terrainDetailBefore": 1,
+        "gxMultisample": "4",
+        "ffxDeath": "1",
+        "particleDensity": "1",
+        "marker": "complete",
+        "specular": "1",
+        "componentTextureLevel": "9",
+        "textureFilteringMode": "5",
+        "groundEffectDensity": "64"
+      },
+      "expected": {
+        "farclip": 1277,
+        "terrainDetail": 1,
+        "shadowLevel": 0,
+        "particleDensity": 1,
+        "environmentDetail": 1.5,
+        "groundEffectDensity": 64,
+        "groundEffectDist": 140,
+        "baseMip": 0,
+        "extShadowQuality": 0.0,
+        "textureFilteringMode": 5,
+        "weatherDensity": 3,
+        "componentTextureLevel": 9,
+        "specular": 1,
+        "ffxGlow": 1,
+        "ffxDeath": 1,
+        "projectedTextures": 1,
+        "gxResolution": "5120x2880",
+        "gxVSync": 0,
+        "gxMultisample": 4,
+        "maxFPS": 0,
+        "maxFPSBk": 0
+      },
+      "client_limits": {
+        "extShadowQuality": 0.0
+      },
+      "issues": []
+    },
+    "verified_cast_rows": 26,
+    "verified_gpu_window": {
+      "stream": 1,
+      "pid": 76726,
+      "window_size": [
+        5120,
+        2880
+      ],
+      "verified_completed_renders": 5920,
+      "first_sequence": 3867,
+      "last_sequence": 9786,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991644791,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 98.65,
+      "p99_gpu_completion_gap_ns": 13842750,
+      "min_draws": 906,
+      "max_draws": 1201
+    },
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+      "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+      "renderer_sha256": "a9cb2a6512777b98a8552b33733bea3ec12c608381ac903d03fb91b232655f05"
+    }
+  },
+  "native_5k_12_casters_diagnostic": {
+    "viewport": [
+      0,
+      0,
+      5120,
+      2880
+    ],
+    "multisample_count": 4,
+    "world_readback_sha256": "d4a4653d5c8148688cc0b6902d6bce75f284dcd2dec84facbf85f605548c90e2",
+    "graphics": {
+      "captured": true,
+      "actual": {
+        "weatherDensity": "3",
+        "ffxGlow": "1",
+        "projectedTextures": "1",
+        "groundEffectDist": "140",
+        "extShadowQuality": "0",
+        "gxVSync": "0",
+        "baseMip": "0",
+        "shadowLevel": "0",
+        "maxFPSBk": "0",
+        "shadowLimit": 0,
+        "format": 3,
+        "farclip": "1277",
+        "caps": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          16,
+          1
+        ],
+        "gxDepthBits": "24",
+        "gxColorBits": "24",
+        "maxFPS": "0",
+        "formats": [
+          24,
+          24,
+          1,
+          24,
+          24,
+          2,
+          24,
+          24,
+          4
+        ],
+        "gxResolution": "5120x2880",
+        "environmentDetail": "1.5",
+        "terrainDetail": 1,
+        "terrainDetailBefore": 1,
+        "gxMultisample": "4",
+        "ffxDeath": "1",
+        "particleDensity": "1",
+        "marker": "complete",
+        "specular": "1",
+        "componentTextureLevel": "9",
+        "textureFilteringMode": "5",
+        "groundEffectDensity": "64"
+      },
+      "expected": {
+        "farclip": 1277,
+        "terrainDetail": 1,
+        "shadowLevel": 0,
+        "particleDensity": 1,
+        "environmentDetail": 1.5,
+        "groundEffectDensity": 64,
+        "groundEffectDist": 140,
+        "baseMip": 0,
+        "extShadowQuality": 0.0,
+        "textureFilteringMode": 5,
+        "weatherDensity": 3,
+        "componentTextureLevel": 9,
+        "specular": 1,
+        "ffxGlow": 1,
+        "ffxDeath": 1,
+        "projectedTextures": 1,
+        "gxResolution": "5120x2880",
+        "gxVSync": 0,
+        "gxMultisample": 4,
+        "maxFPS": 0,
+        "maxFPSBk": 0
+      },
+      "client_limits": {
+        "extShadowQuality": 0.0
+      },
+      "issues": []
+    },
+    "verified_cast_rows": 14,
+    "verified_gpu_window": {
+      "stream": 1,
+      "pid": 2837,
+      "window_size": [
+        5120,
+        2880
+      ],
+      "verified_completed_renders": 7532,
+      "first_sequence": 4511,
+      "last_sequence": 12042,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59999580916,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 125.51666666666667,
+      "p99_gpu_completion_gap_ns": 11117084,
+      "min_draws": 774,
+      "max_draws": 910
+    },
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+      "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+      "renderer_sha256": "a9cb2a6512777b98a8552b33733bea3ec12c608381ac903d03fb91b232655f05"
+    }
+  },
+  "native_5k_24_casters_restored": {
+    "viewport": [
+      0,
+      0,
+      5120,
+      2880
+    ],
+    "multisample_count": 4,
+    "world_readback_sha256": "a6b52ad868c6212556744a79adf656ca8ad0d54a117752848543dcb0d1211302",
+    "graphics": {
+      "captured": true,
+      "actual": {
+        "weatherDensity": "3",
+        "ffxGlow": "1",
+        "projectedTextures": "1",
+        "groundEffectDist": "140",
+        "extShadowQuality": "0",
+        "gxVSync": "0",
+        "baseMip": "0",
+        "shadowLevel": "0",
+        "maxFPSBk": "0",
+        "shadowLimit": 0,
+        "format": 3,
+        "farclip": "1277",
+        "caps": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          16,
+          1
+        ],
+        "gxDepthBits": "24",
+        "gxColorBits": "24",
+        "maxFPS": "0",
+        "formats": [
+          24,
+          24,
+          1,
+          24,
+          24,
+          2,
+          24,
+          24,
+          4
+        ],
+        "gxResolution": "5120x2880",
+        "environmentDetail": "1.5",
+        "terrainDetail": 1,
+        "terrainDetailBefore": 1,
+        "gxMultisample": "4",
+        "ffxDeath": "1",
+        "particleDensity": "1",
+        "marker": "complete",
+        "specular": "1",
+        "componentTextureLevel": "9",
+        "textureFilteringMode": "5",
+        "groundEffectDensity": "64"
+      },
+      "expected": {
+        "farclip": 1277,
+        "terrainDetail": 1,
+        "shadowLevel": 0,
+        "particleDensity": 1,
+        "environmentDetail": 1.5,
+        "groundEffectDensity": 64,
+        "groundEffectDist": 140,
+        "baseMip": 0,
+        "extShadowQuality": 0.0,
+        "textureFilteringMode": 5,
+        "weatherDensity": 3,
+        "componentTextureLevel": 9,
+        "specular": 1,
+        "ffxGlow": 1,
+        "ffxDeath": 1,
+        "projectedTextures": 1,
+        "gxResolution": "5120x2880",
+        "gxVSync": 0,
+        "gxMultisample": 4,
+        "maxFPS": 0,
+        "maxFPSBk": 0
+      },
+      "client_limits": {
+        "extShadowQuality": 0.0
+      },
+      "issues": []
+    },
+    "verified_cast_rows": 26,
+    "verified_gpu_window": {
+      "stream": 1,
+      "pid": 45056,
+      "window_size": [
+        5120,
+        2880
+      ],
+      "verified_completed_renders": 5712,
+      "first_sequence": 3781,
+      "last_sequence": 9492,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59992928375,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 95.18333333333334,
+      "p99_gpu_completion_gap_ns": 13636000,
+      "min_draws": 984,
+      "max_draws": 1116
+    },
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+      "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+      "renderer_sha256": "a9cb2a6512777b98a8552b33733bea3ec12c608381ac903d03fb91b232655f05"
+    }
+  },
+  "bracketing_24_caster_median": {
+    "average_completed_fps": 96.91666666666667,
+    "p99_gpu_completion_gap_ns": 13739375.0
+  },
+  "12_caster_change_from_full_raid": {
+    "average_completed_fps": 28.599999999999994,
+    "p99_gpu_completion_gap_ns": -2622291.0
+  },
+  "post_window_profiles": {
+    "24": {
+      "trace_witness": {
+        "cpu": {
+          "attach_pid": 76726,
+          "begin_uptime_ns": 435722393945791,
+          "end_uptime_ns": 435738586922666,
+          "requested_seconds": 8,
+          "returncode": 0,
+          "trace_exists": true
+        },
+        "metal": {
+          "attach_pid": 76726,
+          "begin_uptime_ns": 435738587439458,
+          "end_uptime_ns": 435773234879666,
+          "requested_seconds": 6,
+          "returncode": 0,
+          "trace_exists": true
+        }
+      },
+      "cpu": {
+        "in_process_sample_span_ns": 8459000000,
+        "main_sample_weight_ns_by_state": {
+          "Running": 8347000000
+        },
+        "main_running_sample_weight_to_profile_span": 0.9867596642629153,
+        "unresolved_main_running_leaves_with_guest_vm_caller_ns": 5836000000,
+        "main_running_sample_weight_ns_by_leaf_image": {
+          "Unattributed": 5836000000,
+          "libwinemetalgl.dylib": 837000000,
+          "ocerz": 489000000,
+          "libsystem_platform.dylib": 403000000,
+          "libobjc.A.dylib": 216000000,
+          "libsystem_kernel.dylib": 214000000,
+          "AGXMetalG16X": 66000000,
+          "libobjcMsgSend.dylib": 50000000,
+          "libsystem_pthread.dylib": 37000000,
+          "libdyld.dylib": 36000000,
+          "libsystem_c.dylib": 25000000,
+          "libGL.dylib": 20000000
+        },
+        "highest_weight_main_running_leaves": [
+          {
+            "image": "libsystem_platform.dylib",
+            "symbol": "_platform_memmove",
+            "weight_ns": 222000000,
+            "running_share": 0.02659638193362885
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::DrawState::issue(unsigned int, int, int, int, unsigned int const*, id<MTLBuffer>, unsigned long, MTLIndexType, int, int, int, bool, wmgl::DrawState::IndirectSource const*, unsigned char const*)",
+            "weight_ns": 147000000,
+            "running_share": 0.017611117766862347
+          },
+          {
+            "image": "libsystem_kernel.dylib",
+            "symbol": "kevent_id",
+            "weight_ns": 107000000,
+            "running_share": 0.012818976877920212
+          },
+          {
+            "image": "libsystem_platform.dylib",
+            "symbol": "_platform_memcmp",
+            "weight_ns": 92000000,
+            "running_share": 0.01102192404456691
+          },
+          {
+            "image": "libobjc.A.dylib",
+            "symbol": "objc_release",
+            "weight_ns": 65000000,
+            "running_share": 0.007787228944530969
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::DrawState::drawElements(unsigned int, int, unsigned int, void const*, int, int)",
+            "weight_ns": 63000000,
+            "running_share": 0.0075476219000838625
+          },
+          {
+            "image": "libobjc.A.dylib",
+            "symbol": "objc_retain",
+            "weight_ns": 58000000,
+            "running_share": 0.0069486042889660956
+          },
+          {
+            "image": "libsystem_kernel.dylib",
+            "symbol": "mach_msg2_trap",
+            "weight_ns": 57000000,
+            "running_share": 0.006828800766742542
+          },
+          {
+            "image": "ocerz",
+            "symbol": "m32_leaf_tramp",
+            "weight_ns": 53000000,
+            "running_share": 0.006349586677848329
+          },
+          {
+            "image": "libobjcMsgSend.dylib",
+            "symbol": "objc_msgSend",
+            "weight_ns": 48000000,
+            "running_share": 0.005750569066730562
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::api::TestObjectAPPLE(wmgl::Context&, unsigned int, unsigned int)",
+            "weight_ns": 46000000,
+            "running_share": 0.005510962022283455
+          },
+          {
+            "image": "ocerz",
+            "symbol": "shadow_for",
+            "weight_ns": 45000000,
+            "running_share": 0.0053911585000599015
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "DYLD-STUB$$objc_release",
+            "weight_ns": 42000000,
+            "running_share": 0.005031747933389241
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::DrawState::prepare(unsigned int, MTLPrimitiveType&)",
+            "weight_ns": 40000000,
+            "running_share": 0.004792140888942135
+          },
+          {
+            "image": "Unattributed",
+            "symbol": "0x7102545915",
+            "weight_ns": 40000000,
+            "running_share": 0.004792140888942135
+          }
+        ],
+        "other_threads_running_sample_weight_ns": 1208000000
+      },
+      "gpu": {
+        "matched_endpoints": 572,
+        "consecutive_matches": 572,
+        "maximum_alignment_error_ns": 42,
+        "active_time_ns_per_completion_gap": {
+          "client": {
+            "mean": 8224100.453590193,
+            "median": 8042333,
+            "p99": 11934583
+          },
+          "Vertex": {
+            "mean": 719709.9439579685,
+            "median": 604959,
+            "p99": 1983584
+          },
+          "Fragment": {
+            "mean": 7300837.607705779,
+            "median": 7040291,
+            "p99": 10980167
+          }
+        },
+        "matched_completion_span_ns": 6188822917
+      }
+    },
+    "12": {
+      "trace_witness": {
+        "cpu": {
+          "attach_pid": 2837,
+          "begin_uptime_ns": 436003004298541,
+          "end_uptime_ns": 436018762036833,
+          "requested_seconds": 8,
+          "returncode": 0,
+          "trace_exists": true
+        },
+        "metal": {
+          "attach_pid": 2837,
+          "begin_uptime_ns": 436018762618625,
+          "end_uptime_ns": 436052632074000,
+          "requested_seconds": 6,
+          "returncode": 0,
+          "trace_exists": true
+        }
+      },
+      "cpu": {
+        "in_process_sample_span_ns": 8481858834,
+        "main_sample_weight_ns_by_state": {
+          "Running": 8376000000
+        },
+        "main_running_sample_weight_to_profile_span": 0.9875193827117638,
+        "unresolved_main_running_leaves_with_guest_vm_caller_ns": 5824000000,
+        "main_running_sample_weight_ns_by_leaf_image": {
+          "Unattributed": 5824000000,
+          "libwinemetalgl.dylib": 812000000,
+          "ocerz": 511000000,
+          "libsystem_platform.dylib": 412000000,
+          "libobjc.A.dylib": 232000000,
+          "libsystem_kernel.dylib": 225000000,
+          "AGXMetalG16X": 80000000,
+          "libobjcMsgSend.dylib": 43000000,
+          "libdyld.dylib": 39000000,
+          "libsystem_pthread.dylib": 32000000,
+          "Foundation": 26000000,
+          "libsystem_c.dylib": 25000000
+        },
+        "highest_weight_main_running_leaves": [
+          {
+            "image": "libsystem_platform.dylib",
+            "symbol": "_platform_memmove",
+            "weight_ns": 214000000,
+            "running_share": 0.025549188156638012
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::DrawState::issue(unsigned int, int, int, int, unsigned int const*, id<MTLBuffer>, unsigned long, MTLIndexType, int, int, int, bool, wmgl::DrawState::IndirectSource const*, unsigned char const*)",
+            "weight_ns": 134000000,
+            "running_share": 0.01599808978032474
+          },
+          {
+            "image": "libsystem_platform.dylib",
+            "symbol": "_platform_memcmp",
+            "weight_ns": 115000000,
+            "running_share": 0.013729703915950334
+          },
+          {
+            "image": "libsystem_kernel.dylib",
+            "symbol": "kevent_id",
+            "weight_ns": 104000000,
+            "running_share": 0.012416427889207259
+          },
+          {
+            "image": "libobjc.A.dylib",
+            "symbol": "objc_release",
+            "weight_ns": 90000000,
+            "running_share": 0.010744985673352435
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::DrawState::drawElements(unsigned int, int, unsigned int, void const*, int, int)",
+            "weight_ns": 67000000,
+            "running_share": 0.00799904489016237
+          },
+          {
+            "image": "libsystem_kernel.dylib",
+            "symbol": "mach_msg2_trap",
+            "weight_ns": 66000000,
+            "running_share": 0.007879656160458453
+          },
+          {
+            "image": "ocerz",
+            "symbol": "m32_leaf_tramp",
+            "weight_ns": 55000000,
+            "running_share": 0.0065663801337153774
+          },
+          {
+            "image": "ocerz",
+            "symbol": "shadow_for",
+            "weight_ns": 48000000,
+            "running_share": 0.0057306590257879654
+          },
+          {
+            "image": "libobjc.A.dylib",
+            "symbol": "objc_retain",
+            "weight_ns": 42000000,
+            "running_share": 0.00501432664756447
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::api::TestObjectAPPLE(wmgl::Context&, unsigned int, unsigned int)",
+            "weight_ns": 41000000,
+            "running_share": 0.004894937917860554
+          },
+          {
+            "image": "libobjcMsgSend.dylib",
+            "symbol": "objc_msgSend",
+            "weight_ns": 41000000,
+            "running_share": 0.004894937917860554
+          },
+          {
+            "image": "libwinemetalgl.dylib",
+            "symbol": "wmgl::DrawState::prepare(unsigned int, MTLPrimitiveType&)",
+            "weight_ns": 40000000,
+            "running_share": 0.004775549188156638
+          },
+          {
+            "image": "libdyld.dylib",
+            "symbol": "_tlv_get_addr",
+            "weight_ns": 39000000,
+            "running_share": 0.004656160458452722
+          },
+          {
+            "image": "Unattributed",
+            "symbol": "0x710250c2f5",
+            "weight_ns": 38000000,
+            "running_share": 0.004536771728748806
+          }
+        ],
+        "other_threads_running_sample_weight_ns": 1317000000
+      },
+      "gpu": {
+        "matched_endpoints": 712,
+        "consecutive_matches": 712,
+        "maximum_alignment_error_ns": 42,
+        "active_time_ns_per_completion_gap": {
+          "client": {
+            "mean": 6785755.838255977,
+            "median": 6549917,
+            "p99": 9306125
+          },
+          "Vertex": {
+            "mean": 680363.4683544304,
+            "median": 580416,
+            "p99": 1926917
+          },
+          "Fragment": {
+            "mean": 5893241.192686358,
+            "median": 5694667,
+            "p99": 8395875
+          }
+        },
+        "matched_completion_span_ns": 6177293875
+      }
+    }
+  }
+}

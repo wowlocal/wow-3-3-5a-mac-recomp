@@ -5,9 +5,11 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from runpy import run_path
 
 
 WIDTH, HEIGHT = 5120, 2880
+FIXTURE = run_path(str(Path(__file__).with_name("raid-effects.py")))
 SETTINGS = {
     "farclip": 1277, "terrainDetail": 1, "shadowLevel": 0, "particleDensity": 1, "environmentDetail": 1.5,
     "groundEffectDensity": 64, "groundEffectDist": 140, "baseMip": 0, "extShadowQuality": 5,
@@ -90,8 +92,8 @@ def check_graphics(state, *, dimensions=(WIDTH, HEIGHT)):
     return {"captured": True, "actual": state, "expected": settings, "client_limits": limits, "issues": issues}
 
 
-def fixture_matches(rows):
-    if len(rows) != 28 or rows[1] != "25":
+def fixture_matches(rows, *, casters=24):
+    if casters not in (12, 24) or len(rows) != casters + 4 or rows[1] != str(casters + 1):
         return False
     online, map_id, zone, x, y, z, angle = rows[0].split("\t")
     if ((online, map_id, zone) != ("1", "0", "12") or
@@ -99,9 +101,9 @@ def fixture_matches(rows):
                 (x, -8947.22, .02), (y, -133.353, .02), (z, 83.6899, .02), (angle, 6.11982, .001),
             ))):
         return False
-    spells = (11113, 1449, 15237, 26573, 6343)
+    spells = FIXTURE["SPELLS"]
     expected = [(990500, 1, 1, 1100, 1100, 2600, 2600, 5, 36, 0, 1)]
-    for actor in range(25):
+    for actor in range(25) if casters == 24 else FIXTURE["HALF_RAID"]:
         delay = 350 + 135 * actor
         spell = spells[actor % len(spells)]
         cycle = 5100 if spell == 26573 else 1500 + 110 * (actor % 5)
@@ -109,7 +111,7 @@ def fixture_matches(rows):
     return [tuple(map(int, row.split("\t"))) for row in rows[2:]] == sorted(expected)
 
 
-def verify(case, saved, *, measurement_seconds=60, dimensions=(WIDTH, HEIGHT)):
+def verify(case, saved, *, measurement_seconds=60, dimensions=(WIDTH, HEIGHT), casters=24):
     width, height = dimensions
     window = json.loads((case / "window.json").read_text())
     monitor = json.loads((case / "monitor.log").read_text().splitlines()[-1])
@@ -123,7 +125,7 @@ def verify(case, saved, *, measurement_seconds=60, dimensions=(WIDTH, HEIGHT)):
             or window["missing_sequences"] or window["verified_completed_renders"] < 60 or
             attach not in client or viewport not in client):
         raise ValueError(f"The timed run lacks a native {width}×{height}, 4× MSAA GPU completion and viewport witness")
-    if (not fixture_matches(fixture)
+    if (not fixture_matches(fixture, casters=casters)
             or monitor["seen"] != [window["pid"]] or monitor["activationNotifications"]
             or monitor["maxVisibleWindows"] or isolation != {
                 "legacy_paused": True, "legacy_completed_frames_during_launch": 0,
@@ -145,7 +147,7 @@ def verify(case, saved, *, measurement_seconds=60, dimensions=(WIDTH, HEIGHT)):
         "multisample_count": 4,
         "world_readback_sha256": hashlib.sha256(image).hexdigest(),
         "graphics": graphics,
-        "verified_cast_rows": 26,
+        "verified_cast_rows": casters + 2,
         "verified_gpu_window": window,
         "artifact_sha256": json.loads((case / "artifact-sha256.json").read_text()),
     }

@@ -3178,3 +3178,33 @@ The diagnostic emitted **472** distinct additional prefixes. The local i386 imag
 ```sh
 python3 benchmarks/summarize-raid-native-5k-short-base.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
 ```
+
+### Measure caster count at native 5K
+
+Measure the full 24-caster fixture, the 12-caster subset, then the restored full fixture. Keep the fixed camera, native **5120 × 2880** drawable, maximum supported quality, four samples, VSync off, budget 2048, color-only MSAA and the same runtime and renderer. Save one warmed 60-second window for each condition under `native-5k-casters-before-24`, `native-5k-casters-diagnostic-12`, and `native-5k-casters-restored-24`.
+
+On the isolated test realm, snapshot the fixture's creature, template, model and script rows. After the original control disconnects, let the world finish saving the session. Stop only the test world and set `spawnMask=0` on the 12 fixture GUIDs outside the existing `HALF_RAID` selection in `raid-effects.py`. This keeps the boss, all original spell types, and the selected actors' positions and timers. Restart the world to reload the spawn grid. The reduced launch verifies **13** spawn entries and **14** cast timing rows, including the boss's attack animation. [AzerothCore spawn-grid implementation](https://github.com/azerothcore/azerothcore-wotlk/blob/b4cbbfb593a4f64714c2713f165500a245e0a612/src/server/game/Globals/ObjectMgr.cpp#L2535-L2546)
+
+After the reduced launch disconnects, restore those exact masks and verify the checksums of all four fixture snapshots before restarting the trial world. Record the original and restored checksums in `caster-sweep-state/restoration.json`. Keep a `spawn-masks.json` witness in each capture with `guid, entry, map, spawnMask, phaseMask`. The restored control verifies the full active set and all 26 timing rows. The native 5K acceptance requirement uses the full 24-caster fixture.
+
+After the timed windows in the first two launches, record an eight-second Time Profiler trace and a separate six-second Metal System Trace. Save their attachment PID, raw uptime bounds, duration, recorder status and archive witness in `trace-witness.json`. Export the `time-profile` and `metal-gpu-intervals` tables as `time-profile.xml` and `gpu-intervals.xml`. The analyzer aligns fragment endpoints to the post-window GPU completion sequence and measures stage activity inside the matched gaps.
+
+| Native 5K run | GPU-completed FPS | P99 completion gap |
+| --- | ---: | ---: |
+| 24 casters before | 98.65 | 13.84 ms |
+| 12 casters | 125.52 | 11.12 ms |
+| Restored 24 casters | 95.18 | 13.64 ms |
+
+The reduced fixture added **28.60 FPS (+29.5%)** and shortened p99 by **2.62 ms** relative to the median of the full controls. The three windows verified **19,164** consecutive GPU completions across their separate launches. The readbacks showed the same camera with spell effects in each condition. The first restored login stopped at the realm chooser. The repeated control supplied the full verified window. [Native caster-count timings and restoration checks](results/raid-native-5k-caster-sweep.json)
+
+| Median stage activity per matched completion interval | 24 casters | 12 casters |
+| --- | ---: | ---: |
+| Client GPU active union | 8.04 ms | 6.55 ms |
+| Fragment | 7.04 ms | 5.69 ms |
+| Vertex | 0.60 ms | 0.58 ms |
+
+The separate GPU traces matched **572** and **712** consecutive outputs, with clock error at most **42 ns** in each. GPU stages can overlap. The main thread recorded running sample weights of **8.35** and **8.38 seconds**, about **99%** of each separate CPU trace span. Unresolved leaves under AArchX guest VM calls accounted for **5.84** and **5.82 seconds** of those weights. [Matched CPU and GPU profiles](results/raid-native-5k-caster-sweep.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-caster-sweep.py CAPTURE_ROOT --legacy-pid EARLIER_TEST_PID
+```
