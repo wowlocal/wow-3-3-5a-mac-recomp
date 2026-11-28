@@ -131,7 +131,7 @@ def add_worker_phase(interval, previous, current, workers):
     interval["final_close_to_gpu_start_ns"] = final.start - closed
 
 
-def summarize_capture(capture, scheduler, legacy_pid):
+def summarize_capture(capture, scheduler, legacy_pid, *, include_worker_phases=True):
     window = json.loads((capture / "window.json").read_text())
     pid = window["pid"]
     by_end, by_stream = LIFE["render_submissions"](capture / "submissions.ns", pid)
@@ -158,10 +158,13 @@ def summarize_capture(capture, scheduler, legacy_pid):
         client_and_ws = interval_coverage(spans["client"] + spans["windowserver"])
     if len(selected) < 2 or selected[-1].sequence - selected[0].sequence + 1 != len(selected):
         raise ValueError("The trace has no continuous verified output interval")
-    workers = worker_timings(capture, [row.final for row in selected])
+    workers = worker_timings(capture, [row.final for row in selected]) if include_worker_phases else None
     intervals = LIFE["explain_intervals"](selected, False, submissions)
     for interval, previous, current in zip(intervals, selected, selected[1:]):
-        add_worker_phase(interval, previous, current, workers)
+        if workers is not None:
+            add_worker_phase(interval, previous, current, workers)
+        else:
+            interval["draws_in_completed_output"] = current.draws
         before, final = previous.final, current.final
         parts = interval["components"]
         if scheduler:

@@ -1,0 +1,466 @@
+{
+  "diagnostic_run": {
+    "viewport": [
+      0,
+      0,
+      5120,
+      2880
+    ],
+    "multisample_count": 4,
+    "world_readback_sha256": "dd3bcf946fb51af21c85498fb4d20beefeabb451f4dad7940ba0924e48d47f0b",
+    "graphics": {
+      "captured": true,
+      "actual": {
+        "weatherDensity": "3",
+        "ffxGlow": "1",
+        "projectedTextures": "1",
+        "groundEffectDist": "140",
+        "extShadowQuality": "0",
+        "gxVSync": "0",
+        "baseMip": "0",
+        "shadowLevel": "0",
+        "maxFPSBk": "0",
+        "shadowLimit": 0,
+        "format": 3,
+        "farclip": "1277",
+        "caps": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          16,
+          1
+        ],
+        "gxDepthBits": "24",
+        "gxColorBits": "24",
+        "maxFPS": "0",
+        "formats": [
+          24,
+          24,
+          1,
+          24,
+          24,
+          2,
+          24,
+          24,
+          4
+        ],
+        "gxResolution": "5120x2880",
+        "environmentDetail": "1.5",
+        "terrainDetail": 1,
+        "terrainDetailBefore": 1,
+        "gxMultisample": "4",
+        "ffxDeath": "1",
+        "particleDensity": "1",
+        "marker": "complete",
+        "specular": "1",
+        "componentTextureLevel": "9",
+        "textureFilteringMode": "5",
+        "groundEffectDensity": "64"
+      },
+      "expected": {
+        "farclip": 1277,
+        "terrainDetail": 1,
+        "shadowLevel": 0,
+        "particleDensity": 1,
+        "environmentDetail": 1.5,
+        "groundEffectDensity": 64,
+        "groundEffectDist": 140,
+        "baseMip": 0,
+        "extShadowQuality": 0.0,
+        "textureFilteringMode": 5,
+        "weatherDensity": 3,
+        "componentTextureLevel": 9,
+        "specular": 1,
+        "ffxGlow": 1,
+        "ffxDeath": 1,
+        "projectedTextures": 1,
+        "gxResolution": "5120x2880",
+        "gxVSync": 0,
+        "gxMultisample": 4,
+        "maxFPS": 0,
+        "maxFPSBk": 0
+      },
+      "client_limits": {
+        "extShadowQuality": 0.0
+      },
+      "issues": []
+    },
+    "verified_cast_rows": 26,
+    "verified_gpu_window": {
+      "stream": 1,
+      "pid": 70656,
+      "window_size": [
+        5120,
+        2880
+      ],
+      "verified_completed_renders": 5225,
+      "first_sequence": 3789,
+      "last_sequence": 9013,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59991621750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 87.06666666666666,
+      "p99_gpu_completion_gap_ns": 20725834,
+      "min_draws": 835,
+      "max_draws": 1236
+    },
+    "artifact_sha256": {
+      "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+      "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+      "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+    }
+  },
+  "trace_witness": {
+    "cpu": {
+      "attach_pid": 70656,
+      "begin_uptime_ns": 429323766084583,
+      "end_uptime_ns": 429339337271833,
+      "requested_seconds": 8,
+      "returncode": 0,
+      "trace_exists": true
+    },
+    "metal": {
+      "attach_pid": 70656,
+      "begin_uptime_ns": 429339337376250,
+      "requested_seconds": 6,
+      "end_uptime_ns": 429428154011916,
+      "returncode": 0,
+      "trace_exists": true
+    }
+  },
+  "matched_metal_activity": {
+    "selected_outputs": 564,
+    "verified_outputs_with_traced_fragment_endpoint": 564,
+    "selected_output_completion_span_ns": 6274678416,
+    "clock_alignment": {
+      "matched_endpoints": 1165,
+      "maximum_error_ns": 42
+    },
+    "active_gpu_rows_by_process_group": {
+      "unspecified": 11,
+      "client": 8793,
+      "windowserver": 24309,
+      "other": 155
+    },
+    "completion_intervals": 563,
+    "most_common_draw_splits": [
+      {
+        "draws_per_submission": [
+          512,
+          417,
+          97
+        ],
+        "count": 16
+      },
+      {
+        "draws_per_submission": [
+          512,
+          450,
+          97
+        ],
+        "count": 11
+      },
+      {
+        "draws_per_submission": [
+          512,
+          413,
+          97
+        ],
+        "count": 11
+      },
+      {
+        "draws_per_submission": [
+          512,
+          406,
+          97
+        ],
+        "count": 10
+      },
+      {
+        "draws_per_submission": [
+          512,
+          381,
+          97
+        ],
+        "count": 9
+      },
+      {
+        "draws_per_submission": [
+          512,
+          371,
+          97
+        ],
+        "count": 9
+      },
+      {
+        "draws_per_submission": [
+          512,
+          488,
+          97
+        ],
+        "count": 9
+      },
+      {
+        "draws_per_submission": [
+          256,
+          670,
+          97
+        ],
+        "count": 8
+      }
+    ],
+    "metrics": {
+      "completion_gap_ns": {
+        "mean": 11145077.11545293,
+        "median": 11087291,
+        "p99": 14963041
+      },
+      "final_submit_interval_ns": {
+        "mean": 11153834.591474244,
+        "median": 10991833,
+        "p99": 14660875
+      },
+      "final_submit_to_gpu_start_ns": {
+        "mean": 90940.7460035524,
+        "median": 55541,
+        "p99": 579334
+      },
+      "final_gpu_span_ns": {
+        "mean": 7407709.019538188,
+        "median": 6912416,
+        "p99": 12407500
+      },
+      "final_dispatch_wait_outside_recorded_render_spans_ns": {
+        "mean": 425.5488454706927,
+        "median": 0,
+        "p99": 0
+      },
+      "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": {
+        "mean": 90515.1971580817,
+        "median": 55541,
+        "p99": 575333
+      },
+      "completion_gap_outside_recorded_render_spans_ns": {
+        "mean": 1333620.9893428064,
+        "median": 1215082,
+        "p99": 5669000
+      },
+      "earlier_submissions_gpu_spans_ns": {
+        "mean": 9462848.78330373,
+        "median": 8694000,
+        "p99": 16859334
+      },
+      "render_submissions": {
+        "mean": 3.005328596802842,
+        "median": 3,
+        "p99": 3
+      },
+      "first_to_final_submit_ns": {
+        "mean": 4575379.087033748,
+        "median": 4498625,
+        "p99": 6453584
+      },
+      "draws_in_completed_output": {
+        "mean": 1044.1474245115453,
+        "median": 1033,
+        "p99": 1178
+      },
+      "client_gpu_active_ns": {
+        "mean": 9773835.779751332,
+        "median": 9694457,
+        "p99": 13089416
+      },
+      "client_vertex_active_ns": {
+        "mean": 933949.1314387211,
+        "median": 790041,
+        "p99": 2432166
+      },
+      "client_fragment_active_ns": {
+        "mean": 8928727.719360568,
+        "median": 8748542,
+        "p99": 12735375
+      },
+      "windowserver_active_ns": {
+        "mean": 1310699.0941385436,
+        "median": 1211710,
+        "p99": 4828286
+      },
+      "other_named_processes_active_ns": {
+        "mean": 265799.29840142094,
+        "median": 0,
+        "p99": 4630751
+      },
+      "unattributed_gpu_active_ns": {
+        "mean": 1526.2735346358793,
+        "median": 0,
+        "p99": 0
+      },
+      "client_overlap_with_windowserver_ns": {
+        "mean": 1161251.3534635878,
+        "median": 1077584,
+        "p99": 4828286
+      }
+    },
+    "tail_intervals_at_or_above_p99": 6,
+    "all_interval_component_medians_ns": {
+      "final_submit_interval_ns": 10991833,
+      "final_submit_to_gpu_start_change_ns": 1083,
+      "final_gpu_span_change_ns": 81584
+    },
+    "tail_component_medians_ns": {
+      "final_submit_interval_ns": 17384771.0,
+      "final_submit_to_gpu_start_change_ns": 54937.0,
+      "final_gpu_span_change_ns": -1104125.0
+    },
+    "largest_component_increase_above_its_baseline_median": {
+      "final_submit_interval_ns": 5,
+      "final_gpu_span_change_ns": 1
+    },
+    "tail_medians": {
+      "completion_gap_ns": 16907312.5,
+      "final_submit_interval_ns": 17384771.0,
+      "final_submit_to_gpu_start_ns": 111666.0,
+      "final_gpu_span_ns": 5656292.0,
+      "final_dispatch_wait_outside_recorded_render_spans_ns": 0.0,
+      "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": 111666.0,
+      "completion_gap_outside_recorded_render_spans_ns": 7180145.5,
+      "earlier_submissions_gpu_spans_ns": 8586875.0,
+      "render_submissions": 3.0,
+      "first_to_final_submit_ns": 6919458.5,
+      "draws_in_completed_output": 1038.0,
+      "client_gpu_active_ns": 9666522.5,
+      "client_vertex_active_ns": 684813.0,
+      "client_fragment_active_ns": 8157250.5,
+      "windowserver_active_ns": 1944482.0,
+      "other_named_processes_active_ns": 407937.5,
+      "unattributed_gpu_active_ns": 0.0,
+      "client_overlap_with_windowserver_ns": 1695937.0
+    },
+    "same_draw_split_tail_comparison": {
+      "matched_tail_intervals": 3,
+      "median_tail_minus_same_split_regular_ns": {
+        "final_gpu_span_ns": 210416,
+        "client_vertex_active_ns": 341877,
+        "client_overlap_with_windowserver_ns": 300580
+      }
+    },
+    "client_gpu_active_fraction_of_joined_completion_gaps": 0.8769643923055196
+  },
+  "time_profiler": {
+    "in_process_sample_span_ns": 8460508000,
+    "main_sample_weight_ns_by_state": {
+      "Running": 8245000000
+    },
+    "main_running_sample_weight_to_profile_span": 0.9745277706728721,
+    "unresolved_main_running_leaves_with_guest_vm_caller_ns": 5835000000,
+    "main_running_sample_weight_ns_by_leaf_image": {
+      "Unattributed": 5835000000,
+      "libwinemetalgl.dylib": 707000000,
+      "ocerz": 431000000,
+      "libsystem_platform.dylib": 400000000,
+      "libsystem_kernel.dylib": 260000000,
+      "libobjc.A.dylib": 219000000,
+      "AGXMetalG16X": 89000000,
+      "libdyld.dylib": 51000000,
+      "libobjcMsgSend.dylib": 48000000,
+      "libsystem_pthread.dylib": 27000000,
+      "IOGPU": 25000000,
+      "Foundation": 24000000
+    },
+    "highest_weight_main_running_leaves": [
+      {
+        "image": "libsystem_platform.dylib",
+        "symbol": "_platform_memmove",
+        "weight_ns": 201000000,
+        "running_share": 0.024378411158277744
+      },
+      {
+        "image": "libwinemetalgl.dylib",
+        "symbol": "wmgl::DrawState::issue(unsigned int, int, int, int, unsigned int const*, id<MTLBuffer>, unsigned long, MTLIndexType, int, int, int, bool, wmgl::DrawState::IndirectSource const*, unsigned char const*)",
+        "weight_ns": 134000000,
+        "running_share": 0.016252274105518497
+      },
+      {
+        "image": "libsystem_platform.dylib",
+        "symbol": "_platform_memcmp",
+        "weight_ns": 118000000,
+        "running_share": 0.014311704063068526
+      },
+      {
+        "image": "libsystem_kernel.dylib",
+        "symbol": "kevent_id",
+        "weight_ns": 111000000,
+        "running_share": 0.013462704669496665
+      },
+      {
+        "image": "libobjc.A.dylib",
+        "symbol": "objc_release",
+        "weight_ns": 79000000,
+        "running_share": 0.009581564584596726
+      },
+      {
+        "image": "libsystem_kernel.dylib",
+        "symbol": "mach_msg2_trap",
+        "weight_ns": 74000000,
+        "running_share": 0.008975136446331109
+      },
+      {
+        "image": "libwinemetalgl.dylib",
+        "symbol": "wmgl::DrawState::prepare(unsigned int, MTLPrimitiveType&)",
+        "weight_ns": 70000000,
+        "running_share": 0.008489993935718617
+      },
+      {
+        "image": "libwinemetalgl.dylib",
+        "symbol": "wmgl::DrawState::drawElements(unsigned int, int, unsigned int, void const*, int, int)",
+        "weight_ns": 58000000,
+        "running_share": 0.00703456640388114
+      },
+      {
+        "image": "libdyld.dylib",
+        "symbol": "_tlv_get_addr",
+        "weight_ns": 51000000,
+        "running_share": 0.006185567010309278
+      },
+      {
+        "image": "libobjc.A.dylib",
+        "symbol": "objc_retain",
+        "weight_ns": 50000000,
+        "running_share": 0.006064281382656155
+      },
+      {
+        "image": "libsystem_kernel.dylib",
+        "symbol": "__write_nocancel",
+        "weight_ns": 49000000,
+        "running_share": 0.005942995755003032
+      },
+      {
+        "image": "libwinemetalgl.dylib",
+        "symbol": "(anonymous namespace)::e_glTestObjectAPPLE(unsigned int, unsigned int)",
+        "weight_ns": 48000000,
+        "running_share": 0.005821710127349909
+      },
+      {
+        "image": "libobjcMsgSend.dylib",
+        "symbol": "objc_msgSend",
+        "weight_ns": 47000000,
+        "running_share": 0.005700424499696786
+      },
+      {
+        "image": "Unattributed",
+        "symbol": "0x12b62d801",
+        "weight_ns": 38000000,
+        "running_share": 0.004608853850818678
+      },
+      {
+        "image": "ocerz",
+        "symbol": "shadow_for",
+        "weight_ns": 34000000,
+        "running_share": 0.004123711340206186
+      }
+    ],
+    "other_threads_running_sample_weight_ns": 1389000000
+  }
+}

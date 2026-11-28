@@ -3000,3 +3000,19 @@ The first fully verified M4 Pro baseline recorded **5,652** consecutive GPU comp
 ```sh
 python3 benchmarks/verify-raid-native-5k.py CAPTURE --settings CAPTURE/graphics-settings.lua
 ```
+
+### Profile the verified native 5K baseline
+
+Use the same signed runtime, renderer, 5120 × 2880 framebuffer and in-client settings witness as the baseline. Enable the submission log for this diagnostic. After the full raid is ready and warmed, record an eight-second Time Profiler trace and a separate six-second Metal System Trace attached to the same client. Save each recording's attach PID, requested duration, uptime bounds, return code and archive status to `trace-witness.json`. Allow Instruments to save after the recording ends. An earlier 18-second Metal recording reached 2.6 GB and the recorder timed out during saving.
+
+The Metal trace matched **564** consecutive native 5K completions. Its clock alignment matched **1,165** fragment endpoints within **42 ns**. Median GPU active time in the joined completion gaps was **9.69 ms**, with **8.75 ms** median fragment activity and **0.79 ms** median vertex activity. The GPU recorded client work during **87.7%** of the joined interval. The median output used **three** draw-bearing submissions, and the median final command buffer took **6.91 ms** on the GPU. In five of the six slowest gaps, the largest increase came from the interval between final submissions. A submission interval can include time spent waiting as well as work on the producer. [Native 5K GPU timings](results/raid-native-5k-stage-profile.json)
+
+Time Profiler assigned **8.245 seconds** of running sample weight to the main thread across an **8.461-second** sample span. Of that weight, **5.835 seconds** were unresolved leaves with an AArchX guest VM caller. The CPU trace and Metal trace sampled separate intervals of one launch. The capture used the baseline graphics settings and preserved the camera, actors and all 26 cast timing rows. The instrumented 60-second window averaged **87.07 FPS** and supplements the separate verified baseline. [Native 5K CPU timings](results/raid-native-5k-stage-profile.json)
+
+```sh
+xcrun xctrace export --input CAPTURE/cpu.trace --output CAPTURE/time-profile.xml \
+    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]'
+xcrun xctrace export --input CAPTURE/metal.trace --output CAPTURE/gpu-intervals.xml \
+    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-gpu-intervals"]'
+python3 benchmarks/summarize-raid-native-5k-profile.py CAPTURE --legacy-pid EARLIER_TEST_PID
+```
