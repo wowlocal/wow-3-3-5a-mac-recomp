@@ -1804,3 +1804,22 @@ One 12-second Instruction Delivery Bottlenecks trace per mode covered the main t
 python3 benchmarks/summarize-raid-hot-affinity.py CAPTURE_ROOT --prepare-from EARLIER_HOT_ORDER_ROOT
 python3 benchmarks/summarize-raid-hot-affinity.py CAPTURE_ROOT
 ```
+
+### Compare a loaded memory operand before the adjacent branch
+
+The ordinary fusion path loads the memory operand at the i386 COMIS instruction and saves it to the CPU state. The conditional branch reloads that operand and emits `FCMP`. The trial recognizes a COMIS immediately followed by the terminal branch of the same block. When the old flags are dead outside that pairing and the emitter has inserted no host instructions between the operand save and the new compare site, it replaces the save with `FCMP` and consumes those flags at the branch. The memory read stays at the compare's guest instruction. Floating-point batches and unrelated branch paths use their existing handling.
+
+Apply `patches/aarchx-m32-adjacent-memory-comis-trial.patch` to the accepted runtime. Set `OCERZ_M32_COMIS_ADJACENT=1` for the trial and `OCERZ_M32_COMIS_ADJACENT_LOG=1` only for the compile witness. Both modes passed **806** general i386 checks and seven focused interpreter comparisons. The five eligible cases exercised float and double compares, ordered inputs, and NaN with equality and inequality branches. Intervening code and live flags prevented the rewrite in the other two cases. The enabled mode also passed all seven with forced branch veneers and passed six earlier FP-batch replay checks.
+
+The logging launch found **425** distinct rewritten producers, including **ten** emitted after the world readback. All matched adjacent branch pairs in the original client text. Matching operand stores and loads at offset **5,176** in the two earlier ARM64 profiles covered **0.50% and 0.47%** of CPU sample weight. This maps the actual emitted pairs to earlier samples.
+
+| Memory compare policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Save and reload the operand | 134.59 | 12.55 ms |
+| Compare at the producer for an adjacent branch | 134.76 | 12.76 ms |
+
+The trial changed throughput by **+0.52 and −0.18 FPS**. P99 increased by **0.19 and 0.23 ms**. Keep the ordinary operand path as the baseline. All four minute windows retained the saved camera, overlapping effects, 26 timing rows, consecutive GPU completions, and zero visible trial windows or activations. The older test was paused during all launches and resumed between them. [Live comparison and CPU coverage](results/raid-aarchx-i386-adjacent-memory-comis-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-adjacent-comis.py CAPTURE_ROOT I386_CLIENT PRIOR_STACK_CAPTURE_1 PRIOR_STACK_CAPTURE_2
+```

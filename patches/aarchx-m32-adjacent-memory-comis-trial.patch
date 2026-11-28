@@ -1,0 +1,135 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -6465,4 +6465,9 @@
+ static int g_fcmp_self_vreg = -1;
+ static int g_fcmp_self_idx = -1;
++static struct {
++    const X86Insn *producer;
++    uint32_t *store;
++    int rhs;
++} g_adjacent_comis;
+ /* wine_base_ea's settled base: JTA holds base's host address, from after until JTA or base is written */
+ static struct { int valid, idx; unsigned base; int32_t min; unsigned long long seq; const uint32_t *start, *after; } g_wb;
+@@ -8596,12 +8601,27 @@
+         {
+             int va = l0_src(g_flag_producer->ops[0].reg, dbl), vb;
++            int pidx = (int)(g_flag_producer - g_cur_insns);
++            int forwarded = 0;
+             if (g_flag_producer->ops[1].kind == OCERZ_OPK_MEM) {
+-                a64_ldr_v(b, dbl ? 8 : 4, 3, 20, FCMP_MEM_OFF);
+-                vb = 3;
++                if (g_adjacent_comis.store && g_adjacent_comis.producer == g_flag_producer &&
++                    b->p == g_adjacent_comis.store + 1 && !fpb_det_here(pidx)) {
++                    // The source has already loaded the right operand. No
++                    // intervening code can change it or the pinned left operand.
++                    uint32_t *store = g_adjacent_comis.store;
++                    A64Buf replacement = { store, store, store + 1, 0, 0 };
++                    a64_fcmp(&replacement, dbl, va, g_adjacent_comis.rhs);
++                    if (ENV_ON("OCERZ_M32_COMIS_ADJACENT_LOG"))
++                        fprintf(stderr, "ocerz: i386 adjacent memory COMIS rip=%#llx\n",
++                                (unsigned long long)g_flag_producer->rip);
++                    vb = g_adjacent_comis.rhs;
++                    forwarded = 1;
++                } else {
++                    a64_ldr_v(b, dbl ? 8 : 4, 3, 20, FCMP_MEM_OFF);
++                    vb = 3;
++                }
+             } else {
+                 vb = l0_src(g_flag_producer->ops[1].reg, dbl);
+             }
+-            a64_fcmp(b, dbl, va, vb);
+-            int pidx = (int)(g_flag_producer - g_cur_insns);
++            if (!forwarded) a64_fcmp(b, dbl, va, vb);
+             if (fpb_det_here(pidx)) fpb_site_emit(b, pidx, va, vb, dbl);
+         }
+@@ -12424,4 +12444,12 @@
+         int vb = emit_sse_src_reg(b, insn, s, esz, VX1, exit_sites, n_exits);
+         if (vb < 0) return 0;
++        if (insn->mode32 && ENV_ON("OCERZ_M32_COMIS_ADJACENT") &&
++            g_cur_fpb < 0 && !g_n_side && g_cur_insns && g_cur_insn_idx >= 0 &&
++            g_cur_insn_idx == g_cur_insns_n - 2 &&
++            g_cur_insns[g_cur_insn_idx + 1].op == OCERZ_OP_JCC && b->p < b->end) {
++            g_adjacent_comis.producer = insn;
++            g_adjacent_comis.store = b->p;
++            g_adjacent_comis.rhs = vb;
++        }
+         a64_str_v(b, esz, vb, 20, FCMP_MEM_OFF);
+         return 1;
+@@ -26722,4 +26750,5 @@
+     g_fpb_fast = 0;
+     g_fcmp_self_idx = -1;
++    g_adjacent_comis.store = NULL;
+     g_cmps_mask_idx = -1;
+     l0_reset();
+diff --git a/tests/unit/test_jit32.c b/tests/unit/test_jit32.c
+--- a/tests/unit/test_jit32.c
++++ b/tests/unit/test_jit32.c
+@@ -72,4 +72,5 @@
+ static int g_ebp_case = -1;
+ static int g_shared_base_case = -1;
++static int g_adjacent_comis_case = -1;
+ static OcerzVM g_vm;
+ static OcerzCPU *cpu(void) { return &g_vm.cpu; }
+@@ -115,4 +116,11 @@
+     memset(&cpu()->xmm[0], 0x5a, sizeof cpu()->xmm[0]);
+     memset(&cpu()->xmm[1], 0xa5, sizeof cpu()->xmm[1]);
++    if (g_adjacent_comis_case >= 0) {
++        static const uint64_t left[] = {
++            0x3f000000, 0x3f800000, 0x7fc00000, 0x7fc00000,
++            0x4000000000000000ull, 0x3f800000, 0x3f800000,
++        };
++        memcpy(&cpu()->xmm[0], &left[g_adjacent_comis_case], sizeof left[0]);
++    }
+     if (g_fpb_case >= 0) {
+         static const uint32_t values[3][2][4] = {
+@@ -138,4 +146,8 @@
+     for (size_t i = 0; i < DATA_WIN; i++)
+         d[i] = (uint8_t)(0x40 + (i * 7));
++    if (g_adjacent_comis_case >= 0) {
++        uint64_t right = g_adjacent_comis_case == 4 ? 0x3ff0000000000000ull : 0x3f800000;
++        memcpy(d, &right, sizeof right);
++    }
+     uint8_t *s = (uint8_t *)ocerz_g2h(M32_STACK - 0x100);
+     for (size_t i = 0; i < 0x200; i++)
+@@ -442,4 +454,40 @@
+             break;
+         }
++        return g_failures != 0;
++    }
++
++    const char *adjacent_comis = getenv("OCERZ_TEST_JIT32_COMIS_ADJACENT");
++    if (adjacent_comis) {
++        if (adjacent_comis[0] < '0' || adjacent_comis[0] > '6' || adjacent_comis[1]) return 2;
++        g_adjacent_comis_case = adjacent_comis[0] - '0';
++        static const uint8_t jcc[] = { 0x72, 0x74, 0x74, 0x75, 0x77, 0x7b, 0x74 };
++        static const uint8_t compare[] = { 0x0f,0x2e,0x05,0x00,0x00,0x50,0x00 };
++        static const uint8_t separated[] = { 0xbb,0x08,0x00,0x00,0x00 };
++        static const uint8_t paths[] = {
++            0x31,0xc9, 0xb8,1,0,0,0, 0xeb,7,
++            0x31,0xc9, 0xb8,2,0,0,0,
++        };
++        uint8_t code[40];
++        size_t length = 0;
++        if (g_adjacent_comis_case == 4)
++            code[length++] = 0x66;
++        memcpy(code + length, compare, sizeof compare);
++        length += sizeof compare;
++        if (g_adjacent_comis_case == 5) {
++            memcpy(code + length, separated, sizeof separated);
++            length += sizeof separated;
++        }
++        code[length++] = jcc[g_adjacent_comis_case];
++        code[length++] = g_adjacent_comis_case == 6 ? 2 : 9;
++        if (g_adjacent_comis_case == 6) {
++            // Both routes consume the compare flags, so the rewrite is ineligible.
++            code[length++] = 0x9c; code[length++] = 0x5a;  // pushfd; pop edx
++            code[length++] = 0x9c; code[length++] = 0x58;  // pushfd; pop eax
++        }
++        memcpy(code + length, paths, sizeof paths);
++        length += sizeof paths;
++        char label[80];
++        snprintf(label, sizeof label, "memory COMIS with an adjacent branch (case %d)", g_adjacent_comis_case);
++        run_case(label, M32_CODE, M32_STACK, code, length);
+         return g_failures != 0;
+     }

@@ -1,0 +1,155 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "0171936",
+  "scope": "Replace the saved operand with FCMP for adjacent terminal memory comparisons on the same i386 trial runtime.",
+  "runtime_sha256": "4d2f6c06de5e50a310c84a31105e3b80004d06ddf057650e859197aea280fef7",
+  "renderer_sha256": "df6d7a0a1a4076aa8262d3f60052d57944dc8b56e91fdb1a1e3ea0b484a57539",
+  "verified_timed_script_rows": 26,
+  "visual_readbacks_verified": true,
+  "test_focus_activations": 0,
+  "visible_test_windows": 0,
+  "copied_client_process_guard_passed": true,
+  "shadow_allocation_reuse_enabled": true,
+  "legacy_resumed_after_each_pause": true,
+  "checks_per_mode": {
+    "m32": 806,
+    "focused_interpreter_comparisons": 7
+  },
+  "additional_enabled_mode_checks": {
+    "forced_veneers": 7,
+    "forced_sse_replays": 6
+  },
+  "opt_in_environment_variable": "OCERZ_M32_COMIS_ADJACENT",
+  "legacy_paused_in_all_launches": true,
+  "diagnostic_gpu_window": {
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 3343,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 24994774916,
+    "measurement_duration_ns": 25000000000,
+    "average_completed_fps": 133.68,
+    "p99_gpu_completion_gap_ns": 12813750,
+    "min_draws": 684,
+    "max_draws": 963
+  },
+  "distinct_fused_producers": 425,
+  "distinct_fused_producers_emitted_after_world_readback": 10,
+  "earlier_cpu_coverage": {
+    "matched_adjacent_pairs": 425,
+    "cpu_state_operand_offset": 5176,
+    "captures": [
+      {
+        "earlier_capture": 1,
+        "sampled_cpu_usec": 58498915,
+        "matching_load_cpu_usec": 279453,
+        "matching_store_cpu_usec": 13576,
+        "matching_load_and_store_share_of_sampled_cpu": 0.005009135639524254
+      },
+      {
+        "earlier_capture": 2,
+        "sampled_cpu_usec": 58703008,
+        "matching_load_cpu_usec": 266651,
+        "matching_store_cpu_usec": 12183,
+        "matching_load_and_store_share_of_sampled_cpu": 0.0047499099194371775
+      }
+    ]
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "adjacent_comis": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8024,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998343500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 133.71666666666667,
+      "p99_gpu_completion_gap_ns": 12539250,
+      "min_draws": 680,
+      "max_draws": 979
+    },
+    {
+      "order": 2,
+      "adjacent_comis": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8055,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995248959,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 134.23333333333332,
+      "p99_gpu_completion_gap_ns": 12728000,
+      "min_draws": 695,
+      "max_draws": 959
+    },
+    {
+      "order": 3,
+      "adjacent_comis": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8118,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59993023584,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 135.28333333333333,
+      "p99_gpu_completion_gap_ns": 12796750,
+      "min_draws": 702,
+      "max_draws": 962
+    },
+    {
+      "order": 4,
+      "adjacent_comis": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8129,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59992442750,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 135.46666666666667,
+      "p99_gpu_completion_gap_ns": 12567625,
+      "min_draws": 712,
+      "max_draws": 984
+    }
+  ],
+  "comparison": {
+    "saved_operand": {
+      "median_completed_fps": 134.59166666666667,
+      "median_p99_gap_ns": 12553437.5
+    },
+    "adjacent_compare": {
+      "median_completed_fps": 134.75833333333333,
+      "median_p99_gap_ns": 12762375.0
+    }
+  },
+  "paired_trial_minus_control": [
+    {
+      "completed_fps": 0.5166666666666515,
+      "p99_gap_ns": 188750
+    },
+    {
+      "completed_fps": -0.18333333333333712,
+      "p99_gap_ns": 229125
+    }
+  ]
+}
