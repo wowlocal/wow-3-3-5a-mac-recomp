@@ -46,7 +46,7 @@ def exported_rows(path, schema, columns):
         node.remove(item)
 
 
-def gpu_activity(path, pid, legacy_pid):
+def gpu_activity(path, pid, legacy_pid, separate_windowserver=False):
     columns = {"state", "start", "duration", "process", "channel-name", "cmdbuffer-id"}
     buffers = defaultdict(list)
     spans = defaultdict(list)
@@ -67,6 +67,8 @@ def gpu_activity(path, pid, legacy_pid):
             spans[stage].append((start, end))
         elif legacy_pid is not None and process.endswith(f" ({legacy_pid})"):
             group = "legacy"
+        elif separate_windowserver and process.startswith("WindowServer ("):
+            group = "windowserver"
         else:
             group = "other" if process else "unspecified"
         spans[group].append((start, end))

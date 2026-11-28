@@ -1,0 +1,246 @@
+{
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "ef1e164ad52bafc5a3bfd8e9a2e1f0a87866121e9b28c834efbe9b87af1cc200",
+    "runtime_signed_sha256": "83b81892d4e2f4d0652bedfe5e420c7e4356588680b9fafe4e5d0a3ad423453a",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  },
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "general_i386_checks": 805,
+  "diagnostic_gpu_window": {
+    "window_size": [
+      1365,
+      768
+    ],
+    "verified_completed_renders": 6261,
+    "missing_sequences": 0,
+    "gpu_completion_interval_ns": 44995702500,
+    "measurement_duration_ns": 45000000000,
+    "average_completed_fps": 139.11111111111111,
+    "p99_gpu_completion_gap_ns": 12249750,
+    "min_draws": 689,
+    "max_draws": 929
+  },
+  "phase_trace_counters": {
+    "returns": 25021,
+    "unpaired_returns": 5005,
+    "entries": 20016,
+    "unpaired_entries": 0,
+    "guest_cpus": 1,
+    "armed_seconds": 36,
+    "unpaired_return_records_by_pc": {
+      "0x61c5aa": 1,
+      "0x6bf943": 5004
+    }
+  },
+  "calls_by_root": {
+    "0x73f8e0": 5004,
+    "0x97dbc0": 15012
+  },
+  "selected_outputs": 5004,
+  "phase_capture_span_ns": 36005332202,
+  "completion_intervals": 5003,
+  "most_common_draw_splits": [
+    {
+      "draws_per_submission": [
+        256,
+        580
+      ],
+      "count": 72
+    },
+    {
+      "draws_per_submission": [
+        256,
+        537
+      ],
+      "count": 70
+    },
+    {
+      "draws_per_submission": [
+        256,
+        526
+      ],
+      "count": 68
+    },
+    {
+      "draws_per_submission": [
+        256,
+        575
+      ],
+      "count": 67
+    },
+    {
+      "draws_per_submission": [
+        256,
+        520
+      ],
+      "count": 64
+    },
+    {
+      "draws_per_submission": [
+        256,
+        566
+      ],
+      "count": 62
+    },
+    {
+      "draws_per_submission": [
+        256,
+        577
+      ],
+      "count": 60
+    },
+    {
+      "draws_per_submission": [
+        256,
+        517
+      ],
+      "count": 59
+    }
+  ],
+  "metrics": {
+    "completion_gap_ns": {
+      "mean": 7195564.411353188,
+      "median": 7128084,
+      "p99": 12249750
+    },
+    "final_submit_interval_ns": {
+      "mean": 7195253.547871278,
+      "median": 7153875,
+      "p99": 9195834
+    },
+    "final_submit_to_gpu_start_ns": {
+      "mean": 364021.3168099141,
+      "median": 427459,
+      "p99": 1275959
+    },
+    "final_gpu_span_ns": {
+      "mean": 1694146.4533280032,
+      "median": 1243250,
+      "p99": 6178375
+    },
+    "final_dispatch_wait_outside_recorded_render_spans_ns": {
+      "mean": 322516.91205276834,
+      "median": 391292,
+      "p99": 543500
+    },
+    "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": {
+      "mean": 41504.40475714571,
+      "median": 0,
+      "p99": 1275959
+    },
+    "completion_gap_outside_recorded_render_spans_ns": {
+      "mean": 4392306.063561863,
+      "median": 4653000,
+      "p99": 7321875
+    },
+    "earlier_submissions_gpu_spans_ns": {
+      "mean": 1206350.185888467,
+      "median": 625834,
+      "p99": 5471500
+    },
+    "render_submissions": {
+      "mean": 2,
+      "median": 2,
+      "p99": 2
+    },
+    "first_to_final_submit_ns": {
+      "mean": 3024682.1347191683,
+      "median": 3013500,
+      "p99": 3873959
+    },
+    "draws_in_completed_output": {
+      "mean": 819.6909854087547,
+      "median": 821,
+      "p99": 919
+    },
+    "final_worker_reservation_to_start_ns": {
+      "mean": 8694.04497301619,
+      "median": 8291,
+      "p99": 15041
+    },
+    "final_worker_drain_and_close_ns": {
+      "mean": 5697.786727963222,
+      "median": 5541,
+      "p99": 11791
+    },
+    "final_close_to_commit_return_ns": {
+      "mean": 7187.318408954628,
+      "median": 6792,
+      "p99": 17167
+    },
+    "final_producer_finalize_ns": {
+      "mean": 3052.254247451529,
+      "median": 2917,
+      "p99": 6250
+    },
+    "final_close_to_gpu_start_ns": {
+      "mean": 349360.8874675195,
+      "median": 414334,
+      "p99": 1256541
+    },
+    "root_73f8e0_elapsed_ns": {
+      "mean": 2311491.496901859,
+      "median": 2315170,
+      "p99": 2777309
+    },
+    "root_97dbc0_outside_first_root_elapsed_ns": {
+      "mean": 2672340.5576654007,
+      "median": 2649094,
+      "p99": 3452861
+    },
+    "other_producer_interval_ns": {
+      "mean": 2211421.4933040175,
+      "median": 2172965,
+      "p99": 3233746
+    },
+    "combined_preparation_elapsed_ns": {
+      "mean": 4983832.05456726,
+      "median": 4964056,
+      "p99": 6092350
+    }
+  },
+  "tail_intervals_at_or_above_p99": 51,
+  "all_interval_component_medians_ns": {
+    "final_gpu_span_change_ns": 2041,
+    "final_submit_to_encoder_close_change_ns": 0,
+    "final_encoder_close_to_gpu_start_change_ns": -1832,
+    "root_73f8e0_elapsed_ns": 2315170,
+    "root_97dbc0_outside_first_root_elapsed_ns": 2649094,
+    "other_producer_interval_ns": 2172965
+  },
+  "tail_component_medians_ns": {
+    "final_gpu_span_change_ns": 5147459,
+    "final_submit_to_encoder_close_change_ns": 1041,
+    "final_encoder_close_to_gpu_start_change_ns": -251584,
+    "root_73f8e0_elapsed_ns": 2376996,
+    "root_97dbc0_outside_first_root_elapsed_ns": 2850051,
+    "other_producer_interval_ns": 2410002
+  },
+  "largest_component_increase_above_its_baseline_median": {
+    "other_producer_interval_ns": 16,
+    "final_gpu_span_change_ns": 34,
+    "root_97dbc0_outside_first_root_elapsed_ns": 1
+  },
+  "tail_medians": {
+    "completion_gap_ns": 12986375,
+    "final_submit_interval_ns": 7955209,
+    "final_submit_to_gpu_start_ns": 210250,
+    "final_gpu_span_ns": 6592750,
+    "final_dispatch_wait_outside_recorded_render_spans_ns": 202000,
+    "final_dispatch_wait_covered_by_same_outputs_earlier_submissions_ns": 0,
+    "completion_gap_outside_recorded_render_spans_ns": 5605625,
+    "earlier_submissions_gpu_spans_ns": 630541,
+    "render_submissions": 2,
+    "first_to_final_submit_ns": 3204084,
+    "draws_in_completed_output": 823,
+    "final_worker_reservation_to_start_ns": 8375,
+    "final_worker_drain_and_close_ns": 5875,
+    "final_close_to_commit_return_ns": 7917,
+    "final_producer_finalize_ns": 3292,
+    "final_close_to_gpu_start_ns": 192584,
+    "root_73f8e0_elapsed_ns": 2376996,
+    "root_97dbc0_outside_first_root_elapsed_ns": 2850051,
+    "other_producer_interval_ns": 2410002,
+    "combined_preparation_elapsed_ns": 5239899
+  }
+}

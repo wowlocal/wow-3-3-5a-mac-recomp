@@ -2599,3 +2599,27 @@ On the jointly trained build, deferred finalization gained **2.02 and 4.15 FPS**
 The control and deferred training windows completed **6,276** and **6,311** GPU outputs. The merged LLVM IR profile contained **11,062** indexed functions. All **79** renderer compile commands matched after removing the generation and use flags. The deferred commit routine and its worker block had active counters in the deferred training run. The diagnostic on the final binary matched **7,100** producer records to worker commits, with **5.75 µs** median finalization time on the game thread. [Training and finalization data](results/raid-winemetalgl-defer-render-end-pgo-ab.json)
 
 All training and timing windows and the deferred diagnostic verified the saved camera, overlapping effects, all 26 timed rows, consecutive GPU completions and zero visible windows or activations. Each mode passed **343** GPU tests and returned the same indexed replay RGBA hash and pixel count. [Validation details](results/raid-winemetalgl-defer-render-end-pgo-ab.json)
+
+### Attribute completion tails on the selected deferred PGO renderer
+
+Run two 45-second verified launches on the selected deferred PGO build with submission and deferred-finalization logging enabled. Record a 22-second Metal System Trace in each launch after the fixture loads. Add Thread Activity for the `scheduler` capture and export its `thread-state` table to `thread-states.xml`. Use the standard Metal template for `stages`. Export `metal-gpu-intervals` to `gpu-intervals.xml` in both directories.
+
+The analyzer matches each final render buffer to its verified GPU completion and to its producer and worker timestamps. It separates the interval between producer submissions from the change in worker handoff latency, delay from encoder close to GPU start, and final GPU span. The scheduler trace also separates main-thread running and nonrunning time. It selected **3,050** contiguous outputs. Among its **31** p99-tail gaps, main-thread running time provided the largest increase above its typical median in **15**, final GPU span in **12**, and main-thread nonrunning time in **4**. Median worker scheduling delay moved from **7.58 to 8.92 µs** in that tail. [Host and GPU attribution](results/raid-winemetalgl-deferred-tail-attribution.json)
+
+The Metal-only capture selected **3,003** contiguous outputs, with its GPU clocks matched within **42 ns**. The slowest **31** gaps had **3.23 ms** of median overlap between the client's GPU work and WindowServer, compared with **0.60 ms** across all intervals. Comparing each tail interval to regular intervals with the same draw counts per submission gave a median **1.79 ms** increase in final GPU span and **2.72 ms** more overlap with WindowServer. Within those matched draw-count groups, effect work and GPU scheduling can vary. [GPU stage and overlap comparison](results/raid-winemetalgl-deferred-tail-attribution.json)
+
+The earlier test's completion log independently brackets the scheduler capture's quiet GPU interval. Its pause lease expired while Instruments saved that archive, **after** the verified output window. The second launch held the lease through its workload and released it before waiting for Instruments to finish writing. Neither GPU trace recorded work from the earlier test. Both verified the saved camera, overlapping effects, all 26 timing rows and zero visible windows or activations.
+
+```sh
+python3 benchmarks/summarize-raid-deferred-tail.py CAPTURE_ROOT --legacy-pid EARLIER_TEST_PID
+```
+
+### Join the scene preparation roots to the live frame tail
+
+Apply `patches/aarchx-m32-raid-phase-tail-probe.patch` after the preparation probe and rebuild the diagnostic AArchX runtime. Use the selected deferred PGO renderer and its three queue switches. Set `OCERZ_M32_RAID_PHASE_LOG` to `phase-calls.bin`. Arm its ring for **36 seconds** during a verified 45-second launch under `phase`. Keep the submission and worker logs from the preceding experiment and record the armed duration and row count in `phase-gate.json`. Save the general AArchX checks in `general.log`.
+
+The probe pairs the direct calls to `0x73f8e0` and `0x97dbc0` with their returns. It covers **5,004** selected outputs and matches **20,016** calls on one guest CPU. The original disassembly shows a conditional branch into `0x6bf943`; that site accounts for **5,004** of the **5,005** unpaired return-site records. Across final-buffer submission intervals, the two roots together occupied **4.96 ms** at the median. Among the **51** p99-tail gaps, the final GPU span contributed the largest increase in **34**, producer time outside both measured roots in **16**, and the second root in **one**. The root timings are elapsed intervals on the game thread. The diagnostic passed **805** general i386 checks and verified the full scene and cast schedule. [Preparation phases and completion gaps](results/raid-aarchx-preparation-root-tail.json)
+
+```sh
+python3 benchmarks/summarize-raid-tail-phases.py CAPTURE_ROOT I386_CLIENT
+```
