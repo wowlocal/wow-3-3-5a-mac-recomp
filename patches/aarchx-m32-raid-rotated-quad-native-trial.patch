@@ -1,0 +1,560 @@
+diff --git a/include/ocerz/mem.h b/include/ocerz/mem.h
+--- a/include/ocerz/mem.h
++++ b/include/ocerz/mem.h
+@@ -153,6 +153,11 @@
+  * query readability and copy words, but must not acquire other locks. Returns
+  * -1 without calling it when the mapping lock cannot be taken immediately. */
+ int ocerz_mem_try_snapshot(int (*capture)(void *), void *context);
++/* Stabilize mappings during a bounded update to checked writable,
++ * non-executable pages. The callback must not acquire other locks. */
++int ocerz_mem_try_update(int (*update)(void *), void *context);
++/* Check a data page while the scoped mapping lock is held. */
++int ocerz_addr_data_writable(uint64_t address);
+ int ocerz_mem_overlaps(uint64_t gaddr, uint64_t len);
+ int ocerz_commit_fault_page(uint64_t gaddr);
+ unsigned ocerz_host_region_prot(uint64_t gaddr, uint64_t *base, uint64_t *size);
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -19594,6 +19594,49 @@
+     QUAD_PACKET_BITS = 20, QUAD_PACKET_STRIDE = 256,
+ };
+
++extern int m32_quad_native_mode(void);
++extern int m32_quad_native_code(void);
++extern int m32_quad_native_boundary(OcerzCPU *cpu, uint32_t pc);
++
++static int quad_native_code_ready(void)
++{
++    sigjmp_buf guard, *previous = ocerz_jit_decode_recover;
++    volatile int matches = 0;
++    if (sigsetjmp(guard, 0) == 0) {
++        ocerz_jit_decode_recover = &guard;
++        matches = m32_quad_native_code();
++    }
++    ocerz_jit_decode_recover = previous;
++    return matches;
++}
++
++static void emit_quad_native(A64Buf *b, uint32_t pc, uint32_t **epi_sites, int *n_epi)
++{
++    l0_flush_all(b);
++    emit_materialize(b);
++    g_ymmh_zero = 0;
++    emit_xmm_pin_spill_all(b);
++    emit_spill_pinned(b);
++    a64_mov_reg(b, 1, 0, 20);
++    a64_mov_imm64(b, 1, pc);
++    a64_mov_imm64(b, 16, (uintptr_t)&m32_quad_native_boundary);
++    a64_blr(b, 16);
++    g_callout_seq++;
++    emit_fill_pinned(b);
++    emit_xmm_pin_load_all(b);
++    yc_reload_all(b);
++    if (pc == QUAD_PACKET_BEGIN && m32_quad_native_mode() == 1) {
++        uint32_t *fallback = a64_label(b);
++        a64_cbz(b, 0, 0, 0);
++        a64_mov_imm64(b, 0, OCERZ_STEP_OK);
++        epi_sites[(*n_epi)++] = a64_label(b);
++        a64_b(b, 0);
++        a64_patch_cbz(fallback, a64_label(b));
++    }
++    emit_reload_jgb(b);
++    emit_reload_mem_base(b);
++}
++
+ static int quad_packet_site(uint64_t pc)
+ {
+     return pc == QUAD_PACKET_BEGIN || pc == QUAD_PACKET_END;
+@@ -26557,6 +26600,7 @@
+     const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                            raid_desc_enabled();
+     const int quad_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF && quad_packet_path();
++    const int quad_native = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF ? m32_quad_native_mode() : 0;
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -26573,7 +26617,8 @@
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
+                 if (vn && ((prep_trace && (raid_desc_marker(vpc) || (vpc == RAID_BATCH_ENTRY && raid_batch_enabled()))) ||
+-                           (quad_trace && quad_packet_site(vpc))))
++                           (quad_trace && quad_packet_site(vpc)) ||
++                           (quad_native && (vpc == QUAD_PACKET_BEGIN || (quad_native == 2 && vpc == QUAD_PACKET_END)))))
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -27508,6 +27553,9 @@
+             emit_raid_desc_marker(&b, insn);
+         if (i == 0 && quad_trace && quad_packet_site(rip))
+             emit_quad_packet(&b, rip);
++        if (i == 0 && quad_native && (rip == QUAD_PACKET_BEGIN || (quad_native == 2 && rip == QUAD_PACKET_END)) &&
++            g_pin_class == 3 && !g_lowptr && quad_native_code_ready())
++            emit_quad_native(&b, (uint32_t)rip, epi_sites, &n_epi);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);
+diff --git a/src/m32_quad_native.c b/src/m32_quad_native.c
+new file mode 100644
+--- /dev/null
++++ b/src/m32_quad_native.c
+@@ -0,0 +1,408 @@
++/* Runtime trial for the audited rotated quad block in the Wrath i386 image. */
++#include "ocerz/cpu.h"
++#include "ocerz/flags.h"
++#include "ocerz/mem.h"
++#include "ocerz/raid-rotated-quad-kernel.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/mman.h>
++
++enum {
++    BEGIN = 0x881651, END = 0x881aad,
++    GUEST_NORMAL = 0xf4ad00,
++    FRAME_LOW = 0x1fc, FRAME_HIGH = 0x14,
++    GUEST_PAGE = 4096,
++};
++
++static const unsigned local_offsets[] = {0x1fc, 0x1b8, 0x1bc, 0x1b4, 0x124, 0x128};
++
++typedef struct {
++    uint64_t lo, hi;
++} Span;
++
++typedef struct {
++    OcerzCPU *cpu;
++    uint32_t frame, emitter, cursor, color, stride, normal;
++    uint32_t layout[9], bounds[6], locals[6];
++    QuadVertices vertices;
++    uint64_t gpr[16], flags, fpsr;
++    Ocerz128 xmm[16];
++    uint32_t mxcsr;
++} QuadResult;
++
++static _Thread_local QuadResult expected;
++static _Thread_local unsigned long long matched, mismatched, declined, accelerated;
++static _Thread_local int pending;
++
++static int exact_one(const char *name)
++{
++    const char *value = getenv(name);
++    return value && value[0] == '1' && !value[1];
++}
++
++int m32_quad_native_mode(void)
++{
++    static int mode = -1;
++    if (mode < 0)
++        mode = exact_one("OCERZ_M32_QUAD_NATIVE") ?
++            (exact_one("OCERZ_M32_QUAD_NATIVE_COMPARE") ? 2 : 1) : 0;
++    return mode;
++}
++
++static uint64_t fpcr(void)
++{
++    uint64_t value;
++    __asm__ volatile("mrs %0, fpcr" : "=r"(value));
++    return value;
++}
++
++static uint64_t fpsr(void)
++{
++    uint64_t value;
++    __asm__ volatile("mrs %0, fpsr" : "=r"(value));
++    return value;
++}
++
++static void set_fpsr(uint64_t value)
++{
++    __asm__ volatile("msr fpsr, %0" :: "r"(value) : "memory");
++}
++
++int m32_quad_native_code(void)
++{
++    int prot = ocerz_addr_prot(BEGIN);
++    if (prot < 0 || !(prot & PROT_READ) || (prot & PROT_WRITE))
++        return 0;
++    const uint8_t *bytes = ocerz_g2h(BEGIN);
++    uint64_t hash = UINT64_C(0xcbf29ce484222325);
++    for (unsigned i = 0; i < END - BEGIN; i++)
++        hash = (hash ^ bytes[i]) * UINT64_C(0x100000001b3);
++    return hash == UINT64_C(0xbb92d741503dd589);
++}
++
++static Span span(uint64_t address, unsigned bytes)
++{
++    return (Span){address, address + bytes};
++}
++
++static int overlaps(Span a, Span b)
++{
++    return a.lo < b.hi && b.lo < a.hi;
++}
++
++static int accessible(Span area, int writing)
++{
++    if (area.lo < GUEST_PAGE || area.hi <= area.lo || area.hi > (UINT64_C(1) << 32))
++        return 0;
++    uint64_t page = area.lo & ~(uint64_t)(GUEST_PAGE - 1);
++    do {
++        if (writing ? !ocerz_addr_data_writable(page) : !ocerz_addr_readable(page))
++            return 0;
++        page += GUEST_PAGE;
++    } while (page < area.hi);
++    return 1;
++}
++
++static uint32_t word(uint32_t address)
++{
++    uint32_t value;
++    memcpy(&value, ocerz_g2h(address), sizeof value);
++    return value;
++}
++
++static void write_word(uint32_t address, uint32_t value)
++{
++    memcpy(ocerz_g2h(address), &value, sizeof value);
++}
++
++static int regular_float(uint32_t value)
++{
++    unsigned exponent = (value >> 23) & 255;
++    return exponent != 255 && (exponent || !(value & 0x7fffffu));
++}
++
++static uint64_t add_flags(uint64_t flags, uint32_t a, uint32_t b)
++{
++    uint32_t value = a + b;
++    flags &= ~(uint64_t)(OCERZ_CF | OCERZ_PF | OCERZ_AF | OCERZ_ZF | OCERZ_SF | OCERZ_OF);
++    if (value < a) flags |= OCERZ_CF;
++    if (!(__builtin_popcount(value & 255) & 1)) flags |= OCERZ_PF;
++    if ((a ^ b ^ value) & 16) flags |= OCERZ_AF;
++    if (!value) flags |= OCERZ_ZF;
++    if (value >> 31) flags |= OCERZ_SF;
++    if ((~(a ^ b) & (a ^ value)) >> 31) flags |= OCERZ_OF;
++    return flags;
++}
++
++static int prepare(QuadResult *out)
++{
++    OcerzCPU *cpu = out->cpu;
++    if (!cpu->mode32 || __atomic_load_n(&cpu->interrupt, __ATOMIC_RELAXED) ||
++        (cpu->mxcsr & 0xffc0u) != 0x1f80u || fpcr())
++        return 0;
++    int code_prot = ocerz_addr_prot(BEGIN);
++    if (code_prot < 0 || !(code_prot & PROT_READ) || (code_prot & PROT_WRITE))
++        return 0;
++    uint32_t frame = cpu->gpr[OCERZ_RBP];
++    if (frame < FRAME_LOW)
++        return 0;
++    Span frame_area = span(frame - FRAME_LOW, FRAME_LOW + FRAME_HIGH);
++    if (!accessible(frame_area, 1))
++        return 0;
++    uint32_t emitter = word(frame + 8), cursor = word(frame + 0x10), color = word(frame - 0x1c8);
++    Span cursor_area = span(cursor, sizeof out->layout);
++    if (!accessible(cursor_area, 1))
++        return 0;
++    memcpy(out->layout, ocerz_g2h(cursor), sizeof out->layout);
++    uint32_t *v = out->layout;
++    const uint64_t first = v[0];
++    unsigned stride = v[4];
++    if (stride == 24) {
++        if (v[5] || v[6] != 24 || v[7] != 24 || v[2] != first + 12 || v[3] != first + 16)
++            return 0;
++    } else if (stride == 36) {
++        if (v[5] != 36 || v[6] != 36 || v[7] != 36 ||
++            v[1] != first + 12 || v[2] != first + 24 || v[3] != first + 28)
++            return 0;
++    } else {
++        return 0;
++    }
++    if (first + 4 * stride >= (UINT64_C(1) << 32) || v[8] > UINT32_MAX - 4)
++        return 0;
++
++    Span bounds_area = span((uint64_t)emitter + 0x218, sizeof out->bounds);
++    Span output_area = span(first, 4 * stride);
++    Span normal_area = span(v[1], stride == 24 ? 12 : 0);
++    Span writable[] = {frame_area, cursor_area, bounds_area, output_area, normal_area};
++    unsigned nw = stride == 24 ? 5 : 4;
++    Span readable[] = {span(color, 4), span((uint64_t)emitter + 0x10, 8), span(GUEST_NORMAL, 12)};
++    for (unsigned i = 1; i < nw; i++) {
++        if (!accessible(writable[i], 1))
++            return 0;
++        for (unsigned j = 0; j < i; j++)
++            if (overlaps(writable[i], writable[j]))
++                return 0;
++    }
++    for (unsigned i = 0; i < sizeof readable / sizeof *readable; i++) {
++        if (!accessible(readable[i], 0))
++            return 0;
++        for (unsigned j = 1; j < nw; j++)
++            if (overlaps(readable[i], writable[j]))
++                return 0;
++        for (unsigned j = 0; j < sizeof local_offsets / sizeof *local_offsets; j++)
++            if (overlaps(readable[i], span(frame - local_offsets[j], 4)))
++                return 0;
++    }
++
++    QuadInput in = {
++        .axis = {(uint32_t)cpu->xmm[2].lo, (uint32_t)cpu->xmm[3].lo},
++        .z = (uint32_t)cpu->xmm[7].lo,
++        .extent = {word(frame - 0x2c), word(frame - 0x30)},
++        .center = {word(frame - 0xc8), word(frame - 0xc4)},
++        .uv = {word(frame - 0xbc), word(frame - 0xc0)},
++        .uv_delta = {word(emitter + 0x10), word(emitter + 0x14)},
++        .color = word(color),
++    };
++    memcpy(in.normal, ocerz_g2h(GUEST_NORMAL), sizeof in.normal);
++    memcpy(in.bounds, ocerz_g2h(bounds_area.lo), sizeof in.bounds);
++    const uint32_t input[] = {in.axis[0], in.axis[1], in.z, in.extent[0], in.extent[1], in.center[0], in.center[1],
++                              in.uv[0], in.uv[1], in.uv_delta[0], in.uv_delta[1]};
++    for (unsigned i = 0; i < sizeof input / sizeof *input; i++)
++        if (!regular_float(input[i]))
++            return 0;
++    for (unsigned i = 0; i < 6; i++)
++        if ((in.bounds[i] & 0x7fffffffu) > 0x7f800000u)
++            return 0;
++
++    QuadBasis b = quad_basis(&in);
++    const float intermediate[] = {b.left,b.right,b.lower,b.upper,b.along_x,b.along_y,b.across_x,b.across_y,b.u_next,b.v_next};
++    for (unsigned i = 0; i < sizeof intermediate / sizeof *intermediate; i++)
++        if (!regular_float(as_word(intermediate[i])))
++            return 0;
++    rotated_quad_vertices(&in, &out->vertices, b);
++    for (unsigned i = 0; i < 4; i++)
++        for (unsigned j = 0; j < 3; j++)
++            if (!regular_float(out->vertices.position[i][j]))
++                return 0;
++    reduce_bounds(&in, &out->vertices, out->bounds);
++
++    out->frame = frame;
++    out->cursor = cursor;
++    out->emitter = emitter;
++    out->color = color;
++    out->stride = stride;
++    out->normal = v[1];
++    out->locals[0] = as_word(b.along_y);
++    out->locals[1] = as_word(b.left);
++    out->locals[2] = as_word(b.lower);
++    out->locals[3] = as_word(b.upper);
++    out->locals[4] = as_word(b.v_next);
++    out->locals[5] = as_word(b.u_next);
++    out->flags = add_flags(cpu->rflags, v[3] + 3 * stride, stride);
++
++    memcpy(out->gpr, cpu->gpr, sizeof out->gpr);
++    out->gpr[OCERZ_RAX] = v[3] + 4 * stride;
++    out->gpr[OCERZ_RCX] = cursor;
++    out->gpr[OCERZ_RDX] = as_word(b.u_next);
++    out->gpr[OCERZ_RBX] = color;
++    out->gpr[OCERZ_RSI] = emitter;
++    out->gpr[OCERZ_RDI] = emitter;
++    memcpy(out->xmm, cpu->xmm, sizeof out->xmm);
++    out->xmm[0] = (Ocerz128){as_word(b.v_next), 0};
++    out->xmm[1] = (Ocerz128){as_word(b.u_next), 0};
++    out->xmm[2] = (Ocerz128){out->vertices.position[3][1], 0};
++    out->xmm[3] = (Ocerz128){as_word(b.right), 0};
++    out->xmm[4] = cpu->xmm[2];
++    out->xmm[4].lo = (out->xmm[4].lo & UINT64_C(0xffffffff00000000)) | as_word(b.across_x);
++    out->xmm[5] = (Ocerz128){as_word(b.along_y), 0};
++    out->xmm[6] = (Ocerz128){as_word(b.along_x), 0};
++    out->mxcsr = cpu->mxcsr;
++    out->fpsr = fpsr();
++    for (unsigned i = 0; i < 4; i++)
++        v[i] += 4 * v[4+i];
++    v[8] += 4;
++    return 1;
++}
++
++static void apply(const QuadResult *out)
++{
++    uint32_t offset = 4 * out->stride;
++    uint8_t *vertices = ocerz_g2h(out->layout[0] - offset);
++    const QuadVertices *v = &out->vertices;
++    for (unsigned i = 0; i < 4; i++) {
++        uint8_t *vertex = vertices + i * out->stride;
++        memcpy(vertex, v->position[i], 12);
++        if (out->stride == 36)
++            memcpy(vertex + 12, v->normal[i], 12);
++        memcpy(vertex + out->stride - 12, &v->color[i], 4);
++        memcpy(vertex + out->stride - 8, v->uv[i], 8);
++    }
++    if (out->stride == 24)
++        memcpy(ocerz_g2h(out->normal), v->normal[0], 12);
++    memcpy(ocerz_g2h(out->cursor), out->layout, sizeof out->layout);
++    memcpy(ocerz_g2h(out->emitter + 0x218), out->bounds, sizeof out->bounds);
++    for (unsigned i = 0; i < sizeof local_offsets / sizeof *local_offsets; i++)
++        write_word(out->frame - local_offsets[i], out->locals[i]);
++    OcerzCPU *cpu = out->cpu;
++    memcpy(cpu->gpr, out->gpr, sizeof out->gpr);
++    memcpy(cpu->xmm, out->xmm, sizeof out->xmm);
++    cpu->rflags = out->flags;
++    cpu->cc_op = OCERZ_CC_NONE;
++    cpu->rip = END;
++}
++
++static const char *compare(const QuadResult *out, const OcerzCPU *cpu, uint64_t status)
++{
++    for (unsigned i = 0; i < 16; i++) {
++        if (out->gpr[i] != cpu->gpr[i]) {
++            if (mismatched < 4)
++                fprintf(stderr, "ocerz: native quad gpr[%u] expected=%#llx original=%#llx\n",
++                    i, (unsigned long long)out->gpr[i], (unsigned long long)cpu->gpr[i]);
++            return "gpr";
++        }
++        if (out->xmm[i].lo != cpu->xmm[i].lo || out->xmm[i].hi != cpu->xmm[i].hi) {
++            if (mismatched < 4)
++                fprintf(stderr, "ocerz: native quad xmm[%u] expected=%#llx/%#llx original=%#llx/%#llx\n", i,
++                    (unsigned long long)out->xmm[i].lo, (unsigned long long)out->xmm[i].hi,
++                    (unsigned long long)cpu->xmm[i].lo, (unsigned long long)cpu->xmm[i].hi);
++            return "xmm";
++        }
++    }
++    if (out->flags != cpu->rflags) return "rflags";
++    if (out->mxcsr != cpu->mxcsr) return "mxcsr";
++    if (out->fpsr != status) return "fpsr";
++    uint32_t offset = 4 * out->stride;
++    const uint8_t *vertices = ocerz_g2h(out->layout[0] - offset);
++    const QuadVertices *v = &out->vertices;
++    for (unsigned i = 0; i < 4; i++) {
++        const uint8_t *vertex = vertices + i * out->stride;
++        const void *normal = out->stride == 24 ? ocerz_g2h(out->normal) : (const void *)(vertex + 12);
++        if (memcmp(vertex, v->position[i], 12) || memcmp(normal, v->normal[i], 12) ||
++            memcmp(vertex + out->stride - 12, &v->color[i], 4) ||
++            memcmp(vertex + out->stride - 8, v->uv[i], 8))
++            return "vertices";
++    }
++    if (memcmp(ocerz_g2h(out->cursor), out->layout, sizeof out->layout)) return "layout";
++    if (memcmp(ocerz_g2h(out->emitter + 0x218), out->bounds, sizeof out->bounds)) return "bounds";
++    for (unsigned i = 0; i < sizeof local_offsets / sizeof *local_offsets; i++)
++        if (word(out->frame - local_offsets[i]) != out->locals[i]) return "stack";
++    return NULL;
++}
++
++typedef struct {
++    const QuadResult *out;
++    const OcerzCPU *cpu;
++    uint64_t status;
++    const char *difference;
++} Comparison;
++
++static int compare_snapshot(void *context)
++{
++    Comparison *check = context;
++    const QuadResult *out = check->out;
++    unsigned bytes = 4 * out->stride;
++    if (!accessible(span(out->layout[0] - bytes, bytes), 0) ||
++        !accessible(span(out->cursor, sizeof out->layout), 0) ||
++        !accessible(span((uint64_t)out->emitter + 0x218, sizeof out->bounds), 0) ||
++        !accessible(span(out->frame - 0x1fc, 0x1fc), 0) ||
++        (out->stride == 24 && !accessible(span(out->normal, 12), 0)))
++        return 0;
++    check->difference = compare(out, check->cpu, check->status);
++    return 1;
++}
++
++static int update(void *context)
++{
++    QuadResult *out = context;
++    if (!prepare(out)) return 0;
++    if (m32_quad_native_mode() == 1)
++        apply(out);
++    return 1;
++}
++
++int m32_quad_native_boundary(OcerzCPU *cpu, uint32_t pc)
++{
++    int mode = m32_quad_native_mode();
++    uint64_t status = fpsr();
++    if (pc == END && mode == 2) {
++        if (!pending) return 0;
++        pending = 0;
++        Comparison check = {&expected, cpu, status, NULL};
++        if (expected.cpu != cpu || ocerz_mem_try_snapshot(compare_snapshot, &check) != 1) {
++            ++declined;
++            set_fpsr(status);
++            return 0;
++        }
++        const char *why = check.difference;
++        if (why) {
++            if (++mismatched <= 10)
++                fprintf(stderr, "ocerz: native quad mismatch %s\n", why);
++        } else if (++matched == 1 || (matched & 4095u) == 0) {
++            fprintf(stderr, "ocerz: native quad compare matched=%llu mismatched=%llu declined=%llu\n",
++                    matched, mismatched, declined);
++        }
++        set_fpsr(status);
++        return 0;
++    }
++    if (pc != BEGIN)
++        return 0;
++    pending = 0;
++    QuadResult local;
++    QuadResult *out = mode == 2 ? &expected : &local;
++    out->cpu = cpu;
++    if (ocerz_mem_try_update(update, out) != 1) {
++        ++declined;
++        set_fpsr(status);
++        return 0;
++    }
++    if (mode == 2) {
++        pending = 1;
++        set_fpsr(status);
++        return 0;
++    }
++    if (++accelerated == 1)
++        fprintf(stderr, "ocerz: native rotated quad replacement active\n");
++    set_fpsr(out->fpsr);
++    return 1;
++}
+diff --git a/src/mem.c b/src/mem.c
+--- a/src/mem.c
++++ b/src/mem.c
+@@ -154,7 +154,7 @@
+     ocerz_critical_depth--;
+ }
+
+-int ocerz_mem_try_snapshot(int (*capture)(void *), void *context)
++static int mem_try_scoped(int (*capture)(void *), void *context)
+ {
+     if (!capture || ocerz_jit_lock_held_self())
+         return -1;
+@@ -166,6 +166,16 @@
+     int result = capture(context);
+     map_lock_release();
+     return result;
++}
++
++int ocerz_mem_try_snapshot(int (*capture)(void *), void *context)
++{
++    return mem_try_scoped(capture, context);
++}
++
++int ocerz_mem_try_update(int (*update)(void *), void *context)
++{
++    return mem_try_scoped(update, context);
+ }
+
+ static pthread_mutex_t g_initgate_m = PTHREAD_MUTEX_INITIALIZER;
+@@ -2561,6 +2571,21 @@
+     return prot >= 0 && (prot & PROT_READ) != 0;
+ }
+
++int ocerz_addr_data_writable(uint64_t gaddr)
++{
++    if (gaddr == UINT64_MAX)
++        return 0;
++    const MemRegion *r = region_for_range(round_down(gaddr), round_up(gaddr + 1));
++    if (!r)
++        return 0;
++    uint32_t state = slot_load(r, slot_index(r, gaddr));
++    if (!slot_is_data(state))
++        return 0;
++    int prot = (int)((state & MEM_SLOT_PROT_MASK) >> MEM_SLOT_PROT_SHIFT);
++    return (prot & (PROT_READ | PROT_WRITE | PROT_EXEC)) == (PROT_READ | PROT_WRITE) &&
++           !(r->armed && r->armed[pg_index(r, gaddr)]);
++}
++
+ int ocerz_mem_overlaps(uint64_t gaddr, uint64_t len)
+ {
+     if (len == 0 || gaddr > UINT64_MAX - len)

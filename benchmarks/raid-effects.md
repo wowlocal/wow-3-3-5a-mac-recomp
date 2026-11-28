@@ -3242,3 +3242,28 @@ Single-thread NEON was fastest at the two live wave sizes. The parallel kernel l
 python3 benchmarks/replay-raid-native-5k-particles.py export CAPTURE_ROOT LOCAL_I386_EXECUTABLE FOOTPRINT_SUMMARY CASE_FILE
 python3 benchmarks/replay-raid-native-5k-particles.py report CAPTURE_ROOT/quad-5k EXPORT_SUMMARY
 ```
+
+### Compare a native rotated-quad replacement in the 5K raid
+
+Apply `patches/aarchx-m32-raid-rotated-quad-native-trial.patch` to the native 5K runtime with the rotated-quad packet probe already applied. Copy `benchmarks/raid-rotated-quad-kernel.h` to `include/ocerz/raid-rotated-quad-kernel.h` in the runtime tree and rebuild. Keep the translation cache off, draw budget at 2048, and the selected color-only MSAA renderer. Save the general i386 suite logs as `quad-native-live/general-MODE.log` with each mode of `OCERZ_M32_QUAD_NATIVE`.
+
+The trial checks the original instruction fingerprint between guest addresses `0x881651` and `0x881aad`. It handles both observed vertex layouts and validates the floating-point controls, spans, page protections and overlap before modifying guest state. The original block handles other inputs. The accepted path writes the four vertices, advances the layout, updates six bounds and six stack words, and restores the original integer, SSE and flag state at the continuation. The caller still handles culling, emitter counts and buffer publication.
+
+For the 25-second `native-5k-quad-native-live-diagnostic` launch, set both `OCERZ_M32_QUAD_NATIVE=1` and `OCERZ_M32_QUAD_NATIVE_COMPARE=1`. The runtime computes a native prediction, executes the original block and compares the vertices, cursor, bounds, stack, integer and SSE registers, flags, and floating-point status. Require a clean comparison before testing replacement. The last periodic count gives a lower bound. The shared replay also verified all **307,502** previously exported packets, including the sanitizer run.
+
+For timing, set `OCERZ_M32_QUAD_NATIVE_COMPARE=0` and use modes 0, 1, 1, 0 on the same binary. Save each warmed 60-second window under `native-5k-quad-native-live-ORDER-MODE` and the process flags in `quad-native-mode.txt`. Each candidate must report that replacement ran. Save the original and test binary hashes, and confirm restoration of the signed original runtime when the cases finish.
+
+After the third and fourth timed windows, record an eight-second Time Profiler trace on the corresponding client PID. Save the attachment PID, raw uptime bounds, last verified GPU completion and trace completion status in `after-window-cpu-witness.json`. Export the `time-profile` table to `time-profile.xml`. The analyzer attributes running samples on the main thread to the native boundary and its callees.
+
+| Rotated-quad implementation | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original translated block | 94.18 | 13.62 ms |
+| Native replacement | 90.63 | 14.05 ms |
+
+The live diagnostic reached **22,515,712** matching comparisons, with zero mismatches and one declined comparison in the last periodic report. Both modes passed **812** general i386 checks. All four timing windows verified **22,182** consecutive GPU completions across their respective launches, native **5120 × 2880**, maximum supported quality, **4× MSAA**, VSync off and all **26** cast timing rows. The full-size world readbacks showed the fixed view and overlapping spells in both modes.
+
+The two pairs lost **4.80** and **2.30 FPS** with the replacement. P99 rose **0.590** and **0.268 ms**. In the separate CPU profile the replacement and its callees accounted for **344 ms** of **8.483 seconds** of running-sample weight on the main thread. The largest leaves under the boundary were input preparation, the FPSR read and bounds reduction. Keep the replacement opt-in. The signed original runtime was restored after the launches. [Live comparison, A/B and CPU attribution](results/raid-native-5k-quad-kernel-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-quad-kernel.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
+```

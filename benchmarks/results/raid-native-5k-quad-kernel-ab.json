@@ -1,0 +1,299 @@
+{
+  "viewport": [
+    0,
+    0,
+    5120,
+    2880
+  ],
+  "multisample_count": 4,
+  "verified_settings": {
+    "weatherDensity": "3",
+    "ffxGlow": "1",
+    "projectedTextures": "1",
+    "groundEffectDist": "140",
+    "extShadowQuality": "0",
+    "gxVSync": "0",
+    "baseMip": "0",
+    "shadowLevel": "0",
+    "maxFPSBk": "0",
+    "shadowLimit": 0,
+    "format": 3,
+    "farclip": "1277",
+    "caps": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      16,
+      1
+    ],
+    "gxDepthBits": "24",
+    "gxColorBits": "24",
+    "maxFPS": "0",
+    "formats": [
+      24,
+      24,
+      1,
+      24,
+      24,
+      2,
+      24,
+      24,
+      4
+    ],
+    "gxResolution": "5120x2880",
+    "environmentDetail": "1.5",
+    "terrainDetail": 1,
+    "terrainDetailBefore": 1,
+    "gxMultisample": "4",
+    "ffxDeath": "1",
+    "particleDensity": "1",
+    "marker": "complete",
+    "specular": "1",
+    "componentTextureLevel": "9",
+    "textureFilteringMode": "5",
+    "groundEffectDensity": "64"
+  },
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "5ebcfcc2954553f6fd29d033b5c56e2ac778bc9c344956328dfc7f3841b7f636",
+    "runtime_signed_sha256": "804968f126cc42daec2ad07fcbbdcc771ce934c13284da7b29932386ba4f82ff",
+    "renderer_sha256": "a9cb2a6512777b98a8552b33733bea3ec12c608381ac903d03fb91b232655f05"
+  },
+  "restored_runtime_sha256": {
+    "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+    "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b"
+  },
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "general_i386_checks": {
+    "0": 812,
+    "1": 812
+  },
+  "diagnostic": {
+    "mode": 1,
+    "verified_cast_rows": 26,
+    "world_readback_sha256": "2682815225456f86c4ab4cc64ec54423f2aba75961e2060f81ebc2a0092fafe4",
+    "gpu_window": {
+      "stream": 1,
+      "pid": 33970,
+      "window_size": [
+        5120,
+        2880
+      ],
+      "verified_completed_renders": 2196,
+      "first_sequence": 3701,
+      "last_sequence": 5896,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 24995411750,
+      "measurement_duration_ns": 25000000000,
+      "average_completed_fps": 87.8,
+      "p99_gpu_completion_gap_ns": 14706209,
+      "min_draws": 989,
+      "max_draws": 1101
+    },
+    "last_logged_comparison": {
+      "matched": 22515712,
+      "mismatched": 0,
+      "declined": 1
+    }
+  },
+  "runs_in_capture_order": [
+    {
+      "mode": 0,
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "2119a8b38265d13533ece634bee0dd57ce237301fd9f2d5cf13f2b4cabe23f0c",
+      "gpu_window": {
+        "stream": 1,
+        "pid": 83454,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5681,
+        "first_sequence": 3777,
+        "last_sequence": 9457,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59993958416,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 94.66666666666667,
+        "p99_gpu_completion_gap_ns": 13636125,
+        "min_draws": 981,
+        "max_draws": 1109
+      }
+    },
+    {
+      "mode": 1,
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "37fde5fddeba371be31dd20557be84ab3aa7b4de04e044fb130799aec221c4e8",
+      "gpu_window": {
+        "stream": 1,
+        "pid": 43199,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5393,
+        "first_sequence": 3693,
+        "last_sequence": 9085,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59998260000,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 89.86666666666666,
+        "p99_gpu_completion_gap_ns": 14226375,
+        "min_draws": 976,
+        "max_draws": 1119
+      }
+    },
+    {
+      "mode": 1,
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "30c70e630e48bdcb1be078480cbc62958543aecf9efc3e0e75c137adf68959a7",
+      "gpu_window": {
+        "stream": 1,
+        "pid": 2686,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5485,
+        "first_sequence": 3683,
+        "last_sequence": 9167,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59998550625,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 91.4,
+        "p99_gpu_completion_gap_ns": 13880750,
+        "min_draws": 993,
+        "max_draws": 1109
+      }
+    },
+    {
+      "mode": 0,
+      "verified_cast_rows": 26,
+      "world_readback_sha256": "1c99b3a8c9d53dd2bb556430d6d008bdf83e79f51f115dca0f6f99b889c7d9fd",
+      "gpu_window": {
+        "stream": 1,
+        "pid": 61169,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 5623,
+        "first_sequence": 3777,
+        "last_sequence": 9399,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 59999798916,
+        "measurement_duration_ns": 60000000000,
+        "average_completed_fps": 93.7,
+        "p99_gpu_completion_gap_ns": 13612500,
+        "min_draws": 987,
+        "max_draws": 1103
+      }
+    }
+  ],
+  "medians_by_mode": {
+    "0": {
+      "average_completed_fps": 94.18333333333334,
+      "p99_gpu_completion_gap_ns": 13624312.5
+    },
+    "1": {
+      "average_completed_fps": 90.63333333333333,
+      "p99_gpu_completion_gap_ns": 14053562.5
+    }
+  },
+  "paired_enabled_minus_disabled": [
+    {
+      "average_completed_fps": -4.800000000000011,
+      "p99_gpu_completion_gap_ns": 590250
+    },
+    {
+      "average_completed_fps": -2.299999999999997,
+      "p99_gpu_completion_gap_ns": 268250
+    }
+  ],
+  "post_window_cpu_profiles": {
+    "1": {
+      "trace_witness": {
+        "attach_pid": 2686,
+        "begin_uptime_ns": 438824744619666,
+        "end_uptime_ns": 438841087437208,
+        "last_verified_gpu_completion_ns": 438821616041500,
+        "requested_seconds": 8,
+        "returncode": 0,
+        "trace_exists": true
+      },
+      "process_sample_span_ns": 8550107958,
+      "running_main_thread_ns": 8483000000,
+      "native_boundary_inclusive_running_ns": 344000000,
+      "native_boundary_running_share": 0.04055169161853118,
+      "native_boundary_leaves": [
+        {
+          "image": "ocerz",
+          "symbol": "prepare",
+          "running_ns": 69000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "fpsr",
+          "running_ns": 63000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "reduce_bounds",
+          "running_ns": 46000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "set_fpsr",
+          "running_ns": 35000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "ocerz_g2h",
+          "running_ns": 23000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "accessible",
+          "running_ns": 20000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "m32_quad_native_boundary",
+          "running_ns": 13000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "apply",
+          "running_ns": 12000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "regular_float",
+          "running_ns": 10000000
+        },
+        {
+          "image": "ocerz",
+          "symbol": "word",
+          "running_ns": 8000000
+        }
+      ]
+    },
+    "0": {
+      "trace_witness": {
+        "attach_pid": 61169,
+        "begin_uptime_ns": 438952179434125,
+        "end_uptime_ns": 438967263532583,
+        "last_verified_gpu_completion_ns": 438949352833666,
+        "requested_seconds": 8,
+        "returncode": 0,
+        "trace_exists": true
+      },
+      "process_sample_span_ns": 8499001792,
+      "running_main_thread_ns": 8411000000,
+      "native_boundary_inclusive_running_ns": 0,
+      "native_boundary_running_share": 0.0,
+      "native_boundary_leaves": []
+    }
+  }
+}
