@@ -64,13 +64,14 @@ def agrees(actual, wanted):
         return False
 
 
-def check_graphics(state):
+def check_graphics(state, *, dimensions=(WIDTH, HEIGHT)):
     if state is None:
         return {"captured": False, "issues": ["The in-client settings witness is empty"]}
     issues = []
     if state.get("marker") != "complete":
         issues.append("The add-on did not finish reading the live settings")
     settings = dict(SETTINGS)
+    settings["gxResolution"] = f"{dimensions[0]}x{dimensions[1]}"
     limits = {}
     shadow_limit = state.get("shadowLimit")
     if shadow_limit not in (None, "", "?"):
@@ -108,19 +109,20 @@ def fixture_matches(rows):
     return [tuple(map(int, row.split("\t"))) for row in rows[2:]] == sorted(expected)
 
 
-def verify(case, saved, *, measurement_seconds=60):
+def verify(case, saved, *, measurement_seconds=60, dimensions=(WIDTH, HEIGHT)):
+    width, height = dimensions
     window = json.loads((case / "window.json").read_text())
     monitor = json.loads((case / "monitor.log").read_text().splitlines()[-1])
     isolation = json.loads((case / "legacy.json").read_text())
     fixture = (case / "fixture.tsv").read_text().splitlines()
     client = (case / "client.log").read_text()
-    attach = f"trial WineMetalGL attached a {WIDTH}x{HEIGHT} offscreen drawable"
-    viewport = f"native trial GL viewport 0 0 {WIDTH} {HEIGHT} draw-fbo 0 samples 4 buffers 1"
-    if (window["window_size"] != [WIDTH, HEIGHT]
+    attach = f"trial WineMetalGL attached a {width}x{height} offscreen drawable"
+    viewport = f"native trial GL viewport 0 0 {width} {height} draw-fbo 0 samples 4 buffers 1"
+    if (window["window_size"] != [width, height]
             or window["measurement_duration_ns"] != measurement_seconds * 1_000_000_000
             or window["missing_sequences"] or window["verified_completed_renders"] < 60 or
             attach not in client or viewport not in client):
-        raise ValueError("The timed run lacks a native 5K, 4× MSAA GPU completion and viewport witness")
+        raise ValueError(f"The timed run lacks a native {width}×{height}, 4× MSAA GPU completion and viewport witness")
     if (not fixture_matches(fixture)
             or monitor["seen"] != [window["pid"]] or monitor["activationNotifications"]
             or monitor["maxVisibleWindows"] or isolation != {
@@ -128,18 +130,18 @@ def verify(case, saved, *, measurement_seconds=60):
             }):
         raise ValueError("The timed fixture, visibility or process isolation differs")
     image = (case / "world.ppm").read_bytes()
-    header = f"P6\n{WIDTH} {HEIGHT}\n255\n".encode("ascii")
-    if not image.startswith(header) or len(image) != len(header) + WIDTH * HEIGHT * 3:
+    header = f"P6\n{width} {height}\n255\n".encode("ascii")
+    if not image.startswith(header) or len(image) != len(header) + width * height * 3:
         raise ValueError("The full-resolution world readback is missing")
     corners = [
-        max(image[i:i + 3]) for y in (HEIGHT // 8, 7 * HEIGHT // 8) for x in (WIDTH // 8, 7 * WIDTH // 8)
-        for i in [len(header) + (y * WIDTH + x) * 3]
+        max(image[i:i + 3]) for y in (height // 8, 7 * height // 8) for x in (width // 8, 7 * width // 8)
+        for i in [len(header) + (y * width + x) * 3]
     ]
     if any(not light for light in corners):
         raise ValueError("The world readback has an uncovered corner")
-    graphics = check_graphics(read_saved_variables(saved) if saved else None)
+    graphics = check_graphics(read_saved_variables(saved) if saved else None, dimensions=dimensions)
     return {
-        "viewport": [0, 0, WIDTH, HEIGHT],
+        "viewport": [0, 0, width, height],
         "multisample_count": 4,
         "world_readback_sha256": hashlib.sha256(image).hexdigest(),
         "graphics": graphics,
@@ -147,6 +149,19 @@ def verify(case, saved, *, measurement_seconds=60):
         "verified_gpu_window": window,
         "artifact_sha256": json.loads((case / "artifact-sha256.json").read_text()),
     }
+
+
+def verify_renderer_mode(case, baseline, artifacts, mode_file, mode, log, *, measurement_seconds=60):
+    report = verify(case, case / "graphics-settings.lua", measurement_seconds=measurement_seconds)
+    if (report["graphics"]["issues"] or report["graphics"]["actual"] != baseline["graphics"]["actual"]
+            or report["artifact_sha256"] != artifacts):
+        raise ValueError(f"{case.name} did not use the verified native 5K fixture and trial binaries")
+    if ((case / mode_file).read_text().split() != [str(mode), str(log)]
+            or (case / "pass-mode.txt").read_text().split() != ["2048", "0"]
+            or (case / "render-end-mode.txt").read_text().split() != ["deferred", "0"]
+            or (case / "submissions.ns").exists()):
+        raise ValueError(f"{case.name} used a different policy or logging mode")
+    return report
 
 
 if __name__ == "__main__":

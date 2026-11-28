@@ -9,20 +9,12 @@ from statistics import median
 
 
 HERE = Path(__file__).resolve().parent
-VERIFY = run_path(str(HERE / "verify-raid-native-5k.py"))["verify"]
+VERIFY = run_path(str(HERE / "verify-raid-native-5k.py"))["verify_renderer_mode"]
 FPS, P99 = "average_completed_fps", "p99_gpu_completion_gap_ns"
 
 
 def read_run(case, mode, log, baseline, artifacts, duration):
-    report = VERIFY(case, case / "graphics-settings.lua", measurement_seconds=duration)
-    if (report["graphics"]["issues"] or report["graphics"]["actual"] != baseline["graphics"]["actual"]
-            or report["artifact_sha256"] != artifacts):
-        raise ValueError(f"{case.name} did not use the verified native 5K fixture and trial binaries")
-    if ((case / "early-depth-mode.txt").read_text().split() != [str(mode), str(log)]
-            or (case / "pass-mode.txt").read_text().split() != ["2048", "0"]
-            or (case / "render-end-mode.txt").read_text().split() != ["deferred", "0"]
-            or (case / "submissions.ns").exists()):
-        raise ValueError(f"{case.name} used a different policy or logging mode")
+    report = VERIFY(case, baseline, artifacts, "early-depth-mode.txt", mode, log, measurement_seconds=duration)
     return {"early_depth": mode, "gpu_window": report["verified_gpu_window"],
             "readback_sha256": report["world_readback_sha256"], "cast_rows": report["verified_cast_rows"]}
 

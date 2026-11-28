@@ -3096,3 +3096,22 @@ The paired throughput changes were **+1.13** and **+1.88 FPS**, with p99 gaps **
 ```sh
 python3 benchmarks/summarize-raid-native-5k-early-depth.py CAPTURE_ROOT
 ```
+
+### Leave depth and stencil detached for color-only MSAA draws
+
+Apply `patches/winemetalgl-color-only-msaa-trial.patch` to the selected deferred renderer and build one ARM64 library for both modes using the same prior LLVM profile. Enable the trial with `WINEMETALGL_COLOR_ONLY_MSAA=1`. With compatible legacy draws in the multisampled default framebuffer, a new pass binds color alone while both tests are disabled. A following draw that needs either test binds the original attachments. An open full pass and any pending clear retain the original attachment selection. The draw budget sees the same effective descriptor as the render encoder.
+
+Run the renderer tests in both modes and save `color-only-msaa/gpu-tests-0.log` and `gpu-tests-1.log` under the capture root. Repeat `arb_msaa_color_pass_preserves_depth_and_stencil` with `WINEMETALGL_COLOR_ONLY_MSAA_LOG=1` and save `focused-0.log` and `focused-1.log`. The four-sample test verifies color, depth and stencil after reopening attachments, plus a stencil clear during a color-only pass. Both modes passed **344** tests.
+
+Use the verified native 5K fixture, budget 2048, and the same runtime and renderer for all launches. Run one 25-second diagnostic with the trial and log enabled under `native-5k-color-only-msaa-diagnostic`, then four warmed 60-second windows in 0, 1, 1, 0 order with the log off. Save the latter under `native-5k-color-only-msaa-ORDER-MODE`. The diagnostic reported seven periodic counts for color-only **5120 × 2880** encoders with four samples after the viewport was verified.
+
+| Attachment selection | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original attachments | 99.06 | 13.54 ms |
+| Color-only when eligible | 100.31 | 13.28 ms |
+
+The two pairs added **1.23** and **1.27 FPS**, with p99 gaps **0.212** and **0.296 ms** shorter. The four timing launches verified **23,928** consecutive GPU completions across their separate windows, the maximum-quality native 5K profile, and all 26 cast timing rows. Keep the color-only mode as a candidate for the next native 5K comparisons. [Attachment selection A/B](results/raid-native-5k-color-only-msaa-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-color-only-msaa.py CAPTURE_ROOT
+```

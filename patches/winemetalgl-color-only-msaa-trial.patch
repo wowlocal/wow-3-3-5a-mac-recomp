@@ -1,0 +1,234 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -489,6 +489,7 @@
+     RenderTargetDesc target;
+     TargetFormats formats;
+     if (!drawTarget(target, formats)) return false;
++    if (executableNow) selectDrawAttachments(target, formats, *executableNow);
+     commitLargeWork(&target);
+     // The draw's first prepare() takes it instead of building it again.
+     validatedTarget_ = std::move(target);
+@@ -1831,6 +1832,30 @@
+
+ // --------------------------------------------------------------- prepare
+
++void DrawState::selectDrawAttachments(RenderTargetDesc& target, TargetFormats& formats, const LinkedProgram& program) {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_COLOR_ONLY_MSAA");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    const ContextState& state = ctx_.state;
++    if (!enabled || !target.colorResolve || !target.color[0].texture ||
++        !(formats.depthAttached || formats.stencilAttached) || state.depthTest || state.stencilTest ||
++        !ffProgram_ || ffProgram_->linked.get() != &program) return;
++    // Keep an open full pass and honor pending clears on the original
++    // framebuffer. A later draw that needs either attachment will reopen a
++    // full pass and load the same surface storage.
++    const CommandStream& stream = ctx_.stream();
++    if (stream.continuesPass(target) || stream.hasPendingClear()) return;
++    if (state.fixed.fragmentProgram) {
++        const auto& fragment = compat::arbBound(ctx_, 1);
++        if (!fragment.parsed || fragment.parsed->depthWritten) return;
++    }
++    target.depth = {};
++    target.stencil = {};
++    formats.depth = formats.stencil = MTLPixelFormatInvalid;
++    formats.depthAttached = formats.stencilAttached = false;
++}
++
+ id<MTLRenderCommandEncoder> DrawState::prepare(GLenum mode, MTLPrimitiveType& primitive) {
+     stats::Timer phase(&stats::Frame::prepareQueriesNanos);
+     queriesPrepareVisibility(ctx_);
+@@ -1850,6 +1875,7 @@
+         return nil;
+     LinkedProgram* program = executable();
+     if (!program) return nil;
++    if (!useValidated) selectDrawAttachments(target, formats, *program);
+     // Before the render encoder: completeness checks may build storage.
+     phase.switchTo(&stats::Frame::prepareBordersNanos);
+     const uint16_t borders[2] = {borderVariant(*program, static_cast<int>(Stage::Vertex)),
+diff --git a/src/core/draw.h b/src/core/draw.h
+--- a/src/core/draw.h
++++ b/src/core/draw.h
+@@ -156,6 +156,7 @@
+     // before the draw's pass starts. Once per texture.
+     void uncompressFeedbackTextures(LinkedProgram& program);
+     id<MTLRenderCommandEncoder> prepare(GLenum mode, MTLPrimitiveType& primitive);
++    void selectDrawAttachments(RenderTargetDesc& target, TargetFormats& formats, const LinkedProgram& program);
+     // Indirect draw commands in a buffer, read by the GPU: `count` of them,
+     // `stride` bytes apart.
+     struct IndirectSource {
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -117,6 +117,7 @@
+     // Whether a pending load-action clear is for an attachment of `texture`
+     // (or of a view of it): writes to it must let the clear run first.
+     bool pendingClearUses(id<MTLTexture> texture) const;
++    bool hasPendingClear() const { return pending_.any(); }
+
+     // keepPendingClear: the encoder's commands touch no texture of a pending
+     // clear's target (buffer copies, a dispatch without textures or images),
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -249,6 +249,18 @@
+     {
+         stats::Timer t(&stats::Frame::passEncoderNanos);
+         render_ = [buffer renderCommandEncoderWithDescriptor:pass];
++    }
++    if (render_ && target.colorResolve && !target.depth.texture && !target.stencil.texture) {
++        static const bool report = [] {
++            const char* value = std::getenv("WINEMETALGL_COLOR_ONLY_MSAA_LOG");
++            return value && std::strcmp(value, "1") == 0;
++        }();
++        if (report) {
++            static thread_local uint64_t count = 0;
++            if (++count == 1 || (count & 1023) == 0)
++                std::fprintf(stderr, "winemetalgl: color-only MSAA passes %llu, %ux%u samples %u\n",
++                             static_cast<unsigned long long>(count), target.width, target.height, target.samples);
++        }
+     }
+     if (stats::g_enabled) {
+         stats::Timer t(&stats::Frame::passLabelNanos);
+diff --git a/tests/gpu/gpu.h b/tests/gpu/gpu.h
+--- a/tests/gpu/gpu.h
++++ b/tests/gpu/gpu.h
+@@ -94,7 +94,7 @@
+ // The pbuffer has 8-bit stencil, `depthBits` depth and is sRGB-capable if `srgb`.
+ struct Fixture {
+     explicit Fixture(int width = 64, int height = 64, bool core = true, int version = 33, bool es = false,
+-                     int depthBits = 24, bool srgb = false);
++                     int depthBits = 24, bool srgb = false, int samples = 0);
+     ~Fixture();
+     bool ok = false;
+     wmgl_context* context = nullptr;
+diff --git a/tests/gpu/main.cpp b/tests/gpu/main.cpp
+--- a/tests/gpu/main.cpp
++++ b/tests/gpu/main.cpp
+@@ -20,14 +20,14 @@
+ namespace gpu {
+ namespace {
+
+-int pickFormat(int depthBits, bool srgb) {
++int pickFormat(int depthBits, bool srgb, int samples) {
+     std::vector<wmgl_pixel_format> formats(256);
+     unsigned onscreen = 0;
+     const unsigned count = wmgl_get_pixel_formats(formats.data(), static_cast<unsigned>(formats.size()), &onscreen);
+     for (unsigned i = 0; i < count && i < formats.size(); ++i) {
+         const wmgl_pixel_format& f = formats[i];
+         if (f.draw_to_pbuffer && f.red_bits == 8 && f.alpha_bits == 8 && f.depth_bits == depthBits && f.stencil_bits == 8 &&
+-            f.samples <= 1 && !f.srgb_capable == !srgb && !f.float_components)
++            (samples > 1 ? f.samples == samples : f.samples <= 1) && !f.srgb_capable == !srgb && !f.float_components)
+             return static_cast<int>(i + 1);
+     }
+     return 0;
+@@ -45,10 +45,10 @@
+
+ }  // namespace
+
+-Fixture::Fixture(int width, int height, bool core, int version, bool es, int depthBits, bool srgb) {
++Fixture::Fixture(int width, int height, bool core, int version, bool es, int depthBits, bool srgb, int samples) {
+     static const bool initialized = wmgl_initialize(WMGL_DRIVER_ABI_VERSION) == 0 && loadFunctions();
+     if (!initialized) return;
+-    format = pickFormat(depthBits, srgb);
++    format = pickFormat(depthBits, srgb, samples);
+     if (!format) return;
+     surface = wmgl_surface_create_pbuffer(format, width, height);
+     const int attribs[] = {0x2091 /* MAJOR */, version / 10, 0x2092 /* MINOR */, version % 10, 0x9126 /* PROFILE_MASK */,
+diff --git a/tests/gpu/arb_program_tests.cpp b/tests/gpu/arb_program_tests.cpp
+--- a/tests/gpu/arb_program_tests.cpp
++++ b/tests/gpu/arb_program_tests.cpp
+@@ -10,14 +10,15 @@
+ #include "gpu.h"
+
+ #define WMGL_ARB_FUNCS(X)                                                                                        \
+-    X(glBegin) X(glEnd) X(glVertex2f) X(glColor4f) X(glTexCoord2f) X(glMultiTexCoord4f) X(glMatrixMode)           \
++    X(glBegin) X(glEnd) X(glVertex2f) X(glVertex3f) X(glColor4f) X(glTexCoord2f) X(glMultiTexCoord4f) X(glMatrixMode) \
+     X(glLoadIdentity) X(glTranslatef) X(glScalef) X(glVertexPointer) X(glColorPointer) X(glTexCoordPointer)        \
+     X(glEnableClientState) X(glDisableClientState) X(glClientActiveTexture) X(glIsEnabled) X(glShadeModel)          \
+     X(glTexEnvi) X(glGenProgramsARB) X(glDeleteProgramsARB) X(glBindProgramARB) X(glIsProgramARB)                 \
+     X(glProgramStringARB) X(glGetProgramivARB) X(glGetProgramStringARB) X(glProgramEnvParameter4fARB) X(glProgramEnvParameter4dvARB)              \
+     X(glProgramLocalParameter4fARB) X(glProgramEnvParameters4fvEXT) X(glGetProgramEnvParameterfvARB)               \
+     X(glGetProgramLocalParameterfvARB) X(glVertexAttribPointerARB) X(glEnableVertexAttribArrayARB)                 \
+-    X(glDisableVertexAttribArrayARB) X(glPushAttrib) X(glPopAttrib) X(glTestObjectAPPLE)
++    X(glDisableVertexAttribArrayARB) X(glPushAttrib) X(glPopAttrib) X(glTestObjectAPPLE)                              \
++    X(glStencilMask) X(glStencilFunc) X(glStencilOp)
+
+ #define WMGL_ARB_DECLARE(name) static PFN_##name name;
+ WMGL_ARB_FUNCS(WMGL_ARB_DECLARE)
+@@ -119,6 +120,73 @@
+         if (fixture_.ok) name##_body();               \
+     }                                                 \
+     static void name##_body()
++
++TEST(arb_msaa_color_pass_preserves_depth_and_stencil) {
++    gpu::Fixture fixture(64, 64, false, 33, false, 24, false, 4);
++    CHECK(fixture.ok);
++    if (!fixture.ok) return;
++    loadArb();
++    identity();
++    GLint samples = 0;
++    glGetIntegerv(GL_SAMPLES, &samples);
++    CHECK_EQ(samples, 4);
++
++    const auto rectangle = [](float left, float right, float depth) {
++        glBegin(GL_QUADS);
++        glVertex3f(left, -1, depth);
++        glVertex3f(right, -1, depth);
++        glVertex3f(right, 1, depth);
++        glVertex3f(left, 1, depth);
++        glEnd();
++    };
++    glClearColor(0, 0, 0, 1);
++    glClearStencil(0);
++    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
++    glEnable(GL_DEPTH_TEST);
++    glDepthFunc(GL_LESS);
++    glEnable(GL_STENCIL_TEST);
++    glStencilMask(0xff);
++    glStencilFunc(GL_ALWAYS, 7, 0xff);
++    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
++    glColor4f(0, 0, 1, 1);
++    rectangle(-1, 0, 0);
++    CHECK(wmgl_surface_swap(fixture.surface));
++
++    glDisable(GL_DEPTH_TEST);
++    glDisable(GL_STENCIL_TEST);
++    glColor4f(0, 1, 0, 1);
++    rectangle(0, 1, 0);
++    CHECK(pixel(16, 16, kBlue, 0));
++    CHECK(pixel(48, 16, kGreen, 0));
++
++    // Reattach the original depth and stencil while the color pass is open.
++    rectangle(0, 1, 0);
++    glEnable(GL_DEPTH_TEST);
++    glDepthMask(GL_FALSE);
++    glColor4f(1, 0, 0, 1);
++    rectangle(-1, 1, 0.5f);
++    glEnable(GL_STENCIL_TEST);
++    glStencilFunc(GL_EQUAL, 7, 0xff);
++    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
++    glColor4f(0, 1, 0, 1);
++    rectangle(-1, 1, -0.5f);
++    CHECK(pixel(16, 16, kGreen, 0));
++    CHECK(pixel(48, 16, kRed, 0));
++
++    glDisable(GL_DEPTH_TEST);
++    glDisable(GL_STENCIL_TEST);
++    glColor4f(1, 0, 0, 1);
++    rectangle(-1, 1, 0);
++    glClearStencil(9);
++    glClear(GL_STENCIL_BUFFER_BIT);
++    glEnable(GL_STENCIL_TEST);
++    glStencilFunc(GL_EQUAL, 9, 0xff);
++    glColor4f(0, 0, 1, 1);
++    rectangle(-1, 1, 0);
++    CHECK(pixel(16, 16, kBlue, 0));
++    CHECK(pixel(48, 16, kBlue, 0));
++    CHECK_GL();
++}
+
+ ARB_TEST(arb_extensions_and_limits) {
+     // What Doom 3: BFG Edition checks before it starts (issue #25).
