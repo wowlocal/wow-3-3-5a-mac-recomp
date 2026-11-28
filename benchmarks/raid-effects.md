@@ -3058,3 +3058,20 @@ Save each capture as `native-5k-natural-ORDER-BUDGET`. Run `wmgl_gpu_tests` with
 ```sh
 python3 benchmarks/summarize-raid-native-5k-natural-pass.py CAPTURE_ROOT
 ```
+
+### Check which attachments the native 5K passes load and store
+
+Apply `patches/winemetalgl-native-5k-pass-audit-trial.patch` to the deferred renderer and rebuild a diagnostic copy. The build can reuse the previous profile with profile mismatch warnings enabled. Enable `OCERZ_WMGL_PASS_AUDIT` and submission logging for two 25-second diagnostic launches, one per draw budget. Save their artifacts as `native-5k-audit-64` and `native-5k-audit-2048`. Use `pass-audit.tsv` for each audit log and record a six-second Metal System Trace during each verified GPU window. Save the diagnostic renderer GPU test and native indexed replay logs as `CAPTURE_ROOT/pass-audit/gpu-tests.log` and `CAPTURE_ROOT/pass-audit/replay.log`.
+
+The audit labels each render encoder for the multisampled default framebuffer. It records the attachment load and store actions, command-buffer serial, reason the pass ended, and direct draw counts by program and state. The analyzer joins final resolve labels to verified GPU completions by render serial and checks the trace clock offsets. It matched **537** and **592** consecutive completions in the two captures, with endpoint error at most **42 ns**. The diagnostic renderer passed **343** tests and matched the unchanged 5K replay checksum. [Attachment and draw audit](results/raid-native-5k-pass-audit.json)
+
+| Draw budget | Mid-scene encoders ended by commit | Median native 5K fragment activity per completion interval |
+| --- | ---: | ---: |
+| 64 | 624 | 8.48 ms |
+| 2048 | 0 | 6.50 ms |
+
+At 64 the mid-scene commit stored color, depth and stencil, and the continuation loaded all three. At 2048 the scene encoder ran through its first color resolve. That encoder had **929** draws at the median, with **5.60 ms** median and **10.12 ms p99** fragment activity. Its **191,843 of 552,916** draws with read-only depth and alpha testing identify a group to inspect for early depth rejection. The final 5K resolve pass still loaded and stored depth and stencil. All **55,460** audited direct draws in that pass had both tests disabled. These are traced GPU intervals. The uninstrumented runs above supply throughput and p99 for the policy comparison. [Native 5K pass state and draw coverage](results/raid-native-5k-pass-audit.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-pass-audit.py CAPTURE_ROOT --legacy-pid EARLIER_TEST_PID
+```

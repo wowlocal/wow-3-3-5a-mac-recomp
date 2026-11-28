@@ -1,0 +1,694 @@
+{
+  "viewport": [
+    0,
+    0,
+    5120,
+    2880
+  ],
+  "multisample_count": 4,
+  "verified_settings": {
+    "weatherDensity": "3",
+    "ffxGlow": "1",
+    "projectedTextures": "1",
+    "groundEffectDist": "140",
+    "extShadowQuality": "0",
+    "gxVSync": "0",
+    "baseMip": "0",
+    "shadowLevel": "0",
+    "maxFPSBk": "0",
+    "shadowLimit": 0,
+    "format": 3,
+    "farclip": "1277",
+    "caps": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      16,
+      1
+    ],
+    "gxDepthBits": "24",
+    "gxColorBits": "24",
+    "maxFPS": "0",
+    "formats": [
+      24,
+      24,
+      1,
+      24,
+      24,
+      2,
+      24,
+      24,
+      4
+    ],
+    "gxResolution": "5120x2880",
+    "environmentDetail": "1.5",
+    "terrainDetail": 1,
+    "terrainDetailBefore": 1,
+    "gxMultisample": "4",
+    "ffxDeath": "1",
+    "particleDensity": "1",
+    "marker": "complete",
+    "specular": "1",
+    "componentTextureLevel": "9",
+    "textureFilteringMode": "5",
+    "groundEffectDensity": "64"
+  },
+  "audit_renderer_validation": {
+    "gpu_tests_passed": 343,
+    "native_replay_hash": "020124a51b61ad1b"
+  },
+  "diagnostics_by_draw_budget": {
+    "64": {
+      "verified_gpu_window": {
+        "stream": 1,
+        "pid": 44921,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 2076,
+        "first_sequence": 3795,
+        "last_sequence": 5870,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24997521709,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 83.0,
+        "p99_gpu_completion_gap_ns": 26477750,
+        "min_draws": 857,
+        "max_draws": 1231
+      },
+      "artifact_sha256": {
+        "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+        "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+        "renderer_sha256": "a0353d962835e4bdaadedc44142f7ef9702ce530a860d611423ba11be3dfe0a8"
+      },
+      "trace_witness": {
+        "attach_pid": 44921,
+        "begin_uptime_ns": 431230068160583,
+        "requested_seconds": 6,
+        "end_uptime_ns": 431284478122208,
+        "returncode": 0,
+        "trace_exists": true
+      },
+      "matched_outputs": 537,
+      "matched_fragment_clock_alignment": {
+        "matched_endpoints": 537,
+        "maximum_error_ns": 42
+      },
+      "native_target_fragment_active_per_completion_gap_ns": {
+        "mean": 8700492.64738806,
+        "median": 8484187.0,
+        "p99": 13954749
+      },
+      "passes_by_attachment_actions_and_end": [
+        {
+          "load_color_depth_stencil": [
+            "clear",
+            "clear",
+            "load"
+          ],
+          "store_color_depth_stencil": [
+            "store",
+            "store",
+            "store"
+          ],
+          "pass_end": "commit",
+          "color_resolve": "none",
+          "pass_count": 536,
+          "fragment_active_ns": {
+            "mean": 2007319.7388059702,
+            "median": 1873687.5,
+            "p99": 4093333
+          },
+          "draws_per_pass": {
+            "mean": 400.17910447761193,
+            "median": 448.0,
+            "p99": 512
+          },
+          "total_draws": 214496,
+          "attributed_direct_draws": 214496,
+          "attributed_vertex_references": 166838730,
+          "direct_draws_by_active_state": {
+            "depth_test": 214496,
+            "depth_write": 187737,
+            "stencil_test": 0,
+            "blend": 37479,
+            "alpha_test": 35267,
+            "sample_shading": 0,
+            "alpha_to_coverage": 0,
+            "color_mask_off": 0,
+            "alpha_test_with_read_only_depth": 26759
+          },
+          "fragment_programs_by_draws": [
+            {
+              "linked_program": 7,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 32760
+            },
+            {
+              "linked_program": 27,
+              "arb_load_serial": 39,
+              "arb_instructions": 15,
+              "arb_texture_instructions": 4,
+              "draws": 30016
+            },
+            {
+              "linked_program": 36,
+              "arb_load_serial": 0,
+              "arb_instructions": 0,
+              "arb_texture_instructions": 0,
+              "draws": 25151
+            },
+            {
+              "linked_program": 30,
+              "arb_load_serial": 59,
+              "arb_instructions": 4,
+              "arb_texture_instructions": 1,
+              "draws": 24656
+            },
+            {
+              "linked_program": 29,
+              "arb_load_serial": 40,
+              "arb_instructions": 18,
+              "arb_texture_instructions": 5,
+              "draws": 22512
+            },
+            {
+              "linked_program": 4,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 18509
+            },
+            {
+              "linked_program": 32,
+              "arb_load_serial": 59,
+              "arb_instructions": 4,
+              "arb_texture_instructions": 1,
+              "draws": 13936
+            },
+            {
+              "linked_program": 25,
+              "arb_load_serial": 38,
+              "arb_instructions": 12,
+              "arb_texture_instructions": 3,
+              "draws": 11792
+            }
+          ]
+        },
+        {
+          "load_color_depth_stencil": [
+            "load",
+            "load",
+            "load"
+          ],
+          "store_color_depth_stencil": [
+            "store",
+            "store",
+            "store"
+          ],
+          "pass_end": "commit",
+          "color_resolve": "none",
+          "pass_count": 88,
+          "fragment_active_ns": {
+            "mean": 5295753.284090909,
+            "median": 4570500.0,
+            "p99": 10510541
+          },
+          "draws_per_pass": {
+            "mean": 587.6363636363636,
+            "median": 512.0,
+            "p99": 768
+          },
+          "total_draws": 51712,
+          "attributed_direct_draws": 51712,
+          "attributed_vertex_references": 29375752,
+          "direct_draws_by_active_state": {
+            "depth_test": 51712,
+            "depth_write": 21009,
+            "stencil_test": 0,
+            "blend": 39415,
+            "alpha_test": 41583,
+            "sample_shading": 0,
+            "alpha_to_coverage": 0,
+            "color_mask_off": 0,
+            "alpha_test_with_read_only_depth": 30703
+          },
+          "fragment_programs_by_draws": [
+            {
+              "linked_program": 17,
+              "arb_load_serial": 13,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 10380
+            },
+            {
+              "linked_program": 51,
+              "arb_load_serial": 20,
+              "arb_instructions": 4,
+              "arb_texture_instructions": 2,
+              "draws": 9640
+            },
+            {
+              "linked_program": 5,
+              "arb_load_serial": 13,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 8542
+            },
+            {
+              "linked_program": 48,
+              "arb_load_serial": 68,
+              "arb_instructions": 5,
+              "arb_texture_instructions": 1,
+              "draws": 7744
+            },
+            {
+              "linked_program": 7,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 6160
+            },
+            {
+              "linked_program": 9,
+              "arb_load_serial": 13,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 1968
+            },
+            {
+              "linked_program": 22,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 1496
+            },
+            {
+              "linked_program": 4,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 1190
+            }
+          ]
+        },
+        {
+          "load_color_depth_stencil": [
+            "load",
+            "load",
+            "load"
+          ],
+          "store_color_depth_stencil": [
+            "store-and-resolve",
+            "store",
+            "store"
+          ],
+          "pass_end": "other",
+          "color_resolve": "intermediate",
+          "pass_count": 536,
+          "fragment_active_ns": {
+            "mean": 4929387.8432835825,
+            "median": 4769771.0,
+            "p99": 8956375
+          },
+          "draws_per_pass": {
+            "mean": 461.61567164179104,
+            "median": 484.5,
+            "p99": 760
+          },
+          "total_draws": 247426,
+          "attributed_direct_draws": 247426,
+          "attributed_vertex_references": 160144610,
+          "direct_draws_by_active_state": {
+            "depth_test": 247426,
+            "depth_write": 123443,
+            "stencil_test": 0,
+            "blend": 167975,
+            "alpha_test": 181033,
+            "sample_shading": 0,
+            "alpha_to_coverage": 0,
+            "color_mask_off": 712,
+            "alpha_test_with_read_only_depth": 123447
+          },
+          "fragment_programs_by_draws": [
+            {
+              "linked_program": 51,
+              "arb_load_serial": 20,
+              "arb_instructions": 4,
+              "arb_texture_instructions": 2,
+              "draws": 52507
+            },
+            {
+              "linked_program": 48,
+              "arb_load_serial": 68,
+              "arb_instructions": 5,
+              "arb_texture_instructions": 1,
+              "draws": 39424
+            },
+            {
+              "linked_program": 7,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 38800
+            },
+            {
+              "linked_program": 17,
+              "arb_load_serial": 13,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 30192
+            },
+            {
+              "linked_program": 5,
+              "arb_load_serial": 13,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 26831
+            },
+            {
+              "linked_program": 4,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 11471
+            },
+            {
+              "linked_program": 9,
+              "arb_load_serial": 13,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 10082
+            },
+            {
+              "linked_program": 22,
+              "arb_load_serial": 15,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 7616
+            }
+          ]
+        },
+        {
+          "load_color_depth_stencil": [
+            "load",
+            "load",
+            "load"
+          ],
+          "store_color_depth_stencil": [
+            "store-and-resolve",
+            "store",
+            "store"
+          ],
+          "pass_end": "other",
+          "color_resolve": "output",
+          "pass_count": 536,
+          "fragment_active_ns": {
+            "mean": 894333.0317164179,
+            "median": 839937.5,
+            "p99": 2340875
+          },
+          "draws_per_pass": {
+            "mean": 94,
+            "median": 94.0,
+            "p99": 94
+          },
+          "total_draws": 50384,
+          "attributed_direct_draws": 50384,
+          "attributed_vertex_references": 934056,
+          "direct_draws_by_active_state": {
+            "depth_test": 0,
+            "depth_write": 0,
+            "stencil_test": 0,
+            "blend": 49848,
+            "alpha_test": 49848,
+            "sample_shading": 0,
+            "alpha_to_coverage": 0,
+            "color_mask_off": 0,
+            "alpha_test_with_read_only_depth": 0
+          },
+          "fragment_programs_by_draws": [
+            {
+              "linked_program": 15,
+              "arb_load_serial": 1,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 45560
+            },
+            {
+              "linked_program": 42,
+              "arb_load_serial": 0,
+              "arb_instructions": 0,
+              "arb_texture_instructions": 0,
+              "draws": 2144
+            },
+            {
+              "linked_program": 47,
+              "arb_load_serial": 0,
+              "arb_instructions": 0,
+              "arb_texture_instructions": 0,
+              "draws": 1072
+            },
+            {
+              "linked_program": 55,
+              "arb_load_serial": 72,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 1072
+            },
+            {
+              "linked_program": 54,
+              "arb_load_serial": 76,
+              "arb_instructions": 7,
+              "arb_texture_instructions": 2,
+              "draws": 536
+            }
+          ]
+        }
+      ]
+    },
+    "2048": {
+      "verified_gpu_window": {
+        "stream": 1,
+        "pid": 88223,
+        "window_size": [
+          5120,
+          2880
+        ],
+        "verified_completed_renders": 2232,
+        "first_sequence": 3873,
+        "last_sequence": 6104,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24996693916,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 89.24,
+        "p99_gpu_completion_gap_ns": 24553416,
+        "min_draws": 837,
+        "max_draws": 1210
+      },
+      "artifact_sha256": {
+        "runtime_unsigned_sha256": "62f5cc6eacbadfc97488e1e85b1b5c4647ed4d9accd005ab42e1140fd3dd9532",
+        "runtime_signed_sha256": "f6fcaff1f596437127eff3344eacf035662132f2357eac5fa4392378a640088b",
+        "renderer_sha256": "a0353d962835e4bdaadedc44142f7ef9702ce530a860d611423ba11be3dfe0a8"
+      },
+      "trace_witness": {
+        "attach_pid": 88223,
+        "begin_uptime_ns": 431328106320083,
+        "requested_seconds": 6,
+        "end_uptime_ns": 431381991717166,
+        "returncode": 0,
+        "trace_exists": true
+      },
+      "matched_outputs": 592,
+      "matched_fragment_clock_alignment": {
+        "matched_endpoints": 592,
+        "maximum_error_ns": 42
+      },
+      "native_target_fragment_active_per_completion_gap_ns": {
+        "mean": 6881509.324873096,
+        "median": 6497251,
+        "p99": 11026625
+      },
+      "passes_by_attachment_actions_and_end": [
+        {
+          "load_color_depth_stencil": [
+            "clear",
+            "clear",
+            "load"
+          ],
+          "store_color_depth_stencil": [
+            "store-and-resolve",
+            "store",
+            "store"
+          ],
+          "pass_end": "other",
+          "color_resolve": "intermediate",
+          "pass_count": 591,
+          "fragment_active_ns": {
+            "mean": 5978823.170896785,
+            "median": 5597583,
+            "p99": 10120208
+          },
+          "draws_per_pass": {
+            "mean": 935.5600676818951,
+            "median": 929,
+            "p99": 1063
+          },
+          "total_draws": 552916,
+          "attributed_direct_draws": 552916,
+          "attributed_vertex_references": 388558884,
+          "direct_draws_by_active_state": {
+            "depth_test": 552916,
+            "depth_write": 360482,
+            "stencil_test": 0,
+            "blend": 262518,
+            "alpha_test": 276215,
+            "sample_shading": 0,
+            "alpha_to_coverage": 0,
+            "color_mask_off": 937,
+            "alpha_test_with_read_only_depth": 191843
+          },
+          "fragment_programs_by_draws": [
+            {
+              "linked_program": 4,
+              "arb_load_serial": 12,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 82149
+            },
+            {
+              "linked_program": 51,
+              "arb_load_serial": 20,
+              "arb_instructions": 4,
+              "arb_texture_instructions": 2,
+              "draws": 67347
+            },
+            {
+              "linked_program": 48,
+              "arb_load_serial": 68,
+              "arb_instructions": 5,
+              "arb_texture_instructions": 1,
+              "draws": 52008
+            },
+            {
+              "linked_program": 17,
+              "arb_load_serial": 14,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 41941
+            },
+            {
+              "linked_program": 3,
+              "arb_load_serial": 14,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 36589
+            },
+            {
+              "linked_program": 6,
+              "arb_load_serial": 12,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 33164
+            },
+            {
+              "linked_program": 27,
+              "arb_load_serial": 39,
+              "arb_instructions": 15,
+              "arb_texture_instructions": 4,
+              "draws": 33096
+            },
+            {
+              "linked_program": 36,
+              "arb_load_serial": 0,
+              "arb_instructions": 0,
+              "arb_texture_instructions": 0,
+              "draws": 32615
+            }
+          ]
+        },
+        {
+          "load_color_depth_stencil": [
+            "load",
+            "load",
+            "load"
+          ],
+          "store_color_depth_stencil": [
+            "store-and-resolve",
+            "store",
+            "store"
+          ],
+          "pass_end": "other",
+          "color_resolve": "output",
+          "pass_count": 590,
+          "fragment_active_ns": {
+            "mean": 902803.206779661,
+            "median": 839520.5,
+            "p99": 2852751
+          },
+          "draws_per_pass": {
+            "mean": 94,
+            "median": 94.0,
+            "p99": 94
+          },
+          "total_draws": 55460,
+          "attributed_direct_draws": 55460,
+          "attributed_vertex_references": 1028154,
+          "direct_draws_by_active_state": {
+            "depth_test": 0,
+            "depth_write": 0,
+            "stencil_test": 0,
+            "blend": 54870,
+            "alpha_test": 54870,
+            "sample_shading": 0,
+            "alpha_to_coverage": 0,
+            "color_mask_off": 0,
+            "alpha_test_with_read_only_depth": 0
+          },
+          "fragment_programs_by_draws": [
+            {
+              "linked_program": 15,
+              "arb_load_serial": 1,
+              "arb_instructions": 2,
+              "arb_texture_instructions": 1,
+              "draws": 50150
+            },
+            {
+              "linked_program": 42,
+              "arb_load_serial": 0,
+              "arb_instructions": 0,
+              "arb_texture_instructions": 0,
+              "draws": 2360
+            },
+            {
+              "linked_program": 47,
+              "arb_load_serial": 0,
+              "arb_instructions": 0,
+              "arb_texture_instructions": 0,
+              "draws": 1180
+            },
+            {
+              "linked_program": 55,
+              "arb_load_serial": 72,
+              "arb_instructions": 3,
+              "arb_texture_instructions": 1,
+              "draws": 1180
+            },
+            {
+              "linked_program": 54,
+              "arb_load_serial": 76,
+              "arb_instructions": 7,
+              "arb_texture_instructions": 2,
+              "draws": 590
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

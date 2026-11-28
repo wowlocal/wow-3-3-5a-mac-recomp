@@ -1,0 +1,198 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2329,6 +2329,26 @@
+     if (rotate) native = topologyClass(mode) == MTLPrimitiveTopologyClassLine ? MTLPrimitiveTypeLine : MTLPrimitiveTypeTriangle;
+     if (points) native = MTLPrimitiveTypePoint;
+     const uint64_t serial = ctx_.stream().serial();
++    const auto notePassAudit = [&](uint64_t references) {
++        if (!ctx_.stream().auditingPass()) return;
++        const auto& state = ctx_.state;
++        const unsigned flags = (state.depthTest ? 1 : 0) | (state.depthTest && state.depthMask ? 2 : 0) |
++                               (state.stencilTest ? 4 : 0) | (key.blend[0].enabled ? 8 : 0) |
++                               (state.fixed.alphaTest ? 16 : 0) | (key.sampleShading ? 32 : 0) |
++                               (key.alphaToCoverage ? 64 : 0);
++        uint64_t fragment = 0;
++        unsigned instructions = 0, textureOps = 0;
++        if (compat::arbProgramsEnabled(ctx_) && state.fixed.fragmentProgram) {
++            const auto& arb = compat::arbBound(ctx_, 1);
++            if (arb.parsed) {
++                fragment = arb.serial;
++                instructions = arb.parsed->instructions;
++                textureOps = arb.parsed->texInstructions;
++            }
++        }
++        ctx_.stream().notePassAuditDraw(program.uid, fragment, instructions, textureOps, flags,
++                                       key.blend[0].writeMask, references * std::max(1, instances));
++    };
+     if (indirect) {
+         // The GL command structures are Metal's indirect arguments
+         // (MTLDraw[Indexed]PrimitivesIndirectArguments), field for field;
+@@ -2395,10 +2415,12 @@
+                                    indexBuffer:pattern->buffer indexBufferOffset:0
+                                  instanceCount:std::max(1, instances) baseVertex:first - rebase
+                                   baseInstance:baseInstance_];
++            notePassAudit(pattern->count);
+             ctx_.stream().noteDraw();
+             return true;
+         }
+     }
++    uint64_t references = static_cast<uint64_t>(count);
+     if (needsIndices || rotate || points || (indexData && !indexBuffer) || offsetIndices) {
+         stats::count(&stats::Frame::cpuIndexDraws);
+         std::vector<uint32_t> in, out;
+@@ -2411,6 +2433,7 @@
+         else if (needsIndices) expandIndices(mode, in, out);
+         else out.swap(in);
+         if (out.empty()) return true;
++        references = out.size();
+         TransientAllocation alloc = transient_.allocate(out.size() * 4, serial, 4);
+         std::memcpy(alloc.data, out.data(), out.size() * 4);
+         [encoder drawIndexedPrimitives:native indexCount:out.size() indexType:MTLIndexTypeUInt32
+@@ -2429,6 +2452,7 @@
+     // counts continue to use the normal draw-budget heuristic.
+     const uint64_t triangles = mode == GL_TRIANGLES && !points && count > 0 && triangleSubmissionBudget()
+                                    ? uint64_t{static_cast<uint32_t>(count / 3)} * std::max(1, instances) : 0;
++    notePassAudit(references);
+     ctx_.stream().noteDraw(triangles);
+     return true;
+ }
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -12,7 +12,9 @@
+ #include <array>
+ #include <cstdint>
+ #include <functional>
++#include <map>
+ #include <string>
++#include <tuple>
+ #include <vector>
+
+ #include "core/metal/queue.h"
+@@ -84,6 +86,9 @@
+     // a caller that saw the count move by only its own call knows nobody
+     // else set encoder state since (DrawState's dynamic state cache).
+     uint64_t renderCalls() const { return renderCalls_; }
++    bool auditingPass() const { return auditPass_ != 0; }
++    void notePassAuditDraw(uint64_t program, uint64_t fragment, unsigned instructions, unsigned textureOps,
++                           unsigned flags, unsigned colorMask, uint64_t references);
+
+     // Records a clear for the target. Returns false if the clear cannot be a
+     // load action (a pass on this target already has draws) — the caller then
+@@ -330,6 +335,13 @@
+     bool indirectWaited_ = false;
+     uint64_t passGeneration_ = 0;
+     uint64_t renderCalls_ = 0;
++    uint64_t auditPass_ = 0;
++    uint32_t auditPassDrawStart_ = 0;
++    using AuditDrawKey = std::tuple<uint64_t, uint64_t, unsigned, unsigned, unsigned, unsigned>;
++    struct AuditDrawCounts {
++        uint64_t draws = 0, references = 0;
++    };
++    std::map<AuditDrawKey, AuditDrawCounts> auditDraws_;
+     bool visibilityWanted_ = false, passVisibility_ = false;
+     bool visibilityUsedBefore_ = false;  // occlusion queries were used: passes keep a visibility buffer
+     // noteShaderWrites: set while the open encoder writes through images;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -40,6 +40,17 @@
+         if (!path || !*path) return nullptr;
+         FILE* file = std::fopen(path, "wx");
+         if (file) std::setvbuf(file, nullptr, _IOLBF, 0);
++        return file;
++    }();
++    return log;
++}
++
++FILE* passAuditLog() {
++    static FILE* log = []() -> FILE* {
++        const char* path = std::getenv("OCERZ_WMGL_PASS_AUDIT");
++        if (!path || !*path) return nullptr;
++        FILE* file = std::fopen(path, "wx");
++        if (!file) std::perror("cannot create WineMetalGL render pass audit");
+         return file;
+     }();
+     return log;
+@@ -104,17 +115,41 @@
+     shaderWrites_ = false;
+     if (render_) {
+         // Every attachment is stored but those invalidated since the pass's last draw.
++        int colorStore = -1, depthStore = -1, stencilStore = -1;
+         for (size_t i = 0; i < target_.color.size(); ++i) {
+             if (!target_.color[i].texture) continue;
+             MTLStoreAction action = storeDiscard_.color & (1u << i) ? MTLStoreActionDontCare : MTLStoreActionStore;
+             if (i == 0 && resolveAtEnd_) action = MTLStoreActionStoreAndMultisampleResolve;
++            if (i == 0) colorStore = static_cast<int>(action);
+             [render_ setColorStoreAction:action atIndex:i];
+         }
+         resolveAtEnd_ = false;
+-        if (target_.depth.texture)
+-            [render_ setDepthStoreAction:storeDiscard_.depth ? MTLStoreActionDontCare : MTLStoreActionStore];
+-        if (target_.stencil.texture)
+-            [render_ setStencilStoreAction:storeDiscard_.stencil ? MTLStoreActionDontCare : MTLStoreActionStore];
++        if (target_.depth.texture) {
++            const MTLStoreAction action = storeDiscard_.depth ? MTLStoreActionDontCare : MTLStoreActionStore;
++            [render_ setDepthStoreAction:action];
++            depthStore = static_cast<int>(action);
++        }
++        if (target_.stencil.texture) {
++            const MTLStoreAction action = storeDiscard_.stencil ? MTLStoreActionDontCare : MTLStoreActionStore;
++            [render_ setStencilStoreAction:action];
++            stencilStore = static_cast<int>(action);
++        }
++        if (auditPass_) {
++            FILE* log = passAuditLog();
++            const auto label = static_cast<unsigned long long>(auditPass_);
++            for (const auto& [key, counts] : auditDraws_) {
++                const auto [program, fragment, instructions, textureOps, flags, colorMask] = key;
++                std::fprintf(log, "D %llu %llu %llu %u %u %u %u %llu %llu\n", label,
++                             static_cast<unsigned long long>(program), static_cast<unsigned long long>(fragment),
++                             instructions, textureOps, flags, colorMask,
++                             static_cast<unsigned long long>(counts.draws), static_cast<unsigned long long>(counts.references));
++            }
++            std::fprintf(log, "E %llu %u %u %d %d %d\n", label, static_cast<unsigned>(cause),
++                         drawsSinceCommit_ - auditPassDrawStart_, colorStore, depthStore, stencilStore);
++            std::fflush(log);
++            auditPass_ = 0;
++            auditDraws_.clear();
++        }
+         storeDiscard_ = Discard();
+         if (deferredEnd) *deferredEnd = takeDeferredRenderEnd(render_);
+         else [render_ endEncoding];
+@@ -128,6 +163,13 @@
+         [compute_ endEncoding];
+         compute_ = nil;
+     }
++}
++
++void CommandStream::notePassAuditDraw(uint64_t program, uint64_t fragment, unsigned instructions,
++                                     unsigned textureOps, unsigned flags, unsigned colorMask, uint64_t references) {
++    auto& count = auditDraws_[{program, fragment, instructions, textureOps, flags, colorMask}];
++    ++count.draws;
++    count.references += references;
+ }
+
+ void CommandStream::waitForShaderWrites(id<MTLCommandEncoder> encoder, bool render) {
+@@ -259,6 +301,20 @@
+         render_.label = [NSString stringWithFormat:@"WMGL pass %llu %ux%u c%d%s%s", static_cast<unsigned long long>(stats::frame().passes),
+                                                    target.width, target.height, colors, target.depth.texture ? " d" : "",
+                                                    clearsApply ? " clear" : ""];
++    }
++    if (render_ && target.colorResolve) {
++        if (FILE* log = passAuditLog()) {
++            static std::atomic<uint64_t> nextPass{1};
++            auditPass_ = nextPass.fetch_add(1, std::memory_order_relaxed);
++            auditPassDrawStart_ = drawsSinceCommit_;
++            const auto label = static_cast<unsigned long long>(auditPass_);
++            render_.label = [NSString stringWithFormat:@"WMGL pass audit %llu", label];
++            const int depthLoad = target.depth.texture ? static_cast<int>(pass.depthAttachment.loadAction) : -1;
++            const int stencilLoad = target.stencil.texture ? static_cast<int>(pass.stencilAttachment.loadAction) : -1;
++            std::fprintf(log, "P %llu %d %llu %u %u %u %d %d %d\n", label, getpid(),
++                         static_cast<unsigned long long>(serial_), target.width, target.height, target.samples,
++                         static_cast<int>(pass.colorAttachments[0].loadAction), depthLoad, stencilLoad);
++        }
+     }
+     {
+         stats::Timer t(&stats::Frame::passFenceNanos);

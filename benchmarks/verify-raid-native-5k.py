@@ -108,7 +108,7 @@ def fixture_matches(rows):
     return [tuple(map(int, row.split("\t"))) for row in rows[2:]] == sorted(expected)
 
 
-def verify(case, saved):
+def verify(case, saved, *, measurement_seconds=60):
     window = json.loads((case / "window.json").read_text())
     monitor = json.loads((case / "monitor.log").read_text().splitlines()[-1])
     isolation = json.loads((case / "legacy.json").read_text())
@@ -116,7 +116,8 @@ def verify(case, saved):
     client = (case / "client.log").read_text()
     attach = f"trial WineMetalGL attached a {WIDTH}x{HEIGHT} offscreen drawable"
     viewport = f"native trial GL viewport 0 0 {WIDTH} {HEIGHT} draw-fbo 0 samples 4 buffers 1"
-    if (window["window_size"] != [WIDTH, HEIGHT] or window["measurement_duration_ns"] != 60_000_000_000
+    if (window["window_size"] != [WIDTH, HEIGHT]
+            or window["measurement_duration_ns"] != measurement_seconds * 1_000_000_000
             or window["missing_sequences"] or window["verified_completed_renders"] < 60 or
             attach not in client or viewport not in client):
         raise ValueError("The timed run lacks a native 5K, 4× MSAA GPU completion and viewport witness")
