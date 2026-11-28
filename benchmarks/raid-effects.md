@@ -3208,3 +3208,37 @@ The separate GPU traces matched **572** and **712** consecutive outputs, with cl
 ```sh
 python3 benchmarks/summarize-raid-native-5k-caster-sweep.py CAPTURE_ROOT --legacy-pid EARLIER_TEST_PID
 ```
+
+### Check the particle worker boundary at native 5K
+
+Use the full 24-caster fixture with maximum quality, 4× MSAA, VSync off, budget 2048 and the selected color-only renderer. Apply `patches/aarchx-m32-raid-particle-footprint-5k-probe.patch` to a diagnostic runtime. Keep the translation cache off. Generate the instruction table with `instruction_table(guest, {"mapped_quad_generator": (0x882c80, 6)})` from `summarize-raid-scene-footprints.py` and save its sorted PCs as little-endian 32-bit words in `particle-5k/particle-pcs.bin`.
+
+Set `OCERZ_M32_PARTICLE_PLAN_LOG` and `OCERZ_M32_PARTICLE_MEMORY_LOG` to fresh `particle-plan.bin` and `particle-memory.bin` files. Set `OCERZ_M32_PARTICLE_MEMORY_PCS` to the generated table. In two verified 45-second launches, arm both rings for 160 ms at offsets 3, 16 and 29 seconds after warmup. Save the row bounds in `particle-memory-gates.json`, the submission log and the artifact and isolation witnesses. Save the i386 suite as `particle-5k/general.log` and restore the original runtime when the captures finish.
+
+All **2,040** original fills in **221** complete mapped groups matched the predicted sizes and offsets. The recorder classified **8,086,245** explicit accesses in their quad calls. The ordinary layout and matrix are shared across calls. The model copies both, supplies the original argument words, and gives zero-stride normals private scratch. All **1,986** observed zero-stride jobs had equal normal words at entry and return. The candidate output ranges include the mapped vertex span, the original emitter count at offset `0x1c`, and the six bounds words at offset `0x218`.
+
+The original sharing produced singleton waves. With private inputs and the checked output ranges, **1,968** jobs entered **149** multi-job waves. The model keeps barriers at the original group boundaries and leaves **12** jobs with shared sorting writes on the calling thread. The measured waves had a median of **66** generated quads and a p99 of **452**. The dependency check covers accesses between each quad call and its return. Live integration also needs to preserve the caller's preparation and publication order. Both captures verified the full native 5K fixture and **2,333** consecutive diagnostic GPU completions across their windows. The runtime passed **812** general i386 checks. [Native 5K memory and offset evidence](results/raid-native-5k-particle-footprints.json)
+
+```sh
+python3 benchmarks/summarize-raid-native-5k-particle-footprints.py CAPTURE_ROOT LOCAL_I386_EXECUTABLE
+```
+
+### Replay native kernels at the measured particle wave sizes
+
+Restore the original signed runtime and enable `OCERZ_M32_RAID_QUAD_PACKETS_LOG` for two verified 45-second native 5K launches under `native-5k-quad-packets-1` and `native-5k-quad-packets-2`. Arm the packet ring for 160 ms at offsets 2, 15 and 28 seconds after warmup. Save the row bounds in `packet-gates.json` and keep the submission and scope witnesses.
+
+Export the recorded packets and select the median and p99 wave sizes from the footprint summary. Build `raid-rotated-quad-replay.c` with the earlier ARM64 flags for strict floating point, and build a second binary with AddressSanitizer and UndefinedBehaviorSanitizer. While the earlier test client is paused, run the timing binary once per size and save `quad-5k/replay-SIZE.log`. Save the sanitizer and isolation logs as `quad-5k/sanitizer.log` and `quad-5k/native-isolation.json`.
+
+The scalar, single-thread NEON and parallel NEON kernels matched all vertex words, bounds and cursor values in **307,502** exported cases, including the sanitizer run. The timings include dispatch and joining for the parallel kernel. [Native 5K packet replay](results/raid-native-5k-particle-replay.json)
+
+| Measured wave size | Scalar ns per quad | Single-thread NEON ns per quad | Parallel NEON ns per quad |
+| ---: | ---: | ---: | ---: |
+| 66 | 4.47 | 3.28 | 5.09 |
+| 452 | 4.81 | 3.27 | 3.90 |
+
+Single-thread NEON was fastest at the two live wave sizes. The parallel kernel led at the synthetic 32,768-quad batch. The in-game launches ran the original particle generators while the recorder captured their inputs and outputs.
+
+```sh
+python3 benchmarks/replay-raid-native-5k-particles.py export CAPTURE_ROOT LOCAL_I386_EXECUTABLE FOOTPRINT_SUMMARY CASE_FILE
+python3 benchmarks/replay-raid-native-5k-particles.py report CAPTURE_ROOT/quad-5k EXPORT_SUMMARY
+```

@@ -64,7 +64,7 @@ def text_section(data):
     raise ValueError("Missing i386 text section")
 
 
-def instruction_table(guest):
+def instruction_table(guest, functions=None):
     from capstone import CS_ARCH_X86, CS_GRP_CALL, CS_GRP_JUMP, CS_GRP_RET, CS_MODE_32, Cs
     from capstone.x86_const import X86_INS_JMP, X86_INS_LOOP, X86_INS_LOOPE, X86_INS_LOOPNE, X86_OP_IMM
 
@@ -106,8 +106,9 @@ def instruction_table(guest):
             pending.append((pc + instruction.size, remaining))
         return visited, unresolved
 
-    functions = {"scene_caller": (ENTRIES[PASS], 0), "update": (ENTRIES[UPDATE], 5),
-                 "consumer": (ENTRIES[CONSUMER], 3)}
+    if functions is None:
+        functions = {"scene_caller": (ENTRIES[PASS], 0), "update": (ENTRIES[UPDATE], 5),
+                     "consumer": (ENTRIES[CONSUMER], 3)}
     pcs, config = set(), {}
     for name, (entry, depth) in functions.items():
         visited, unresolved = closure(entry, depth)

@@ -1,0 +1,591 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -2322,6 +2322,10 @@
+ }
+
+ __thread int ocerz_jit_exec_state;
++extern void *m32_particle_memory_ring(void);
++extern int m32_particle_plan_site(uint64_t pc);
++extern int m32_particle_plan_instruction(const X86Insn *insn);
++extern void m32_particle_plan_hook(OcerzCPU *cpu, const X86Insn *insn);
+ static int raid_batch_instruction(const X86Insn *insn);
+ static void raid_batch_prepare(OcerzCPU *cpu);
+ static int jit_exec_one(struct OcerzVM *vm, OcerzCPU *cpu, const X86Insn *insn);
+@@ -2377,6 +2381,7 @@
+         form = (uint64_t)insn->op | (uint64_t)(uint32_t)cpu->gpr[OCERZ_RAX] << 32;
+     cpu->slow_op = form;
+     if (raid_batch_instruction(insn)) raid_batch_prepare(cpu);
++    if (m32_particle_plan_instruction(insn)) m32_particle_plan_hook(cpu, insn);
+     int r = ocerz_interp_exec(vm, cpu, insn);
+     cpu->slow_op = prev_op;
+     cpu->rip &= cpu->mode32 ? 0xffffffffull : ~0ull;
+@@ -19746,6 +19751,159 @@
+     a64_patch_cbz(disabled, a64_label(b));
+ }
+
++static pthread_once_t particle_pcs_once = PTHREAD_ONCE_INIT;
++static const uint32_t *particle_pcs;
++static size_t particle_pc_count;
++
++static void load_particle_pcs(void)
++{
++    const char *path = getenv("OCERZ_M32_PARTICLE_MEMORY_PCS");
++    if (!path) return;
++    int fd = open(path, O_RDONLY | O_CLOEXEC);
++    off_t bytes = fd < 0 ? -1 : lseek(fd, 0, SEEK_END);
++    if (bytes <= 0 || bytes > 1024 * 1024 || bytes % sizeof(uint32_t))
++        abort();
++    void *mapping = mmap(NULL, (size_t)bytes, PROT_READ, MAP_PRIVATE, fd, 0);
++    close(fd);
++    if (mapping == MAP_FAILED)
++        abort();
++    particle_pcs = mapping;
++    particle_pc_count = (size_t)bytes / sizeof(uint32_t);
++    for (size_t i = 1; i < particle_pc_count; i++)
++        if (particle_pcs[i - 1] >= particle_pcs[i])
++            abort();
++}
++
++static int particle_memory_site(uint64_t pc)
++{
++    pthread_once(&particle_pcs_once, load_particle_pcs);
++    size_t first = 0, end = particle_pc_count;
++    while (first < end) {
++        size_t middle = first + (end - first) / 2;
++        if (particle_pcs[middle] < pc)
++            first = middle + 1;
++        else
++            end = middle;
++    }
++    return first < particle_pc_count && particle_pcs[first] == pc;
++}
++
++static int particle_string_access(unsigned op)
++{
++    return op == OCERZ_OP_MOVS || op == OCERZ_OP_STOS || op == OCERZ_OP_LODS ||
++           op == OCERZ_OP_SCAS || op == OCERZ_OP_CMPS;
++}
++
++static int particle_memory_instruction(const X86Insn *insn)
++{
++    if (insn->op == OCERZ_OP_LEA) return 0;
++    if (insn->op == OCERZ_OP_CALL || insn->op == OCERZ_OP_JMP || particle_string_access(insn->op))
++        return 1;
++    for (unsigned i = 0; i < insn->nops; i++)
++        if (insn->ops[i].kind == OCERZ_OPK_MEM)
++            return 1;
++    return 0;
++}
++
++static unsigned particle_memory_effect(unsigned op, unsigned operand)
++{
++    if (operand != 0) return 1;
++    switch (op) {
++    case OCERZ_OP_MOV: case OCERZ_OP_MOVSS: case OCERZ_OP_MOVSDX:
++    case OCERZ_OP_MOVAPS: case OCERZ_OP_MOVUPS: case OCERZ_OP_MOVD:
++    case OCERZ_OP_MOVDQA: case OCERZ_OP_MOVDQU: case OCERZ_OP_MOVQX:
++    case OCERZ_OP_MOVLPS: case OCERZ_OP_MOVHPS: case OCERZ_OP_MOVNTI:
++    case OCERZ_OP_POP: case OCERZ_OP_SETCC: case OCERZ_OP_FST:
++    case OCERZ_OP_FSTP: case OCERZ_OP_FIST: case OCERZ_OP_FISTP:
++    case OCERZ_OP_FNSTCW: case OCERZ_OP_FNSTSW: case OCERZ_OP_STMXCSR:
++        return 2;
++    case OCERZ_OP_CMP: case OCERZ_OP_TEST: case OCERZ_OP_PUSH:
++    case OCERZ_OP_DIV: case OCERZ_OP_IDIV: case OCERZ_OP_MUL:
++    case OCERZ_OP_IMUL: case OCERZ_OP_JMP: case OCERZ_OP_CALL:
++    case OCERZ_OP_FLD: case OCERZ_OP_FILD: case OCERZ_OP_FADD:
++    case OCERZ_OP_FMUL: case OCERZ_OP_FSUB: case OCERZ_OP_FSUBR:
++    case OCERZ_OP_FDIV: case OCERZ_OP_FDIVR: case OCERZ_OP_FCOM:
++    case OCERZ_OP_FCOMP: case OCERZ_OP_FLDCW: case OCERZ_OP_LDMXCSR:
++        return 1;
++    case OCERZ_OP_ADD: case OCERZ_OP_ADC: case OCERZ_OP_SUB:
++    case OCERZ_OP_SBB: case OCERZ_OP_AND: case OCERZ_OP_OR:
++    case OCERZ_OP_XOR: case OCERZ_OP_INC: case OCERZ_OP_DEC:
++    case OCERZ_OP_NEG: case OCERZ_OP_NOT: case OCERZ_OP_SHL:
++    case OCERZ_OP_SHR: case OCERZ_OP_SAR: case OCERZ_OP_XCHG:
++    case OCERZ_OP_XADD: case OCERZ_OP_CMPXCHG:
++        return 3;
++    default:
++        return 4;
++    }
++}
++
++static void emit_particle_memory(A64Buf *b, const X86Insn *insn)
++{
++    if (g_pin_class != 3 || insn->op == OCERZ_OP_LEA) return;
++    const X86Operand *mem = NULL;
++    unsigned operand = 0;
++    for (; operand < insn->nops; operand++) {
++        if (insn->ops[operand].kind == OCERZ_OPK_MEM) {
++            mem = &insn->ops[operand];
++            break;
++        }
++    }
++    const int direct = insn->nops && insn->ops[0].kind == OCERZ_OPK_IMM;
++    const int escape = (insn->op == OCERZ_OP_CALL || insn->op == OCERZ_OP_JMP) &&
++                       (!direct || !particle_memory_site(insn->ops[0].imm));
++    const int string_access = particle_string_access(insn->op);
++    if (!mem && !escape && !string_access) return;
++    const int flat = mem && !string_access && !mem->riprel && insn->seg == OCERZ_SEG_NONE &&
++                     insn->addrsize == 4 && mem->size && mem->size <= 16;
++    void *mapping = m32_particle_memory_ring();
++    if (!mapping) return;
++    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++    a64_ldr(b, 8, JT1, JT0, 8);
++    uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
++    a64_ldr(b, 8, JT1, JT0, 16);
++    a64_eor_reg(b, 1, JT1, JT1, 20, 0);
++    uint32_t *other_cpu = a64_label(b); a64_cbnz(b, 1, JT1, 0);
++    a64_movz(b, JT1, 1, 0);
++    a64_emit32(b, 0xf82a012bu); /* LDADD X10, X11, [X9] */
++    a64_ubfx(b, 0, JTT, JT2, 0, 25);
++    a64_add_reg(b, 1, JT0, JT0, JTT, 6);
++    a64_add_imm(b, 1, JT0, JT0, 64);
++    a64_emit32(b, 0xd53be04au); /* MRS X10, CNTVCT_EL0 */
++    a64_str(b, 8, JT1, JT0, 8);
++    a64_str(b, 8, 20, JT0, 16);
++    a64_mov_imm64(b, JT1, insn->rip);
++    a64_str(b, 4, JT1, JT0, 24);
++    if (flat) {
++        a64_mov_imm64(b, JTA, (uint32_t)mem->disp);
++        if (mem->base != OCERZ_REG_NONE) {
++            emit_gpr_rd(b, 0, JTU, mem->base);
++            a64_add_reg(b, 0, JTA, JTA, JTU, 0);
++        }
++        if (mem->index != OCERZ_REG_NONE) {
++            emit_gpr_rd(b, 0, JTU, mem->index);
++            a64_add_reg(b, 0, JTA, JTA, JTU, mem->scale & 3);
++        }
++        a64_str(b, 4, JTA, JT0, 28);
++        a64_movz(b, JT1, mem->size, 0);
++        a64_str(b, 4, JT1, JT0, 32);
++        a64_movz(b, JT1, particle_memory_effect(insn->op, operand), 0);
++        a64_str(b, 4, JT1, JT0, 36);
++    }
++    emit_gpr_rd(b, 0, JT1, OCERZ_RSP);
++    a64_str(b, 4, JT1, JT0, 40);
++    if (escape && direct)
++        a64_mov_imm64(b, JT1, insn->ops[0].imm);
++    else
++        a64_movz(b, JT1, 0, 0);
++    a64_str(b, 4, JT1, JT0, 44);
++    a64_movz(b, JT1, escape ? (flat ? 5 : 2) : (flat ? 1 : 3), 0);
++    a64_str(b, 4, JT1, JT0, 60);
++    a64_add_imm(b, 1, JT2, JT2, 1);
++    a64_stlr(b, 8, JT2, JT0);
++    a64_patch_cbz(other_cpu, a64_label(b));
++    a64_patch_cbz(disabled, a64_label(b));
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+ static int g_ind_treg;
+@@ -26554,6 +26712,9 @@
+     uint64_t xlat_t0 = (g_jitmeasure || ocerz_jit_time_xlat) ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int particle_plan = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                              getenv("OCERZ_M32_PARTICLE_PLAN_LOG") != NULL;
++    const int particle_memory = particle_plan && getenv("OCERZ_M32_PARTICLE_MEMORY_PCS") != NULL;
+     const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                            raid_desc_enabled();
+     const int quad_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF && quad_packet_path();
+@@ -26572,11 +26733,16 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && particle_plan && m32_particle_plan_site(vpc))
++                    break;
+                 if (vn && ((prep_trace && (raid_desc_marker(vpc) || (vpc == RAID_BATCH_ENTRY && raid_batch_enabled()))) ||
+                            (quad_trace && quad_packet_site(vpc))))
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
++                    break;
++                if (vn && particle_memory && particle_memory_site(vpc) &&
++                    particle_memory_instruction(&scratch[vn]))
+                     break;
+                 unsigned op = scratch[vn].op;
+                 uint8_t len = scratch[vn].len;
+@@ -27504,6 +27670,14 @@
+         g_ea_plain = 0;
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
++        if (i == 0 && particle_memory && particle_memory_site(rip))
++            emit_particle_memory(&b, insn);
++        if (i == 0 && particle_plan && m32_particle_plan_instruction(insn)) {
++            emit_slowcall(&b, insn, exit_sites, &n_exits);
++            blk->n_slow++;
++            g_dep_slow[i] = 1;
++            continue;
++        }
+         if (i == 0 && prep_trace && raid_desc_marker(rip))
+             emit_raid_desc_marker(&b, insn);
+         if (i == 0 && quad_trace && quad_packet_site(rip))
+diff --git a/src/m32_particle_plan.c b/src/m32_particle_plan.c
+new file mode 100644
+--- /dev/null
++++ b/src/m32_particle_plan.c
+@@ -0,0 +1,362 @@
++/* Read-only diagnostic at the original mapped particle group boundaries. */
++#include "ocerz/interp.h"
++
++#include "ocerz/m32.h"
++#include "ocerz/mem.h"
++#include "ocerz/types.h"
++
++#include <fcntl.h>
++#include <pthread.h>
++#include <stdatomic.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <sys/mman.h>
++#include <time.h>
++#include <unistd.h>
++
++enum {
++    MAP_RETURN = 0x97c8c3, FILL = 0x97c9fb, ADVANCE = 0x97ca30, UNMAP = 0x97c906,
++    TEXTURE_RETURN = 0x88303b, QUAD_CALL = 0x8831a9, QUAD_RETURN = 0x8831ae,
++    PARTICLE_READY = 0xda2e00, PARTICLE_LIMIT = 0xd2ff58,
++    PLAN = 1, CAPACITY = 1 << 22, MAX_GROUP = 128,
++};
++
++typedef struct {
++    uint64_t sequence, tick, cpu;
++    uint32_t site, frame, ordinal, ready;
++    uint32_t word[22];
++} Row;
++
++_Static_assert(sizeof(Row) == 128, "particle plan row");
++
++typedef union {
++    Row header;
++    struct {
++        _Atomic uint64_t count, armed, busy;
++    } state;
++} Header;
++
++static Header *header;
++static pthread_once_t init_once = PTHREAD_ONCE_INIT;
++static pthread_once_t memory_once = PTHREAD_ONCE_INIT;
++static _Atomic uint64_t *memory_header;
++
++static void start_memory_log(void)
++{
++    const char *path = getenv("OCERZ_M32_PARTICLE_MEMORY_LOG");
++    if (!path || !*path) return;
++    int fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600);
++    if (fd < 0) return;
++    const size_t length = 64 * ((1ull << 25) + 1);
++    if (!ftruncate(fd, (off_t)length)) {
++        void *mapped = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (mapped != MAP_FAILED)
++            memory_header = mapped;
++    }
++    close(fd);
++}
++
++void *m32_particle_memory_ring(void)
++{
++    pthread_once(&memory_once, start_memory_log);
++    return memory_header;
++}
++
++static void start_log(void)
++{
++    const char *path = getenv("OCERZ_M32_PARTICLE_PLAN_LOG");
++    if (!path || !*path) return;
++    const int fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0600);
++    if (fd < 0) return;
++    const size_t length = (CAPACITY + 1ull) * sizeof(Row);
++    if (!ftruncate(fd, (off_t)length)) {
++        void *mapped = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (mapped != MAP_FAILED)
++            header = mapped;
++    }
++    close(fd);
++}
++
++static int word(uint64_t guest, uint32_t *out)
++{
++    if (guest < 4096 || guest > UINT32_MAX - 3 || !ocerz_addr_readable(guest) ||
++        ((guest & 4095) > 4092 && !ocerz_addr_readable(guest + 3)))
++        return 0;
++    *out = m32_rd((uint32_t)guest);
++    return 1;
++}
++
++static void append(Row row)
++{
++    uint64_t index = atomic_fetch_add_explicit(&header->state.count, 1, memory_order_relaxed);
++    Row *destination = (Row *)header + 1 + (index & (CAPACITY - 1));
++    row.sequence = index + 1;
++    *destination = row;
++}
++
++typedef struct {
++    Row boundary;
++    uint32_t records;
++    Row plans[MAX_GROUP];
++    uint32_t eax, edx, esi, edi, esp, mxcsr, fcw;
++} Capture;
++
++static int texture_words(uint64_t texture, uint32_t *data)
++{
++    if (!texture)
++        return 1;
++    if (!word(texture + 0x28, &data[0]) || !word(texture + 0x40, &data[1]) ||
++        !word(texture + 0x44, &data[2]) || !word(texture + 0x5c, &data[3]))
++        return 0;
++    return !data[3] || (word((uint64_t)data[3] + 2, &data[4]) &&
++                        word((uint64_t)data[3] + 0x18, &data[5]));
++}
++
++/* Multiply as IEEE binary32, then round to a signed integer as the
++ * original FISTP does under the guarded nearest-even controls. The
++ * integer implementation leaves guest FP status and controls alone. */
++static uint64_t round_shift(uint64_t value, unsigned shift)
++{
++    if (!shift) return value;
++    if (shift >= 64) return 0;
++    uint64_t half = UINT64_C(1) << (shift - 1);
++    uint64_t whole = value >> shift;
++    uint64_t remainder = value & ((half << 1) - 1);
++    return whole + (remainder > half || (remainder == half && (whole & 1)));
++}
++
++static int finite_float(uint32_t bits)
++{
++    return (bits & 0x7f800000u) != 0x7f800000u;
++}
++
++static uint32_t float_order(uint32_t bits)
++{
++    if (!(bits & 0x7fffffffu))
++        bits = 0;
++    return bits ^ (bits >> 31 ? UINT32_MAX : 0x80000000u);
++}
++
++static uint32_t phase_index(uint32_t a, uint32_t b)
++{
++    unsigned ae = (a >> 23) & 255, be = (b >> 23) & 255;
++    uint32_t am = (a & 0x7fffffu) | (ae ? 0x800000u : 0);
++    uint32_t bm = (b & 0x7fffffu) | (be ? 0x800000u : 0);
++    uint64_t product = (uint64_t)am * bm;
++    if (!product)
++        return 0;
++    unsigned width = 64 - __builtin_clzll(product);
++    unsigned shift = width > 24 ? width - 24 : 0;
++    uint64_t mantissa = round_shift(product, shift);
++    int power = (int)(ae ? ae : 1) + (int)(be ? be : 1) - 300 + (int)shift;
++    unsigned sign = (a ^ b) >> 31;
++    uint64_t limit = 0x7fffffffull + sign;
++    if (power >= 0) {
++        if (power > 31 || mantissa > (limit >> power))
++            return 0x80000000u;
++        mantissa <<= power;
++    } else {
++        mantissa = round_shift(mantissa, (unsigned)-power);
++        if (mantissa > limit)
++            return 0x80000000u;
++    }
++    return sign ? 0u - (uint32_t)mantissa : (uint32_t)mantissa;
++}
++
++enum { CULL_NONE, CULL_COUNTED, CULL_UNSUPPORTED, MAX_CULL_PARTICLES = 1024 };
++
++static void cull_plan(const Capture *capture, uint32_t *data, uint64_t emitter, uint32_t gate)
++{
++    data[19] = CULL_UNSUPPORTED;
++    data[21] = gate;
++    if (!word(emitter + 0x140, &data[20]) || !finite_float(data[20]) || !finite_float(gate))
++        return;
++    if (float_order(data[20]) >= float_order(gate)) {
++        data[19] = CULL_NONE;
++        return;
++    }
++    if ((capture->mxcsr & 0xffc0u) != 0x1f80u || (capture->fcw & 0xc00u) ||
++        !data[7] || (data[10] & 0x20))
++        return;
++    uint32_t selected = data[3] / data[7];
++    if (selected > data[4])
++        selected = data[4];
++    uint32_t phases, order, scale;
++    if (selected > MAX_CULL_PARTICLES || !word(emitter + 0x34, &phases) ||
++        !word(emitter + 0x54, &order) || !word(emitter + 0x13c, &scale) || !finite_float(scale))
++        return;
++    uint32_t contributing = 0;
++    for (uint32_t i = 0; i < selected; i++) {
++        uint32_t index, phase, lookup;
++        if (!word((uint64_t)order + 4ull * i, &index))
++            return;
++        uint64_t particle = (uint64_t)phases + 32ull * index;
++        if (!word(particle, &phase) || !finite_float(phase))
++            return;
++        unsigned slot = ((uint32_t)(particle >> 5) + phase_index(phase, scale)) & 127;
++        if (!word(0xf4aae0ull + 4 * slot, &lookup) || !finite_float(lookup))
++            return;
++        contributing += float_order(lookup) <= float_order(data[20]);
++    }
++    data[18] = contributing;
++    data[19] = CULL_COUNTED;
++}
++
++static int map_plan(Capture *capture)
++{
++    const uint32_t frame = capture->boundary.frame;
++    uint32_t count, table, indices, starting_offset, stride, enabled, limit, gate;
++    if (!word(frame - 0xe0ull, &count) || !word(frame - 0xfcull, &starting_offset) ||
++        !word(frame - 0xf4ull, &stride) || !word(frame + 0x10ull, &table) ||
++        !word(frame + 0x14ull, &indices) || !word(PARTICLE_READY, &enabled) || !word(PARTICLE_LIMIT, &limit) || !word(0xd2f8b8, &gate))
++        return 0;
++    uint32_t *map = capture->boundary.word;
++    map[0] = capture->eax;
++    map[1] = count;
++    map[2] = stride;
++    capture->boundary.ready = 1;
++    if (count > MAX_GROUP)
++        return 1;
++    for (uint32_t i = 0; i < count; i++) {
++        Row *plan = &capture->plans[capture->records++];
++        *plan = capture->boundary;
++        plan->site = PLAN;
++        plan->ordinal = i;
++        plan->ready = 0;
++        uint32_t *data = plan->word;
++        *data = 0;
++        uint32_t index, item;
++        if (!word((uint64_t)indices + starting_offset + 4ull * i, &index) ||
++            !word((uint64_t)table + 68ull * index + 0x18, &item) || !item)
++            continue;
++        data[0] = item;
++        data[1] = stride;
++        data[2] = enabled;
++        data[3] = limit;
++        uint64_t object = item;
++        if (!word(object + 0x50, &data[4]) || !word(object + 0x98, &data[5]) ||
++            !word(object + 0x1c, &data[6]) || !word(object + 0x8c, &data[7]) ||
++            !word(object + 0x90, &data[8]) || !word(object + 0xd4, &data[9]) ||
++            !word(object + 0x134, &data[10]) || !word(object + 0x128, &data[11]) ||
++            !texture_words(data[11], data + 12))
++            continue;
++        cull_plan(capture, data, object, gate);
++        plan->ready = 1;
++    }
++    return 1;
++}
++
++static int quad_arguments(const Capture *capture, uint32_t *data)
++{
++    uint32_t emitter, layout, matrix;
++    uint64_t stack = capture->esp;
++    if (!word(stack, &emitter) || emitter != capture->esi ||
++        !word(stack + 4, &layout) || !word(stack + 8, &data[1]) ||
++        !word(stack + 12, &matrix))
++        return 0;
++    data[0] = emitter;
++    data[2] = layout;
++    data[3] = matrix;
++    data[4] = capture->esp;
++    for (unsigned i = 0; i < 9; i++)
++        if (!word((uint64_t)layout + 4 * i, &data[6 + i]))
++            return 0;
++    if (!data[11])
++        for (unsigned i = 0; i < 3; i++)
++            if (!word((uint64_t)data[7] + 4 * i, &data[15 + i]))
++                return 0;
++    return word((uint64_t)capture->boundary.frame - 0x10c, &data[5]) &&
++           word((uint64_t)emitter + 0x134, &data[18]) &&
++           word((uint64_t)emitter + 0x1c, &data[19]);
++}
++
++static int capture_words(void *opaque)
++{
++    Capture *capture = opaque;
++    Row *row = &capture->boundary;
++    const uint32_t frame = row->frame;
++    uint32_t *data = row->word;
++    switch (row->site) {
++    case MAP_RETURN:
++        return map_plan(capture);
++    case FILL:
++        data[0] = capture->edi;
++        data[1] = capture->esi;
++        return word(frame - 0xe4ull, &row->ordinal) && word(frame - 0xf4ull, &data[2]);
++    case ADVANCE:
++        data[0] = capture->edi;
++        data[1] = capture->esi;
++        data[2] = capture->edx;
++        if (!word(frame - 0xe4ull, &row->ordinal) || !row->ordinal)
++            return 0;
++        row->ordinal--;
++        return word(capture->edi + 0x1cull, &data[3]) &&
++               word(capture->edi + 0x8cull, &data[4]) &&
++               word(capture->edi + 0x90ull, &data[5]);
++    case TEXTURE_RETURN:
++        data[0] = capture->esi;
++        data[1] = capture->eax;
++        return 1;
++    case QUAD_CALL:
++    case QUAD_RETURN:
++        if (memory_header)
++            return quad_arguments(capture, data);
++        data[0] = capture->esi;
++        return row->site == QUAD_CALL ? word(capture->esp + 8ull, &data[1])
++                                      : word(frame - 0x1cull, &data[1]);
++    default:
++        return 1;
++    }
++}
++
++int m32_particle_plan_site(uint64_t pc)
++{
++    switch (pc) {
++    case MAP_RETURN: case FILL: case ADVANCE: case UNMAP:
++    case TEXTURE_RETURN: case QUAD_CALL: case QUAD_RETURN:
++        return 1;
++    default:
++        return 0;
++    }
++}
++
++int m32_particle_plan_instruction(const X86Insn *insn)
++{
++    if (!insn->mode32 || !m32_particle_plan_site(insn->rip))
++        return 0;
++    const char *path = getenv("OCERZ_M32_PARTICLE_PLAN_LOG");
++    return path && *path;
++}
++
++void m32_particle_plan_hook(OcerzCPU *cpu, const X86Insn *insn)
++{
++    if (insn->rip == QUAD_CALL || insn->rip == QUAD_RETURN) {
++        _Atomic uint64_t *memory = m32_particle_memory_ring();
++        if (memory)
++            atomic_store_explicit(&memory[2], insn->rip == QUAD_CALL ? (uintptr_t)cpu : 0,
++                                  memory_order_release);
++    }
++    pthread_once(&init_once, start_log);
++    if (!header || !atomic_load_explicit(&header->state.armed, memory_order_relaxed))
++        return;
++    Capture capture;
++    capture.boundary = (Row){
++        .cpu = (uintptr_t)cpu, .site = insn->rip, .frame = cpu->gpr[OCERZ_RBP],
++        .tick = clock_gettime_nsec_np(CLOCK_UPTIME_RAW),
++    };
++    capture.records = 0;
++    capture.eax = cpu->gpr[OCERZ_RAX];
++    capture.edx = cpu->gpr[OCERZ_RDX];
++    capture.esi = cpu->gpr[OCERZ_RSI];
++    capture.edi = cpu->gpr[OCERZ_RDI];
++    capture.esp = cpu->gpr[OCERZ_RSP];
++    capture.mxcsr = cpu->mxcsr;
++    capture.fcw = cpu->fcw;
++    int result = ocerz_mem_try_snapshot(capture_words, &capture);
++    capture.boundary.ready = result == 1;
++    if (result < 0)
++        atomic_fetch_add_explicit(&header->state.busy, 1, memory_order_relaxed);
++    append(capture.boundary);
++    for (uint32_t i = 0; i < capture.records; i++)
++        append(capture.plans[i]);
++}

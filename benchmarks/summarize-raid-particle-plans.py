@@ -74,6 +74,8 @@ class Fill:
     texture: int | None = None
     selected: int | None = None
     vertices: int | None = None
+    quad_before: tuple | None = None
+    quad_after: tuple | None = None
 
 
 @dataclass
@@ -210,13 +212,8 @@ def check_group(group, counts, paths, failures):
             counts["fills_in_exact_groups_with_multiple_fills"] += size
 
 
-def count_groups(raw, start, end, submits, counts, paths, failures):
-    first, = struct.unpack_from("<Q", raw, (start + 1) * ROW.size + 8)
-    last, = struct.unpack_from("<Q", raw, end * ROW.size + 8)
-    if not submits[0] < first < last < submits[-1]:
-        raise ValueError("A particle-plan gate fell outside verified GPU submissions")
-    full_frames = range(bisect_right(submits, first) + 1, bisect_right(submits, last))
-    active, ticks, matched_frames = {}, {}, set()
+def mapped_groups(raw, start, end, *, quad_layout=False):
+    active, ticks = {}, {}
     for index in range(start, end):
         seq, tick, cpu, site, frame, ordinal, ready, *words = ROW.unpack_from(raw, (index + 1) * ROW.size)
         if (seq != index + 1 or not cpu or not ticks.get(cpu, 0) <= tick or site not in SITE
@@ -240,10 +237,7 @@ def count_groups(raw, start, end, submits, counts, paths, failures):
             if group.frame != frame:
                 raise ValueError("Mapped group changed caller frame")
             group.gap |= not ready
-            interval = bisect_right(submits, tick)
-            if interval in full_frames and interval == bisect_right(submits, group.start):
-                check_group(group, counts, paths, failures)
-                matched_frames.add(interval)
+            yield cpu, group, tick
         elif site == FILL:
             if group.frame != frame or group.active:
                 raise ValueError("Unexpected mapped fill nesting")
@@ -268,7 +262,31 @@ def count_groups(raw, start, end, submits, counts, paths, failures):
                 attr = {TEXTURE: "texture", QUAD: "selected", QUAD_RETURN: "vertices"}[site]
                 if getattr(group.active, attr) is not None:
                     raise ValueError("Repeated callback inside one original fill")
-                setattr(group.active, attr, words[1])
+                value = words[1]
+                if quad_layout and site == QUAD:
+                    group.active.quad_before = tick, tuple(words)
+                elif quad_layout and site == QUAD_RETURN:
+                    if group.active.quad_before is None:
+                        raise ValueError("Quad-layout return lacks the call")
+                    group.active.quad_after = tick, tuple(words)
+                    value = words[14] - group.active.quad_before[1][14]
+                    if value < 0:
+                        raise ValueError("The recorded vertex counter moved backwards")
+                setattr(group.active, attr, value)
+
+
+def count_groups(raw, start, end, submits, counts, paths, failures):
+    first, = struct.unpack_from("<Q", raw, (start + 1) * ROW.size + 8)
+    last, = struct.unpack_from("<Q", raw, end * ROW.size + 8)
+    if not submits[0] < first < last < submits[-1]:
+        raise ValueError("A particle-plan gate fell outside verified GPU submissions")
+    full_frames = range(bisect_right(submits, first) + 1, bisect_right(submits, last))
+    matched_frames = set()
+    for _, group, tick in mapped_groups(raw, start, end):
+        interval = bisect_right(submits, tick)
+        if interval in full_frames and interval == bisect_right(submits, group.start):
+            check_group(group, counts, paths, failures)
+            matched_frames.add(interval)
     return len(matched_frames)
 
 

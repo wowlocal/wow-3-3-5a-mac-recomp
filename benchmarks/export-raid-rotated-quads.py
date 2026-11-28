@@ -176,7 +176,7 @@ def export(root, guest, case_file):
             "rotated_quads_per_full_interval": LIFE["distribution"](full_frames)}
 
 
-def report(export_log, timed, sanitized):
+def report(export_log, timed, sanitized, *, live_size=None):
     result = json.loads(export_log.read_text())
     isolation = json.loads((timed.parent / "native-isolation.json").read_text())
     if isolation != {"legacy_paused": True, "legacy_gpu_completions": 0}:
@@ -191,7 +191,8 @@ def report(export_log, timed, sanitized):
     pattern = re.compile(r"^batch (\d+) run (\d+) scalar ([0-9.]+) neon ([0-9.]+) parallel ([0-9.]+) ns_per_quad$", re.M)
     for batch, order, scalar, neon, parallel in pattern.findall(text):
         timings[int(batch)].append({"order": int(order), "scalar": float(scalar), "neon": float(neon), "parallel": float(parallel)})
-    live_size = round(result["rotated_quads_per_full_interval"]["median"])
+    if live_size is None:
+        live_size = round(result["rotated_quads_per_full_interval"]["median"])
     if set(timings) != {256, 4096, 32768, live_size} or any([row["order"] for row in rows] != list(range(1, 8))
                                                            for rows in timings.values()):
         raise ValueError("Missing alternate-order native worker timings")
