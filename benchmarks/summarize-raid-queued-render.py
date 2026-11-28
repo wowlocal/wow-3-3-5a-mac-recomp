@@ -34,7 +34,7 @@ def batches(capture):
     passes = 0
     for line in (capture / "queued-encoder.tsv").read_text().splitlines():
         values = list(map(int, line.split()))
-        if len(values) != len(columns) or min(values) < 0 or values[0] > 96 * values[1]:
+        if len(values) not in (len(columns), len(columns) + 2) or min(values) < 0 or values[0] > 96 * values[1]:
             raise ValueError("Invalid queued encoder counters")
         totals.update(dict(zip(columns, values)))
         passes += 1

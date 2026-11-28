@@ -1,0 +1,150 @@
+diff --git a/src/core/metal/queued_render_encoder.mm b/src/core/metal/queued_render_encoder.mm
+--- a/src/core/metal/queued_render_encoder.mm
++++ b/src/core/metal/queued_render_encoder.mm
+@@ -1,6 +1,7 @@
+ #include "core/metal/queued_render_encoder.h"
+
+ #include <array>
++#include <atomic>
+ #include <cstdint>
+ #include <cstdio>
+ #include <cstdlib>
+@@ -13,6 +14,7 @@
+
+ constexpr size_t kCommandsPerBatch = 96;
+ constexpr size_t kInitialPayloadWords = 1024;
++constexpr size_t kReusableBatches = 16;
+
+ enum class Op : uint8_t {
+     VertexBuffer, FragmentBuffer, VertexOffset, FragmentOffset,
+@@ -43,11 +45,73 @@
+     }
+
+     id<MTLRenderCommandEncoder> encoder;
++    std::atomic_bool* occupied = nullptr;
++    bool reused = false;
+     std::vector<Command> commands;
+     std::vector<uint64_t> payload;
+     std::vector<MTLViewport> viewports;
+     std::vector<MTLScissorRect> scissors;
+ };
++
++struct BatchReleaser {
++    void operator()(Batch* batch) const {
++        if (!batch->occupied) {
++            delete batch;
++            return;
++        }
++        batch->commands.clear();
++        batch->payload.clear();
++        batch->viewports.clear();
++        batch->scissors.clear();
++        batch->encoder = nil;
++        batch->occupied->store(false, std::memory_order_release);
++    }
++};
++
++using BatchPtr = std::unique_ptr<Batch, BatchReleaser>;
++
++class BatchPool {
++public:
++    Batch* acquire(id<MTLRenderCommandEncoder> encoder) {
++        auto& slot = slots_[next_];
++        next_ = (next_ + 1) % slots_.size();
++        if (slot.occupied.load(std::memory_order_acquire)) return nullptr;
++        if (slot.batch) {
++            slot.batch->encoder = encoder;
++            slot.batch->reused = true;
++        } else {
++            slot.batch = std::make_unique<Batch>(encoder);
++            slot.batch->occupied = &slot.occupied;
++        }
++        slot.occupied.store(true, std::memory_order_relaxed);
++        return slot.batch.get();
++    }
++
++private:
++    struct Slot {
++        std::atomic_bool occupied{false};
++        std::unique_ptr<Batch> batch;
++    };
++    std::array<Slot, kReusableBatches> slots_;
++    size_t next_ = 0;
++};
++
++BatchPool* batchPool(dispatch_queue_t queue) {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_QUEUED_RENDER_REUSE");
++        return value && std::strcmp(value, "1") == 0;
++    }();
++    if (!enabled) return nullptr;
++    static char key;
++    auto* pool = static_cast<BatchPool*>(dispatch_queue_get_specific(queue, &key));
++    if (!pool) {
++        pool = new BatchPool;
++        dispatch_queue_set_specific(queue, &key, pool, [](void* context) {
++            delete static_cast<BatchPool*>(context);
++        });
++    }
++    return pool;
++}
+
+ NSUInteger floatWord(float value) {
+     uint32_t word;
+@@ -113,7 +177,7 @@
+
+ void consume(void* opaque) {
+     @autoreleasepool {
+-        std::unique_ptr<Batch> batch(static_cast<Batch*>(opaque));
++        BatchPtr batch(static_cast<Batch*>(opaque));
+         issue(*batch);
+     }
+ }
+@@ -138,14 +202,16 @@
+ @implementation WMGLQueuedRenderEncoder {
+     id<MTLRenderCommandEncoder> encoder_;
+     dispatch_queue_t queue_;
+-    std::unique_ptr<Batch> pending_;
++    BatchPool* pool_;
++    BatchPtr pending_;
+     FILE* log_;
+-    size_t batches_, commands_, bytes_, synchronous_;
++    size_t batches_, commands_, bytes_, synchronous_, reused_, unpooled_;
+ }
+
+ - (instancetype)initWithEncoder:(id<MTLRenderCommandEncoder>)encoder queue:(dispatch_queue_t)queue {
+     encoder_ = encoder;
+     queue_ = queue;
++    pool_ = batchPool(queue);
+     log_ = encoderLog();
+     return self;
+ }
+@@ -157,12 +223,17 @@
+         commands_ += pending_->commands.size();
+         bytes_ += pending_->payload.size() * sizeof(uint64_t) +
+                   pending_->viewports.size() * sizeof(MTLViewport) + pending_->scissors.size() * sizeof(MTLScissorRect);
++        reused_ += pending_->reused;
++        unpooled_ += pending_->occupied == nullptr;
+     }
+     dispatch_async_f(queue_, pending_.release(), consume);
+ }
+
+ - (Batch&)batch {
+-    if (!pending_) pending_ = std::make_unique<Batch>(encoder_);
++    if (!pending_) {
++        Batch* recycled = pool_ ? pool_->acquire(encoder_) : nullptr;
++        pending_.reset(recycled ? recycled : new Batch(encoder_));
++    }
+     return *pending_;
+ }
+
+@@ -188,7 +259,8 @@
+ - (void)endEncoding {
+     [self flushPending];
+     dispatch_sync(queue_, ^{ [encoder_ endEncoding]; });
+-    if (log_) std::fprintf(log_, "%zu %zu %zu %zu\n", commands_, batches_, bytes_, synchronous_);
++    if (log_) std::fprintf(log_, "%zu %zu %zu %zu %zu %zu\n",
++                           commands_, batches_, bytes_, synchronous_, reused_, unpooled_);
+ }
+
+ #define WMGL_BUFFER_SETTER(NAME, OP) \

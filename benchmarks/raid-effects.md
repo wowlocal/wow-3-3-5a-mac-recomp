@@ -2529,3 +2529,25 @@ python3 benchmarks/summarize-raid-queued-render.py CAPTURE_ROOT
 The queued mode lost **1.10 and 0.25 FPS** in the two pairs. P99 changed by **−0.03 and +0.11 ms**. The standalone indexed replay returned the same RGBA hash and **161,327** colored pixels in both modes. Both modes passed **343** GPU tests. The full-raid diagnostic and all four timing runs verified the saved camera, overlapping effects, all 26 timed rows, consecutive GPU completions and zero visible trial windows or activations. [Live timings and pixel checks](results/raid-winemetalgl-queued-render-ab.json)
 
 The diagnostic logged **21,881,427** queued commands in **235,241** batches, with zero synchronous forwards. The Time Profiler export covered **9.51 seconds** of samples. It attributed **355 ms** of running-sample weight to the worker consuming batches and **271 ms** to the proxy on the game thread. Within that main-thread total, recording commands accounted for **116 ms** and closing encoders for **79 ms**. These are observed running-sample weights from the queued mode. The uninstrumented A/B supplies the throughput comparison. The calling-thread encoder remains the benchmark baseline. [Worker and caller samples](results/raid-winemetalgl-queued-render-ab.json)
+
+### Reuse storage for queued Metal command batches
+
+Apply `patches/winemetalgl-queued-render-reuse-trial.patch` after the queued encoder trial. Enable `WINEMETALGL_QUEUED_RENDER_REUSE=1` with the queued path selected. A serial encoder queue owns **16** reusable slots. The worker clears retained Metal objects and publishes a free slot with release ordering. The game thread acquires it before reusing its vectors. When its next slot is busy, the game thread can allocate an ordinary batch. Batches still contain up to **96** records, and the same drain at pass end precedes command-buffer submission.
+
+Use one signed runtime and one arm64 Release ThinLTO renderer with PGO off. Time control, original queue, and reused queue for **60 seconds** each and then repeat in reverse order. Store the mode and logging bit in `render-reuse-mode.txt`. Unset both capturing and profiling in the six timing launches. Keep the same indexed replay and GPU tests as the queued encoder trial, with log names ending in `-control.log`, `-queued.log`, or `-reuse.log`.
+
+For the separate 25-second launches under `diagnostic-queued` and `diagnostic-reuse`, set `OCERZ_WMGL_QUEUED_RENDER_LOG` to `queued-encoder.tsv`. It records commands, submitted batches, payload bytes, synchronous forwards, reused batches and unpooled batches over the diagnostic launch. Attach Time Profiler for **9 seconds** after the verified fixture loads and export its `time-profile` table to `encoder-cpu.xml` in each directory.
+
+```sh
+python3 benchmarks/summarize-raid-render-reuse.py CAPTURE_ROOT
+```
+
+| Render encoder | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Calling thread | 134.09 | 12.41 ms |
+| Original queue | 134.49 | 12.34 ms |
+| Queue with reused batches | 133.18 | 12.26 ms |
+
+Compared with the original queue, the reuse pairs changed by **+0.47 and −3.08 FPS**, with p99 changes of **+0.10 and −0.26 ms**. Keep the original calling-thread renderer as the benchmark baseline. All six timing launches and both diagnostics verified the saved camera, overlapping effects, all 26 timing rows, consecutive GPU completions and zero visible trial windows or activations. Each mode passed **343** GPU tests. The indexed replay returned the same RGBA hash and **161,327** colored pixels in all three modes. [Timing and verified replay](results/raid-winemetalgl-render-reuse-ab.json)
+
+The original queue created a batch object for each of its **231,384** diagnostic submissions. The reuse launch created **16** batch objects and reused them for the remaining **237,386** of **237,402** submissions. These counts cover whole diagnostic launches. Time Profiler attributed **269 ms** of running-sample weight to the game-thread proxy in the original queue and **238 ms** with reuse. The corresponding worker-consumer weights were **371 and 341 ms**. The profiles covered **9.48 and 9.40 seconds** of samples. These measurements track CPU execution. [Batch counts and CPU samples](results/raid-winemetalgl-render-reuse-ab.json)
