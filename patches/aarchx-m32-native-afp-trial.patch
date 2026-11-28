@@ -1,0 +1,95 @@
+diff --git a/src/cpu.c b/src/cpu.c
+--- a/src/cpu.c
++++ b/src/cpu.c
+@@ -67,4 +67,5 @@
+
+ #include "ocerz/mode.h"
++#include "ocerz/m32.h"
+
+ #include <arm_acle.h>
+@@ -85,6 +86,10 @@
+     int have = 0;
+     size_t len = sizeof have;
+-    g_afp = !getenv("OCERZ_NO_AFP") && ocerz_mode != OCERZ_MODE_NATIVE &&
++    const char *trial = getenv("OCERZ_M32_AFP");
++    const bool native_i386_trial = m32_active && trial && strcmp(trial, "1") == 0;
++    g_afp = !getenv("OCERZ_NO_AFP") && (ocerz_mode != OCERZ_MODE_NATIVE || native_i386_trial) &&
+             sysctlbyname("hw.optional.arm.FEAT_AFP", &have, &len, NULL, 0) == 0 && have == 1;
++    if (m32_active && getenv("OCERZ_M32_AFP_LOG"))
++        fprintf(stderr, "ocerz: i386 AFP trial enabled=%d\n", g_afp);
+     OCERZ_LOG("cpu: NaN results come from %s\n", g_afp ? "the processor (FPCR.AH)" : "translated checks");
+ }
+diff --git a/src/m32.c b/src/m32.c
+--- a/src/m32.c
++++ b/src/m32.c
+@@ -171,4 +171,6 @@
+     }
+     m32_active = 1;
++    if (getenv("OCERZ_M32_AFP") || getenv("OCERZ_M32_AFP_LOG"))
++        ocerz_afp_enable();
+     const char *headless = getenv("OCERZ_M32_HEADLESS_TRIAL");
+     m32_headless_trial = headless && !strcmp(headless, "1");
+diff --git a/tests/diff32.c b/tests/diff32.c
+--- a/tests/diff32.c
++++ b/tests/diff32.c
+@@ -3032,4 +3032,22 @@
+ #define EFLAGS_MASK 0x0000000000000cd5ull
+
++static uint64_t fold_hand_state(uint64_t hash, const Snap *result)
++{
++    Snap canonical;
++    memcpy(&canonical, result, sizeof canonical);
++    canonical.steps = 0;
++    canonical.rflags &= EFLAGS_MASK;
++    for (int i = 0; i < 8; i++) {
++        if (!(canonical.fpr_x_ok & (1u << i))) {
++            canonical.fpr_xm[i] = 0;
++            canonical.fpr_xe[i] = 0;
++        }
++    }
++    const unsigned char *bytes = (const unsigned char *)&canonical;
++    for (size_t i = 0; i < sizeof canonical; i++)
++        hash = (hash ^ bytes[i]) * UINT64_C(1099511628211);
++    return hash;
++}
++
+ static const char *REGNAME[16] = {
+     "eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi",
+@@ -3595,4 +3613,13 @@
+ int main(int argc, char **argv)
+ {
++    if (getenv("OCERZ_DIFF32_AFP")) {
++        ocerz_afp_enable();
++        if (!ocerz_afp()) {
++            fprintf(stderr, "Hardware AFP is unavailable for the differential test\n");
++            return 2;
++        }
++        printf("Differential JIT uses hardware AFP\n");
++    }
++
+     uint64_t seed = 1;
+     long ncases = 20000, nx87 = -1;
+@@ -3649,4 +3676,6 @@
+
+     long pass = 0, fail = 0, shown = 0;
++    const int hand_state_hash = getenv("OCERZ_DIFF32_HAND_STATE_HASH") != NULL;
++    uint64_t digest = UINT64_C(14695981039346656037);
+     Case c;
+     Snap si, sj, sw;
+@@ -3673,6 +3702,14 @@
+             printf("PASS %-24s (%zu bytes, interp==jit, rc=%d)\n", c.name, c.len, si.rc);
+             pass++;
+-        }
+-    }
++            if (hand_state_hash) {
++                uint64_t case_hash = fold_hand_state(UINT64_C(14695981039346656037), &sw);
++                printf("HAND_STATE %s %016llx\n", c.name, (unsigned long long)case_hash);
++                digest = fold_hand_state(digest, &sw);
++            }
++        }
++    }
++
++    if (hand_state_hash)
++        printf("HAND_STATE_TOTAL %016llx\n", (unsigned long long)digest);
+
+     for (long i = 0; i < ncases + nx87; i++) {

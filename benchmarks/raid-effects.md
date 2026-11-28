@@ -2276,3 +2276,28 @@ In the slowest one percent of the instrumented completion gaps, median final-buf
 ```sh
 python3 benchmarks/summarize-raid-256-draw-split.py CAPTURE_ROOT PGO_LIBWINEMETALGL
 ```
+
+### Use hardware floating-point behavior for native i386 translation
+
+An ordinary ad-hoc signed ARM64 process on this Mac reports cross-architecture support and resolves the thread compatibility API. Its request returned **5** (`KERN_FAILURE`). This records hardware store-order availability for the local test process. The AFP trial uses the separate `FEAT_AFP` hardware feature reported by the M4 Pro.
+
+Apply `patches/aarchx-m32-native-afp-trial.patch` to the accepted AArchX source layers. Set `OCERZ_M32_AFP=1` to turn on `FPCR.AH` for translated i386 floating-point operations. The existing i386 trap, leaf and callback boundaries handle transitions between guest FPCR and host code. Use a common `-O2` native runtime and the accepted PGO WineMetalGL renderer. Keep `OCERZ_TCACHE=off` and leave the AFP switch unset in control. Enable `OCERZ_M32_AFP_LOG=1` only in the separate diagnostics.
+
+With `OCERZ_DIFF32_AFP=1`, the differential harness enables the hardware arithmetic path for its translated code. Both modes passed **40,044** interpreter comparisons in each of the offset and low-shadow layouts and **805** general i386 checks passed. With `OCERZ_DIFF32_HAND_STATE_HASH=1`, the warm JIT outputs for the **44** hand cases had identical state hashes between modes in both layouts. These hashes use the defined flags and valid x87 images checked by the existing comparator.
+
+For both 25-second diagnostics, set `OCERZ_JITDIS` to a fresh `jit` prefix and use `OCERZ_JITDIS_BRIEF=1`, `OCERZ_JITDIS_LO=0x880c70` and `OCERZ_JITDIS_HI=0x882c7f`. The same **197** guest block shapes matched across the two logs. The **242** selected floating-point operations occupied **1,216** reported ARM64 words in control and **906** with AFP. These are static code lengths for matching guest instructions in the hot quad routine.
+
+Write the results of the ordinary host probe to `layout-standard.log`. Build and run `benchmarks/m32-memory-layout-probe.c` with `xcrun clang -arch arm64`. Keep the two diagnostic capture directories and the four warmed 60-second runs in control, AFP, AFP, control order. Save SHA-256 witnesses with the timing data.
+
+| Floating-point handling | Median GPU-completed FPS | Median p99 GPU completion gap |
+| --- | ---: | ---: |
+| Software checks | 140.43 | 12.43 ms |
+| Hardware AFP | 135.54 | 12.48 ms |
+
+AFP lost **5.18 and 4.58 FPS** in the two pairs. P99 changed by **−0.27 and +0.36 ms**. Keep software checks as the baseline. The four timing runs and both diagnostics verified the saved camera, overlapping spell effects, all 26 cast timing rows, consecutive GPU completions, and zero trial windows or activations. The earlier test client resumed after every launch. [Live comparisons and instruction counts](results/raid-aarchx-i386-afp-ab.json)
+
+`benchmarks/m32-afp-transition-probe.c` times the existing `ocerz_afp_host` and `ocerz_afp_restore` helpers in an isolated loop. Link it against the trial runtime objects, omitting `main.o` and `fex.o`, using `-lcompression -lobjc`. Write four repetitions per arm to `transitions.log` in control, AFP, AFP, control, control, AFP, AFP, control order. Set `OCERZ_NO_AFP=1` for control and unset it for AFP. The pair took **1.78 ns** with software checks and **21.78 ns** with AFP in the isolated measurement. The live timing includes the remaining bridge work and all guest execution. [Transition measurements](results/raid-aarchx-i386-afp-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-i386-afp.py CAPTURE_ROOT PGO_LIBWINEMETALGL
+```

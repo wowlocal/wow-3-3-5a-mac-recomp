@@ -1,0 +1,245 @@
+{
+  "hardware": "Apple M4 Pro",
+  "macos": "27.2.1 (26B131)",
+  "viewport": [
+    1365,
+    768
+  ],
+  "vsync": false,
+  "caster_count": 24,
+  "boss_count": 1,
+  "camera": "Saved fixture anchor",
+  "base_commit": "e08d948",
+  "ordinary_host_process": {
+    "page_bytes": 16384,
+    "cross_arch_query_available": true,
+    "cross_arch_supported": true,
+    "tso_api_available": true,
+    "tso_api_result": 5
+  },
+  "artifacts": {
+    "runtime_unsigned_sha256": "5ed65a78089a81f3a7dff83a58b46b2f6ccaf953a7ffdfb192ed49bb1f0f1690",
+    "runtime_signed_sha256": "a87008b87b0124581a38c9e7cb8c2cb8b56b2f70fa54218d8f88781729b102ad",
+    "renderer_sha256": "1be67f208b2a9c5289384706d49db943470724cb2c8633cbcff48cb3a4fa94b4"
+  },
+  "tests": {
+    "differential_cases_offset_and_low_shadow": {
+      "control": [
+        40044,
+        40044
+      ],
+      "afp": [
+        40044,
+        40044
+      ]
+    },
+    "hand_corpus_identical_state_hashes": [
+      "802f478c3c2fb9f8",
+      "802f478c3c2fb9f8"
+    ],
+    "general_i386_checks": 805
+  },
+  "diagnostics": [
+    {
+      "afp_enabled": false,
+      "gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3551,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24993090666,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 142.0,
+        "p99_gpu_completion_gap_ns": 12038500,
+        "min_draws": 692,
+        "max_draws": 939
+      }
+    },
+    {
+      "afp_enabled": true,
+      "gpu_window": {
+        "window_size": [
+          1365,
+          768
+        ],
+        "verified_completed_renders": 3331,
+        "missing_sequences": 0,
+        "gpu_completion_interval_ns": 24991998541,
+        "measurement_duration_ns": 25000000000,
+        "average_completed_fps": 133.2,
+        "p99_gpu_completion_gap_ns": 12715500,
+        "min_draws": 666,
+        "max_draws": 971
+      }
+    }
+  ],
+  "jit_word_comparison": {
+    "guest_routine": [
+      "0x880c70",
+      "0x882c7f"
+    ],
+    "control_blocks": 197,
+    "candidate_blocks": 197,
+    "stable_shared_blocks": 197,
+    "common_unstable_blocks": 0,
+    "floating_point_arm64_words": {
+      "addss": {
+        "sites": 90,
+        "control_words": 413,
+        "candidate_words": 284
+      },
+      "divss": {
+        "sites": 1,
+        "control_words": 2,
+        "candidate_words": 2
+      },
+      "mulss": {
+        "sites": 117,
+        "control_words": 664,
+        "candidate_words": 539
+      },
+      "sqrtss": {
+        "sites": 1,
+        "control_words": 4,
+        "candidate_words": 2
+      },
+      "subps": {
+        "sites": 4,
+        "control_words": 16,
+        "candidate_words": 4
+      },
+      "subss": {
+        "sites": 29,
+        "control_words": 117,
+        "candidate_words": 75
+      }
+    }
+  },
+  "isolated_host_transition_pair": {
+    "samples": [
+      {
+        "afp_enabled": false,
+        "ns_per_pair": 2.849396
+      },
+      {
+        "afp_enabled": true,
+        "ns_per_pair": 27.375354
+      },
+      {
+        "afp_enabled": true,
+        "ns_per_pair": 21.704396
+      },
+      {
+        "afp_enabled": false,
+        "ns_per_pair": 1.7859165
+      },
+      {
+        "afp_enabled": false,
+        "ns_per_pair": 1.759979
+      },
+      {
+        "afp_enabled": true,
+        "ns_per_pair": 21.5728125
+      },
+      {
+        "afp_enabled": true,
+        "ns_per_pair": 21.853833
+      },
+      {
+        "afp_enabled": false,
+        "ns_per_pair": 1.7680835
+      }
+    ],
+    "control_median_ns": 1.777,
+    "afp_median_ns": 21.7791145,
+    "afp_minus_control_ns": 20.002114499999998
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "mode": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8428,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996580584,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 140.45,
+      "p99_gpu_completion_gap_ns": 12345875,
+      "min_draws": 705,
+      "max_draws": 970
+    },
+    {
+      "order": 2,
+      "mode": "candidate",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8117,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59998722084,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 135.26666666666668,
+      "p99_gpu_completion_gap_ns": 12075834,
+      "min_draws": 693,
+      "max_draws": 954
+    },
+    {
+      "order": 3,
+      "mode": "candidate",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8150,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997966500,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 135.81666666666666,
+      "p99_gpu_completion_gap_ns": 12874375,
+      "min_draws": 676,
+      "max_draws": 955
+    },
+    {
+      "order": 4,
+      "mode": "control",
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8425,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59997498541,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 140.4,
+      "p99_gpu_completion_gap_ns": 12509666,
+      "min_draws": 684,
+      "max_draws": 974
+    }
+  ],
+  "comparison": {
+    "control": {
+      "median_gpu_completed_fps": 140.425,
+      "median_p99_completion_gap_ns": 12427770.5
+    },
+    "candidate": {
+      "median_gpu_completed_fps": 135.54166666666669,
+      "median_p99_completion_gap_ns": 12475104.5
+    }
+  },
+  "paired_candidate_minus_control": [
+    {
+      "completed_fps": -5.183333333333309,
+      "p99_gap_ns": -270041
+    },
+    {
+      "completed_fps": -4.583333333333343,
+      "p99_gap_ns": 364709
+    }
+  ]
+}
