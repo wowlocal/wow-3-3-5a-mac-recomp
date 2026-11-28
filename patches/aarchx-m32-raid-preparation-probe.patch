@@ -1,0 +1,119 @@
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -852,4 +852,5 @@
+
+ #include <sys/mman.h>
++#include <fcntl.h>
+ #include <sys/sysctl.h>
+ #include <sys/time.h>
+@@ -19032,4 +19033,88 @@
+ }
+
++/* Collect live register values at verified call and loop boundaries. The
++ * consumer reads a row only after its sequence has been published. */
++enum { RAID_PREP_BITS = 20, RAID_PREP_STRIDE = 64 };
++
++static int raid_prep_site(uint64_t pc)
++{
++    switch (pc) {
++    case 0x97d2f0: case 0x97d31d: case 0x97d3b0: case 0x97d404:
++    case 0x980636: case 0x9806ae: case 0x9806b3:
++    case 0x9801a7: case 0x9801ac:
++        return 1;
++    default:
++        return 0;
++    }
++}
++
++static const char *raid_prep_path(void)
++{
++    static int checked;
++    static const char *path;
++    if (!checked) {
++        path = getenv("OCERZ_M32_RAID_PREP_LOG");
++        checked = 1;
++    }
++    return path && *path ? path : NULL;
++}
++
++static void *raid_prep_mapping(void)
++{
++    static int initialized;
++    static void *mapping;
++    if (initialized) return mapping;
++    initialized = 1;
++    int lse = 0;
++    size_t len = sizeof lse;
++    unsigned tick_hz;
++    __asm__ volatile("mrs %x0, cntfrq_el0" : "=r" (tick_hz));
++    if (tick_hz != 1000000000u ||
++        sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &len, NULL, 0) || !lse)
++        return NULL;
++    int fd = open(raid_prep_path(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return NULL;
++    const size_t bytes = RAID_PREP_STRIDE * ((1u << RAID_PREP_BITS) + 1u);
++    if (ftruncate(fd, (off_t)bytes) == 0) {
++        void *p = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (p != MAP_FAILED) mapping = p;
++    }
++    close(fd);
++    return mapping;
++}
++
++static void emit_raid_prep(A64Buf *b, uint64_t pc)
++{
++    static const int registers[] = {
++        OCERZ_RAX, OCERZ_RBX, OCERZ_RCX, OCERZ_RDX,
++        OCERZ_RSI, OCERZ_RDI, OCERZ_RBP, OCERZ_RSP,
++    };
++    if (g_pin_class != 3) return;
++    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
++        if (pin_slot(registers[i]) < 0) return;
++    void *mapping = raid_prep_mapping();
++    if (!mapping) return;
++
++    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
++    a64_ldr(b, 8, JT1, JT0, 8);
++    uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
++    a64_movz(b, JT1, 1, 0);
++    a64_emit32(b, 0xf82a012bu); /* LDADD X10, X11, [X9] */
++    a64_ubfx(b, 0, JTT, JT2, 0, RAID_PREP_BITS);
++    a64_add_reg(b, 1, JT0, JT0, JTT, 6);
++    a64_add_imm(b, 1, JT0, JT0, RAID_PREP_STRIDE);
++    a64_str(b, 8, A64_ZR, JT0, 0);
++    a64_emit32(b, 0xd53be04au); /* MRS X10, CNTVCT_EL0 */
++    a64_str(b, 8, JT1, JT0, 8);
++    a64_str(b, 8, 20, JT0, 16);
++    a64_mov_imm64(b, JT1, pc);
++    a64_str(b, 4, JT1, JT0, 24);
++    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
++        a64_str(b, 4, pin_hreg(pin_slot(registers[i])), JT0, 28 + 4 * i);
++    a64_add_imm(b, 1, JT2, JT2, 1);
++    a64_stlr(b, 8, JT2, JT0);
++    a64_patch_cbz(disabled, a64_label(b));
++}
++
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+@@ -25840,4 +25925,6 @@
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
++    const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
++                           raid_prep_path() != NULL;
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+@@ -25855,4 +25942,6 @@
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
++                if (vn && prep_trace && raid_prep_site(vpc))
++                    break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -26784,4 +26873,6 @@
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
++        if (i == 0 && prep_trace && raid_prep_site(rip))
++            emit_raid_prep(&b, rip);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;

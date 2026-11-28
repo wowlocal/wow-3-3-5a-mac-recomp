@@ -12,7 +12,7 @@ HERE = Path(__file__).resolve().parent
 VERIFY_WINDOW = run_path(str(HERE / "summarize-raid-shadow-reuse.py"))["read_window"]
 
 
-def verify(capture, kind, renderer_kind=None, seconds=60):
+def verify(capture, kind, renderer_kind=None, seconds=60, check_legacy_witness=True):
     training = kind == "training"
     if (capture / "pgo-mode.txt").read_text().split() != [kind, str(int(training))]:
         raise ValueError(f"Wrong PGO or instrumentation setting in {capture}")
@@ -22,7 +22,7 @@ def verify(capture, kind, renderer_kind=None, seconds=60):
         raise ValueError(f"Different buffer reuse settings in {capture}")
     if (capture / "submissions.ns").exists() or (capture / "encoder-work.tsv").exists():
         raise ValueError(f"Unexpected diagnostic logging in {capture}")
-    if json.loads((capture / "legacy.json").read_text()) != {
+    if check_legacy_witness and json.loads((capture / "legacy.json").read_text()) != {
         "legacy_paused": True, "legacy_completed_frames_during_launch": 0,
     }:
         raise ValueError(f"Earlier test ran during {capture}")
