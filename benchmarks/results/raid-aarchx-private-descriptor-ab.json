@@ -1,0 +1,178 @@
+{
+  "artifact_sha256": {
+    "runtime_unsigned_sha256": "1e1972604b68c955639ce890e17e47ea9e81788f11121ff5b8986fe69a3f0e8e",
+    "runtime_signed_sha256": "1a00dfc9c97f162f6a452b2752a8dfbd26df8a0b97cc36e00c7ee0798334b391",
+    "renderer_sha256": "0b838d54e5ca9f34320ec202a4e8699961fc262ef2b6dd43c0462736b884f6be"
+  },
+  "guest_image_sha256": "1063f877ec7f758ab25003e49d49a1257a8e12f9e1d38832ee6a46199c8155c8",
+  "general_i386_checks_per_mode": 805,
+  "diagnostic": {
+    "verified_gpu_window": {
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 3491,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 24994816625,
+      "measurement_duration_ns": 25000000000,
+      "average_completed_fps": 139.6,
+      "p99_gpu_completion_gap_ns": 12132875,
+      "min_draws": 687,
+      "max_draws": 951
+    },
+    "gpu_completions_between_counter_samples": 419,
+    "samples_inside_nominal_gpu_window": false,
+    "counter_sample_interval_ns": 3010095958,
+    "counters_between_samples": {
+      "dispatch_entries": 192037,
+      "input_descriptors_created": 190368,
+      "descriptors_with_the_original_prefix_word": 190368,
+      "descriptors_published_in_original_item_order": 190368,
+      "readers": [
+        {
+          "pc": "0x9791bf",
+          "matches_used": 130558,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 3162
+        },
+        {
+          "pc": "0x979523",
+          "matches_used": 123942,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 2298
+        },
+        {
+          "pc": "0x979532",
+          "matches_used": 28647,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 310
+        },
+        {
+          "pc": "0x979553",
+          "matches_used": 83238,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 1940
+        }
+      ]
+    },
+    "whole_process_counters": {
+      "dispatch_entries": 2790200,
+      "input_descriptors_created": 2765737,
+      "descriptors_with_the_original_prefix_word": 2765737,
+      "descriptors_published_in_original_item_order": 2765737,
+      "readers": [
+        {
+          "pc": "0x9791bf",
+          "matches_used": 1965420,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 50522
+        },
+        {
+          "pc": "0x979523",
+          "matches_used": 1861742,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 29844
+        },
+        {
+          "pc": "0x979532",
+          "matches_used": 561989,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 4097
+        },
+        {
+          "pc": "0x979553",
+          "matches_used": 1303636,
+          "value_mismatches": 0,
+          "original_loads_without_a_usable_descriptor": 23765
+        }
+      ]
+    }
+  },
+  "timed_runs": [
+    {
+      "order": 1,
+      "verified_private_read": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8274,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996338375,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 137.88333333333333,
+      "p99_gpu_completion_gap_ns": 12351750,
+      "min_draws": 689,
+      "max_draws": 968
+    },
+    {
+      "order": 2,
+      "verified_private_read": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8284,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996957291,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 138.05,
+      "p99_gpu_completion_gap_ns": 12263250,
+      "min_draws": 691,
+      "max_draws": 990
+    },
+    {
+      "order": 3,
+      "verified_private_read": true,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8336,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59996693459,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 138.91666666666666,
+      "p99_gpu_completion_gap_ns": 12288750,
+      "min_draws": 678,
+      "max_draws": 973
+    },
+    {
+      "order": 4,
+      "verified_private_read": false,
+      "window_size": [
+        1365,
+        768
+      ],
+      "verified_completed_renders": 8325,
+      "missing_sequences": 0,
+      "gpu_completion_interval_ns": 59995749250,
+      "measurement_duration_ns": 60000000000,
+      "average_completed_fps": 138.73333333333332,
+      "p99_gpu_completion_gap_ns": 12124625,
+      "min_draws": 687,
+      "max_draws": 961
+    }
+  ],
+  "comparison": {
+    "original_load": {
+      "median_gpu_completed_fps": 138.30833333333334,
+      "median_p99_completion_gap_ns": 12238187.5
+    },
+    "private_descriptor_with_equality_gate": {
+      "median_gpu_completed_fps": 138.48333333333335,
+      "median_p99_completion_gap_ns": 12276000.0
+    }
+  },
+  "paired_checked_descriptor_minus_original": [
+    {
+      "gpu_completed_fps": 0.16666666666668561,
+      "p99_completion_gap_ns": -88500
+    },
+    {
+      "gpu_completed_fps": 0.18333333333333712,
+      "p99_completion_gap_ns": 164125
+    }
+  ]
+}

@@ -2775,3 +2775,26 @@ python3 benchmarks/summarize-raid-context-values.py CONTEXT_CAPTURE_ROOT I386_CL
 python3 benchmarks/summarize-raid-item-critical-path.py MEMORY_CAPTURE_ROOT I386_CLIENT TIMING_CAPTURE_ROOT \
     --context-values benchmarks/results/raid-aarchx-context-values.json
 ```
+
+### Substitute a private dispatcher descriptor at the original readers
+
+Apply `patches/aarchx-m32-raid-private-descriptor-trial.patch` after the context-value probe. This trial replaces the recorder with a private record on each guest CPU. It captures the tag, material word and conditional metadata at dispatch entry. At `0x97d331` it adds the material word that the original prefix already loaded. The descriptor follows the original ordered publication and the dispatcher's actual index changes. The four original loads at `0x9791bf`, `0x979523`, `0x979532` and `0x979553` accept a descriptor only for the matching context and parent frame.
+
+The candidate keeps each original load for the equality check and to preserve its fault and memory-order behavior. It substitutes the private value when the words match and retains the original value when a descriptor is absent or differs. The dispatcher still writes the original shared fields. This is a runtime test of the data path that a later worker implementation can use.
+
+Enable `OCERZ_M32_RAID_DESCRIPTOR=1` with `OCERZ_TCACHE=off`. Use the same signed ARM64 runtime and selected deferred PGO renderer for control and candidate, leaving the descriptor switch unset for control. Run four warmed 60-second launches in control, candidate, candidate, control order and keep tracing disabled. Save both general i386 test logs as `general-control.log` and `general-candidate.log`. Save the policy and tracing bits to `raid-descriptor-mode.txt` in each launch.
+
+Use a separate 25-second `diagnostic-1` launch with the submission log and `OCERZ_M32_RAID_DESCRIPTOR_LOG` set to `raid-descriptor.bin`. Sample the 16 little-endian 64-bit counters twice during the full scene. Store those two arrays in `descriptor-gate.json` as `start.counters` and `end.counters` with their `before_uptime_ns` and `after_uptime_ns` times read with `CLOCK_UPTIME_RAW`. The GPU log must bracket the samples with consecutive full-resolution render completions. This run's samples occur after the nominal cutoff, and the analyzer independently verified the later bracket in the same isolated launch.
+
+The later bracket contained **419** completed GPU renders in **3.01 seconds**. The four readers used a private value **366,385** times with zero mismatches. **7,710** reads used the original word when the descriptor was unavailable. The run constructed **190,368** complete descriptors in that interval and published them in original order. The separate nominal window verified **3,491** consecutive completions. Both windows used the same isolated process and fixture. [Descriptor and GPU counters](results/raid-aarchx-private-descriptor-ab.json)
+
+| Read mode | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Original load | 138.31 | 12.24 ms |
+| Private descriptor with equality check | 138.48 | 12.28 ms |
+
+The two FPS changes were **+0.17** and **+0.18**, and the p99 changes were **−0.089** and **+0.164 ms**. These runs measure the path with the original load and a second, private value. Work scheduling stays serial in this experiment. All four timing launches verified **33,219** consecutive GPU completions across their windows, the saved camera and effects, all 26 timing rows, and zero trial windows or activations. Both modes passed **805** general i386 checks. [Per-run measurements](results/raid-aarchx-private-descriptor-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-private-descriptor.py CAPTURE_ROOT I386_CLIENT
+```

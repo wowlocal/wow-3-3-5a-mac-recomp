@@ -1,0 +1,456 @@
+diff --git a/include/ocerz/cpu.h b/include/ocerz/cpu.h
+--- a/include/ocerz/cpu.h
++++ b/include/ocerz/cpu.h
+@@ -176,6 +176,13 @@
+     void *sig_stop_blk[OCERZ_SIG_STOP_MAX];
+     uint64_t sig_stop_rip[OCERZ_SIG_STOP_MAX];
+     uint64_t sr_gen;            /* the single runner's mode generation this thread runs code of (src/jit.c) */
++    struct {
++        uint32_t pending_context, pending_frame, pending_has_prefix;
++        uint32_t pending_words[4];
++        uint32_t prior_context, prior_frame, prior_next_index;
++        uint32_t prior_words[4];
++        uint32_t read_context;
++    } raid_descriptor;         /* optional, private i386 dispatch trial */
+ } OcerzCPU;
+
+ #define OCERZ_RAS_SIZE 256
+diff --git a/src/jit.c b/src/jit.c
+--- a/src/jit.c
++++ b/src/jit.c
+@@ -6755,8 +6755,257 @@
+     *ra_out = JTA; *disp_out = 0;
+     return 1;
+ }
++/* Private render-item descriptors for the verified i386 scene dispatcher. */
++#define RAID_DESC_OFF(member) ((uint32_t)offsetof(OcerzCPU, raid_descriptor.member))
++enum {
++    RAID_DESC_BEGIN = 0x97d31d, RAID_DESC_PREFIX = 0x97d331,
++    RAID_DESC_PUBLISH = 0x97d3fe, RAID_DESC_END = 0x97d404,
++    RAID_DESC_COUNTERS = 16,
++};
++
++_Static_assert(offsetof(OcerzCPU, raid_descriptor.read_context) < 16384,
++               "descriptor fields must fit four-byte scaled offsets");
++
++static int raid_desc_enabled(void)
++{
++    return ocerz_tcache_mode() == OCERZ_TC_OFF && ENV_ON("OCERZ_M32_RAID_DESCRIPTOR");
++}
++
++static int raid_desc_marker(uint64_t pc)
++{
++    return pc == RAID_DESC_BEGIN || pc == RAID_DESC_PREFIX || pc == RAID_DESC_PUBLISH || pc == RAID_DESC_END;
++}
++
++static void *raid_desc_counters(void)
++{
++    static int initialized;
++    static void *mapping;
++    if (initialized) return mapping;
++    initialized = 1;
++    const char *path = getenv("OCERZ_M32_RAID_DESCRIPTOR_LOG");
++    if (!path || !*path) return NULL;
++    int lse = 0;
++    size_t length = sizeof lse;
++    if (sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &length, NULL, 0) || !lse)
++        return NULL;
++    int fd = open(path, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
++    if (fd < 0) return NULL;
++    const size_t bytes = RAID_DESC_COUNTERS * sizeof(uint64_t);
++    if (ftruncate(fd, (off_t)bytes) == 0) {
++        void *result = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        if (result != MAP_FAILED) mapping = result;
++    }
++    close(fd);
++    return mapping;
++}
++
++static void emit_raid_desc_count(A64Buf *b, unsigned slot)
++{
++    void *mapping = raid_desc_counters();
++    if (!mapping) return;
++    a64_mov_imm64(b, JTA, (uintptr_t)mapping + slot * sizeof(uint64_t));
++    a64_movz(b, JTU, 1, 0);
++    a64_emit32(b, 0xf8200000u | (JTU << 16) | (JTA << 5) | A64_ZR); /* STADD X14, [X15] */
++}
++
++static uint32_t *emit_raid_desc_check(A64Buf *b, uint32_t offset, int value)
++{
++    a64_ldr(b, 4, JTT, 20, offset);
++    a64_eor_reg(b, 0, JTT, JTT, value, 0);
++    uint32_t *failure = a64_label(b);
++    a64_cbnz(b, 0, JTT, 0);
++    return failure;
++}
++
++static void emit_raid_desc_begin(A64Buf *b)
++{
++    int context = pin_hreg(pin_slot(OCERZ_RAX));
++    int item = pin_hreg(pin_slot(OCERZ_RDX));
++    int frame = pin_hreg(pin_slot(OCERZ_RBP));
++    int index = pin_hreg(pin_slot(OCERZ_RBX));
++    int tag = pin_hreg(pin_slot(OCERZ_RCX));
++    emit_raid_desc_count(b, 0);
++    a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(read_context));
++    a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_context));
++    a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_has_prefix));
++    uint32_t *miss_context = emit_raid_desc_check(b, RAID_DESC_OFF(prior_context), context);
++    uint32_t *miss_frame = emit_raid_desc_check(b, RAID_DESC_OFF(prior_frame), frame);
++    uint32_t *miss_index = emit_raid_desc_check(b, RAID_DESC_OFF(prior_next_index), index);
++    a64_str(b, 4, context, 20, RAID_DESC_OFF(read_context));
++    a64_patch_cbz(miss_context, a64_label(b));
++    a64_patch_cbz(miss_frame, a64_label(b));
++    a64_patch_cbz(miss_index, a64_label(b));
++    /* A skipped late publication cannot leave this descriptor eligible for a later item. */
++    a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(prior_context));
++
++    a64_ubfx(b, 0, JTT, item, 0, 12);
++    a64_add_imm(b, 0, JTT, JTT, 0x2f);
++    uint32_t *page = a64_label(b); a64_tbnz(b, JTT, 12, 0);
++    a64_lsr_imm(b, 0, JTT, tag, 2);
++    uint32_t *small_tag = a64_label(b); a64_cbz(b, 0, JTT, 0);
++    a64_movz(b, JTT, 4, 0);
++    a64_eor_reg(b, 0, JTT, JTT, tag, 0);
++    uint32_t *unsupported_tag = a64_label(b); a64_cbnz(b, 0, JTT, 0);
++    a64_patch_cbz(small_tag, a64_label(b));
++
++    a64_add_ext_uxtw(b, JTA, JGB, item, 0);
++    a64_ldr(b, 4, JTT, JTA, 4);
++    a64_str(b, 4, tag, 20, RAID_DESC_OFF(pending_words[0]));
++    a64_str(b, 4, JTT, 20, RAID_DESC_OFF(pending_words[1]));
++    a64_lsr_imm(b, 0, JTT, tag, 2);
++    a64_movz(b, JTU, 3, 0);
++    a64_eor_reg(b, 0, JTU, JTU, tag, 0);
++    uint32_t *zero_tag_four = a64_label(b); a64_cbnz(b, 0, JTT, 0);
++    uint32_t *zero_tag_three = a64_label(b); a64_cbz(b, 0, JTU, 0);
++    a64_ldr(b, 4, JTT, JTA, 0x2c);
++    uint32_t *save_item_word = a64_label(b); a64_b(b, 0);
++    a64_patch_cbz(zero_tag_four, a64_label(b));
++    a64_patch_cbz(zero_tag_three, a64_label(b));
++    a64_movz(b, JTT, 0, 0);
++    a64_patch_b(save_item_word, a64_label(b));
++    a64_str(b, 4, JTT, 20, RAID_DESC_OFF(pending_words[2]));
++    a64_str(b, 4, frame, 20, RAID_DESC_OFF(pending_frame));
++    a64_str(b, 4, context, 20, RAID_DESC_OFF(pending_context));
++    emit_raid_desc_count(b, 1);
++    a64_patch_tbz(page, a64_label(b));
++    a64_patch_cbz(unsupported_tag, a64_label(b));
++}
++
++static void emit_raid_desc_prefix(A64Buf *b)
++{
++    int context = pin_hreg(pin_slot(OCERZ_RCX));
++    int frame = pin_hreg(pin_slot(OCERZ_RBP));
++    int value = pin_hreg(pin_slot(OCERZ_RDX)); /* original material word already loaded */
++    uint32_t *miss_context = emit_raid_desc_check(b, RAID_DESC_OFF(pending_context), context);
++    uint32_t *miss_frame = emit_raid_desc_check(b, RAID_DESC_OFF(pending_frame), frame);
++    a64_str(b, 4, value, 20, RAID_DESC_OFF(pending_words[3]));
++    a64_movz(b, JTT, 1, 0);
++    a64_str(b, 4, JTT, 20, RAID_DESC_OFF(pending_has_prefix));
++    emit_raid_desc_count(b, 2);
++    a64_patch_cbz(miss_context, a64_label(b));
++    a64_patch_cbz(miss_frame, a64_label(b));
++}
++
++static void emit_raid_desc_publish(A64Buf *b)
++{
++    int context = pin_hreg(pin_slot(OCERZ_RDX));
++    int frame = pin_hreg(pin_slot(OCERZ_RBP));
++    int index = pin_hreg(pin_slot(OCERZ_RBX));
++    a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(read_context));
++    a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(prior_context));
++    uint32_t *miss_context = emit_raid_desc_check(b, RAID_DESC_OFF(pending_context), context);
++    uint32_t *miss_frame = emit_raid_desc_check(b, RAID_DESC_OFF(pending_frame), frame);
++    a64_ldr(b, 4, JTT, 20, RAID_DESC_OFF(pending_has_prefix));
++    uint32_t *miss_prefix = a64_label(b); a64_cbz(b, 0, JTT, 0);
++
++    for (int i = 0; i < 4; i++) {
++        a64_ldr(b, 4, JTT, 20, RAID_DESC_OFF(pending_words[0]) + 4 * i);
++        a64_str(b, 4, JTT, 20, RAID_DESC_OFF(prior_words[0]) + 4 * i);
++    }
++    a64_add_imm(b, 0, JTT, index, 1);
++    a64_str(b, 4, JTT, 20, RAID_DESC_OFF(prior_next_index));
++    a64_str(b, 4, frame, 20, RAID_DESC_OFF(prior_frame));
++    a64_str(b, 4, context, 20, RAID_DESC_OFF(prior_context));
++    emit_raid_desc_count(b, 3);
++
++    a64_patch_cbz(miss_context, a64_label(b));
++    a64_patch_cbz(miss_frame, a64_label(b));
++    a64_patch_cbz(miss_prefix, a64_label(b));
++    a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_context));
++}
++
++static int raid_desc_access_supported(void)
++{
++    return g_pin_class == 3 && jgb_usable() && ocerz_guest_base &&
++           pin_slot(OCERZ_RAX) >= 0 && pin_slot(OCERZ_RBX) >= 0 && pin_slot(OCERZ_RCX) >= 0 &&
++           pin_slot(OCERZ_RDX) >= 0 && pin_slot(OCERZ_RDI) >= 0 && pin_slot(OCERZ_RBP) >= 0;
++}
++
++static void emit_raid_desc_marker(A64Buf *b, const X86Insn *insn)
++{
++    if (!raid_desc_access_supported() || insn->nops < 1) return;
++    const X86Operand *dest = &insn->ops[0];
++    if (insn->rip == RAID_DESC_END) {
++        if (insn->op == OCERZ_OP_INC && dest->kind == OCERZ_OPK_REG && dest->reg == OCERZ_RBX &&
++            dest->size == 4) {
++            a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(read_context));
++            a64_str(b, 4, A64_ZR, 20, RAID_DESC_OFF(pending_context));
++        }
++        return;
++    }
++    const X86Operand *src = &insn->ops[1];
++    if (insn->op != OCERZ_OP_MOV || insn->nops != 2 || insn->seg != OCERZ_SEG_NONE || insn->addrsize != 4 ||
++        dest->kind != OCERZ_OPK_MEM || dest->size != 4 || dest->index != OCERZ_REG_NONE ||
++        src->kind != OCERZ_OPK_REG || src->size != 4)
++        return;
++    switch (insn->rip) {
++    case RAID_DESC_BEGIN:
++        if (dest->base == OCERZ_RAX && dest->disp == 0x50 && src->reg == OCERZ_RDX) emit_raid_desc_begin(b);
++        break;
++    case RAID_DESC_PREFIX:
++        if (dest->base == OCERZ_RCX && dest->disp == 0x68 && src->reg == OCERZ_RDX) emit_raid_desc_prefix(b);
++        break;
++    case RAID_DESC_PUBLISH:
++        if (dest->base == OCERZ_RDX && dest->disp == 0x9c && src->reg == OCERZ_RAX) emit_raid_desc_publish(b);
++        break;
++    }
++}
++
++static int emit_raid_desc_load(A64Buf *b, const X86Insn *insn, const X86Operand *mem, int size, int rd)
++{
++    int slot, displacement, destination, opcode = OCERZ_OP_CMP;
++    switch (insn->rip) {
++    case 0x9791bf: slot = 0; displacement = 0x5c; destination = OCERZ_RCX; break;
++    case 0x979523: slot = 1; displacement = 0x64; destination = OCERZ_RAX; break;
++    case 0x979532: slot = 2; displacement = 0x94; destination = OCERZ_RDX; opcode = OCERZ_OP_MOV; break;
++    case 0x979553: slot = 3; displacement = 0x6c; destination = OCERZ_RDX; break;
++    default: return 0;
++    }
++    if (!insn->mode32 || !raid_desc_enabled() || !raid_desc_access_supported() ||
++        insn->seg != OCERZ_SEG_NONE || insn->addrsize != 4 || insn->op != opcode || insn->nops != 2 ||
++        insn->ops[0].kind != OCERZ_OPK_REG || insn->ops[0].size != 4 || insn->ops[0].reg != destination ||
++        mem != &insn->ops[1] || mem->kind != OCERZ_OPK_MEM || size != 4 || mem->disp != displacement ||
++        mem->base != OCERZ_RDI || mem->index != OCERZ_REG_NONE || mem->riprel ||
++        rd == JTT || rd == JTU || rd == JTA)
++        return 0;
++
++    /* Keep the original fault and memory order. Use the private operand only
++     * after its value and owning dispatcher frame pass the equality gate. */
++    if (!emit_mem_ea(b, insn, mem, JTA)) return 0;
++    uint32_t *skip = emit_commpage_guard(b, insn, JTA, NULL, NULL);
++    emit_add_const(b, JTA, ocerz_guest_base - ea_fold());
++    emit_guest_load_ordered(b, size, rd, JTA, JTU);
++    patch_guard_skip(skip, a64_label(b));
++    ea_cache_reset();
++
++    int context = pin_hreg(pin_slot(OCERZ_RDI));
++    int callee_frame = pin_hreg(pin_slot(OCERZ_RBP));
++    uint32_t *no_context = emit_raid_desc_check(b, RAID_DESC_OFF(read_context), context);
++    a64_add_ext_uxtw(b, JTA, JGB, callee_frame, 0);
++    a64_ldr(b, 4, JTU, JTA, 0);
++    uint32_t *no_frame = emit_raid_desc_check(b, RAID_DESC_OFF(prior_frame), JTU);
++    a64_ldr(b, 4, JTT, 20, RAID_DESC_OFF(prior_words[0]) + 4 * slot);
++    a64_eor_reg(b, 0, JTU, rd, JTT, 0);
++    uint32_t *mismatch = a64_label(b); a64_cbnz(b, 0, JTU, 0);
++    a64_mov_reg(b, 0, rd, JTT);
++    emit_raid_desc_count(b, 4 + 3 * slot);
++    uint32_t *used = a64_label(b); a64_b(b, 0);
++    a64_patch_cbz(mismatch, a64_label(b));
++    emit_raid_desc_count(b, 5 + 3 * slot);
++    uint32_t *kept = a64_label(b); a64_b(b, 0);
++    a64_patch_cbz(no_context, a64_label(b));
++    a64_patch_cbz(no_frame, a64_label(b));
++    emit_raid_desc_count(b, 6 + 3 * slot);
++    a64_patch_b(used, a64_label(b));
++    a64_patch_b(kept, a64_label(b));
++    return 1;
++}
++
++#undef RAID_DESC_OFF
++
+ static int emit_mem_load_plain(A64Buf *b, const X86Insn *insn, const X86Operand *op, int size, int rd)
+ {
++    if (emit_raid_desc_load(b, insn, op, size, rd)) return 1;
+     int ra; uint32_t disp;
+     int plain = mem_plain_access_ok(op);
+     X86Operand mview; op = mem_hoist_view(op, &mview);
+@@ -6895,6 +7144,7 @@
+         /* A value loaded into rsp goes in through emit_gpr_wr when its register is not the plain guest value. */
+         if (rsp_is_ptr() && d->reg == OCERZ_RSP && !jgb_zero()) ds = -1;
+         int rd = ds >= 0 ? pin_hreg(ds) : JT1;
++        if (ds >= 0 && emit_raid_desc_load(b, insn, s, d->size, rd)) return 1;
+         if (emit_hoisted_mem_access(b, insn, s, d->size, rd, 0))
+             return 1;
+         if (ds >= 0 && emit_plain_mem_fast(b, insn, s, d->size, rd, 0, 0))
+@@ -19032,140 +19282,6 @@
+     return state == 1 && rip == target;
+ }
+
+-/* Collect live register values around the selected raid preparation calls. The
+- * consumer reads a row only after its sequence has been published. */
+-enum { RAID_PREP_BITS = 22, RAID_PREP_STRIDE = 128 };
+-
+-/* Register holding the live context at each original instruction. */
+-static int raid_context_reg(uint64_t pc)
+-{
+-    switch (pc) {
+-    case 0x97d31d: case 0x97d3b3:
+-        return OCERZ_RAX;
+-    case 0x97d382:
+-        return OCERZ_RCX;
+-    case 0x97d38d: case 0x97d3fe:
+-        return OCERZ_RDX;
+-    case 0x979190: case 0x9791ad: case 0x97b9d7: case 0x97cb1c:
+-        return OCERZ_RDI;
+-    default:
+-        return -1;
+-    }
+-}
+-
+-static int raid_prep_site(uint64_t pc)
+-{
+-    return pc == 0x97d404 || raid_context_reg(pc) >= 0;
+-}
+-
+-static const char *raid_prep_path(void)
+-{
+-    static int checked;
+-    static const char *path;
+-    if (!checked) {
+-        path = getenv("OCERZ_M32_RAID_CONTEXT_VALUES_LOG");
+-        checked = 1;
+-    }
+-    return path && *path ? path : NULL;
+-}
+-
+-static void *raid_prep_mapping(void)
+-{
+-    static int initialized;
+-    static void *mapping;
+-    if (initialized) return mapping;
+-    initialized = 1;
+-    int lse = 0;
+-    size_t len = sizeof lse;
+-    unsigned tick_hz;
+-    __asm__ volatile("mrs %x0, cntfrq_el0" : "=r" (tick_hz));
+-    if (tick_hz != 1000000000u ||
+-        sysctlbyname("hw.optional.arm.FEAT_LSE", &lse, &len, NULL, 0) || !lse)
+-        return NULL;
+-    int fd = open(raid_prep_path(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+-    if (fd < 0) return NULL;
+-    const size_t bytes = RAID_PREP_STRIDE * ((1u << RAID_PREP_BITS) + 1u);
+-    if (ftruncate(fd, (off_t)bytes) == 0) {
+-        void *p = mmap(NULL, bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+-        if (p != MAP_FAILED) mapping = p;
+-    }
+-    close(fd);
+-    return mapping;
+-}
+-
+-static void emit_raid_prep(A64Buf *b, uint64_t pc)
+-{
+-    static const int registers[] = {
+-        OCERZ_RAX, OCERZ_RBX, OCERZ_RCX, OCERZ_RDX,
+-        OCERZ_RSI, OCERZ_RDI, OCERZ_RBP, OCERZ_RSP,
+-    };
+-    if (g_pin_class != 3 || !jgb_usable() || !ocerz_guest_base) return;
+-    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
+-        if (pin_slot(registers[i]) < 0) return;
+-    void *mapping = raid_prep_mapping();
+-    if (!mapping) return;
+-
+-    a64_mov_imm64(b, JT0, (uint64_t)(uintptr_t)mapping);
+-    a64_ldr(b, 8, JT1, JT0, 8);
+-    uint32_t *disabled = a64_label(b); a64_cbz(b, 1, JT1, 0);
+-    a64_movz(b, JT1, 1, 0);
+-    a64_emit32(b, 0xf82a012bu); /* LDADD X10, X11, [X9] */
+-    a64_ubfx(b, 0, JTT, JT2, 0, RAID_PREP_BITS);
+-    a64_add_reg(b, 1, JT0, JT0, JTT, 7);
+-    a64_add_imm(b, 1, JT0, JT0, RAID_PREP_STRIDE);
+-    a64_str(b, 8, A64_ZR, JT0, 0);
+-    a64_emit32(b, 0xd53be04au); /* MRS X10, CNTVCT_EL0 */
+-    a64_str(b, 8, JT1, JT0, 8);
+-    a64_str(b, 8, 20, JT0, 16);
+-    a64_mov_imm64(b, JT1, pc);
+-    a64_str(b, 4, JT1, JT0, 24);
+-    for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; i++)
+-        a64_str(b, 4, pin_hreg(pin_slot(registers[i])), JT0, 28 + 4 * i);
+-    a64_str(b, 4, A64_ZR, JT0, 60);
+-    const int guest_context = raid_context_reg(pc);
+-    if (guest_context >= 0) {
+-        static const unsigned fields[] = {
+-            0x58, 0x60, 0x68, 0x74, 0x78, 0x80, 0x88, 0x90, 0x98,
+-            0x5c, 0x64, 0x94,
+-        };
+-        const int context = pin_hreg(pin_slot(guest_context));
+-        /* Sample only when the access stays on the same mapped guest page as
+-         * the object's initial words. Skip any context close to a page end. */
+-        a64_ubfx(b, 0, JTT, context, 0, 12);
+-        a64_add_imm(b, 0, JTT, JTT, 0x9b);
+-        uint32_t *split = a64_label(b); a64_tbnz(b, JTT, 12, 0);
+-        a64_add_ext_uxtw(b, JTT, JGB, context, 0);
+-        for (unsigned i = 0; i < sizeof fields / sizeof fields[0]; i++) {
+-            a64_ldr(b, 4, JT1, JTT, fields[i]);
+-            a64_str(b, 4, JT1, JT0, 64 + 4 * i);
+-        }
+-        a64_movz(b, JT1, 1, 0);
+-        a64_str(b, 4, JT1, JT0, 60);
+-        a64_patch_tbz(split, a64_label(b));
+-    }
+-    a64_str(b, 4, A64_ZR, JT0, 124);
+-    if (pc == 0x97d31d) {
+-        static const unsigned fields[] = {0x0, 0x4, 0x2c};
+-        int item = pin_hreg(pin_slot(OCERZ_RDX));
+-        /* The original path already reads the first word. Keep the extra
+-         * reads on that same mapped guest page. */
+-        a64_ubfx(b, 0, JTT, item, 0, 12);
+-        a64_add_imm(b, 0, JTT, JTT, 0x2f);
+-        uint32_t *split = a64_label(b); a64_tbnz(b, JTT, 12, 0);
+-        a64_add_ext_uxtw(b, JTT, JGB, item, 0);
+-        for (unsigned i = 0; i < sizeof fields / sizeof fields[0]; i++) {
+-            a64_ldr(b, 4, JT1, JTT, fields[i]);
+-            a64_str(b, 4, JT1, JT0, 112 + 4 * i);
+-        }
+-        a64_movz(b, JT1, 1, 0);
+-        a64_str(b, 4, JT1, JT0, 124);
+-        a64_patch_tbz(split, a64_label(b));
+-    }
+-    a64_add_imm(b, 1, JT2, JT2, 1);
+-    a64_stlr(b, 8, JT2, JT0);
+-    a64_patch_cbz(disabled, a64_label(b));
+-}
+-
+ static void veneer_pool_check(OcerzJit *jit);
+ static uint32_t **g_ind_call_cont;
+ static int g_ind_treg;
+@@ -25975,7 +26091,7 @@
+     const int forward_m32 = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+                             ENV_ON("OCERZ_M32_FORWARD_SUPERBLOCK");
+     const int prep_trace = mode32 && !g_trap_block && tcm == OCERZ_TC_OFF &&
+-                           raid_prep_path() != NULL;
++                           raid_desc_enabled();
+     X86Insn scratch[JIT_MAX_BLOCK_INSNS];
+     int n = 0;
+     uint64_t pc = rip;
+@@ -25991,7 +26107,7 @@
+         if (sigsetjmp(db, 0) == 0) {
+             ocerz_jit_decode_recover = &db;
+             for (; vn < JIT_MAX_BLOCK_INSNS; ) {
+-                if (vn && prep_trace && raid_prep_site(vpc))
++                if (vn && prep_trace && raid_desc_marker(vpc))
+                     break;
+                 int rc = jit_decode(vpc, &scratch[vn], mode32);
+                 if (rc != OCERZ_OK)
+@@ -26922,8 +27038,8 @@
+         g_ea_plain = 0;
+         g_ea_lowhoisted = 0;
+         lanerec_note((uint32_t)(b.p - entry));
+-        if (i == 0 && prep_trace && raid_prep_site(rip))
+-            emit_raid_prep(&b, rip);
++        if (i == 0 && prep_trace && raid_desc_marker(rip))
++            emit_raid_desc_marker(&b, insn);
+         if (i == 0 && fps_watch(rip)) {
+             g_tc_bad = 1;
+             a64_mov_imm64(&b, JT0, (uint64_t)(uintptr_t)&g_fps_frames);
