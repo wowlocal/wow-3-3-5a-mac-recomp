@@ -2683,3 +2683,26 @@ The paired changes were **−1.07** and **+1.18 FPS**, with p99 changes of **+0.
 ```sh
 python3 benchmarks/summarize-raid-dual-base.py CAPTURE_ROOT
 ```
+
+### Set the first submission from the preceding frame's triangle count
+
+Apply `patches/winemetalgl-triangle-balanced-first-submission-trial.patch` to the selected deferred PGO renderer source. Build one arm64 Release ThinLTO library with its existing merged profile. For this comparison, allow profile-mismatch warnings by replacing `-Werror=profile-instr-out-of-date` with `-Wno-error=profile-instr-out-of-date` in the trial checkout. The build reports stale profiling records. All runs use the same compiled library and the selected PGO AArchX executable.
+
+Enable `WINEMETALGL_TRIANGLE_SPLIT=1` for the candidate and leave it unset for control. On a continuing default-framebuffer pass, the candidate can submit when the queue is idle and the current command buffer reaches half the preceding frame's count of direct triangle-list primitives. It checks every 32 draws from the ordinary draw minimum, stays inside the normal continuing-pass limit, and transfers unused draw credit as in the ordinary early-submit path. The first frame and frames with no recorded triangles use the ordinary draw threshold. The policy leaves explicit synchronization and attachment load and store decisions to the existing command stream.
+
+Keep `WINEMETALGL_COMMIT_DRAWS=64` and `WINEMETALGL_IDLE_FIRST_DRAWS=256` in both modes. Time four warmed 60-second raid launches in control, candidate, candidate, control order. Keep submission logging off during timing. In two additional 25-second diagnostics, set `WINEMETALGL_TRIANGLE_SPLIT_LOG` to `triangle-split.tsv` and enable the existing submission log. Record the policy and logging values in `triangle-split-mode.txt`. The triangle trace includes the stream, command buffer serial, draw count, number of direct-list triangles and preceding-frame target. The analyzer checks that the target reflects the preceding recorded frame.
+
+Run the full GPU test suite and the ordered indexed replay with three outputs in flight in each mode. For the replay also enable the triangle and submission logs. Save the results as `gpu-tests-MODE.log`, `replay-MODE.log` and `replay-MODE-triangles.tsv`, using `0` for control and `1` for candidate. Both modes passed **343** GPU tests, and the replay produced the same RGBA hash and **161,327** colored pixels with distinct submission sizes.
+
+| First submission policy | Median GPU-completed FPS | Median p99 completion gap |
+| --- | ---: | ---: |
+| Ordinary early draw threshold | 138.15 | 12.20 ms |
+| Preceding-frame triangle budget | 139.84 | 12.00 ms |
+
+The paired throughput changes were **−0.08** and **+3.47 FPS**. The p99 completion gap shortened by **0.238** and **0.151 ms**. The four timed launches verified **33,363** consecutive GPU completions across their four windows with the saved camera, overlapping effects, all 26 timing rows, and zero visible windows or activations. Keep the previously selected deferred PGO library for the raid baseline. [Timed results and verified replay](results/raid-winemetalgl-triangle-balanced-first-submission-ab.json)
+
+In the diagnostic pair the most frequent first split moved from **256** to **224 draws**, and the median share of tracked triangles in the first buffer fell from **63.9% to 57.5%**. The first buffer's median GPU span was **0.646 and 0.645 ms**. The final buffer's median span rose from **1.20 to 1.27 ms**, and the median union of recorded render-buffer spans rose from **2.30 to 2.53 ms**. In the diagnostic p99 tail, the median union was **8.00 and 7.88 ms**. These spans come from GPU start and end timestamps and can include scheduling stalls. The two diagnostic windows sample separate periods of desktop activity. [Submission budgets and GPU spans](results/raid-winemetalgl-triangle-balanced-first-submission-ab.json)
+
+```sh
+python3 benchmarks/summarize-raid-triangle-split.py CAPTURE_ROOT
+```

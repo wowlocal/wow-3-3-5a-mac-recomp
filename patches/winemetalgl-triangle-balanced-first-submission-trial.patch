@@ -1,0 +1,111 @@
+diff --git a/src/core/draw.mm b/src/core/draw.mm
+--- a/src/core/draw.mm
++++ b/src/core/draw.mm
+@@ -2427,7 +2427,9 @@
+     }
+     // Count direct triangle lists. Other topologies and GPU-provided indirect
+     // counts continue to use the normal draw-budget heuristic.
+-    const uint64_t triangles = mode == GL_TRIANGLES && !points && count > 0 && triangleSubmissionBudget()
++    const uint64_t triangles = mode == GL_TRIANGLES && !points && count > 0 &&
++                               (triangleSubmissionBudget() || CommandStream::balanceTriangleSplit() ||
++                                CommandStream::traceTriangleSplit())
+                                    ? uint64_t{static_cast<uint32_t>(count / 3)} * std::max(1, instances) : 0;
+     ctx_.stream().noteDraw(triangles);
+     return true;
+@@ -2632,10 +2634,13 @@
+     // Start the first default-framebuffer submission while the queue has
+     // nothing in flight. Transfer the unused draw budget to the next
+     // submission so early work does not introduce an additional split.
+-    if (earlyDraws >= draws && recorded >= earlyDraws && recorded < continuingLimit &&
+-        (recorded - earlyDraws) % 32 == 0 && !stream.hasDrawSubmissionThisFrame() &&
++    const uint64_t triangleTarget = CommandStream::balanceTriangleSplit() ? stream.firstTriangleTarget() : 0;
++    const uint64_t earlyMinimum = triangleTarget ? draws : earlyDraws;
++    if (earlyDraws >= draws && recorded >= earlyMinimum && recorded < continuingLimit &&
++        (recorded - earlyMinimum) % 32 == 0 && !stream.hasDrawSubmissionThisFrame() &&
+         target && !ctx_.state.drawFramebuffer && ctx_.drawSurface() && stream.continuesPass(*target) &&
+-        !triangleSubmissionBudget() && stream.queue().idle()) {
++        !triangleSubmissionBudget() &&
++        (!triangleTarget || stream.trianglesSinceCommit() >= triangleTarget) && stream.queue().idle()) {
+         stream.flushEarlyFrame(continuingLimit - recorded);
+         return;
+     }
+diff --git a/src/core/metal/command_stream.h b/src/core/metal/command_stream.h
+--- a/src/core/metal/command_stream.h
++++ b/src/core/metal/command_stream.h
+@@ -252,9 +252,14 @@
+     bool hasDrawSubmissionThisFrame() const { return frameHasDrawSubmission_; }
+     uint64_t earlyDrawCredit() const { return earlyDrawCredit_; }
+     void flushEarlyFrame(uint64_t credit);
++    static bool balanceTriangleSplit();
++    static bool traceTriangleSplit();
++    uint64_t firstTriangleTarget() const { return previousFrameTriangles_ / 2; }
+     void resetFrameSubmissionBudget() {
+         frameHasDrawSubmission_ = false;
+         earlyDrawCredit_ = 0;
++        previousFrameTriangles_ = frameTriangles_;
++        frameTriangles_ = 0;
+     }
+     uint64_t trianglesSinceCommit() const { return trianglesSinceCommit_; }
+     // The CPU waited this frame for indirect commands the GPU wrote: such a
+@@ -326,6 +331,8 @@
+     uint64_t earlyDrawCredit_ = 0;
+     uint32_t drawsSinceCommit_ = 0;
+     uint64_t trianglesSinceCommit_ = 0;
++    uint64_t frameTriangles_ = 0;
++    uint64_t previousFrameTriangles_ = 0;
+     uint64_t submissionTraceStream_ = 0;
+     bool indirectWaited_ = false;
+     uint64_t passGeneration_ = 0;
+diff --git a/src/core/metal/command_stream.mm b/src/core/metal/command_stream.mm
+--- a/src/core/metal/command_stream.mm
++++ b/src/core/metal/command_stream.mm
+@@ -677,6 +677,26 @@
+     earlyDrawCredit_ = credit;
+ }
+
++bool CommandStream::balanceTriangleSplit() {
++    static const bool enabled = [] {
++        const char* value = std::getenv("WINEMETALGL_TRIANGLE_SPLIT");
++        return value && value[0] == '1';
++    }();
++    return enabled;
++}
++
++static FILE* triangleSplitLog() {
++    static FILE* file = []() -> FILE* {
++        const char* path = std::getenv("WINEMETALGL_TRIANGLE_SPLIT_LOG");
++        return path && *path ? std::fopen(path, "w") : nullptr;
++    }();
++    return file;
++}
++
++bool CommandStream::traceTriangleSplit() {
++    return triangleSplitLog() != nullptr;
++}
++
+ uint64_t CommandStream::flush(bool keepPendingClear) {
+     flushDeferred_ = false;
+     if (__builtin_expect(deferred_ != nullptr, 0)) runDeferred();
+@@ -691,6 +711,8 @@
+     stats::count(&stats::Frame::commits);
+     lastCommitNanos_ = stats::nowNanos();
+     const uint32_t submittedDraws = drawsSinceCommit_;
++    const uint64_t submittedTriangles = trianglesSinceCommit_;
++    frameTriangles_ += submittedTriangles;
+     if (submittedDraws) {
+         frameHasDrawSubmission_ = true;
+         earlyDrawCredit_ = 0;
+@@ -709,6 +731,13 @@
+         if (!submissionTraceStream_)
+             submissionTraceStream_ = nextTraceStream.fetch_add(1, std::memory_order_relaxed);
+         traceSubmission(log, buffer_, "render", submissionTraceStream_, serial_, submittedDraws);
++        if (FILE* triangles = triangleSplitLog()) {
++            std::fprintf(triangles, "%llu %llu %u %llu %llu\n",
++                         static_cast<unsigned long long>(submissionTraceStream_),
++                         static_cast<unsigned long long>(serial_), submittedDraws,
++                         static_cast<unsigned long long>(submittedTriangles),
++                         static_cast<unsigned long long>(firstTriangleTarget()));
++        }
+     }
+     if (endRender) queue_.commitAfterEncoding(buffer_, serial_, renderQueue_, endRender);
+     else queue_.commit(buffer_, serial_);
